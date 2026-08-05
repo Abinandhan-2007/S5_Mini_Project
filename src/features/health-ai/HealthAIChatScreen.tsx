@@ -16,6 +16,7 @@ export const HealthAIChatScreen: React.FC = () => {
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -58,7 +59,7 @@ export const HealthAIChatScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-36 flex flex-col w-full relative">
+    <div className={`min-h-screen bg-white flex flex-col w-full relative ${isInputFocused ? 'pb-20' : 'pb-36'}`}>
       {/* VIBRANT CYAN HERO TOP BAR */}
       <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-45% to-white pt-2 pb-5 px-4 sticky top-0 z-30 shadow-xs">
         <div className="flex items-center justify-between">
@@ -134,47 +135,55 @@ export const HealthAIChatScreen: React.FC = () => {
       </div>
 
       {/* QUICK SUGGESTIONS CAROUSEL */}
-      <div className="px-4 py-2 bg-white/80 backdrop-blur-md max-w-md mx-auto w-full space-y-2">
-        <div className="flex items-center justify-between text-left px-1">
-          <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider">
-            COMMON SYMPTOM EVALUATIONS
-          </span>
-          <button
-            onClick={() => navigate('/assessment-confirm')}
-            className="text-[10px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1"
-          >
-            <ClipboardCheck className="w-3 h-3" />
-            <span>Review SOAP Note</span>
-          </button>
-        </div>
+      {!isInputFocused && (
+        <div className="px-4 py-2 bg-white/80 backdrop-blur-md max-w-md mx-auto w-full space-y-2">
+          <div className="flex items-center justify-between text-left px-1">
+            <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider">
+              COMMON SYMPTOM EVALUATIONS
+            </span>
+            <button
+              onClick={() => navigate('/assessment-confirm')}
+              className="text-[10px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1"
+            >
+              <ClipboardCheck className="w-3 h-3" />
+              <span>Review SOAP Note</span>
+            </button>
+          </div>
 
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          <Chip
-            onClick={() => handleSend('I have seasonal allergy symptoms like sneezing & congestion')}
-          >
-            🤧 Seasonal Allergies
-          </Chip>
-          <Chip
-            onClick={() => handleSend('I have a mild headache and fatigue')}
-          >
-            🤕 Headache & Fatigue
-          </Chip>
-          <Chip
-            onClick={() => handleSend('I have acute chest pain and breathing trouble')}
-          >
-            🚨 Emergency Check
-          </Chip>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <Chip
+              onClick={() => handleSend('I have seasonal allergy symptoms like sneezing & congestion')}
+            >
+              🤧 Seasonal Allergies
+            </Chip>
+            <Chip
+              onClick={() => handleSend('I have a mild headache and fatigue')}
+            >
+              🤕 Headache & Fatigue
+            </Chip>
+            <Chip
+              onClick={() => handleSend('I have acute chest pain and breathing trouble')}
+            >
+              🚨 Emergency Check
+            </Chip>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* BOTTOM INPUT BAR */}
-      <div className="fixed bottom-20 sm:bottom-22 left-0 right-0 z-30 max-w-md mx-auto px-4 py-2.5 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md rounded-t-2xl">
+      <div
+        className={`fixed left-0 right-0 z-30 max-w-md mx-auto px-4 py-2.5 bg-white border-t border-[#E4E7EC] shadow-lg transition-all duration-150 ${
+          isInputFocused ? 'bottom-0 rounded-none' : 'bottom-18 sm:bottom-20 rounded-t-2xl'
+        }`}
+      >
         <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E4E7EC] rounded-2xl px-3 py-1.5 shadow-2xs focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/20 transition-all">
           <HeartPulse className="w-4 h-4 text-[#0B5A54] shrink-0" />
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
             onKeyDown={handleKeyDown}
             placeholder="Describe your symptoms..."
             className="flex-1 bg-transparent text-xs font-medium text-[#111827] placeholder-[#9CA3AF] focus:outline-none py-1.5"
@@ -189,7 +198,8 @@ export const HealthAIChatScreen: React.FC = () => {
         </div>
       </div>
 
-      <BottomNav />
+      {/* Render BottomNav ONLY when keyboard / text box is not focused */}
+      {!isInputFocused && <BottomNav />}
     </div>
   );
 };
