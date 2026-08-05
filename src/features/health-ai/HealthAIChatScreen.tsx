@@ -58,7 +58,7 @@ export const HealthAIChatScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-28 flex flex-col w-full relative">
+    <div className="min-h-screen bg-white pb-36 flex flex-col w-full relative">
       {/* VIBRANT CYAN HERO TOP BAR */}
       <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-45% to-white pt-2 pb-5 px-4 sticky top-0 z-30 shadow-xs">
         <div className="flex items-center justify-between">
@@ -168,7 +168,7 @@ export const HealthAIChatScreen: React.FC = () => {
       </div>
 
       {/* BOTTOM INPUT BAR */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 max-w-md mx-auto px-4 py-2 bg-white border-t border-[#E4E7EC]">
+      <div className="fixed bottom-20 sm:bottom-22 left-0 right-0 z-30 max-w-md mx-auto px-4 py-2.5 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md rounded-t-2xl">
         <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E4E7EC] rounded-2xl px-3 py-1.5 shadow-2xs focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/20 transition-all">
           <HeartPulse className="w-4 h-4 text-[#0B5A54] shrink-0" />
           <input
