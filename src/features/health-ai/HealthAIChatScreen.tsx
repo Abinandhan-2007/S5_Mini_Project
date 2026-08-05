@@ -60,34 +60,34 @@ export const HealthAIChatScreen: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-white flex flex-col w-full relative ${isInputFocused ? 'pb-20' : 'pb-36'}`}>
-      {/* VIBRANT CYAN HERO TOP BAR */}
-      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-45% to-white pt-2 pb-5 px-4 sticky top-0 z-30 shadow-xs">
+      {/* CLEAN PURE WHITE HEADER BAR */}
+      <div className="bg-white border-b border-[#E4E7EC] py-3 px-4 sticky top-0 z-30 shadow-2xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white ring-1 ring-white/30 shadow-xs">
-              <Bot className="w-5 h-5 text-white animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-[#0B5A54]/10 flex items-center justify-center text-[#0B5A54] border border-[#0B5A54]/20 shadow-2xs">
+              <Bot className="w-5 h-5 text-[#0B5A54] animate-pulse" />
             </div>
             <div className="text-left space-y-0.5">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-base font-extrabold text-white font-heading tracking-tight">CarePulse AI Triage</h1>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <h1 className="text-base font-extrabold text-[#0B5A54] font-heading tracking-tight">CarePulse AI Triage</h1>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               </div>
-              <p className="text-[11px] font-semibold text-white/90">Clinical Assistant & Symptom Evaluator</p>
+              <p className="text-[11px] font-semibold text-[#6B7280]">Clinical Assistant & Symptom Evaluator</p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => navigate('/escalation')}
-              className="p-2 rounded-xl bg-rose-500/20 text-rose-100 hover:bg-rose-500/30 ring-1 ring-rose-300/40 transition-all flex items-center gap-1 text-[11px] font-bold"
+              className="px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs"
               title="Emergency Escalation Notice"
             >
-              <AlertTriangle className="w-4 h-4 text-rose-300" />
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
               <span className="hidden sm:inline">Emergency</span>
             </button>
             <button
               onClick={clearChat}
-              className="p-2 rounded-xl bg-white/15 text-white hover:bg-white/25 transition-colors ring-1 ring-white/20"
+              className="p-2 rounded-xl bg-[#F8FAFC] border border-[#E4E7EC] text-[#6B7280] hover:text-[#111827] hover:bg-gray-100 transition-colors shadow-2xs"
               title="Clear Conversation"
             >
               <RefreshCw className="w-4 h-4" />
