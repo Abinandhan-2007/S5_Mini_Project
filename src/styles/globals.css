@@ -1,0 +1,140 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    --app-bg: #EEF1F6;
+    --primary-teal: #0B5A54;
+    --accent-teal: #14B8A6;
+    --bg-light-teal: #E3F3F1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #EEF1F6;
+    color: #111827;
+    -webkit-tap-highlight-color: transparent !important;
+    overflow-x: hidden;
+  }
+
+  button, a {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  button:focus, button:active, button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-heading {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.015em;
+  }
+}
+
+/* Custom Gradient Utilities */
+.bg-gradient-teal {
+  background: linear-gradient(135deg, #0B5A54 0%, #14B8A6 100%);
+}
+
+.bg-gradient-dark-teal {
+  background: linear-gradient(135deg, #063C38 0%, #0B5A54 100%);
+}
+
+.bg-gradient-subtle {
+  background: linear-gradient(180deg, #FFFFFF 0%, #EEF1F6 100%);
+}
+
+/* Hide scrollbar for horizontal date/filter scrollers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Card Left Accent Line */
+.card-left-accent {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-left-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #0B5A54;
+  border-top-left-radius: 24px;
+  border-bottom-left-radius: 24px;
+}
+
+/* Ticket dashed divider */
+.dashed-divider {
+  border-top: 2px dashed #E4E7EC;
+  position: relative;
+}
+
+.dashed-divider::before,
+.dashed-divider::after {
+  content: '';
+  position: absolute;
+  top: -9px;
+  width: 16px;
+  height: 18px;
+  background-color: #EEF1F6;
+}
+
+.dashed-divider::before {
+  left: -24px;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.dashed-divider::after {
+  right: -24px;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+/* Glassmorphism accent card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.rounded-pill {
+  border-radius: 9999px;
+}
+
+/* Safe area padding helper */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+.pb-safe {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}

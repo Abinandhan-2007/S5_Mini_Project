@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CarePulse</string>
+    <string name="title_activity_main">CarePulse</string>
+    <string name="package_name">com.carepulse.app</string>
+    <string name="custom_url_scheme">com.carepulse.app</string>
+</resources>
