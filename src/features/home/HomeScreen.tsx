@@ -10,11 +10,12 @@ import { Avatar } from '../../components/ui/Avatar';
 import { requestNativeLocation } from '../../lib/locationService';
 
 import { useCarePulseStore } from '../../lib/store';
-import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
+import { MOCK_PRESCRIPTIONS, MOCK_DOCTORS, MOCK_HOSPITALS } from '../../lib/mockApi';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
+  const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -35,9 +36,39 @@ export const HomeScreen: React.FC = () => {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
+    const query = (searchQuery || '').trim().toLowerCase();
+    if (!query) {
       navigate('/hospitals');
+      return;
     }
+
+    // 1. Check if query matches a Doctor's Name or Specialty -> Go to Doctor Booking Page
+    const matchedDoctor = MOCK_DOCTORS.find((d) => {
+      const docName = (d?.name || '').toLowerCase();
+      const docSpec = (d?.specialty || '').toLowerCase();
+      return docName.includes(query) || docSpec.includes(query);
+    });
+
+    if (matchedDoctor) {
+      setBookingDoctor(matchedDoctor);
+      navigate(`/appointments/book/${matchedDoctor.id}`);
+      return;
+    }
+
+    // 2. Check if query matches a Hospital's Name -> Go to Hospital Detail Page showing Doctors available there
+    const matchedHospital = MOCK_HOSPITALS.find((h) => {
+      const hospName = (h?.name || '').toLowerCase();
+      const hospAddr = (h?.address || '').toLowerCase();
+      return hospName.includes(query) || hospAddr.includes(query);
+    });
+
+    if (matchedHospital) {
+      navigate(`/hospitals/${matchedHospital.id}`);
+      return;
+    }
+
+    // 3. Fallback: Redirect to Hospitals list with search filter
+    navigate('/hospitals', { state: { initialSearch: searchQuery.trim() } });
   };
 
   return (
@@ -51,14 +82,20 @@ export const HomeScreen: React.FC = () => {
           onSubmit={handleSearchSubmit}
           className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all"
         >
-          <Search className="w-4 h-4 text-[#6B7280] ml-1 shrink-0" />
+          <button
+            type="submit"
+            className="p-1 text-[#6B7280] hover:text-[#0B5A54] transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+            title="Search"
+          >
+            <Search className="w-4 h-4" />
+          </button>
 
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search Doctor's, Hospitals..."
-            className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2.5 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
+            className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
           />
 
           <button

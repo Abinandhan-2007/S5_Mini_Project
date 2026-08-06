@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Info, Calendar as CalendarIcon, Star, CheckCircle2, ArrowRight, Award, Ticket, Clock, Building2 } from 'lucide-react';
+import { Info, Calendar as CalendarIcon, Star, CheckCircle2, ArrowRight, Award, Ticket, Clock, Building2, X } from 'lucide-react';
 import { TopBar } from '../../components/ui/TopBar';
 import { Card } from '../../components/ui/Card';
 import { Avatar } from '../../components/ui/Avatar';
-import { DateScroller } from '../../components/ui/DateScroller';
+import { CalendarPicker } from '../../components/ui/CalendarPicker';
 import { TimeSlotGrid } from '../../components/ui/TimeSlotGrid';
 import { Button } from '../../components/ui/Button';
 import { MOCK_DOCTORS } from '../../lib/mockApi';
@@ -18,10 +18,12 @@ export const BookAppointmentScreen: React.FC = () => {
 
   const doctor = MOCK_DOCTORS.find((d) => d.id === doctorId) || MOCK_DOCTORS[0];
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [selectedSlot, setSelectedSlot] = useState('10:30 AM');
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [selectedSlot, setSelectedSlot] = useState<string>('10:00 AM');
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [bookedTicket, setBookedTicket] = useState('');
 
   const handleConfirmBooking = () => {
@@ -84,19 +86,65 @@ export const BookAppointmentScreen: React.FC = () => {
           </div>
         </Card>
 
-        {/* Select Date Section - Normal Standard Date Input Interface */}
+        {/* Select Date Section - Clean Button that opens Calendar Modal */}
         <div className="space-y-2 text-left">
           <div className="flex justify-between items-center px-1">
             <h3 className="text-xs font-extrabold font-heading text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <CalendarIcon className="w-4 h-4 text-[#0B5A54]" /> Select Consultation Date
             </h3>
-            <span className="text-xs font-bold text-[#0B5A54] bg-[#0B5A54]/10 px-2.5 py-0.5 rounded-full">
-              {selectedDate}
-            </span>
           </div>
 
-          <DateScroller selectedDate={selectedDate} onSelectDate={(d) => setSelectedDate(d)} />
+          <button
+            type="button"
+            onClick={() => setIsCalendarOpen(true)}
+            className="w-full bg-white border border-[#E4E7EC] hover:border-[#0B5A54] rounded-2xl p-3.5 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
+                <CalendarIcon className="w-5 h-5 text-[#0B5A54]" />
+              </div>
+              <div className="text-left">
+                <span className="text-[10px] font-extrabold uppercase text-[#6B7280] tracking-wider block">
+                  Chosen Date
+                </span>
+                <span className="text-xs sm:text-sm font-extrabold text-slate-900 font-heading">
+                  {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+            <span className="text-xs font-bold text-[#0B5A54] bg-[#E3F3F1] border border-[#0B5A54]/20 px-3 py-1.5 rounded-full group-hover:bg-[#0B5A54] group-hover:text-white transition-all shadow-2xs">
+              Open Calendar
+            </span>
+          </button>
         </div>
+
+        {/* CALENDAR POPUP MODAL */}
+        {isCalendarOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-3xl p-4 shadow-2xl max-w-sm w-full space-y-3 relative border border-slate-200 animate-in zoom-in-95">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-[#0B5A54]" />
+                  <h3 className="text-sm font-extrabold text-slate-900 font-heading">Select Date</h3>
+                </div>
+                <button
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <CalendarPicker
+                selectedDate={selectedDate}
+                onSelectDate={(d) => {
+                  setSelectedDate(d);
+                  setIsCalendarOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Available Slots Section */}
         <div className="space-y-2 text-left">

@@ -16,7 +16,6 @@ export const HealthAIChatScreen: React.FC = () => {
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -59,8 +58,8 @@ export const HealthAIChatScreen: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-white flex flex-col w-full relative ${isInputFocused ? 'pb-20' : 'pb-36'}`}>
-      {/* HEADER WITH NOTIFICATION & BADGE (MATCHING HISTORY & HOSPITALS PAGE STYLE) */}
+    <div className="min-h-screen bg-white pb-32 flex flex-col w-full relative select-none">
+      {/* HEADER WITH NOTIFICATION & BADGE */}
       <div className="bg-white border-b border-[#E4E7EC] pt-4 pb-3.5 px-4 sticky top-0 z-30 shadow-2xs">
         <div className="space-y-0.5">
           <div className="flex justify-between items-center">
@@ -131,57 +130,51 @@ export const HealthAIChatScreen: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* PREMIUM CLEAN SYMPTOM EVALUATION FLOATING CARD */}
-      {!isInputFocused && (
-        <div className="fixed bottom-34 sm:bottom-36 left-0 right-0 z-20 max-w-md mx-auto px-4">
-          <div className="bg-white/90 backdrop-blur-md border border-[#E4E7EC] rounded-2xl p-2.5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-left">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#0B5A54]" />
-                <span className="text-[11px] font-extrabold text-[#111827] font-heading tracking-tight">
-                  Common Symptom Evaluations
-                </span>
-              </div>
-              <button
-                onClick={() => navigate('/assessment-confirm')}
-                className="text-[10px] font-bold text-[#0B5A54] bg-[#E3F3F1] border border-[#0B5A54]/20 px-2.5 py-0.5 rounded-full hover:bg-[#0B5A54] hover:text-white transition-all flex items-center gap-1 shadow-2xs"
-              >
-                <ClipboardCheck className="w-3 h-3" />
-                <span>SOAP Note</span>
-              </button>
+      {/* PREMIUM CLEAN SYMPTOM EVALUATION CARD */}
+      <div className="max-w-md mx-auto px-4 pb-2 w-full">
+        <div className="bg-white/95 backdrop-blur-md border border-[#E4E7EC] rounded-2xl p-2.5 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-left">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span className="text-[11px] font-extrabold text-[#111827] font-heading tracking-tight">
+                Common Symptom Evaluations
+              </span>
             </div>
+            <button
+              onClick={() => navigate('/assessment-confirm')}
+              className="text-[10px] font-bold text-[#0B5A54] bg-[#E3F3F1] border border-[#0B5A54]/20 px-2.5 py-0.5 rounded-full hover:bg-[#0B5A54] hover:text-white transition-all flex items-center gap-1 shadow-2xs"
+            >
+              <ClipboardCheck className="w-3 h-3" />
+              <span>SOAP Note</span>
+            </button>
+          </div>
 
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
-              <button
-                onClick={() => handleSend('I have seasonal allergy symptoms like sneezing & congestion')}
-                className="px-3 py-1.5 rounded-full text-[11px] font-bold text-[#0B5A54] bg-[#F8FAFC] border border-[#E4E7EC] hover:border-[#0B5A54] hover:bg-[#E3F3F1]/40 transition-all shadow-2xs shrink-0 active:scale-95"
-              >
-                Seasonal Allergies
-              </button>
-              <button
-                onClick={() => handleSend('I have a mild headache and fatigue')}
-                className="px-3 py-1.5 rounded-full text-[11px] font-bold text-[#0B5A54] bg-[#F8FAFC] border border-[#E4E7EC] hover:border-[#0B5A54] hover:bg-[#E3F3F1]/40 transition-all shadow-2xs shrink-0 active:scale-95"
-              >
-                Headache & Fatigue
-              </button>
-              <button
-                onClick={() => handleSend('I have acute chest pain and breathing trouble')}
-                className="px-3 py-1.5 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50/80 border border-rose-200 hover:border-rose-300 hover:bg-rose-100 transition-all shadow-2xs shrink-0 active:scale-95"
-              >
-                Emergency Check
-              </button>
-            </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
+            <button
+              onClick={() => handleSend('I have seasonal allergy symptoms like sneezing & congestion')}
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold text-[#0B5A54] bg-[#F8FAFC] border border-[#E4E7EC] hover:border-[#0B5A54] hover:bg-[#E3F3F1]/40 transition-all shadow-2xs shrink-0 active:scale-95"
+            >
+              Seasonal Allergies
+            </button>
+            <button
+              onClick={() => handleSend('I have a mild headache and fatigue')}
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold text-[#0B5A54] bg-[#F8FAFC] border border-[#E4E7EC] hover:border-[#0B5A54] hover:bg-[#E3F3F1]/40 transition-all shadow-2xs shrink-0 active:scale-95"
+            >
+              Headache & Fatigue
+            </button>
+            <button
+              onClick={() => handleSend('I have acute chest pain and breathing trouble')}
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50/80 border border-rose-200 hover:border-rose-300 hover:bg-rose-100 transition-all shadow-2xs shrink-0 active:scale-95"
+            >
+              Emergency Check
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* PREMIUM COMPACT FLOATING INPUT BAR */}
-      <div
-        className={`fixed left-0 right-0 z-30 max-w-xs sm:max-w-sm mx-auto px-2 transition-all duration-200 ${
-          isInputFocused ? 'bottom-3' : 'bottom-22 sm:bottom-24'
-        }`}
-      >
-        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md border border-[#E4E7EC] rounded-full p-1.5 pl-3 shadow-lg shadow-[#0B5A54]/10 focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/15 transition-all">
+      {/* STABLE BOTTOM INPUT BAR - MOVED SLIGHTLY UPWARD */}
+      <div className="fixed bottom-20 sm:bottom-22 left-0 right-0 z-30 max-w-md mx-auto px-4 py-2 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md">
+        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E4E7EC] rounded-full px-3 py-1.5 focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/20 transition-all">
           <div className="w-7 h-7 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-[#0B5A54]" />
           </div>
@@ -189,11 +182,9 @@ export const HealthAIChatScreen: React.FC = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
             onKeyDown={handleKeyDown}
             placeholder="Ask AI or describe symptoms..."
-            className="flex-1 bg-transparent text-xs font-semibold text-[#111827] placeholder-[#9CA3AF] focus:outline-none py-1"
+            className="flex-1 bg-transparent text-xs font-semibold text-[#111827] placeholder-[#9CA3AF] focus:outline-none py-1.5"
           />
           <button
             onClick={() => handleSend()}
@@ -205,8 +196,7 @@ export const HealthAIChatScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Render BottomNav ONLY when keyboard / text box is not focused */}
-      {!isInputFocused && <BottomNav />}
+      <BottomNav />
     </div>
   );
 };
