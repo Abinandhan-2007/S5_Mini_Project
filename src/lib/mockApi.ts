@@ -134,13 +134,16 @@ export const INITIAL_APPOINTMENT: Appointment = {
   daysLeftText: 'In 2 days',
 };
 
-export const MOCK_PRESCRIPTIONS: Prescription[] = [
+export const MOCK_PRESCRIPTIONS: (Prescription & { doctorSpecialty?: string; hospitalName?: string; datePrescribed?: string })[] = [
   {
     id: 'rx-1',
     drugName: 'Amoxicillin Trihydrate',
     dosage: '500 mg',
     frequency: '1 capsule • Twice daily after meals',
     prescriber: 'Dr. Elena Rostova',
+    doctorSpecialty: 'General Medicine Specialist',
+    hospitalName: 'Metropolitan General Hospital',
+    datePrescribed: 'Jul 24, 2026',
     iconType: 'capsule',
   },
   {
@@ -149,7 +152,32 @@ export const MOCK_PRESCRIPTIONS: Prescription[] = [
     dosage: '10 mg',
     frequency: '1 tablet • Daily every morning',
     prescriber: 'Dr. Alex Morgan',
+    doctorSpecialty: 'Cardiology Specialist',
+    hospitalName: 'St. Jude Heart & Medical Center',
+    datePrescribed: 'Jul 18, 2026',
     iconType: 'pill',
+  },
+  {
+    id: 'rx-3',
+    drugName: 'Atorvastatin Calcium',
+    dosage: '20 mg',
+    frequency: '1 tablet • Nightly before bedtime',
+    prescriber: 'Dr. Michael Chen',
+    doctorSpecialty: 'Neurology & Internal Medicine',
+    hospitalName: 'City General Hospital',
+    datePrescribed: 'Jun 30, 2026',
+    iconType: 'pill',
+  },
+  {
+    id: 'rx-4',
+    drugName: 'Salbutamol Inhaler',
+    dosage: '100 mcg',
+    frequency: '2 puffs • As needed for shortness of breath',
+    prescriber: 'Dr. Sarah Jenkins',
+    doctorSpecialty: 'Pulmonology Specialist',
+    hospitalName: 'Cedar Skin & Wellness Clinic',
+    datePrescribed: 'May 12, 2026',
+    iconType: 'capsule',
   },
 ];
 

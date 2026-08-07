@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -26,6 +27,7 @@ import { useCarePulseStore } from '../../lib/store';
 import type { MedicalHistoryItem } from '../../lib/types';
 
 export const MedicalHistoryScreen: React.FC = () => {
+  const navigate = useNavigate();
   const historyItems = useCarePulseStore((s) => s.history);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,12 +89,13 @@ export const MedicalHistoryScreen: React.FC = () => {
                 {filteredHistory.length} Records
               </Badge>
               <button
-                onClick={() => alert('Notifications: You have 1 upcoming appointment!')}
-                className="w-8 h-8 rounded-full bg-white border border-[#E4E7EC] flex items-center justify-center text-[#111827] hover:bg-gray-50 transition-all relative active:scale-95 shadow-2xs shrink-0"
+                onClick={() => navigate('/notifications')}
+                className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0"
+                aria-label="Notifications"
                 title="Notifications"
               >
-                <Bell className="w-3.5 h-3.5 text-[#111827]" />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
+                <Bell className="w-4 h-4 text-[#111827]" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
               </button>
             </div>
           </div>

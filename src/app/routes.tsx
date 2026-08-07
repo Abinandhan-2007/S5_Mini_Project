@@ -12,57 +12,181 @@ import { BookAppointmentScreen } from '../features/appointments/BookAppointmentS
 import { MedicalHistoryScreen } from '../features/history/MedicalHistoryScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
+import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
+import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
+import { PageTransition } from '../components/ui/PageTransition';
+import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
 
 export const AppRoutes: React.FC = () => {
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
 
   return (
-    <Routes>
+    <>
+      <SystemNavigationHandler />
+      <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="/login" element={<LoginScreen />} />
-      <Route path="/register" element={<RegisterScreen />} />
+      <Route
+        path="/login"
+        element={
+          <PageTransition>
+            <LoginScreen />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PageTransition>
+            <RegisterScreen />
+          </PageTransition>
+        }
+      />
 
-      {/* Authenticated Routes */}
+      {/* Authenticated Routes with Smooth Page Transitions */}
       <Route
         path="/home"
-        element={isAuthenticated ? <HomeScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <HomeScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/health-ai"
-        element={isAuthenticated ? <HealthAIChatScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <HealthAIChatScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/escalation"
-        element={isAuthenticated ? <EscalationNoticeScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <EscalationNoticeScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/assessment-confirm"
-        element={isAuthenticated ? <AssessmentConfirmScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <AssessmentConfirmScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/hospitals"
-        element={isAuthenticated ? <FindHospitalsScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <FindHospitalsScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/hospitals/:id"
-        element={isAuthenticated ? <HospitalDetailScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <HospitalDetailScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/appointments/book/:doctorId"
-        element={isAuthenticated ? <BookAppointmentScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <BookAppointmentScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/history"
-        element={isAuthenticated ? <MedicalHistoryScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <MedicalHistoryScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/reminders"
-        element={isAuthenticated ? <RemindersScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <RemindersScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route
         path="/profile"
-        element={isAuthenticated ? <ProfileScreen /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <ProfileScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <NotificationsScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/prescriptions"
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <PrescriptionsScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
 
       {/* Default Catch-all */}
@@ -71,5 +195,6 @@ export const AppRoutes: React.FC = () => {
         element={<Navigate to={isAuthenticated ? '/home' : '/login'} replace />}
       />
     </Routes>
+    </>
   );
 };

@@ -6,8 +6,10 @@ interface CarePulseState {
   // Auth state
   user: User | null;
   isAuthenticated: boolean;
+  isBiometricEnabled: boolean;
   login: (phone: string) => void;
   logout: () => void;
+  toggleBiometric: (enabled: boolean) => void;
   updateUser: (updatedFields: Partial<User>) => void;
   registerUser: (userData: Partial<User>) => void;
 
@@ -34,10 +36,12 @@ interface CarePulseState {
 
 const storedUser = localStorage.getItem('carepulse_user');
 const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+const storedBio = localStorage.getItem('carepulse_biometric_enabled');
 
 export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   user: parsedUser || INITIAL_USER,
-  isAuthenticated: true, // Default landing screen is Home Screen
+  isAuthenticated: false, // Always start at Login Screen on app open
+  isBiometricEnabled: storedBio === 'true', // Disabled by default for new users until enabled in Profile
 
   login: (_phone: string) => {
     localStorage.setItem('has_logged_in', 'true');
@@ -54,6 +58,11 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       user: null,
       isAuthenticated: false,
     });
+  },
+
+  toggleBiometric: (enabled: boolean) => {
+    localStorage.setItem('carepulse_biometric_enabled', String(enabled));
+    set({ isBiometricEnabled: enabled });
   },
 
   updateUser: (updatedFields) => {

@@ -45,7 +45,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     <header
       className={
         isCyan
-          ? 'sticky top-0 z-30 bg-transparent px-4 pt-3 pb-2 w-full flex items-center justify-between transition-all duration-200'
+          ? 'sticky top-0 z-30 bg-[#1FA2AC] px-4 pt-4 pb-3 w-full flex items-center justify-between transition-all duration-200 shadow-2xs'
           : 'sticky top-0 z-30 bg-[#EEF1F6]/95 backdrop-blur-md px-4 py-3 w-full flex items-center justify-between border-b border-[#E4E7EC]/50 transition-all duration-200'
       }
     >
@@ -65,19 +65,32 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
         )}
 
-        <div className="space-y-0">
-          <p className={isCyan ? 'text-xs font-semibold text-teal-100 opacity-90' : 'text-xs font-medium text-[#6B7280]'}>
-            {displaySubtitle}
-          </p>
-          <h1 className={isCyan ? 'text-lg sm:text-xl font-extrabold text-white font-heading leading-tight tracking-tight' : 'text-lg font-bold text-[#111827] font-heading leading-tight tracking-tight'}>
-            {isCyan && !title ? "Find your best doctor's" : displayTitle}
-          </h1>
+        <div className="space-y-0.5">
+          {isCyan ? (
+            <>
+              <p className="text-[11px] font-bold text-teal-100/90 tracking-wide uppercase">
+                {subtitle !== undefined ? subtitle : 'WELCOME BACK'}
+              </p>
+              <h1 className="text-xl sm:text-2xl font-black text-white font-heading leading-tight tracking-tight">
+                {title || getGreeting()}
+              </h1>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-medium text-[#6B7280]">
+                {displaySubtitle}
+              </p>
+              <h1 className="text-lg font-bold text-[#111827] font-heading leading-tight tracking-tight">
+                {displayTitle}
+              </h1>
+            </>
+          )}
         </div>
       </div>
 
       {/* Right Side: Bell Icon Button */}
       <button
-        onClick={() => alert('Notifications: You have 1 upcoming appointment!')}
+        onClick={() => navigate('/notifications')}
         className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm"
         aria-label="Notifications"
         title="Notifications"

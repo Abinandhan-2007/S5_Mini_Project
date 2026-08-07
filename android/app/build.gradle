@@ -44,6 +44,23 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+task fixCordovaStubs {
+    doLast {
+        def assetsDir = file("src/main/assets/public")
+        if (assetsDir.exists()) {
+            def cordovaFile = file("src/main/assets/public/cordova.js")
+            def cordovaPluginsFile = file("src/main/assets/public/cordova_plugins.js")
+            def nativeBridgeFile = file("src/main/assets/public/native-bridge.js")
+            cordovaFile.text = '// cordova stub'
+            cordovaPluginsFile.text = '// cordova_plugins stub'
+            if (!nativeBridgeFile.exists() || nativeBridgeFile.length() == 0) {
+                nativeBridgeFile.text = '// native bridge stub'
+            }
+        }
+    }
+}
+preBuild.dependsOn fixCordovaStubs
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
