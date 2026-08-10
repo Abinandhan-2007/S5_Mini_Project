@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Info, Calendar as CalendarIcon, Star, CheckCircle2, ArrowRight, Award, Ticket, Clock, Building2, X } from 'lucide-react';
-import { TopBar } from '../../components/ui/TopBar';
-import { Card } from '../../components/ui/Card';
-import { Avatar } from '../../components/ui/Avatar';
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  CheckCircle2,
+  Ticket,
+  X,
+} from 'lucide-react';
 import { CalendarPicker } from '../../components/ui/CalendarPicker';
 import { DateScroller } from '../../components/ui/DateScroller';
 import { TimeSlotGrid } from '../../components/ui/TimeSlotGrid';
@@ -22,7 +27,7 @@ export const BookAppointmentScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [selectedSlot, setSelectedSlot] = useState<string>('10:00 AM');
+  const [selectedSlot, setSelectedSlot] = useState<string>('05:00 AM');
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [bookedTicket, setBookedTicket] = useState('');
@@ -53,47 +58,122 @@ export const BookAppointmentScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      <TopBar title="Book Appointment" showBack showAvatar />
+    <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none text-left">
+      {/* APP TOP HEADER */}
+      <div className="bg-white border-b border-slate-200/80 pt-4 pb-3.5 px-4 sm:px-6 sticky top-0 z-30 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-[#E3F3F1] hover:text-[#0B5A54] flex items-center justify-center text-slate-800 transition-all active:scale-95 shadow-2xs cursor-pointer"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-4.5 h-4.5" />
+          </button>
 
-      <main className="px-4 py-4 space-y-4 max-w-md mx-auto w-full">
-        {/* Doctor Summary Card */}
-        <Card padding="md" className="shadow-xs bg-white border border-[#E4E7EC] rounded-2xl text-left space-y-2">
-          <div className="flex gap-3.5 items-center">
-            <Avatar src={doctor.photoUrl} alt={doctor.name} size="lg" />
-            <div className="space-y-1 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-extrabold font-heading text-[#111827] truncate">{doctor.name}</h2>
-                <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  {doctor.specialty}
-                </span>
-              </div>
+          <h1 className="text-base sm:text-lg font-black font-heading text-[#111827] tracking-tight">
+            Booking
+          </h1>
 
-              <div className="flex items-center gap-1.5 text-xs text-[#6B7280]">
-                <Building2 className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
-                <span className="truncate">{doctor.hospitalName}</span>
-              </div>
+          <div className="w-9 h-9" />
+        </div>
+      </div>
 
-              <div className="flex items-center gap-3 text-xs text-[#6B7280] pt-0.5">
-                <span className="flex items-center gap-1 font-semibold text-slate-800">
-                  <Award className="w-3.5 h-3.5 text-[#0B5A54]" /> {doctor.experienceYears} yrs exp
+      <main className="px-4 sm:px-6 md:px-8 py-5 space-y-5 max-w-2xl mx-auto w-full">
+        {/* DOCTOR HERO PROFILE CARD */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80 relative overflow-hidden space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-black font-heading text-[#111827] tracking-tight truncate">
+                {doctor.name}
+              </h2>
+              <p className="text-xs font-bold text-slate-400">
+                {doctor.specialty || 'Dental Care Specialist'}
+              </p>
+
+              <div className="pt-2 flex items-baseline gap-1.5">
+                <span className="text-lg font-black text-[#0B5A54] font-heading">
+                  ${(doctor as any).consultationFee || 180}
                 </span>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-amber-600 font-bold">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {doctor.rating} ({doctor.reviewsCount})
-                </span>
+                <span className="text-xs font-extrabold text-slate-400">Consult Fee</span>
               </div>
             </div>
+
+            {/* Doctor Photo */}
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 ring-2 ring-slate-100 shadow-xs">
+              <img
+                src={doctor.photoUrl}
+                alt={doctor.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
-        </Card>
 
-        {/* Select Date Section */}
-        <div className="space-y-2 text-left">
-          <h3 className="text-xs font-extrabold font-heading text-slate-700 uppercase tracking-wider flex items-center gap-1.5 px-1">
-            <CalendarIcon className="w-4 h-4 text-[#0B5A54]" /> Select Consultation Date
-          </h3>
+          {/* Glass Overlay Footer Bar Inside Doctor Card */}
+          <div className="bg-slate-50/90 p-3 rounded-2xl border border-slate-200/70 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0 text-xs font-extrabold text-slate-700">
+              <MapPin className="w-4 h-4 text-[#0B5A54] shrink-0" />
+              <span className="truncate">{doctor.hospitalName || 'UK Medical College'}</span>
+            </div>
+          </div>
+        </div>
 
+        {/* 3 METRICS STATS ROW */}
+        <div className="grid grid-cols-3 gap-3 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-2xs text-center">
+          <div className="space-y-0.5">
+            <span className="text-base sm:text-lg font-black font-heading text-[#111827]">
+              {(doctor as any).patientsCount || '200+'}
+            </span>
+            <span className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+              Patients
+            </span>
+          </div>
+
+          <div className="space-y-0.5 border-x border-slate-100">
+            <span className="text-base sm:text-lg font-black font-heading text-[#111827]">
+              {doctor.experienceYears || 8} Year
+            </span>
+            <span className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+              Experience
+            </span>
+          </div>
+
+          <div className="space-y-0.5">
+            <span className="text-base sm:text-lg font-black font-heading text-[#111827]">
+              {doctor.rating || 4.9}
+            </span>
+            <span className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+              Ratings
+            </span>
+          </div>
+        </div>
+
+        {/* ABOUT DOCTOR SECTION */}
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-black font-heading text-[#111827]">About Doctor</h3>
+          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+            {doctor.name} is a devoted specialist at {doctor.hospitalName}, committed to patient care, community support, and enhancing healthy, confident smiles.
+          </p>
+        </div>
+
+        {/* SELECT DATE & TIME SECTION */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-black font-heading text-[#111827]">Select Date & Time</h3>
+            <button
+              onClick={() => setIsCalendarOpen(true)}
+              className="text-xs font-extrabold text-[#0B5A54] bg-[#E3F3F1] hover:bg-[#d5edea] px-3 py-1 rounded-full border border-[#14B8A6]/30 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+            >
+              <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span>Feb 2026</span>
+              <ChevronDown className="w-3 h-3 text-[#0B5A54]" />
+            </button>
+          </div>
+
+          {/* Horizontal Date Scroller */}
           <DateScroller selectedDate={selectedDate} onSelectDate={(d) => setSelectedDate(d)} />
+
+          {/* Time Slots Grid */}
+          <TimeSlotGrid selectedSlot={selectedSlot} onSelectSlot={(slot) => setSelectedSlot(slot)} />
         </div>
 
         {/* CALENDAR POPUP MODAL */}
@@ -107,7 +187,7 @@ export const BookAppointmentScreen: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsCalendarOpen(false)}
-                  className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -124,47 +204,17 @@ export const BookAppointmentScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Available Slots Section */}
-        <div className="space-y-2 text-left">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="text-xs font-extrabold font-heading text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-[#0B5A54]" /> Available Time Slots
-            </h3>
-            <span className="text-xs font-bold text-[#0B5A54]">
-              Selected: <strong className="text-emerald-700">{selectedSlot}</strong>
-            </span>
-          </div>
-
-          <TimeSlotGrid selectedSlot={selectedSlot} onSelectSlot={(slot) => setSelectedSlot(slot)} />
-        </div>
-
-        {/* Cancellation Guarantee Info Banner */}
-        <div className="bg-[#E3F3F1]/60 border border-[#0B5A54]/20 rounded-2xl p-3.5 flex gap-3 items-start text-left text-xs text-[#0B5A54] shadow-2xs">
-          <Info className="w-4 h-4 text-[#0B5A54] shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <span className="font-extrabold block text-slate-900">Free Rescheduling & Cancellation</span>
-            <p className="leading-relaxed text-[#0B5A54] font-medium">
-              You can cancel or reschedule this booking up to 24 hours prior to your visit without any fee.
-            </p>
-          </div>
+        {/* BOOK APPOINTMENT BIG PILL BUTTON */}
+        <div className="pt-3">
+          <button
+            type="button"
+            onClick={handleConfirmBooking}
+            className="w-full py-4 rounded-full bg-gradient-to-r from-[#0B5A54] via-[#14B8A6] to-[#0B5A54] text-white font-black text-sm tracking-wide shadow-lg hover:shadow-xl active:scale-98 transition-all cursor-pointer font-heading"
+          >
+            Book Appointment
+          </button>
         </div>
       </main>
-
-      {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] p-3.5 z-30 shadow-lg flex items-center justify-between gap-3">
-        <div className="text-left space-y-0.5">
-          <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider block">SELECTED TIME</span>
-          <span className="text-xs font-extrabold text-[#0B5A54]">{selectedSlot}</span>
-        </div>
-        <Button
-          size="md"
-          rightIcon={<ArrowRight className="w-4 h-4" />}
-          onClick={handleConfirmBooking}
-          className="py-3 px-6 rounded-xl font-bold text-xs shadow-md"
-        >
-          Confirm Appointment
-        </Button>
-      </div>
 
       {/* ULTRA PREMIUM SUCCESS CONFIRMATION MODAL */}
       {isSuccessModalOpen && (
@@ -233,7 +283,7 @@ export const BookAppointmentScreen: React.FC = () => {
                   setIsSuccessModalOpen(false);
                   navigate('/history');
                 }}
-                className="text-xs font-bold text-[#0B5A54] hover:underline block mx-auto pt-1"
+                className="text-xs font-bold text-[#0B5A54] hover:underline block mx-auto pt-1 cursor-pointer"
               >
                 View in Appointment History
               </button>

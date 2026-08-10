@@ -104,7 +104,7 @@ export const RemindersScreen: React.FC = () => {
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <div className="px-4 py-3 space-y-4 max-w-md mx-auto w-full">
+      <div className="px-4 sm:px-6 md:px-8 py-3 space-y-4 max-w-5xl mx-auto w-full">
         {/* Progress Card */}
         <Card padding="md" className="bg-[#0B5A54] text-white space-y-2 shadow-xs">
           <div className="flex items-center justify-between">

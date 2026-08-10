@@ -77,7 +77,7 @@ export const FindHospitalsScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      <main className="px-4 py-4 space-y-4 max-w-md mx-auto w-full">
+      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-5 max-w-7xl mx-auto w-full">
         {/* Page Heading & Notification Button */}
         <div className="flex justify-between items-center pt-1 text-left">
           <div className="space-y-0.5">
@@ -166,8 +166,8 @@ export const FindHospitalsScreen: React.FC = () => {
           </div>
         )}
 
-        {/* ULTRA-PREMIUM HOSPITAL FACILITY CARDS */}
-        <div className="space-y-4 text-left">
+        {/* ULTRA-PREMIUM HOSPITAL FACILITY CARDS - RESPONSIVE RESOLUTION GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 text-left">
           {filteredHospitals.length > 0 ? (
             filteredHospitals.map((hosp) => (
               <div

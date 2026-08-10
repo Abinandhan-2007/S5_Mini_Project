@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ArrowLeft, ArrowRight, Award, Clock, ShieldCheck, Check, Filter } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, ArrowUpRight, Clock, ShieldCheck, Check, Filter } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
-import { Avatar } from '../../components/ui/Avatar';
 import { MOCK_HOSPITALS, MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
 
@@ -15,6 +14,7 @@ export const HospitalDetailScreen: React.FC = () => {
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
 
   const hospital = MOCK_HOSPITALS.find((h) => h.id === id) || MOCK_HOSPITALS[0];
   const doctors = MOCK_DOCTORS.filter((d) => d.hospitalId === hospital.id || d.hospitalId === 'hosp-1');
@@ -80,7 +80,7 @@ export const HospitalDetailScreen: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <main className="px-4 sm:px-6 py-4 space-y-5 max-w-md mx-auto w-full">
+      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-5 max-w-7xl mx-auto w-full">
         {/* Facility Info Card */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-[#E4E7EC] text-left space-y-3">
           <div className="space-y-1">
@@ -164,56 +164,94 @@ export const HospitalDetailScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Doctor Specialists List */}
-        <div className="space-y-3 text-left">
+        {/* Doctor Specialists List - 2-COLUMN PREMIUM CARD GRID */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-left">
           {filteredDoctors.length > 0 ? (
-            filteredDoctors.map((doc) => (
-              <div
-                key={doc.id}
-                onClick={() => handleSelectDoctor(doc)}
-                className="bg-white rounded-2xl p-4 shadow-xs hover:shadow-md border border-[#E4E7EC] hover:border-[#0B5A54] transition-all duration-200 cursor-pointer active:scale-[0.99] space-y-3 group"
-              >
-                <div className="flex items-start gap-3.5">
-                  <Avatar src={doc.photoUrl} alt={doc.name} size="lg" />
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm sm:text-base font-bold text-[#111827] truncate group-hover:text-[#0B5A54]">{doc.name}</h3>
-                      <Badge variant="tint" size="sm" className="bg-[#E3F3F1] text-[#0B5A54] font-bold text-[10px] uppercase">
-                        {doc.specialty}
-                      </Badge>
+            filteredDoctors.map((doc) => {
+              // Turn green ONLY when selected by the user! (Default is clean white)
+              const isSelected = selectedDoctorId === doc.id;
+
+              return (
+                <div
+                  key={doc.id}
+                  onClick={() => {
+                    setSelectedDoctorId(doc.id);
+                    handleSelectDoctor(doc);
+                  }}
+                  className={clsx(
+                    'rounded-3xl p-4 sm:p-5 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group flex flex-col justify-between space-y-4 border relative overflow-hidden',
+                    isSelected
+                      ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-md scale-[1.02]'
+                      : 'bg-white text-slate-900 border-slate-200/80 hover:border-[#0B5A54]/50'
+                  )}
+                >
+                  {/* Top Block: Avatar + Name + Specialty */}
+                  <div className="space-y-3">
+                    {/* Avatar + Doctor Name */}
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={doc.photoUrl}
+                        alt={doc.name}
+                        className={clsx(
+                          'w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shrink-0 shadow-2xs group-hover:scale-105 transition-transform',
+                          isSelected ? 'ring-2 ring-teal-200' : 'ring-2 ring-slate-100'
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className={clsx(
+                          'text-xs sm:text-sm font-black leading-tight tracking-tight multiline-clamp-2',
+                          isSelected ? 'text-white' : 'text-[#111827] group-hover:text-[#0B5A54] transition-colors'
+                        )}>
+                          {doc.name}
+                        </h3>
+                      </div>
                     </div>
 
-                    <p className="text-xs text-[#6B7280] line-clamp-1">{doc.about || 'Consultant Specialist'}</p>
+                    {/* Specialty Text */}
+                    <p className={clsx(
+                      'text-[11px] sm:text-xs font-bold truncate',
+                      isSelected ? 'text-teal-100' : 'text-slate-400'
+                    )}>
+                      {doc.specialty}
+                    </p>
+                  </div>
 
-                    <div className="flex items-center gap-3 text-xs text-[#6B7280] pt-1">
-                      <span className="flex items-center gap-1 font-medium text-[#111827]">
-                        <Award className="w-3.5 h-3.5 text-[#0B5A54]" /> {doc.experienceYears} yrs exp
+                  {/* Bottom Block: Star Rating & Review Count | Circular Arrow Action */}
+                  <div className="flex items-end justify-between gap-2 pt-2">
+                    <div>
+                      <div className="flex items-center gap-1 text-xs font-black">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span className={isSelected ? 'text-white' : 'text-slate-900'}>
+                          {doc.rating || 4.5}
+                        </span>
+                      </div>
+                      <span className={clsx(
+                        'text-[10px] font-bold block mt-0.5',
+                        isSelected ? 'text-teal-100' : 'text-slate-400'
+                      )}>
+                        {doc.reviewsCount || 85} Reviews
                       </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1 font-bold text-amber-600">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {doc.rating} ({doc.reviewsCount})
-                      </span>
+                    </div>
+
+                    {/* Circular Action Button with Arrow Icon */}
+                    <div className={clsx(
+                      'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 shadow-2xs shrink-0',
+                      isSelected
+                        ? 'bg-[#E3F3F1] text-[#0B5A54]'
+                        : 'bg-slate-100 text-[#0B5A54] group-hover:bg-[#0B5A54] group-hover:text-white'
+                    )}>
+                      <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
                     </div>
                   </div>
                 </div>
-
-                {/* Book Appointment CTA Button */}
-                <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                    Available Today
-                  </span>
-                  <span className="text-xs font-bold text-[#0B5A54] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                    Book Consultation <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
-            <div className="bg-white border border-[#E4E7EC] rounded-2xl p-6 text-center space-y-2">
+            <div className="col-span-full bg-white border border-[#E4E7EC] rounded-3xl p-8 text-center space-y-2">
               <p className="text-xs font-bold text-slate-700">No specialists found for selected departments</p>
               <button
                 onClick={() => setSelectedSpecialties([])}
-                className="text-xs font-bold text-[#0B5A54] underline"
+                className="text-xs font-bold text-[#0B5A54] underline cursor-pointer"
               >
                 Clear All Filters
               </button>

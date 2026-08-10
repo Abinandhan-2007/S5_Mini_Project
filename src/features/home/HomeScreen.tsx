@@ -13,15 +13,13 @@ import {
   Mic,
   X,
   Check,
+  CheckCircle2,
   RefreshCw,
-  Navigation,
   Users,
 } from 'lucide-react';
 
 import { TopBar } from '../../components/ui/TopBar';
 import { BottomNav } from '../../components/ui/BottomNav';
-import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
 import { requestNativeLocation } from '../../lib/locationService';
 
@@ -36,6 +34,38 @@ export const HomeScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Dynamic Prescription Course Day Progress & Completion state
+  const [prescriptionProgress, setPrescriptionProgress] = useState<{
+    [key: string]: { currentDay: number; totalDays: number; completed: boolean };
+  }>({
+    'rx-1': { currentDay: 4, totalDays: 7, completed: false },
+    'rx-2': { currentDay: 2, totalDays: 10, completed: false },
+  });
+
+  const [completedNotice, setCompletedNotice] = useState<string | null>(null);
+
+  const handleTakeDose = (rxId: string, drugName: string) => {
+    setPrescriptionProgress((prev) => {
+      const current = prev[rxId] || { currentDay: 1, totalDays: 7, completed: false };
+      const nextDay = current.currentDay + 1;
+      const isFinished = nextDay >= current.totalDays;
+
+      if (isFinished) {
+        setCompletedNotice(`🎉 Course Completed! ${drugName} finished.`);
+        setTimeout(() => setCompletedNotice(null), 4000);
+      }
+
+      return {
+        ...prev,
+        [rxId]: {
+          ...current,
+          currentDay: isFinished ? current.totalDays : nextDay,
+          completed: isFinished,
+        },
+      };
+    });
+  };
 
   const handleRefreshQueue = () => {
     setIsRefreshing(true);
@@ -133,10 +163,10 @@ export const HomeScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* MAIN BODY CONTENT */}
-      <main className="px-4 pt-1 pb-4 space-y-4">
+      {/* MAIN BODY CONTENT - FULL SCREEN RESOLUTION ADAPTIVE */}
+      <main className="px-4 sm:px-6 md:px-8 max-w-7xl mx-auto pt-1 pb-4 space-y-6 w-full">
         {/* HERO SECTION GRID (TICKET & HEALTH TIP) */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           {/* 1. BOARDING PASS APPOINTMENT TICKET */}
           {activeAppointment && (
             <div className="relative bg-white rounded-2xl shadow-xs border border-[#E4E7EC] overflow-hidden bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:12px_12px]">
@@ -226,62 +256,207 @@ export const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* SECONDARY SECTION GRID */}
-        <div className="grid grid-cols-1 gap-4">
-          {/* 3. UPCOMING VISIT CARD */}
-          {activeAppointment && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">UPCOMING VISIT</h3>
-              </div>
+        {/* SECONDARY SECTION GRID - ADAPTIVE RESPONSIVE GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          {/* 3. NEXT DOCTOR VISIT (EXECUTIVE ULTRA-PREMIUM CARD) */}
+          <div className="space-y-2 text-left">
+            <div className="flex justify-between items-center px-1">
+              <h3 className="text-xs font-black text-[#0B5A54] uppercase tracking-widest font-heading">
+                NEXT DOCTOR VISIT
+              </h3>
+              <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full border border-[#14B8A6]/20 shadow-2xs">
+                FOLLOW-UP
+              </span>
+            </div>
 
-              <Card padding="md" className="bg-[#E3F3F1]/70 border border-[#14B8A6]/20">
-                <div className="flex justify-between items-center">
-                  <div className="flex gap-3 items-center">
-                    <Avatar src={activeAppointment.doctorPhoto} size="md" />
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-[#111827]">{activeAppointment.doctorName}</h4>
-                      <p className="text-xs text-[#0B5A54] font-semibold">{activeAppointment.doctorSpecialty}</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-[#0B5A54] font-semibold">
-                        <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" /> {activeAppointment.date}</span>
-                        <span className="flex items-center gap-1 text-[#6B7280]"><Clock className="w-3.5 h-3.5 text-[#14B8A6]" /> {activeAppointment.timeSlot}</span>
-                      </div>
-                    </div>
+            <div
+              onClick={() => navigate('/appointments/book/doc-2')}
+              className="bg-gradient-to-br from-white via-white to-[#E3F3F1]/40 rounded-3xl p-4 sm:p-5 border border-[#14B8A6]/30 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group space-y-3.5 relative overflow-hidden"
+            >
+              {/* Subtle Decorative Teal Glow Orb in background */}
+              <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#14B8A6]/10 blur-xl pointer-events-none" />
+
+              {/* Header Row: Doctor Avatar + Info | Countdown Badge */}
+              <div className="flex items-start justify-between gap-3 relative z-10">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="relative shrink-0">
+                    <Avatar
+                      src="https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80"
+                      alt="Dr. Elena Rostova"
+                      size="lg"
+                      className="ring-4 ring-[#E3F3F1] shadow-md group-hover:scale-105 transition-transform"
+                    />
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center text-white text-[7px] font-black">
+                      ✓
+                    </span>
                   </div>
 
-                  <Badge variant="tint" size="sm">{activeAppointment.daysLeftText || 'In 2 days'}</Badge>
+                  <div className="min-w-0 space-y-0.5">
+                    <h4 className="text-sm sm:text-base font-black text-[#111827] group-hover:text-[#0B5A54] transition-colors truncate tracking-tight">
+                      Dr. Elena Rostova
+                    </h4>
+                    <p className="text-xs text-[#0B5A54] font-extrabold">General Medicine Specialist</p>
+                    <p className="text-[10.5px] text-slate-500 font-semibold truncate flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-[#14B8A6] shrink-0" />
+                      <span>St. Jude Heart & Medical Center</span>
+                    </p>
+                  </div>
                 </div>
-              </Card>
-            </div>
-          )}
 
-          {/* 4. ACTIVE PRESCRIPTIONS CARD */}
-          <div className="space-y-2">
+                <span className="bg-[#0B5A54] text-white font-black text-[9.5px] px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs shrink-0 flex items-center gap-1">
+                  <span>IN 8 DAYS</span>
+                </span>
+              </div>
+
+              {/* Bottom Schedule Pill Strip - Premium Balanced Layout */}
+              <div className="pt-3 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
+                <span className="bg-white text-[#111827] border border-slate-200/90 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-2xs">
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
+                  <span>2026-08-12</span>
+                </span>
+
+                <span className="bg-[#E3F3F1] text-[#0B5A54] text-[10.5px] font-extrabold px-3 py-1.5 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1 shadow-2xs hover:bg-[#0B5A54] hover:text-white transition-colors">
+                  <span>Confirm Visit</span>
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. ACTIVE PRESCRIPTIONS - DYNAMIC COURSE COMPLETION & SCANNABLE CARDS */}
+          <div className="space-y-3.5">
+            {/* Header Row */}
             <div className="flex justify-between items-center px-1">
-              <h3 className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">ACTIVE PRESCRIPTIONS</h3>
-              <button onClick={() => navigate('/prescriptions')} className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center cursor-pointer">
-                View All <ChevronRight className="w-3.5 h-3.5" />
+              <h3 className="text-xs font-black text-[#0B5A54] uppercase tracking-widest font-heading">
+                ACTIVE PRESCRIPTIONS
+              </h3>
+              <button
+                onClick={() => navigate('/prescriptions')}
+                className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>View All</span>
+                <ChevronRight className="w-3.5 h-3.5 text-[#0B5A54]" />
               </button>
             </div>
 
-            <Card padding="md" className="divide-y divide-[#E4E7EC]/60 bg-[#F0F4F8]/70 border border-[#E4E7EC]">
-              {MOCK_PRESCRIPTIONS.slice(0, 2).map((rx) => (
-                <div key={rx.id} className="py-2.5 px-1 flex items-center justify-between first:pt-0 last:pb-0 text-left">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
-                      <Pill className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-bold text-[#111827]">{rx.drugName} ({rx.dosage})</h5>
-                      <p className="text-[11px] text-[#0B5A54] font-bold">Prescribed by {rx.prescriber}</p>
-                      <p className="text-[10px] text-[#6B7280]">{rx.frequency}</p>
-                    </div>
-                  </div>
+            {/* Course Completion Toast Notice */}
+            {completedNotice && (
+              <div className="bg-emerald-500 text-white font-extrabold text-xs p-3 rounded-2xl shadow-md flex items-center gap-2 animate-in fade-in zoom-in-95">
+                <CheckCircle2 className="w-4 h-4 text-white" />
+                <span>{completedNotice}</span>
+              </div>
+            )}
 
-                  <Badge variant="tint" size="sm">Active</Badge>
+            {/* Prescription Cards Stack */}
+            <div className="space-y-4">
+              {MOCK_PRESCRIPTIONS.slice(0, 2)
+                .filter((rx) => !prescriptionProgress[rx.id]?.completed)
+                .map((rx) => {
+                  const prog = prescriptionProgress[rx.id] || { currentDay: 1, totalDays: 7, completed: false };
+                  const percent = Math.min(100, Math.round((prog.currentDay / prog.totalDays) * 100));
+
+                  return (
+                    <div
+                      key={rx.id}
+                      className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 space-y-4 text-left relative overflow-hidden group"
+                    >
+                      {/* Top Row: Icon + Medicine Name | Active Pulse Badge */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 rounded-full bg-[#E3F3F1] text-[#0B5A54] flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <Pill className="w-5 h-5 text-[#0B5A54]" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <h4 className="text-sm sm:text-base font-black text-[#111827] leading-tight tracking-tight group-hover:text-[#0B5A54] transition-colors">
+                              {rx.drugName}
+                            </h4>
+                          </div>
+                        </div>
+
+                        {/* Active Status Badge with Pulsing Green Dot */}
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          ACTIVE
+                        </span>
+                      </div>
+
+                      {/* Side-by-Side Dose & Time Schedule Pill Badges */}
+                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Dose Pill */}
+                          <span className="bg-[#E3F3F1] text-[#0B5A54] text-xs font-black px-2.5 py-1 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1.5 shadow-2xs">
+                            <Pill className="w-3.5 h-3.5 text-[#0B5A54]" />
+                            <span>{rx.frequency.split(' • ')[0] || '1 capsule'}</span>
+                          </span>
+
+                          {/* Time Schedule Pill */}
+                          <span className="bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{rx.frequency.split(' • ')[1] || 'Daily schedule'}</span>
+                          </span>
+                        </div>
+
+                        {/* Prescriber Doctor Row */}
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
+                            <UserIcon className="w-3 h-3 text-[#0B5A54]" />
+                          </div>
+                          <span className="text-[11px] font-semibold text-slate-500">Prescribed by:</span>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/hospitals');
+                            }}
+                            className="text-xs font-bold text-[#0B5A54] hover:underline cursor-pointer"
+                          >
+                            {rx.prescriber}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Progress Bar & Quick Action */}
+                      <div className="pt-2.5 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-bold">
+                          <span className="text-[#0B5A54] font-black">
+                            Course Progress: Day {prog.currentDay} of {prog.totalDays}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTakeDose(rx.id, rx.drugName);
+                            }}
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/70 text-[10.5px] font-extrabold px-3 py-1 rounded-full transition-all active:scale-95 flex items-center gap-1 shadow-2xs cursor-pointer"
+                          >
+                            <span>Taken today</span>
+                            <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                          </button>
+                        </div>
+
+                        {/* Thin Course Progress Line */}
+                        <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#14B8A6] to-[#0B5A54] rounded-full transition-all duration-500"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+              {/* All Prescriptions Completed Empty Banner */}
+              {MOCK_PRESCRIPTIONS.slice(0, 2).every((rx) => prescriptionProgress[rx.id]?.completed) && (
+                <div className="bg-emerald-50/90 border border-emerald-200 rounded-3xl p-5 text-center space-y-1.5 shadow-2xs">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                  <h4 className="text-sm font-black text-emerald-950">All Prescriptions Completed!</h4>
+                  <p className="text-xs font-semibold text-emerald-800">
+                    You have finished the full course for all active medications.
+                  </p>
                 </div>
-              ))}
-            </Card>
+              )}
+            </div>
           </div>
         </div>
       </main>
@@ -292,7 +467,7 @@ export const HomeScreen: React.FC = () => {
       {isQueueModalOpen && activeAppointment && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 sm:p-5 animate-in fade-in duration-200 select-none">
           <div className="bg-white rounded-3xl w-[calc(100%-2rem)] max-w-[360px] sm:max-w-[385px] p-4 sm:p-5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-3.5 max-h-[90vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
-            
+
             {/* 1. Header Row */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div className="flex items-center gap-1.5">
@@ -378,35 +553,28 @@ export const HomeScreen: React.FC = () => {
                 </div>
 
                 {/* Token-3 (Current Patient Consulting - NO WRAPPING PREMUM CARD) */}
-                <div className="relative flex items-start gap-2.5 z-10">
-                  <div className="relative flex items-center justify-center w-5 h-5 shrink-0 mt-0.5 z-10">
+                <div className="relative flex items-center gap-2.5 z-10">
+                  <div className="relative flex items-center justify-center w-5 h-5 shrink-0 z-10">
                     <span className="absolute inset-0 rounded-full bg-amber-400/50 animate-ping" />
                     <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs z-10">
                       ✕
                     </div>
                   </div>
-                  <div className="flex-1 bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 space-y-1 shadow-2xs">
+                  <div className="flex-1 bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 shadow-2xs">
                     <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 shrink-0">
-                        <p className="text-[11px] font-black text-amber-950 whitespace-nowrap">Token-3 (TK-480)</p>
-                        <span className="bg-amber-500 text-white font-black text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
-                          NOW SERVING
-                        </span>
-                      </div>
+                      <p className="text-[11px] font-black text-amber-950 whitespace-nowrap">Token-3 (TK-480)</p>
                       <span className="text-[9px] font-extrabold text-amber-900 bg-white px-1.5 py-0.5 rounded border border-amber-200 whitespace-nowrap shrink-0">
                         In Consultation
                       </span>
                     </div>
-                    <p className="text-[10px] text-amber-900 font-bold leading-tight">Inside Room 4 with Dr. Morgan</p>
                   </div>
                 </div>
 
-                {/* Token-4 (Upcoming - NO 'WAITING IN LOUNGE' TEXT) */}
+                {/* Token-4 (Upcoming - CLEAN TITLE) */}
                 <div className="relative flex items-center gap-2.5 z-10">
                   <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0" />
                   <div className="flex-1 flex items-center justify-between pr-0.5">
                     <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-4 (TK-481)</p>
-                    <span className="text-[10px] font-semibold text-slate-500">Est. 10:25 AM</span>
                   </div>
                 </div>
 
@@ -425,16 +593,10 @@ export const HomeScreen: React.FC = () => {
                       <span className="text-[11px] font-black text-[#111827] tracking-tight whitespace-nowrap">Token-5 (TK-482)</span>
                     </div>
 
-                    {/* Patient Name & Time */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">PATIENT</p>
-                        <p className="text-xs font-extrabold text-[#0B5A54]">{activeAppointment.patientName}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">ESTIMATED TIME</p>
-                        <p className="text-xs font-bold text-[#111827]">{activeAppointment.timeSlot}</p>
-                      </div>
+                    {/* Patient Name */}
+                    <div>
+                      <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">PATIENT</p>
+                      <p className="text-xs font-extrabold text-[#0B5A54]">{activeAppointment.patientName}</p>
                     </div>
 
                     {/* Footer Queue Position Bar */}
@@ -451,24 +613,13 @@ export const HomeScreen: React.FC = () => {
             </div>
 
             {/* 4. Footer Actions */}
-            <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+            <div className="pt-2 border-t border-slate-100 flex items-center">
               <button
                 onClick={handleRefreshQueue}
-                className="flex-1 bg-[#0B5A54] hover:bg-[#084540] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer border-0 outline-none"
+                className="w-full bg-[#0B5A54] hover:bg-[#084540] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer border-0 outline-none"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span>Track Live</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsQueueModalOpen(false);
-                  navigate('/hospitals');
-                }}
-                className="flex-1 border border-[#0B5A54]/30 text-[#0B5A54] hover:bg-[#E3F3F1]/50 active:scale-[0.98] font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer outline-none"
-              >
-                <Navigation className="w-3.5 h-3.5 text-[#0B5A54]" />
-                <span>Get Directions</span>
               </button>
             </div>
           </div>

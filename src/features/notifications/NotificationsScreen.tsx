@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
-  Calendar,
-  Pill,
-  Sparkles,
-  FileText,
-  ShieldAlert,
-  CheckCircle2,
-  ChevronRight,
-  Trash2,
+  ChevronDown,
   ArrowLeft,
   CheckCheck,
+  Trash2,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -19,78 +13,111 @@ import { BottomNav } from '../../components/ui/BottomNav';
 
 export interface NotificationItem {
   id: string;
-  type: 'appointment' | 'medication' | 'ai' | 'lab' | 'system';
-  category: 'TODAY' | 'YESTERDAY' | 'EARLIER';
+  type: 'upcoming' | 'completed' | 'prescription' | 'system';
+  category: 'Upcoming' | 'Completed';
   title: string;
-  message: string;
-  time: string;
+  badgeText: string;
+  badgeVariant: 'upcoming' | 'completed' | 'info';
+  doctorName: string;
+  doctorSpecialty: string;
+  doctorPhotoUrl: string;
+  dateTime: string;
   isRead: boolean;
-  actionText?: string;
   actionRoute?: string;
 }
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
-    type: 'appointment',
-    category: 'TODAY',
-    title: 'Appointment Booking Confirmed',
-    message: 'Your appointment with Dr. Alex Morgan (Cardiologist) has been successfully confirmed for Today at 10:00 AM at St. Jude Heart Center.',
-    time: '10m ago',
+    type: 'upcoming',
+    category: 'Upcoming',
+    title: 'Consultation with a cardiologist',
+    badgeText: '45 min',
+    badgeVariant: 'upcoming',
+    doctorName: 'Dr. Alex Morgan',
+    doctorSpecialty: 'Cardiologist',
+    doctorPhotoUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+    dateTime: '07 Nov 2025, 20:30',
     isRead: false,
-    actionText: 'View Ticket',
     actionRoute: '/appointments/book/doc-1',
   },
   {
     id: 'notif-2',
-    type: 'appointment',
-    category: 'TODAY',
-    title: 'Upcoming Consultation Today',
-    message: 'Reminder: Your in-person consultation with Dr. Sarah Jenkins (General Physician) starts at 2:30 PM.',
-    time: '30m ago',
+    type: 'upcoming',
+    category: 'Upcoming',
+    title: 'General Physician Checkup',
+    badgeText: '2 hours',
+    badgeVariant: 'upcoming',
+    doctorName: 'Dr. Elena Rostova',
+    doctorSpecialty: 'General Physician',
+    doctorPhotoUrl: 'https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80',
+    dateTime: '07 Nov 2025, 22:00',
     isRead: false,
-    actionText: 'View Details',
     actionRoute: '/appointments/book/doc-2',
   },
   {
     id: 'notif-3',
-    type: 'appointment',
-    category: 'TODAY',
-    title: 'Appointment Booking Confirmed',
-    message: 'Consultation booked with Dr. Michael Chen (Neurologist) for Tomorrow at 11:15 AM at City General Hospital.',
-    time: '2h ago',
+    type: 'upcoming',
+    category: 'Upcoming',
+    title: 'Consultation with a cardiologist',
+    badgeText: 'Tomorrow',
+    badgeVariant: 'upcoming',
+    doctorName: 'Dr. Marvin McKinney',
+    doctorSpecialty: 'Cardiologist',
+    doctorPhotoUrl: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&auto=format&fit=crop&q=80',
+    dateTime: '08 Nov 2025, 10:00',
     isRead: false,
-    actionText: 'View Ticket',
-    actionRoute: '/hospitals/hosp-1',
+    actionRoute: '/hospitals',
   },
   {
     id: 'notif-4',
-    type: 'appointment',
-    category: 'YESTERDAY',
-    title: 'Follow-up Consultation Confirmed',
-    message: 'Follow-up consultation with Dr. Priya Sharma (Pediatrician) confirmed for Friday at 3:00 PM.',
-    time: 'Yesterday 4:30 PM',
+    type: 'completed',
+    category: 'Completed',
+    title: 'Consultation with a cardiologist',
+    badgeText: 'Completed',
+    badgeVariant: 'completed',
+    doctorName: 'Dr. Alex Morgan',
+    doctorSpecialty: 'Cardiologist',
+    doctorPhotoUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+    dateTime: '07 Nov 2025, 20:30',
     isRead: true,
-    actionText: 'View Details',
     actionRoute: '/history',
   },
   {
     id: 'notif-5',
-    type: 'appointment',
-    category: 'EARLIER',
-    title: 'Upcoming Consultation Scheduled',
-    message: 'Routine health checkup consultation with Dr. Robert Vance confirmed for next Monday at 9:30 AM.',
-    time: '3 days ago',
+    type: 'completed',
+    category: 'Completed',
+    title: 'Consultation with a cardiologist',
+    badgeText: 'Completed',
+    badgeVariant: 'completed',
+    doctorName: 'Dr. Arlene McCoy',
+    doctorSpecialty: 'Physician',
+    doctorPhotoUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+    dateTime: '07 Nov 2025, 20:30',
     isRead: true,
-    actionText: 'View Ticket',
-    actionRoute: '/hospitals',
+    actionRoute: '/history',
+  },
+  {
+    id: 'notif-6',
+    type: 'completed',
+    category: 'Completed',
+    title: 'Endocrine Health Follow-up',
+    badgeText: 'Completed',
+    badgeVariant: 'completed',
+    doctorName: 'Dr. Johan Janson',
+    doctorSpecialty: 'Endocrinologist',
+    doctorPhotoUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80',
+    dateTime: '07 Nov 2025, 20:30',
+    isRead: true,
+    actionRoute: '/history',
   },
 ];
 
 export const NotificationsScreen: React.FC = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'appointment' | 'medication'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'completed'>('all');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -108,114 +135,90 @@ export const NotificationsScreen: React.FC = () => {
     );
   };
 
+  const toggleSection = (sectionName: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionName]: !prev[sectionName],
+    }));
+  };
+
   const filteredNotifications = notifications.filter((n) => {
-    if (activeTab === 'unread') return !n.isRead;
-    if (activeTab === 'appointment') return n.type === 'appointment';
-    if (activeTab === 'medication') return n.type === 'medication';
+    if (activeTab === 'upcoming') return n.category === 'Upcoming';
+    if (activeTab === 'completed') return n.category === 'Completed';
     return true;
   });
 
-  const categories: NotificationItem['category'][] = ['TODAY', 'YESTERDAY', 'EARLIER'];
-
-  const getIcon = (type: NotificationItem['type']) => {
-    switch (type) {
-      case 'appointment':
-        return <Calendar className="w-4 h-4 text-[#0B5A54]" />;
-      case 'medication':
-        return <Pill className="w-4 h-4 text-emerald-600" />;
-      case 'ai':
-        return <Sparkles className="w-4 h-4 text-teal-600" />;
-      case 'lab':
-        return <FileText className="w-4 h-4 text-indigo-600" />;
-      default:
-        return <ShieldAlert className="w-4 h-4 text-amber-600" />;
-    }
-  };
-
-  const getBadgeStyle = (type: NotificationItem['type']) => {
-    switch (type) {
-      case 'appointment':
-        return 'bg-[#E3F3F1] text-[#0B5A54] border-[#0B5A54]/20';
-      case 'medication':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'ai':
-        return 'bg-teal-50 text-teal-700 border-teal-200';
-      case 'lab':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      default:
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-    }
-  };
+  const categories: NotificationItem['category'][] = ['Upcoming', 'Completed'];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      {/* EXECUTIVE HEADER BANNER MATCHING HOME SCREEN BG */}
-      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] text-white pt-4 pb-5 px-4 shadow-md sticky top-0 z-30 sm:rounded-t-3xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* CLEAN EXECUTIVE APP HEADER */}
+      <div className="bg-white border-b border-slate-200/80 pt-4 pb-3.5 px-4 sm:px-6 sticky top-0 z-30 shadow-2xs text-left">
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: Back Button + Title & Subtitle */}
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-[#E3F3F1] hover:text-[#0B5A54] flex items-center justify-center text-slate-800 transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer"
               title="Go Back"
             >
-              <ArrowLeft className="w-4.5 h-4.5 text-white" />
+              <ArrowLeft className="w-4.5 h-4.5" />
             </button>
-            <div className="text-left space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black font-heading text-white tracking-tight">
+                <h1 className="text-base sm:text-lg font-black font-heading text-[#111827] tracking-tight truncate">
                   Notifications
                 </h1>
                 {unreadCount > 0 && (
-                  <span className="bg-rose-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-2xs animate-pulse">
+                  <span className="bg-rose-500 text-white font-black text-[9.5px] px-2.5 py-0.5 rounded-full shadow-2xs animate-pulse shrink-0">
                     {unreadCount} NEW
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-teal-100/90 font-medium">
-                CarePulse Live Alerts & Medical Logs
+              <p className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+                CarePulse Consultations & Health Alerts
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          {/* Right: Read All & Clear All Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-2xs"
+                className="w-8 h-8 rounded-full bg-[#E3F3F1] hover:bg-[#0B5A54] text-[#0B5A54] hover:text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
                 title="Mark all as read"
               >
-                <CheckCheck className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Read All</span>
+                <CheckCheck className="w-4 h-4" />
               </button>
             )}
             {notifications.length > 0 && (
               <button
                 onClick={handleClearAll}
-                className="p-1.5 rounded-full bg-white/20 hover:bg-rose-600/80 backdrop-blur-md border border-white/30 text-white text-[11px] transition-all flex items-center justify-center shadow-2xs active:scale-95"
+                className="w-8 h-8 rounded-full bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
                 title="Clear all notifications"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             )}
           </div>
         </div>
 
-        {/* EXECUTIVE SEGMENTED FILTER BAR */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-4 text-left">
+        {/* SEGMENTED FILTER CHIPS BAR */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pt-3">
           {[
             { id: 'all', label: `All (${notifications.length})` },
-            { id: 'unread', label: `Unread (${unreadCount})` },
-            { id: 'appointment', label: 'Appointments' },
-            { id: 'medication', label: 'Medications' },
+            { id: 'upcoming', label: 'Upcoming' },
+            { id: 'completed', label: 'Completed' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={clsx(
-                'px-3.5 py-1.5 rounded-full text-[11px] font-extrabold transition-all shrink-0 active:scale-95 border backdrop-blur-md',
+                'px-4 py-1.5 rounded-full text-xs font-extrabold transition-all shrink-0 active:scale-95 border cursor-pointer shadow-2xs',
                 activeTab === tab.id
-                  ? 'bg-white text-[#1FA2AC] border-white shadow-xs'
-                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+                  ? 'bg-[#0B5A54] text-white border-[#0B5A54]'
+                  : 'bg-slate-100 text-slate-700 border-slate-200/80 hover:bg-slate-200 hover:border-slate-300'
               )}
             >
               {tab.label}
@@ -225,95 +228,106 @@ export const NotificationsScreen: React.FC = () => {
       </div>
 
       {/* NOTIFICATIONS FEED CONTAINER */}
-      <main className="px-4 py-4 max-w-md mx-auto space-y-5 w-full text-left">
+      <main className="px-4 sm:px-6 md:px-8 py-5 max-w-5xl mx-auto space-y-6 w-full text-left">
         {filteredNotifications.length > 0 ? (
           categories.map((cat) => {
             const catItems = filteredNotifications.filter((n) => n.category === cat);
             if (catItems.length === 0) return null;
 
+            const isCollapsed = collapsedSections[cat];
+
             return (
-              <div key={cat} className="space-y-2.5">
-                <div className="flex items-center gap-2 px-1">
-                  <span className="text-[10px] font-black text-[#6B7280] tracking-widest uppercase">
-                    {cat}
-                  </span>
-                  <div className="h-[1px] bg-[#E4E7EC] flex-1" />
+              <div key={cat} className="space-y-3">
+                {/* Collapsible Section Header (Matching Screenshot) */}
+                <div
+                  onClick={() => toggleSection(cat)}
+                  className="flex items-center justify-between py-1 px-1 cursor-pointer select-none group"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={clsx(
+                        'w-2.5 h-2.5 rounded-full',
+                        cat === 'Upcoming' ? 'bg-[#0B5A54]' : 'bg-emerald-500'
+                      )}
+                    />
+                    <h2 className="text-sm sm:text-base font-extrabold font-heading text-[#111827] tracking-tight">
+                      {cat} ({catItems.length})
+                    </h2>
+                  </div>
+
+                  <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-[#E3F3F1] group-hover:text-[#0B5A54] transition-colors">
+                    <ChevronDown
+                      className={clsx(
+                        'w-4 h-4 transition-transform duration-300',
+                        isCollapsed ? 'rotate-180' : ''
+                      )}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2.5">
-                  {catItems.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => toggleReadStatus(item.id)}
-                      className={clsx(
-                        'bg-white rounded-2xl p-4 transition-all duration-200 border cursor-pointer relative space-y-3 active:scale-[0.99] group shadow-2xs hover:shadow-xs',
-                        item.isRead
-                          ? 'border-[#E4E7EC]'
-                          : 'border-l-4 border-l-[#0B5A54] border-[#E4E7EC] bg-[#F0FDF4]/30'
-                      )}
-                    >
-                      {/* Top Metadata Row: Icon + Title + Timestamp */}
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={clsx(
-                            'w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs',
-                            getBadgeStyle(item.type)
-                          )}
-                        >
-                          {getIcon(item.type)}
+                {/* Section Items Cards */}
+                {!isCollapsed && (
+                  <div className="space-y-3">
+                    {catItems.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          toggleReadStatus(item.id);
+                          if (item.actionRoute) navigate(item.actionRoute);
+                        }}
+                        className="bg-white rounded-3xl p-4 sm:p-5 shadow-2xs border border-slate-200/80 hover:border-[#0B5A54]/40 hover:shadow-md transition-all duration-300 cursor-pointer space-y-4 text-left group relative overflow-hidden"
+                      >
+                        {/* Top Row: Consultation Title + Status Badge */}
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-[#111827] font-heading leading-tight group-hover:text-[#0B5A54] transition-colors">
+                            {item.title}
+                          </h3>
+
+                          {/* Top Right Badge (Matching Screenshot) */}
+                          <span
+                            className={clsx(
+                              'text-[11px] font-black px-3 py-1 rounded-full shrink-0 shadow-2xs',
+                              item.badgeVariant === 'upcoming'
+                                ? 'bg-[#E3F3F1] text-[#0B5A54] border border-[#0B5A54]/20'
+                                : 'bg-[#DCFCE7] text-[#166534] border border-emerald-200'
+                            )}
+                          >
+                            {item.badgeText}
+                          </span>
                         </div>
 
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="text-xs sm:text-sm font-extrabold text-[#111827] font-heading leading-tight truncate">
-                              {item.title}
-                            </h3>
-                            <span className="text-[10px] font-bold text-[#9CA3AF] shrink-0">
-                              {item.time}
-                            </span>
+                        {/* Bottom Row: Doctor Profile Info (Left) + DateTime (Right) */}
+                        <div className="flex items-end justify-between gap-2 pt-1">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={item.doctorPhotoUrl}
+                              alt={item.doctorName}
+                              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover ring-2 ring-slate-100 shadow-2xs shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <h4 className="text-xs sm:text-sm font-black text-[#111827] leading-tight truncate">
+                                {item.doctorName}
+                              </h4>
+                              <p className="text-[11px] font-semibold text-slate-400 truncate mt-0.5">
+                                {item.doctorSpecialty}
+                              </p>
+                            </div>
                           </div>
 
-                          <p className="text-xs text-[#4B5563] leading-relaxed font-medium">
-                            {item.message}
-                          </p>
+                          {/* Date & Time on Bottom Right */}
+                          <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-400 shrink-0">
+                            {item.dateTime}
+                          </span>
                         </div>
                       </div>
-
-                      {/* Footer Actions: CTA Button + Read Status */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-[#9CA3AF]">
-                          {item.isRead ? (
-                            <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Read
-                            </span>
-                          ) : (
-                            <span className="text-[#0B5A54] font-extrabold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#0B5A54] animate-ping" /> Unread
-                            </span>
-                          )}
-                        </div>
-
-                        {item.actionText && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (item.actionRoute) navigate(item.actionRoute);
-                            }}
-                            className="text-xs font-extrabold text-white bg-[#0B5A54] hover:bg-[#08423D] px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1 shadow-2xs active:scale-95"
-                          >
-                            <span>{item.actionText}</span>
-                            <ChevronRight className="w-3.5 h-3.5 text-white/80" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })
         ) : (
-          <div className="bg-white border border-[#E4E7EC] rounded-2xl p-8 text-center space-y-3 shadow-2xs">
+          <div className="bg-white border border-[#E4E7EC] rounded-3xl p-8 text-center space-y-3 shadow-2xs">
             <div className="w-12 h-12 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] mx-auto">
               <Bell className="w-6 h-6 text-[#0B5A54]" />
             </div>
@@ -327,7 +341,7 @@ export const NotificationsScreen: React.FC = () => {
             </div>
             <button
               onClick={() => navigate('/home')}
-              className="text-xs font-bold text-white bg-[#0B5A54] px-4 py-2 rounded-full shadow-2xs active:scale-95"
+              className="text-xs font-bold text-white bg-[#0B5A54] px-4 py-2 rounded-full shadow-2xs active:scale-95 cursor-pointer"
             >
               Back to Home
             </button>

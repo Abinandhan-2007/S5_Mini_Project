@@ -47,7 +47,7 @@ export const BottomNav: React.FC = () => {
   return (
     <nav
       className={clsx(
-        'fixed bottom-5 sm:bottom-6 left-0 right-0 z-40 w-[calc(100%-2rem)] max-w-[350px] sm:max-w-md mx-auto rounded-full px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-2xl transition-all duration-300 select-none cursor-pointer',
+        'fixed bottom-5 sm:bottom-6 left-0 right-0 z-40 w-[calc(100%-2rem)] max-w-[360px] sm:max-w-lg mx-auto rounded-full px-3 py-1.5 sm:px-5 sm:py-2.5 backdrop-blur-2xl transition-all duration-300 select-none cursor-pointer',
         isDarkMode
           ? 'bg-slate-900/85 border border-slate-700/80 shadow-[0_16px_36px_rgba(0,0,0,0.5)] ring-1 ring-white/10'
           : 'bg-white/85 border border-white/80 shadow-[0_14px_36px_rgba(11,90,84,0.16)] ring-1 ring-black/5'

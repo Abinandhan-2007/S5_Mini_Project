@@ -136,7 +136,7 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      <main className="px-3.5 pt-6 pb-4 space-y-4 max-w-md mx-auto">
+      <main className="px-4 sm:px-6 md:px-8 pt-6 pb-4 space-y-6 max-w-5xl mx-auto w-full">
         {/* ULTRA-PREMIUM EXECUTIVE PATIENT HERO COVER CARD */}
         <div className="bg-white rounded-3xl overflow-hidden shadow-xs border border-[#E4E7EC] relative mt-1 text-center">
           {/* VIBRANT CYAN HERO COVER BANNER */}
@@ -355,31 +355,29 @@ export const ProfileScreen: React.FC = () => {
           </Card>
         </div>
 
-        {/* REDUCED WIDTH COMPACT SIGN OUT PILL BUTTON */}
         <div className="pt-3 flex justify-center">
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full max-w-[180px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-full py-2.5 px-4 text-xs font-extrabold transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+            className="w-full max-w-[200px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-full py-3 px-5 text-xs font-black transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer font-heading"
           >
-            <LogOut className="w-3.5 h-3.5 text-rose-600" />
+            <LogOut className="w-4 h-4 text-rose-600" />
             <span>Sign Out</span>
           </button>
         </div>
       </main>
 
-      {/* EDIT PROFILE MODAL */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3.5">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-4 space-y-3 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center pb-2 border-b border-[#E4E7EC]">
-              <h3 className="text-sm font-extrabold font-heading text-[#111827]">Edit Profile Info</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-gray-100">
-                <X className="w-4 h-4 text-[#6B7280]" />
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in zoom-in-95 border border-slate-100">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+              <h3 className="text-base font-extrabold font-heading text-[#111827]">Edit Profile Info</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
+                <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-2.5 text-left">
+            <form onSubmit={handleSaveProfile} className="space-y-3 text-left">
               <Input
                 label="FULL NAME"
                 value={editName}
@@ -400,7 +398,7 @@ export const ProfileScreen: React.FC = () => {
                 required
               />
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#E4E7EC]">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditModalOpen(false)}>
                   Cancel
                 </Button>
@@ -413,18 +411,17 @@ export const ProfileScreen: React.FC = () => {
         </div>
       )}
 
-      {/* EDIT VITALS MODAL */}
       {isEditVitalsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3.5">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-4 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center pb-2 border-b border-[#E4E7EC]">
-              <h3 className="text-sm font-extrabold font-heading text-[#111827]">Edit Vital Medical Stats</h3>
-              <button onClick={() => setIsEditVitalsModalOpen(false)} className="p-1 rounded-full hover:bg-gray-100">
-                <X className="w-4 h-4 text-[#6B7280]" />
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 border border-slate-100">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+              <h3 className="text-base font-extrabold font-heading text-[#111827]">Edit Vital Medical Stats</h3>
+              <button onClick={() => setIsEditVitalsModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
+                <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveVitals} className="space-y-2.5 text-left">
+            <form onSubmit={handleSaveVitals} className="space-y-3 text-left">
               <Input
                 label="DATE OF BIRTH"
                 type="date"
@@ -489,7 +486,7 @@ export const ProfileScreen: React.FC = () => {
                 onChange={(e) => setEditConditions(e.target.value)}
               />
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#E4E7EC]">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditVitalsModalOpen(false)}>
                   Cancel
                 </Button>
@@ -502,18 +499,17 @@ export const ProfileScreen: React.FC = () => {
         </div>
       )}
 
-      {/* MEDICAL HEALTH ID QR CODE MODAL */}
       {isQrModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3.5">
-          <div className="bg-white w-full max-w-xs rounded-2xl p-5 space-y-4 text-center shadow-2xl animate-in fade-in zoom-in-95 border border-[#E4E7EC]">
-            <div className="flex justify-between items-center border-b border-[#E4E7EC] pb-2">
-              <h3 className="text-xs font-extrabold text-[#0B5A54] uppercase tracking-wider">Medical Health ID</h3>
-              <button onClick={() => setIsQrModalOpen(false)} className="p-1 rounded-full hover:bg-gray-100">
-                <X className="w-4 h-4 text-[#6B7280]" />
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
+          <div className="bg-white w-full max-w-xs rounded-3xl p-5 space-y-4 text-center shadow-2xl animate-in zoom-in-95 border border-slate-100">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
+              <h3 className="text-xs font-extrabold text-[#0B5A54] uppercase tracking-wider font-heading">Medical Health ID</h3>
+              <button onClick={() => setIsQrModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
+                <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
 
-            <div className="p-4 bg-[#F8FAFC] border border-[#E4E7EC] rounded-2xl inline-block shadow-inner">
+            <div className="p-4 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl inline-block shadow-inner">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=CAREPULSE-PATIENT-${user.id}`}
                 alt="Patient QR Code"
@@ -523,7 +519,7 @@ export const ProfileScreen: React.FC = () => {
 
             <div className="space-y-0.5 text-center">
               <p className="text-xs font-bold text-[#111827]">{user.fullName}</p>
-              <p className="text-[10px] text-[#6B7280] font-medium">Patient ID: #CP-94827</p>
+              <p className="text-[10px] text-slate-500 font-medium">Patient ID: #CP-94827</p>
               <p className="text-[10px] text-[#0B5A54] font-bold">CarePulse Emergency Check-in</p>
             </div>
 

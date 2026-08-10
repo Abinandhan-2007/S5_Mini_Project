@@ -207,7 +207,7 @@ export const PrescriptionsScreen: React.FC = () => {
       </div>
 
       {/* PRESCRIPTIONS FEED CONTAINER */}
-      <main className="px-4 py-4 max-w-md mx-auto space-y-4 w-full text-left">
+      <main className="px-4 sm:px-6 md:px-8 py-4 max-w-5xl mx-auto space-y-4 w-full text-left">
         {filteredGroups.length > 0 ? (
           filteredGroups.map((group) => (
             <div

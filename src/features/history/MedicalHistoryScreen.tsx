@@ -5,10 +5,6 @@ import {
   Search,
   MapPin,
   ChevronDown,
-  Heart,
-  Stethoscope,
-  Bandage,
-  Bone,
   FileText,
   Pill,
   Calendar,
@@ -23,8 +19,6 @@ import { Chip } from '../../components/ui/Chip';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
-
-import type { MedicalHistoryItem } from '../../lib/types';
 
 export const MedicalHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -62,24 +56,9 @@ export const MedicalHistoryScreen: React.FC = () => {
     return result;
   }, [historyItems, activeTab, searchQuery, sortOrder]);
 
-  const getSpecialtyIcon = (type: MedicalHistoryItem['specialtyIcon']) => {
-    switch (type) {
-      case 'heart':
-        return <Heart className="w-4 h-4 text-[#0B5A54]" />;
-      case 'stethoscope':
-        return <Stethoscope className="w-4 h-4 text-[#0B5A54]" />;
-      case 'bandage':
-        return <Bandage className="w-4 h-4 text-[#0B5A54]" />;
-      case 'bone':
-        return <Bone className="w-4 h-4 text-[#0B5A54]" />;
-      default:
-        return <Stethoscope className="w-4 h-4 text-[#0B5A54]" />;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white pb-28 w-full relative">
-      <main className="px-4 py-4 space-y-3">
+      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-7xl mx-auto w-full">
         {/* Header with Notification Button (No TopBar) */}
         <div className="space-y-0.5 pt-1">
           <div className="flex justify-between items-center">
@@ -180,9 +159,8 @@ export const MedicalHistoryScreen: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className={`bg-[#F8FAFC] rounded-2xl shadow-2xs border transition-all duration-200 overflow-hidden card-left-accent ${
-                  isExpanded ? 'border-[#0B5A54] ring-1 ring-[#0B5A54]/20' : 'border-[#E4E7EC]'
-                }`}
+                className={`bg-[#F8FAFC] rounded-2xl shadow-2xs border transition-all duration-200 overflow-hidden card-left-accent ${isExpanded ? 'border-[#0B5A54] ring-1 ring-[#0B5A54]/20' : 'border-[#E4E7EC]'
+                  }`}
               >
                 {/* Header */}
                 <div
@@ -211,13 +189,9 @@ export const MedicalHistoryScreen: React.FC = () => {
                   </div>
 
                   <div className="flex flex-col items-end justify-between self-stretch">
-                    <div className="w-8 h-8 rounded-xl bg-[#E3F3F1] flex items-center justify-center shadow-2xs">
-                      {getSpecialtyIcon(item.specialtyIcon)}
-                    </div>
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform duration-200 ${
-                        isExpanded ? 'bg-[#0B5A54] text-white rotate-180' : 'bg-gray-100 text-[#0B5A54]'
-                      }`}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform duration-200 ${isExpanded ? 'bg-[#0B5A54] text-white rotate-180' : 'bg-gray-100 text-[#0B5A54]'
+                        }`}
                     >
                       <ChevronDown className="w-3.5 h-3.5" />
                     </div>

@@ -95,7 +95,7 @@ export const HealthAIChatScreen: React.FC = () => {
       <div className="h-[1px] bg-[#E4E7EC] w-full" />
 
       {/* CHAT MESSAGES AREA */}
-      <div className="flex-1 px-4 py-4 space-y-4 max-w-md mx-auto w-full">
+      <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-5xl mx-auto w-full">
         {/* Safety Disclaimer Banner */}
         <div className="p-3 rounded-2xl bg-[#0B5A54]/5 border border-[#0B5A54]/15 flex items-start gap-2.5 text-left shadow-2xs">
           <ShieldAlert className="w-4 h-4 text-[#0B5A54] shrink-0 mt-0.5" />
@@ -134,7 +134,7 @@ export const HealthAIChatScreen: React.FC = () => {
 
       {/* PREMIUM CLEAN SYMPTOM EVALUATION CARD */}
       {!isInputFocused && (
-        <div className="max-w-md mx-auto px-4 pb-2 w-full">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 pb-2 w-full">
           <div className="bg-white/95 backdrop-blur-md border border-[#E4E7EC] rounded-2xl p-2.5 shadow-2xs space-y-2">
             <div className="flex items-center justify-between text-left">
               <div className="flex items-center gap-1.5">
@@ -178,7 +178,7 @@ export const HealthAIChatScreen: React.FC = () => {
 
       {/* STABLE BOTTOM INPUT BAR - DYNAMICALLY POSITIONED WHEN KEYBOARD IS ACTIVE */}
       <div
-        className={`fixed left-0 right-0 z-30 max-w-md mx-auto px-4 py-2 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md transition-all duration-200 ${
+        className={`fixed left-0 right-0 z-30 max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-2 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md transition-all duration-200 ${
           isInputFocused ? 'bottom-2' : 'bottom-20 sm:bottom-22'
         }`}
       >
