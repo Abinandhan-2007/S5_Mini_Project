@@ -18,6 +18,7 @@ interface CarePulseState {
   appointments: Appointment[];
   activeAppointment: Appointment | null;
   addAppointment: (appointment: Appointment) => void;
+  syncAppointments: (patientId?: string) => Promise<void>;
 
   // Booking Flow Draft
   booking: BookingSelection;
@@ -63,6 +64,8 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       user,
       isAuthenticated: true,
     });
+    // Trigger live background sync of appointments from PostgreSQL
+    get().syncAppointments(user.id);
   },
 
   logout: () => {
@@ -120,6 +123,34 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       appointments: [appointment, ...state.appointments],
       activeAppointment: appointment,
     }));
+  },
+
+  syncAppointments: async (patientId?: string) => {
+    try {
+      const pid = patientId || get().user?.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+      const tryFetch = async (url: string) => fetch(`${url}/appointments/patient/${pid}`);
+      let res: Response | null = null;
+      try {
+        res = await tryFetch('/api');
+      } catch {
+        try {
+          res = await tryFetch('http://localhost:5000/api');
+        } catch {
+          res = null;
+        }
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          set({
+            appointments: data,
+            activeAppointment: data[0] || null,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Sync appointments notice:', e);
+    }
   },
 
   booking: {

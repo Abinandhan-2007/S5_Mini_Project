@@ -45,6 +45,35 @@ class AuthResponse(BaseModel):
     user: PatientResponse
     token: str
 
+class AppointmentCreate(BaseModel):
+    patientId: Optional[str] = None
+    patientName: Optional[str] = ""
+    doctorId: str
+    doctorName: str
+    doctorSpecialty: Optional[str] = "General Physician"
+    doctorPhoto: Optional[str] = ""
+    hospitalName: Optional[str] = "CarePulse Hospital"
+    date: str
+    timeSlot: str
+    type: Optional[str] = "In-Person"
+    ticketNumber: Optional[str] = None
+
+class AppointmentResponse(BaseModel):
+    id: str
+    ticketNumber: str
+    patientId: str
+    patientName: Optional[str] = ""
+    doctorId: str
+    doctorName: str
+    doctorSpecialty: str
+    doctorPhoto: str
+    hospitalName: str
+    date: str
+    timeSlot: str
+    type: str
+    status: str
+    daysLeftText: Optional[str] = None
+
 class Vitals(BaseModel):
     bp: Optional[str] = None
     heart_rate: Optional[int] = None

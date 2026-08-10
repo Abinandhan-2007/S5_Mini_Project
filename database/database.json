@@ -33,5 +33,37 @@
       },
       "soap_embedding": []
     }
+  ],
+  "appointments": [
+    {
+      "id": "app-333c4bfb09",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "",
+      "ticket_number": "#CP-7813",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "Cardiologist",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_name": "CarePulse Central Hospital",
+      "date": "2026-08-15",
+      "time_slot": "11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-7d879ceb56",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "",
+      "ticket_number": "#CP-5576",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_name": "CarePulse Hospital",
+      "date": "2026-08-15",
+      "time_slot": "11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    }
   ]
 }

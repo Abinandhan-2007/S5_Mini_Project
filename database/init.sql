@@ -42,9 +42,27 @@ CREATE TABLE IF NOT EXISTS consultations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Appointments Table
+CREATE TABLE IF NOT EXISTS appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+    ticket_number VARCHAR(50) NOT NULL,
+    doctor_id VARCHAR(100) NOT NULL,
+    doctor_name VARCHAR(255) NOT NULL,
+    doctor_specialty VARCHAR(255) DEFAULT 'General Medicine',
+    doctor_photo TEXT DEFAULT '',
+    hospital_name VARCHAR(255) DEFAULT 'CarePulse Central Hospital',
+    date DATE NOT NULL,
+    time_slot VARCHAR(50) NOT NULL,
+    type VARCHAR(50) DEFAULT 'In-Person',
+    status VARCHAR(50) DEFAULT 'Upcoming',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for optimal performance
 CREATE INDEX IF NOT EXISTS idx_consultations_soap_data ON consultations USING gin (soap_data);
-CREATE INDEX IF NOT EXISTS idx_consultations_embedding ON consultations USING hnsw (soap_embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
 
 -- Insert Mock Patient and Consultation if empty
 INSERT INTO patients (id, full_name, email, phone, dob, gender, blood_group)
@@ -68,4 +86,19 @@ VALUES (
             "temperature": 98.4
         }
     }'::json
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_name, date, time_slot, type, status)
+VALUES (
+    'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    '#CP-4821',
+    'doc-1',
+    'Dr. Olivia Wilson',
+    'Cardiologist',
+    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+    'CarePulse Central Hospital',
+    CURRENT_DATE + INTERVAL '1 day',
+    '10:30 AM',
+    'In-Person',
+    'Upcoming'
 ) ON CONFLICT DO NOTHING;

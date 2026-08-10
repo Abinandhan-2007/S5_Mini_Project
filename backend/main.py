@@ -31,6 +31,8 @@ from schemas import (
     LoginRequest,
     RegisterRequest,
     PatientResponse,
+    AppointmentCreate,
+    AppointmentResponse,
     ConsultationCreate,
     ConsultationResponse,
     SearchRequest,
@@ -493,6 +495,160 @@ def create_consultation(data: ConsultationCreate):
             "date": new_record["date"],
             "soap_data": new_record["soap_data"]
         }
+
+
+# ==========================================
+# 2.5 APPOINTMENTS & PRESCRIPTIONS ENDPOINTS
+# ==========================================
+
+@app.post("/api/appointments", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
+def book_appointment(data: AppointmentCreate):
+    """Book a new doctor consultation appointment and sync to PostgreSQL / JSON database."""
+    patient_id = data.patientId or "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+    ticket_no = data.ticketNumber or f"#CP-{random_ticket()}"
+    specialty = data.doctorSpecialty or "General Physician"
+    photo = data.doctorPhoto or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80"
+    hospital = data.hospitalName or "CarePulse Central Hospital"
+    app_type = data.type or "In-Person"
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Ensure patient exists or link to first patient
+                cur.execute("SELECT id FROM patients WHERE id::text = %s", (patient_id,))
+                row_p = cur.fetchone()
+                if not row_p:
+                    cur.execute("SELECT id FROM patients LIMIT 1")
+                    first_p = cur.fetchone()
+                    if first_p:
+                        patient_id = str(first_p["id"])
+
+                cur.execute(
+                    """
+                    INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_name, date, time_slot, type, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
+                    RETURNING *
+                    """,
+                    (patient_id, ticket_no, data.doctorId, data.doctorName, specialty, photo, hospital, data.date, data.timeSlot, app_type)
+                )
+                row = cur.fetchone()
+                conn.commit()
+
+                return AppointmentResponse(
+                    id=str(row["id"]),
+                    ticketNumber=row["ticket_number"],
+                    patientId=str(row["patient_id"]),
+                    patientName=data.patientName or "",
+                    doctorId=row["doctor_id"],
+                    doctorName=row["doctor_name"],
+                    doctorSpecialty=row.get("doctor_specialty") or specialty,
+                    doctorPhoto=row.get("doctor_photo") or photo,
+                    hospitalName=row.get("hospital_name") or hospital,
+                    date=str(row["date"]),
+                    timeSlot=row["time_slot"],
+                    type=row.get("type") or app_type,
+                    status=row.get("status") or "Upcoming",
+                    daysLeftText="Tomorrow"
+                )
+    else:
+        db = read_json_db()
+        new_app = {
+            "id": f"app-{uuid.uuid4().hex[:10]}",
+            "patient_id": patient_id,
+            "patient_name": data.patientName or "",
+            "ticket_number": ticket_no,
+            "doctor_id": data.doctorId,
+            "doctor_name": data.doctorName,
+            "doctor_specialty": specialty,
+            "doctor_photo": photo,
+            "hospital_name": hospital,
+            "date": data.date,
+            "time_slot": data.timeSlot,
+            "type": app_type,
+            "status": "Upcoming"
+        }
+        db.setdefault("appointments", []).insert(0, new_app)
+        write_json_db(db)
+
+        return AppointmentResponse(
+            id=new_app["id"],
+            ticketNumber=new_app["ticket_number"],
+            patientId=new_app["patient_id"],
+            patientName=new_app["patient_name"],
+            doctorId=new_app["doctor_id"],
+            doctorName=new_app["doctor_name"],
+            doctorSpecialty=new_app["doctor_specialty"],
+            doctorPhoto=new_app["doctor_photo"],
+            hospitalName=new_app["hospital_name"],
+            date=new_app["date"],
+            timeSlot=new_app["time_slot"],
+            type=new_app["type"],
+            status=new_app["status"],
+            daysLeftText="Tomorrow"
+        )
+
+
+@app.get("/api/appointments/patient/{patient_id}", response_model=List[AppointmentResponse])
+def get_patient_appointments(patient_id: str):
+    """Retrieve all booked appointments for a given patient from PostgreSQL or local store."""
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT a.*, p.full_name as p_name 
+                    FROM appointments a
+                    LEFT JOIN patients p ON a.patient_id = p.id
+                    WHERE a.patient_id::text = %s OR a.patient_id IS NULL
+                    ORDER BY a.date DESC, a.created_at DESC
+                    """,
+                    (patient_id,)
+                )
+                rows = cur.fetchall()
+                result = []
+                for r in rows:
+                    result.append(AppointmentResponse(
+                        id=str(r["id"]),
+                        ticketNumber=r.get("ticket_number") or f"#CP-{random_ticket()}",
+                        patientId=str(r.get("patient_id") or patient_id),
+                        patientName=r.get("p_name") or "",
+                        doctorId=r["doctor_id"],
+                        doctorName=r["doctor_name"],
+                        doctorSpecialty=r.get("doctor_specialty") or "General Medicine",
+                        doctorPhoto=r.get("doctor_photo") or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+                        hospitalName=r.get("hospital_name") or "CarePulse Central Hospital",
+                        date=str(r["date"]),
+                        timeSlot=r["time_slot"],
+                        type=r.get("type") or "In-Person",
+                        status=r.get("status") or "Upcoming"
+                    ))
+                return result
+    else:
+        db = read_json_db()
+        apps = db.get("appointments", [])
+        return [
+            AppointmentResponse(
+                id=a["id"],
+                ticketNumber=a.get("ticket_number", "#CP-1001"),
+                patientId=a.get("patient_id", patient_id),
+                patientName=a.get("patient_name", ""),
+                doctorId=a["doctor_id"],
+                doctorName=a["doctor_name"],
+                doctorSpecialty=a.get("doctor_specialty", "General Medicine"),
+                doctorPhoto=a.get("doctor_photo", ""),
+                hospitalName=a.get("hospital_name", "CarePulse Central Hospital"),
+                date=str(a["date"]),
+                timeSlot=a["time_slot"],
+                type=a.get("type", "In-Person"),
+                status=a.get("status", "Upcoming")
+            )
+            for a in apps
+        ]
+
+
+def random_ticket() -> str:
+    import random
+    return str(random.randint(1000, 9999))
 
 
 # ==========================================

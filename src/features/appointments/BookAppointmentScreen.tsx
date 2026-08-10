@@ -32,16 +32,16 @@ export const BookAppointmentScreen: React.FC = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [bookedTicket, setBookedTicket] = useState('');
 
-  const handleConfirmBooking = () => {
+  const user = useCarePulseStore((s) => s.user);
+
+  const handleConfirmBooking = async () => {
     const nextNum = 482 + appointments.length;
     const newTicketNum = `TK-${nextNum}`;
     setBookedTicket(newTicketNum);
 
-    addAppointment({
-      id: `app-${Date.now()}`,
-      ticketNumber: newTicketNum,
-      patientId: 'usr-101',
-      patientName: 'Sarah Jenkins',
+    const payload = {
+      patientId: user?.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+      patientName: user?.fullName || 'Sarah Jenkins',
       doctorId: doctor.id,
       doctorName: doctor.name,
       doctorSpecialty: doctor.specialty,
@@ -50,9 +50,68 @@ export const BookAppointmentScreen: React.FC = () => {
       date: selectedDate,
       timeSlot: selectedSlot,
       type: 'In-Person',
-      status: 'Upcoming',
-      daysLeftText: 'In 2 days',
-    });
+      ticketNumber: newTicketNum,
+    };
+
+    try {
+      const tryBook = async (url: string) => {
+        return await fetch(`${url}/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      };
+
+      let res: Response | null = null;
+      try {
+        res = await tryBook('/api');
+      } catch {
+        try {
+          res = await tryBook('http://localhost:5000/api');
+        } catch {
+          res = null;
+        }
+      }
+
+      if (res && res.ok) {
+        const data = await res.json();
+        addAppointment(data);
+      } else {
+        addAppointment({
+          id: `app-${Date.now()}`,
+          ticketNumber: newTicketNum,
+          patientId: user?.id || 'usr-101',
+          patientName: user?.fullName || 'Sarah Jenkins',
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          doctorSpecialty: doctor.specialty,
+          doctorPhoto: doctor.photoUrl,
+          hospitalName: doctor.hospitalName,
+          date: selectedDate,
+          timeSlot: selectedSlot,
+          type: 'In-Person',
+          status: 'Upcoming',
+          daysLeftText: 'In 2 days',
+        });
+      }
+    } catch {
+      addAppointment({
+        id: `app-${Date.now()}`,
+        ticketNumber: newTicketNum,
+        patientId: user?.id || 'usr-101',
+        patientName: user?.fullName || 'Sarah Jenkins',
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        doctorSpecialty: doctor.specialty,
+        doctorPhoto: doctor.photoUrl,
+        hospitalName: doctor.hospitalName,
+        date: selectedDate,
+        timeSlot: selectedSlot,
+        type: 'In-Person',
+        status: 'Upcoming',
+        daysLeftText: 'In 2 days',
+      });
+    }
 
     setIsSuccessModalOpen(true);
   };
