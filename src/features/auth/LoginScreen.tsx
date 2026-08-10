@@ -43,7 +43,6 @@ export const LoginScreen: React.FC = () => {
                 }
               } catch (err: any) {
                 console.error('Backend Google Auth error:', err);
-                // Fallback decode if backend has a network issue
                 const decoded = parseJwt(response.credential);
                 if (decoded?.email) {
                   setUserAuth({
@@ -104,7 +103,7 @@ export const LoginScreen: React.FC = () => {
             setIsGoogleLoading(false);
           }
         });
-      } catch (e) {
+      } catch {
         setIsGoogleLoading(false);
       }
       return;
@@ -135,7 +134,6 @@ export const LoginScreen: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Demo auth fallback error:', err);
-      // Local Zustand store fallback
       setUserAuth({
         id: `usr-${Date.now()}`,
         fullName: 'Sarah Mitchell',
@@ -251,7 +249,7 @@ export const LoginScreen: React.FC = () => {
               </span>
             </div>
 
-            {/* Google Sign-in (Single Button) */}
+            {/* Google Sign-in (Single Clean Button) */}
             {GOOGLE_CLIENT_ID ? (
               <div className="flex justify-center w-full min-h-[44px] overflow-hidden rounded-xl">
                 <div ref={googleBtnRef} className="w-full flex justify-center" />
@@ -311,4 +309,3 @@ export const LoginScreen: React.FC = () => {
     </div>
   );
 };
-

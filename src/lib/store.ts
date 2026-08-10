@@ -135,7 +135,6 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       chatMessages: [...state.chatMessages, newMsg],
     }));
 
-    // If message is from user, generate automatic empathetic AI bot response
     if (msg.sender === 'user') {
       setTimeout(() => {
         const userTextLower = msg.text.toLowerCase();
