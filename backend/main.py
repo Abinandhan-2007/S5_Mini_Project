@@ -119,20 +119,41 @@ def register_patient(request: RegisterRequest):
 
     norm_phone_digits = normalize_phone_number(phone)
     lower_email = email.lower()
+    lower_name = name.lower()
+
+    # Check that main phone and emergency phone are not the same
+    emergency_info = request.emergencyContact or {}
+    emergency_phone_raw = emergency_info.get("phone", "") if isinstance(emergency_info, dict) else ""
+    if norm_phone_digits and emergency_phone_raw:
+        norm_emerg_digits = normalize_phone_number(emergency_phone_raw)
+        if norm_phone_digits == norm_emerg_digits:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Emergency contact phone number must be different from your primary phone number."
+            )
 
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
-                # 1. Check if email already exists
+                # 1. Check if name already exists (case-insensitive)
+                if lower_name:
+                    cur.execute("SELECT id, full_name FROM patients WHERE LOWER(TRIM(full_name)) = %s LIMIT 1", (lower_name,))
+                    if cur.fetchone():
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=f"An account with the name '{name}' already exists. Please log in or use a different name."
+                        )
+
+                # 2. Check if email already exists (case-insensitive)
                 if lower_email:
-                    cur.execute("SELECT id, email FROM patients WHERE LOWER(email) = %s LIMIT 1", (lower_email,))
+                    cur.execute("SELECT id, email FROM patients WHERE LOWER(TRIM(email)) = %s LIMIT 1", (lower_email,))
                     if cur.fetchone():
                         raise HTTPException(
                             status_code=status.HTTP_409_CONFLICT,
                             detail=f"An account with email '{email}' already exists. Please log in instead."
                         )
 
-                # 2. Check if phone number already exists
+                # 3. Check if phone number already exists
                 if norm_phone_digits:
                     cur.execute(
                         "SELECT id, phone FROM patients WHERE phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\D', '', 'g'), 10) = %s LIMIT 1",
@@ -174,8 +195,15 @@ def register_patient(request: RegisterRequest):
         db = read_json_db()
         patients = db.get("patients", [])
         for p in patients:
+            p_name = (p.get("full_name") or "").strip().lower()
             p_phone_digits = normalize_phone_number(p.get("phone", ""))
             p_email = (p.get("email") or "").strip().lower()
+
+            if lower_name and p_name and lower_name == p_name:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"An account with the name '{name}' already exists. Please log in or use a different name."
+                )
 
             if lower_email and p_email and lower_email == p_email:
                 raise HTTPException(

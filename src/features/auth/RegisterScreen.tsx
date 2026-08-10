@@ -46,14 +46,29 @@ const step1Schema = z
     path: ['confirmPassword'],
   });
 
-const step2Schema = z.object({
-  phone: z.string().min(10, 'Valid phone number is required'),
-  email: z.string().email('Valid email is required'),
-  emergencyName: z.string().min(2, 'Emergency contact name required'),
-  emergencyPhone: z.string().min(10, 'Emergency phone required'),
-  allergies: z.string().optional(),
-  preExistingConditions: z.string().optional(),
-});
+const step2Schema = z
+  .object({
+    phone: z.string().min(10, 'Valid phone number is required'),
+    email: z.string().email('Valid email is required'),
+    emergencyName: z.string().min(2, 'Emergency contact name required'),
+    emergencyPhone: z.string().min(10, 'Emergency phone required'),
+    allergies: z.string().optional(),
+    preExistingConditions: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const primaryDigits = data.phone.replace(/\D/g, '').slice(-10);
+      const emergencyDigits = data.emergencyPhone.replace(/\D/g, '').slice(-10);
+      if (primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
+        return primaryDigits !== emergencyDigits;
+      }
+      return true;
+    },
+    {
+      message: 'Emergency phone must be different from your primary phone number',
+      path: ['emergencyPhone'],
+    }
+  );
 
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
@@ -185,13 +200,16 @@ export const RegisterScreen: React.FC = () => {
       const storedUsersStr = localStorage.getItem('carepulse_registered_users');
       const existingList: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
+      const inputName = formDataStep1.fullName.trim().toLowerCase();
       const inputDigits = data.phone.replace(/\D/g, '').slice(-10);
-      const inputLowerEmail = data.email.toLowerCase();
+      const inputLowerEmail = data.email.trim().toLowerCase();
 
       const isConflict = existingList.some((u) => {
+        const uName = (u.fullName || '').trim().toLowerCase();
         const uDigits = (u.phone || '').replace(/\D/g, '').slice(-10);
-        const uEmail = (u.email || '').toLowerCase();
+        const uEmail = (u.email || '').trim().toLowerCase();
         return (
+          (inputName && uName && inputName === uName) ||
           (inputDigits && uDigits && inputDigits === uDigits) ||
           (inputLowerEmail && uEmail && inputLowerEmail === uEmail)
         );
