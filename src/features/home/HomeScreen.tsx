@@ -287,156 +287,155 @@ export const HomeScreen: React.FC = () => {
 
       <BottomNav />
 
-      {/* PREMIUM QUEUE STATUS POPUP MODAL */}
+      {/* REBUILT EXECUTIVE QUEUE STATUS POPUP MODAL */}
       {isQueueModalOpen && activeAppointment && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border border-gray-100 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 select-none">
+          <div className="bg-white/98 backdrop-blur-xl rounded-3xl max-w-[340px] sm:max-w-[365px] w-full p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.25)] space-y-3.5 max-h-[92vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
             
             {/* 1. Header Row */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Ticket className="w-4.5 h-4.5 text-[#0B5A54]" />
-                <h3 className="text-base font-extrabold text-[#111827] tracking-tight">Queue Status</h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-1.5">
+                <Ticket className="w-4 h-4 text-[#0B5A54]" />
+                <h3 className="text-sm font-extrabold text-[#111827] tracking-tight">Queue Status</h3>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
+              <div className="flex items-center gap-2">
+                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-[11px] px-2 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
                   {activeAppointment.ticketNumber || 'TK-482'}
                 </span>
                 <button
                   onClick={() => setIsQueueModalOpen(false)}
-                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0 outline-none"
                   title="Close"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
             {/* 2. Doctor/Appointment Summary Strip */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar src={activeAppointment.doctorPhoto} size="md" />
+            <div className="bg-slate-50/90 border border-slate-100/90 rounded-xl p-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Avatar src={activeAppointment.doctorPhoto} size="sm" />
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-[#111827]">{activeAppointment.doctorName}</h4>
-                  <p className="text-xs font-semibold text-[#0B5A54]">{activeAppointment.doctorSpecialty}</p>
+                  <h4 className="text-xs font-extrabold text-[#111827] leading-tight">{activeAppointment.doctorName}</h4>
+                  <p className="text-[10px] font-bold text-[#0B5A54] leading-tight">{activeAppointment.doctorSpecialty}</p>
                 </div>
               </div>
 
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-1 text-xs font-bold text-[#111827]">
-                  <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <div className="text-right pl-2 border-l border-slate-200/60">
+                <div className="flex items-center justify-end gap-1 text-[11px] font-black text-[#111827]">
+                  <CalendarIcon className="w-3 h-3 text-[#0B5A54]" />
                   <span>{activeAppointment.date}</span>
                 </div>
-                <span className="text-xs text-[#6B7280] font-semibold">{activeAppointment.timeSlot}</span>
+                <span className="text-[10px] text-slate-500 font-semibold">{activeAppointment.timeSlot}</span>
               </div>
             </div>
 
             {/* 3. Live Token Queue Tracker (Vertical Timeline) */}
-            <div className="space-y-3 pt-1">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-2.5 pt-0.5">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                   OPD LIVE CONSULTATION TIMELINE
                 </span>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Live Sync
                 </span>
               </div>
 
-              <div className="relative pl-3 space-y-4">
+              <div className="relative pl-1 pr-0.5 space-y-3">
                 {/* Thin Vertical Timeline Line */}
-                <div className="absolute left-[21px] top-3 bottom-3 w-0.5 bg-slate-200 z-0" />
+                <div className="absolute left-[11px] top-2.5 bottom-2.5 w-[1.5px] bg-slate-200 z-0" />
 
                 {/* Token-1 (Completed) */}
-                <div className="relative flex items-start gap-3.5 z-10">
-                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0 mt-0.5">
+                <div className="relative flex items-center gap-2.5 z-10">
+                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
                     <Check className="w-3 h-3 text-white stroke-[3]" />
                   </div>
-                  <div className="flex-1 flex items-center justify-between">
+                  <div className="flex-1 flex items-center justify-between pr-0.5">
                     <div>
-                      <p className="text-xs font-semibold text-slate-400 line-through">Token-1 (TK-478)</p>
-                      <p className="text-[11px] text-slate-400 font-medium">Completed</p>
+                      <p className="text-[11px] font-semibold text-slate-400 line-through leading-tight">Token-1 (TK-478)</p>
+                      <p className="text-[9.5px] text-slate-400 font-medium">Completed</p>
                     </div>
-                    <span className="text-[11px] font-semibold text-slate-400">Called 10:05 AM</span>
+                    <span className="text-[10px] font-semibold text-slate-400">Called 10:05 AM</span>
                   </div>
                 </div>
 
                 {/* Token-2 (Completed) */}
-                <div className="relative flex items-start gap-3.5 z-10">
-                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0 mt-0.5">
+                <div className="relative flex items-center gap-2.5 z-10">
+                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
                     <Check className="w-3 h-3 text-white stroke-[3]" />
                   </div>
-                  <div className="flex-1 flex items-center justify-between">
+                  <div className="flex-1 flex items-center justify-between pr-0.5">
                     <div>
-                      <p className="text-xs font-semibold text-slate-400 line-through">Token-2 (TK-479)</p>
-                      <p className="text-[11px] text-slate-400 font-medium">Completed</p>
+                      <p className="text-[11px] font-semibold text-slate-400 line-through leading-tight">Token-2 (TK-479)</p>
+                      <p className="text-[9.5px] text-slate-400 font-medium">Completed</p>
                     </div>
-                    <span className="text-[11px] font-semibold text-slate-400">Called 10:18 AM</span>
+                    <span className="text-[10px] font-semibold text-slate-400">Called 10:18 AM</span>
                   </div>
                 </div>
 
                 {/* Token-3 (Current Token - Now Serving / In Progress) */}
-                <div className="relative flex items-start gap-3.5 z-10">
+                <div className="relative flex items-start gap-2.5 z-10">
                   <div className="relative flex items-center justify-center w-5 h-5 shrink-0 mt-0.5 z-10">
                     <span className="absolute inset-0 rounded-full bg-amber-400/50 animate-ping" />
-                    <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[11px] flex items-center justify-center border-2 border-white shadow-xs z-10">
+                    <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs z-10">
                       ✕
                     </div>
                   </div>
-                  <div className="flex-1 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-black text-amber-900">Token-3 (TK-480)</p>
-                        <span className="bg-amber-500 text-white font-extrabold text-[9px] px-1.5 py-0.2 rounded-full uppercase tracking-wide">
-                          Now Serving
+                  <div className="flex-1 bg-amber-50/80 border border-amber-200/90 rounded-xl p-2.5 space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1">
+                        <p className="text-xs font-black text-amber-900 leading-none">Token-3 (TK-480)</p>
+                        <span className="bg-amber-500 text-white font-black text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                          NOW SERVING
                         </span>
                       </div>
-                      <p className="text-[11px] text-amber-800 font-semibold mt-0.5">Inside Room 4 with Dr. Morgan</p>
+                      <span className="text-[9px] font-bold text-amber-800 bg-white/90 px-1.5 py-0.5 rounded border border-amber-200/80">
+                        In Consultation
+                      </span>
                     </div>
-                    <span className="text-[10px] font-extrabold text-amber-700 bg-white/80 px-2 py-0.5 rounded-md border border-amber-200">
-                      In Consultation
-                    </span>
+                    <p className="text-[10px] text-amber-800 font-semibold leading-tight">Inside Room 4 with Dr. Morgan</p>
                   </div>
                 </div>
 
                 {/* Token-4 (Upcoming) */}
-                <div className="relative flex items-start gap-3.5 z-10">
-                  <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0 mt-0.5" />
-                  <div className="flex-1 flex items-center justify-between">
+                <div className="relative flex items-center gap-2.5 z-10">
+                  <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0" />
+                  <div className="flex-1 flex items-center justify-between pr-0.5">
                     <div>
-                      <p className="text-xs font-semibold text-slate-600">Token-4 (TK-481)</p>
-                      <p className="text-[11px] text-slate-400 font-medium">Waiting in Lounge</p>
+                      <p className="text-[11px] font-semibold text-slate-600 leading-tight">Token-4 (TK-481)</p>
+                      <p className="text-[9.5px] text-slate-400 font-medium">Waiting in Lounge</p>
                     </div>
-                    <span className="text-[11px] font-semibold text-slate-400">Est. 10:25 AM</span>
+                    <span className="text-[10px] font-semibold text-slate-400">Est. 10:25 AM</span>
                   </div>
                 </div>
 
                 {/* Token-5 (Patient's Own Token - Highlighted Box) */}
-                <div className="relative flex items-start gap-3.5 z-10">
-                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 mt-2 text-[10px]">
+                <div className="relative flex items-start gap-2.5 z-10">
+                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1">
                     ⭐
                   </div>
 
-                  <div className="flex-1 bg-[#E3F3F1]/80 border-2 border-[#0B5A54] rounded-2xl p-3.5 shadow-xs relative">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="bg-[#0B5A54] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            YOUR TOKEN
-                          </span>
-                          <span className="text-xs font-black text-[#111827]">Token-5 (TK-482)</span>
-                        </div>
-                        <p className="text-xs font-bold text-[#0B5A54] mt-1">{activeAppointment.patientName}</p>
+                  <div className="flex-1 bg-[#E3F3F1]/80 border-2 border-[#0B5A54] rounded-xl p-2.5 space-y-1.5 shadow-2xs">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="bg-[#0B5A54] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                          YOUR TOKEN
+                        </span>
+                        <span className="text-[11px] font-black text-[#111827]">Token-5 (TK-482)</span>
                       </div>
 
-                      <div className="bg-[#0B5A54] text-white font-extrabold text-[11px] px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-2xs shrink-0">
-                        <Clock className="w-3.5 h-3.5 text-teal-200" />
+                      <div className="bg-[#0B5A54] text-white font-extrabold text-[9.5px] px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                        <Clock className="w-3 h-3 text-teal-200" />
                         <span>~35 min remaining</span>
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-[#0B5A54]/15 flex items-center justify-between text-[11px] text-[#0B5A54] font-semibold">
+                    <p className="text-xs font-extrabold text-[#0B5A54]">{activeAppointment.patientName}</p>
+
+                    <div className="pt-1 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] text-[#0B5A54] font-semibold">
                       <span>2 Persons Ahead of You</span>
                       <span className="font-bold">Scheduled: {activeAppointment.timeSlot}</span>
                     </div>
@@ -446,10 +445,10 @@ export const HomeScreen: React.FC = () => {
             </div>
 
             {/* 4. Footer Actions */}
-            <div className="pt-3 border-t border-gray-100 flex items-center gap-2.5">
+            <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
               <button
                 onClick={handleRefreshQueue}
-                className="flex-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                className="flex-1 bg-[#0B5A54] hover:bg-[#084540] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span>Track Live</span>
@@ -460,7 +459,7 @@ export const HomeScreen: React.FC = () => {
                   setIsQueueModalOpen(false);
                   navigate('/hospitals');
                 }}
-                className="flex-1 border border-[#0B5A54]/30 text-[#0B5A54] hover:bg-[#E3F3F1]/50 font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="flex-1 border border-[#0B5A54]/30 text-[#0B5A54] hover:bg-[#E3F3F1]/50 active:scale-[0.98] font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Navigation className="w-3.5 h-3.5 text-[#0B5A54]" />
                 <span>Get Directions</span>
