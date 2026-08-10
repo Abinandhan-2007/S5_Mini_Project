@@ -1,11 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Building2, Activity, Sparkles, User } from 'lucide-react';
 import { clsx } from 'clsx';
 
+/**
+ * System Theme-Aware Executive Bottom Navigation Capsule
+ * Automatically detects System Dark / Light Mode preference and updates background,
+ * icon, text, and active pill colors seamlessly.
+ */
 export const BottomNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Detect system dark mode preference in real-time
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const navItems = [
     { path: '/home', label: 'Home', icon: Home },
@@ -20,8 +45,15 @@ export const BottomNav: React.FC = () => {
   }
 
   return (
-    <nav className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-40 w-[calc(100%-2.5rem)] max-w-[340px] sm:max-w-md mx-auto bg-white/95 backdrop-blur-xl border border-[#E4E7EC] rounded-full px-2 py-1.5 shadow-[0_8px_24px_rgba(11,90,84,0.12)] ring-1 ring-[#0B5A54]/10 transition-all duration-200 select-none">
-      <div className="flex justify-between items-center w-full px-1">
+    <nav
+      className={clsx(
+        'fixed bottom-5 sm:bottom-6 left-0 right-0 z-40 w-[calc(100%-2rem)] max-w-[350px] sm:max-w-md mx-auto rounded-full px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-2xl transition-all duration-300 select-none cursor-pointer',
+        isDarkMode
+          ? 'bg-slate-900/85 border border-slate-700/80 shadow-[0_16px_36px_rgba(0,0,0,0.5)] ring-1 ring-white/10'
+          : 'bg-white/85 border border-white/80 shadow-[0_14px_36px_rgba(11,90,84,0.16)] ring-1 ring-black/5'
+      )}
+    >
+      <div className="flex justify-between items-center w-full gap-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname.startsWith(item.path);
@@ -30,14 +62,29 @@ export const BottomNav: React.FC = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className="flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all duration-150 active:scale-95 group focus:outline-none focus:bg-transparent active:bg-transparent bg-transparent border-0 outline-none"
+              className={clsx(
+                'flex-1 flex flex-col items-center justify-center py-1.5 px-1.5 rounded-2xl transition-all duration-200 active:scale-95 group border-0 outline-none cursor-pointer',
+                isActive
+                  ? isDarkMode
+                    ? 'bg-[#0B5A54]/80 shadow-2xs border border-teal-500/30'
+                    : 'bg-[#E3F3F1]/90 shadow-2xs'
+                  : isDarkMode
+                  ? 'bg-transparent hover:bg-slate-800/60'
+                  : 'bg-transparent hover:bg-slate-50'
+              )}
             >
-              {/* Icon Container - Pure Clean Icon Without Background Circle */}
-              <div className="relative flex items-center justify-center bg-transparent">
+              {/* Reduced Sleek Icon Container */}
+              <div className="relative flex items-center justify-center">
                 <Icon
                   className={clsx(
-                    'w-4.5 h-4.5 sm:w-5 sm:h-5 transition-colors duration-200',
-                    isActive ? 'text-[#0B5A54] stroke-[2.4]' : 'text-[#6B7280] stroke-[1.8] group-hover:text-[#0B5A54]'
+                    'w-4 h-4 sm:w-4.5 sm:h-4.5 transition-all duration-200',
+                    isActive
+                      ? isDarkMode
+                        ? 'text-emerald-300 stroke-[2.4] scale-105'
+                        : 'text-[#0B5A54] stroke-[2.4] scale-105'
+                      : isDarkMode
+                      ? 'text-slate-400 stroke-[1.8] group-hover:text-slate-100'
+                      : 'text-slate-500 stroke-[1.8] group-hover:text-slate-900'
                   )}
                 />
 
@@ -46,20 +93,21 @@ export const BottomNav: React.FC = () => {
                 )}
               </div>
 
-              {/* Text Label */}
+              {/* Refined Theme-Aware Text Label */}
               <span
                 className={clsx(
-                  'text-[9.5px] mt-0.5 font-heading transition-colors duration-150 tracking-tight truncate max-w-[58px]',
-                  isActive ? 'font-extrabold text-[#0B5A54]' : 'font-semibold text-[#6B7280] group-hover:text-[#111827]'
+                  'text-[8.5px] sm:text-[9px] mt-0.5 font-heading transition-all duration-150 tracking-tight truncate max-w-[54px]',
+                  isActive
+                    ? isDarkMode
+                      ? 'font-black text-emerald-300'
+                      : 'font-black text-[#0B5A54]'
+                    : isDarkMode
+                    ? 'font-semibold text-slate-400 group-hover:text-slate-100'
+                    : 'font-semibold text-slate-500 group-hover:text-slate-900'
                 )}
               >
                 {item.label}
               </span>
-
-              {/* Active Indicator Dot Below Label */}
-              {isActive && (
-                <span className="w-1 h-1 rounded-full bg-[#0B5A54] mt-0.5 animate-in fade-in zoom-in-75" />
-              )}
             </button>
           );
         })}

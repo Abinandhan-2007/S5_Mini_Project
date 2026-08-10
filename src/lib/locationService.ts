@@ -4,12 +4,17 @@ export interface LocationResult {
   latitude: number;
   longitude: number;
   placeName?: string;
+  isLiveGps?: boolean;
   error?: string;
 }
 
+/**
+ * Live Dynamic Android & iOS Mobile Location Service
+ * Accurately detects live mobile device GPS coordinates and reverse geocodes area/city name.
+ */
 export const requestNativeLocation = async (): Promise<LocationResult> => {
   try {
-    // Check or request native mobile OS system location permissions
+    // 1. Request native Android location permissions
     let permStatus = await Geolocation.checkPermissions();
 
     if (permStatus.location !== 'granted') {
@@ -17,31 +22,38 @@ export const requestNativeLocation = async (): Promise<LocationResult> => {
     }
 
     if (permStatus.location === 'granted') {
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-      });
+      let position;
+      try {
+        position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      } catch {
+        position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 8000,
+        });
+      }
 
       const { latitude, longitude } = position.coords;
 
-      // Reverse geocode to get city / suburb name
+      // 2. Perform live reverse geocoding via OpenStreetMap Nominatim
       try {
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
         );
         const data = await response.json();
         const addr = data.address || {};
-        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.road || '';
-        const city = addr.city || addr.town || addr.village || addr.county || addr.state || 'Your City';
+        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.road || addr.subdistrict || '';
+        const city = addr.city || addr.town || addr.village || addr.county || addr.state || 'Live Location';
 
         const placeName = area ? `${area}, ${city}` : city;
-        return { latitude, longitude, placeName };
+        sessionStorage.setItem('current_user_location', placeName);
+        return { latitude, longitude, placeName, isLiveGps: true };
       } catch {
-        return {
-          latitude,
-          longitude,
-          placeName: `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°`,
-        };
+        const placeName = `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°`;
+        sessionStorage.setItem('current_user_location', placeName);
+        return { latitude, longitude, placeName, isLiveGps: true };
       }
     } else {
       return {
@@ -51,7 +63,7 @@ export const requestNativeLocation = async (): Promise<LocationResult> => {
       };
     }
   } catch (err: any) {
-    // Fallback to standard W3C Web Geolocation API
+    // Fallback: Standard W3C HTML5 Geolocation API
     return new Promise((resolve) => {
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -64,24 +76,27 @@ export const requestNativeLocation = async (): Promise<LocationResult> => {
               const data = await res.json();
               const addr = data.address || {};
               const area = addr.suburb || addr.neighbourhood || addr.residential || addr.road || '';
-              const city = addr.city || addr.town || addr.village || addr.county || addr.state || 'Your City';
+              const city = addr.city || addr.town || addr.village || addr.county || addr.state || 'Live Location';
               const placeName = area ? `${area}, ${city}` : city;
-              resolve({ latitude, longitude, placeName });
+              sessionStorage.setItem('current_user_location', placeName);
+              resolve({ latitude, longitude, placeName, isLiveGps: true });
             } catch {
-              resolve({ latitude, longitude, placeName: `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°` });
+              const placeName = `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°`;
+              sessionStorage.setItem('current_user_location', placeName);
+              resolve({ latitude, longitude, placeName, isLiveGps: true });
             }
           },
           (error) => {
             resolve({
               latitude: 0,
               longitude: 0,
-              error: error.code === 1 ? 'Location permission denied.' : 'Unable to retrieve location.',
+              error: error.message || 'GPS location detection timed out.',
             });
           },
           { enableHighAccuracy: true, timeout: 10000 }
         );
       } else {
-        resolve({ latitude: 0, longitude: 0, error: 'Geolocation not supported.' });
+        resolve({ latitude: 0, longitude: 0, error: 'Geolocation unsupported.' });
       }
     });
   }

@@ -10,40 +10,68 @@ import { Avatar } from '../../components/ui/Avatar';
 import { requestNativeLocation } from '../../lib/locationService';
 
 import { useCarePulseStore } from '../../lib/store';
-import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
+import { MOCK_PRESCRIPTIONS, MOCK_DOCTORS, MOCK_HOSPITALS } from '../../lib/mockApi';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
+  const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Prompt native mobile OS system location permission on app startup
+  // Prompt native mobile OS system location permission on app startup without redirecting
   useEffect(() => {
     const promptNativeLocationOnStartup = async () => {
       const hasPrompted = sessionStorage.getItem('location_native_prompted');
       if (!hasPrompted) {
         sessionStorage.setItem('location_native_prompted', 'true');
-        const res = await requestNativeLocation();
-        if (res.placeName) {
-          navigate('/hospitals', { state: { initialSearch: res.placeName } });
-        }
+        await requestNativeLocation();
       }
     };
     promptNativeLocationOnStartup();
-  }, [navigate]);
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
+    const query = (searchQuery || '').trim().toLowerCase();
+    if (!query) {
       navigate('/hospitals');
+      return;
     }
+
+    // 1. Check if query matches a Doctor's Name or Specialty -> Go to Doctor Booking Page
+    const matchedDoctor = MOCK_DOCTORS.find((d) => {
+      const docName = (d?.name || '').toLowerCase();
+      const docSpec = (d?.specialty || '').toLowerCase();
+      return docName.includes(query) || docSpec.includes(query);
+    });
+
+    if (matchedDoctor) {
+      setBookingDoctor(matchedDoctor);
+      navigate(`/appointments/book/${matchedDoctor.id}`);
+      return;
+    }
+
+    // 2. Check if query matches a Hospital's Name -> Go to Hospital Detail Page showing Doctors available there
+    const matchedHospital = MOCK_HOSPITALS.find((h) => {
+      const hospName = (h?.name || '').toLowerCase();
+      const hospAddr = (h?.address || '').toLowerCase();
+      return hospName.includes(query) || hospAddr.includes(query);
+    });
+
+    if (matchedHospital) {
+      navigate(`/hospitals/${matchedHospital.id}`);
+      return;
+    }
+
+    // 3. Fallback: Redirect to Hospitals list with search filter
+    navigate('/hospitals', { state: { initialSearch: searchQuery.trim() } });
   };
 
   return (
-    <div className="min-h-screen bg-white pb-28 w-full relative">
-      {/* VIBRANT CYAN HERO TOP SECTION */}
-      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-45% to-white pt-1 pb-6 px-4 relative space-y-3">
+    <div className="min-h-screen bg-white pb-28 w-full relative overflow-hidden">
+      {/* VIBRANT EXTENDED CYAN HERO TOP SECTION */}
+      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-60% to-white pt-2 pb-10 sm:pb-12 px-4 w-full relative space-y-4 sm:rounded-t-3xl shadow-2xs">
         <TopBar variant="cyan" />
 
         {/* PILL SEARCH BAR WITH VOICE MIC BUTTON */}
@@ -51,14 +79,20 @@ export const HomeScreen: React.FC = () => {
           onSubmit={handleSearchSubmit}
           className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all"
         >
-          <Search className="w-4 h-4 text-[#6B7280] ml-1 shrink-0" />
+          <button
+            type="submit"
+            className="p-1 text-[#6B7280] hover:text-[#0B5A54] transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+            title="Search"
+          >
+            <Search className="w-4 h-4" />
+          </button>
 
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search Doctor's, Hospitals..."
-            className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2.5 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
+            className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
           />
 
           <button
@@ -198,21 +232,22 @@ export const HomeScreen: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between items-center px-1">
               <h3 className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">ACTIVE PRESCRIPTIONS</h3>
-              <button onClick={() => navigate('/history')} className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center">
+              <button onClick={() => navigate('/prescriptions')} className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center cursor-pointer">
                 View All <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
             <Card padding="md" className="divide-y divide-[#E4E7EC]/60 bg-[#F0F4F8]/70 border border-[#E4E7EC]">
-              {MOCK_PRESCRIPTIONS.map((rx) => (
-                <div key={rx.id} className="py-2.5 px-1 flex items-center justify-between first:pt-0 last:pb-0">
+              {MOCK_PRESCRIPTIONS.slice(0, 2).map((rx) => (
+                <div key={rx.id} className="py-2.5 px-1 flex items-center justify-between first:pt-0 last:pb-0 text-left">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
                       <Pill className="w-4 h-4" />
                     </div>
                     <div>
                       <h5 className="text-xs font-bold text-[#111827]">{rx.drugName} ({rx.dosage})</h5>
-                      <p className="text-xs text-[#6B7280]">{rx.frequency} • {rx.prescriber}</p>
+                      <p className="text-[11px] text-[#0B5A54] font-bold">Prescribed by {rx.prescriber}</p>
+                      <p className="text-[10px] text-[#6B7280]">{rx.frequency}</p>
                     </div>
                   </div>
 

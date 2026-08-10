@@ -6,9 +6,11 @@ interface CarePulseState {
   // Auth state
   user: User | null;
   isAuthenticated: boolean;
+  isBiometricEnabled: boolean;
   login: (phone: string) => void;
   setUserAuth: (user: User, token?: string) => void;
   logout: () => void;
+  toggleBiometric: (enabled: boolean) => void;
   updateUser: (updatedFields: Partial<User>) => void;
   registerUser: (userData: Partial<User>) => void;
 
@@ -33,13 +35,14 @@ interface CarePulseState {
   clearChat: () => void;
 }
 
-const storedHasLoggedIn = localStorage.getItem('has_logged_in') === 'true';
 const storedUser = localStorage.getItem('carepulse_user');
 const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+const storedBio = localStorage.getItem('carepulse_biometric_enabled');
 
 export const useCarePulseStore = create<CarePulseState>((set, get) => ({
-  user: storedHasLoggedIn ? (parsedUser || INITIAL_USER) : null,
-  isAuthenticated: storedHasLoggedIn,
+  user: parsedUser || INITIAL_USER,
+  isAuthenticated: false,
+  isBiometricEnabled: storedBio === 'true',
 
   login: (_phone: string) => {
     localStorage.setItem('has_logged_in', 'true');
@@ -72,65 +75,78 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     });
   },
 
+  toggleBiometric: (enabled: boolean) => {
+    localStorage.setItem('carepulse_biometric_enabled', String(enabled));
+    set({ isBiometricEnabled: enabled });
+  },
+
   updateUser: (updatedFields) => {
-    const currentUser = get().user;
-    if (currentUser) {
-      const updated = { ...currentUser, ...updatedFields };
-      localStorage.setItem('carepulse_user', JSON.stringify(updated));
-      set({ user: updated });
-    }
+    const updated = { ...(get().user || INITIAL_USER), ...updatedFields };
+    localStorage.setItem('carepulse_user', JSON.stringify(updated));
+    set({ user: updated });
   },
 
   registerUser: (userData) => {
     const newUser: User = {
       id: `usr-${Date.now()}`,
-      fullName: userData.fullName || 'New Patient',
-      email: userData.email || '',
-      phone: userData.phone || '',
-      dob: userData.dob || '',
-      gender: userData.gender || 'Not specified',
+      fullName: userData.fullName || 'Sarah Jenkins',
+      dob: userData.dob || '1992-05-14',
+      gender: (userData.gender as any) || 'Female',
       bloodGroup: userData.bloodGroup || 'O+',
-      emergencyContact: userData.emergencyContact || { name: '', phone: '', relationship: '' },
-      allergies: userData.allergies || 'None reported',
-      preExistingConditions: userData.preExistingConditions || 'None',
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
+      phone: userData.phone || '+91 98765 43210',
+      email: userData.email || 'sarah@example.com',
+      avatarUrl: userData.avatarUrl || INITIAL_USER.avatarUrl,
+      emergencyContact: userData.emergencyContact || {
+        name: 'Mark Jenkins',
+        phone: '+91 98765 12345',
+        relationship: 'Spouse',
+      },
+      allergies: userData.allergies,
+      preExistingConditions: userData.preExistingConditions,
     };
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(newUser));
-    set({ user: newUser, isAuthenticated: true });
+    set({
+      user: newUser,
+      isAuthenticated: true,
+    });
   },
 
   appointments: [INITIAL_APPOINTMENT],
   activeAppointment: INITIAL_APPOINTMENT,
-
-  addAppointment: (newAppt) => {
+  addAppointment: (appointment) => {
     set((state) => ({
-      appointments: [newAppt, ...state.appointments],
-      activeAppointment: newAppt,
+      appointments: [appointment, ...state.appointments],
+      activeAppointment: appointment,
     }));
   },
 
-  booking: {},
-  setBookingDoctor: (doctor) => set((state) => ({ booking: { ...state.booking, doctor, doctorId: doctor.id } })),
-  setBookingDate: (selectedDate) => set((state) => ({ booking: { ...state.booking, selectedDate } })),
-  setBookingSlot: (selectedTimeSlot) => set((state) => ({ booking: { ...state.booking, selectedTimeSlot } })),
-  clearBooking: () => set({ booking: {} }),
+  booking: {
+    doctor: null,
+    date: new Date().toISOString().split('T')[0],
+    slot: null,
+  },
+  setBookingDoctor: (doctor) => set((s) => ({ booking: { ...s.booking, doctor, doctorId: doctor.id } })),
+  setBookingDate: (date) => set((s) => ({ booking: { ...s.booking, date } })),
+  setBookingSlot: (slot) => set((s) => ({ booking: { ...s.booking, slot } })),
+  clearBooking: () =>
+    set({
+      booking: {
+        doctor: null,
+        date: new Date().toISOString().split('T')[0],
+        slot: null,
+      },
+    }),
 
   history: MOCK_MEDICAL_HISTORY,
 
   chatMessages: INITIAL_CHAT_MESSAGES,
-
   addChatMessage: (msg) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newMsg: ChatMessage = {
+      ...msg,
       id: `msg-${Date.now()}`,
-      sender: msg.sender,
-      text: msg.text,
-      timestamp: timeStr,
-      quickReplyChips: msg.quickReplyChips,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
-
     set((state) => ({
       chatMessages: [...state.chatMessages, newMsg],
     }));
@@ -169,6 +185,5 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       }, 700);
     }
   },
-
   clearChat: () => set({ chatMessages: INITIAL_CHAT_MESSAGES }),
 }));

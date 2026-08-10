@@ -91,8 +91,8 @@ export interface MedicalHistoryItem {
 
 export interface BookingSelection {
   doctorId?: string;
-  doctor?: Doctor;
-  selectedDate?: string;
-  selectedTimeSlot?: string;
+  doctor?: Doctor | null;
+  date?: string;
+  slot?: string | null;
   reason?: string;
 }
