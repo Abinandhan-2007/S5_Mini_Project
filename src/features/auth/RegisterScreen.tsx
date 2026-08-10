@@ -3,7 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Activity, User, Calendar, Droplet, Phone, Mail, ShieldAlert, ArrowRight, ArrowLeft } from 'lucide-react';
+import {
+  Activity,
+  User,
+  Lock,
+  Calendar,
+  Droplet,
+  Phone,
+  Mail,
+  ShieldAlert,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+} from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -12,12 +25,23 @@ import { Badge } from '../../components/ui/Badge';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { useCarePulseStore } from '../../lib/store';
 
-const step1Schema = z.object({
-  fullName: z.string().min(2, 'Full name is required'),
-  dob: z.string().min(1, 'Date of birth is required'),
-  gender: z.string().min(1, 'Please select gender'),
-  bloodGroup: z.string().min(1, 'Please select blood group'),
-});
+const step1Schema = z
+  .object({
+    fullName: z.string().min(2, 'Full name is required'),
+    password: z
+      .string()
+      .min(6, 'Password must be at least 6 characters')
+      .regex(/[A-Za-z]/, 'Password must contain at least one letter')
+      .regex(/[0-9]/, 'Password must contain at least one number'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    dob: z.string().min(1, 'Date of birth is required'),
+    gender: z.string().min(1, 'Please select gender'),
+    bloodGroup: z.string().min(1, 'Please select blood group'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 const step2Schema = z.object({
   phone: z.string().min(10, 'Valid phone number is required'),
@@ -40,8 +64,11 @@ export const RegisterScreen: React.FC = () => {
 
   const form1 = useForm<Step1Data>({
     resolver: zodResolver(step1Schema),
+    mode: 'onChange',
     defaultValues: {
       fullName: '',
+      password: '',
+      confirmPassword: '',
       dob: '',
       gender: 'Female',
       bloodGroup: 'O+',
@@ -60,6 +87,11 @@ export const RegisterScreen: React.FC = () => {
     },
   });
 
+  const watchPassword = form1.watch('password') || '';
+  const isMinLength = watchPassword.length >= 6;
+  const hasLetter = /[A-Za-z]/.test(watchPassword);
+  const hasNumber = /[0-9]/.test(watchPassword);
+
   const onStep1Submit = (data: Step1Data) => {
     setFormDataStep1(data);
     setStep(2);
@@ -70,6 +102,7 @@ export const RegisterScreen: React.FC = () => {
 
     registerUser({
       fullName: formDataStep1.fullName,
+      password: formDataStep1.password,
       dob: formDataStep1.dob,
       gender: formDataStep1.gender,
       bloodGroup: formDataStep1.bloodGroup,
@@ -124,6 +157,7 @@ export const RegisterScreen: React.FC = () => {
               </div>
 
               <div className="space-y-3">
+                {/* Full Name / Username */}
                 <Input
                   label="FULL NAME"
                   leftIcon={<User className="w-4 h-4 text-[#0B5A54]" />}
@@ -132,6 +166,68 @@ export const RegisterScreen: React.FC = () => {
                   {...form1.register('fullName')}
                 />
 
+                {/* Password below username */}
+                <div className="space-y-1.5">
+                  <Input
+                    label="PASSWORD"
+                    isPassword
+                    leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
+                    placeholder="Create password (min. 6 characters)"
+                    error={form1.formState.errors.password?.message}
+                    {...form1.register('password')}
+                  />
+
+                  {/* Password Validation Requirements Check */}
+                  {watchPassword.length > 0 && (
+                    <div className="p-2.5 rounded-lg bg-white border border-[#E4E7EC] shadow-2xs space-y-1 text-[11px]">
+                      <span className="font-bold text-[#4B5563] block text-[10px] uppercase tracking-wider">
+                        Password Requirements:
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {isMinLength ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                        )}
+                        <span className={isMinLength ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
+                          At least 6 characters
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {hasLetter ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                        )}
+                        <span className={hasLetter ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
+                          At least one letter (a-z, A-Z)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {hasNumber ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                        )}
+                        <span className={hasNumber ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
+                          At least one number (0-9)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <Input
+                  label="CONFIRM PASSWORD"
+                  isPassword
+                  leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
+                  placeholder="Re-enter your password"
+                  error={form1.formState.errors.confirmPassword?.message}
+                  {...form1.register('confirmPassword')}
+                />
+
+                {/* Date of Birth */}
                 <Input
                   label="DATE OF BIRTH"
                   type="date"
@@ -140,6 +236,7 @@ export const RegisterScreen: React.FC = () => {
                   {...form1.register('dob')}
                 />
 
+                {/* Gender & Blood Group */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <Select
                     label="GENDER"

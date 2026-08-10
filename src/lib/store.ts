@@ -103,6 +103,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       },
       allergies: userData.allergies,
       preExistingConditions: userData.preExistingConditions,
+      password: userData.password,
     };
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(newUser));

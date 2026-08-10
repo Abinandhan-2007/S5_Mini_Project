@@ -74,9 +74,12 @@ def write_json_db(data: Dict[str, Any]) -> None:
         json.dump(data, f, indent=2)
 
 def get_pg_connection():
-    """Get a new psycopg connection with dictionary rows and pgvector support."""
+    """Get a new psycopg connection with dictionary rows and optional pgvector support."""
     conn = psycopg.connect(db_conn_info, row_factory=dict_row, connect_timeout=3)
-    register_vector(conn)
+    try:
+        register_vector(conn)
+    except Exception:
+        pass
     return conn
 
 def init_db():
@@ -88,11 +91,14 @@ def init_db():
             with conn.cursor() as cur:
                 cur.execute("SELECT NOW()")
                 if INIT_SQL_PATH.exists():
-                    sql = INIT_SQL_PATH.read_text(encoding="utf-8")
-                    cur.execute(sql)
+                    try:
+                        sql = INIT_SQL_PATH.read_text(encoding="utf-8")
+                        cur.execute(sql)
+                    except Exception as sql_err:
+                        logger.warning(f"Note on init.sql migration: {sql_err}")
                 conn.commit()
         use_pg = True
-        logger.info("✅ PostgreSQL Database connected successfully with JSONB and pgvector")
+        logger.info("✅ PostgreSQL Database connected successfully")
     except Exception as e:
         use_pg = False
         logger.warning(f"⚠️ PostgreSQL database not reachable ({e}). Falling back to local JSON file store ({JSON_DB_PATH}).")

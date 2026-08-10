@@ -15,6 +15,7 @@ export interface User {
   preExistingConditions?: string;
   avatarUrl: string;
   authProvider?: string;
+  password?: string;
 }
 
 export interface Doctor {
