@@ -16,6 +16,19 @@ class LoginRequest(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
 
+class RegisterRequest(BaseModel):
+    fullName: str
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    password: Optional[str] = None
+    dob: Optional[str] = ""
+    gender: Optional[str] = "Not specified"
+    bloodGroup: Optional[str] = "O+"
+    avatarUrl: Optional[str] = ""
+    allergies: Optional[str] = ""
+    preExistingConditions: Optional[str] = ""
+    emergencyContact: Optional[Dict[str, Any]] = None
+
 class PatientResponse(BaseModel):
     id: str
     fullName: str

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Activity, Phone, Lock, ArrowRight, AlertCircle, UserPlus, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -9,7 +9,6 @@ import { loadGoogleScript, authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt }
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
-  const login = useCarePulseStore((s) => s.login);
   const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
 
   const [phone, setPhone] = useState('');
@@ -17,6 +16,10 @@ export const LoginScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sign up modal prompt state
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
@@ -94,7 +97,6 @@ export const LoginScreen: React.FC = () => {
   const handleGoogleClick = async () => {
     setErrorMessage(null);
 
-    // If client ID is configured and GIS prompt is ready
     if (GOOGLE_CLIENT_ID && window.google?.accounts?.id) {
       setIsGoogleLoading(true);
       try {
@@ -109,7 +111,6 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    // Interactive Demo / Sandbox Fallback if Client ID is not yet provided in .env
     setIsGoogleLoading(true);
     try {
       const demoEmail = prompt('Enter your Gmail address for login (or leave blank for demo user):', 'user@gmail.com');
@@ -152,18 +153,111 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
-    setTimeout(() => {
-      login(phone || '+91 98765 43210');
+
+    const inputVal = phone.trim();
+    const passVal = password.trim();
+
+    if (!inputVal) {
+      setErrorMessage('Please enter your registered phone number or email.');
       setIsLoading(false);
-      navigate('/home');
-    }, 600);
+      return;
+    }
+
+    const isEmail = inputVal.includes('@');
+    const payload = isEmail
+      ? { email: inputVal, password: passVal }
+      : { phone: inputVal, password: passVal };
+
+    const tryFetch = async (endpoint: string) => {
+      return await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    };
+
+    let res: Response | null = null;
+    let data: any = {};
+
+    try {
+      res = await tryFetch('/api/auth/login');
+    } catch {
+      try {
+        res = await tryFetch('http://localhost:5000/api/auth/login');
+      } catch {
+        res = null;
+      }
+    }
+
+    if (res) {
+      data = await res.json().catch(() => ({}));
+      
+      // 404 Not Found: User doesn't exist in PostgreSQL / backend
+      if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
+        setUnregisteredIdentifier(inputVal);
+        setShowSignupPrompt(true);
+        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+        setIsLoading(false);
+        return;
+      } else if (!res.ok) {
+        setErrorMessage(data.detail || data.error || 'Incorrect password or authentication error.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        setUserAuth(data.user, data.token);
+        navigate('/home');
+        return;
+      }
+    } else {
+      // Fallback check against local registered users if backend network is totally offline
+      const storedUsersStr = localStorage.getItem('carepulse_registered_users');
+      const registeredUsers: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+
+      const inputDigits = inputVal.replace(/\D/g, '').slice(-10);
+      const inputLowerEmail = inputVal.toLowerCase();
+
+      const localMatched = registeredUsers.find((u) => {
+        const uDigits = (u.phone || '').replace(/\D/g, '').slice(-10);
+        const uEmail = (u.email || '').toLowerCase();
+        return (
+          (inputDigits && uDigits && inputDigits === uDigits) ||
+          (inputLowerEmail && uEmail && inputLowerEmail === uEmail)
+        );
+      });
+
+      if (localMatched) {
+        if (localMatched.password && passVal && localMatched.password !== passVal) {
+          setErrorMessage('Incorrect password. Please verify and try again.');
+        } else {
+          setUserAuth(localMatched, `local-token-${Date.now()}`);
+          navigate('/home');
+        }
+      } else {
+        setUnregisteredIdentifier(inputVal);
+        setShowSignupPrompt(true);
+        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+      }
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleProceedToSignup = () => {
+    setShowSignupPrompt(false);
+    const isEmail = unregisteredIdentifier.includes('@');
+    navigate('/register', {
+      state: isEmail ? { initialEmail: unregisteredIdentifier } : { initialPhone: unregisteredIdentifier },
+    });
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 py-8 sm:px-6 w-full">
+    <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 py-8 sm:px-6 w-full relative">
       <div className="w-full max-w-sm sm:max-w-md space-y-5">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
@@ -183,21 +277,34 @@ export const LoginScreen: React.FC = () => {
             <p className="text-xs text-[#6B7280] leading-snug">Log in to manage appointments & health records</p>
           </div>
 
+          {/* User existence & error alert */}
           {errorMessage && (
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-50 text-red-700 text-xs border border-red-200">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-amber-50 text-amber-950 text-xs border border-amber-300 shadow-2xs animate-fade-in">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span className="leading-snug font-semibold">{errorMessage}</span>
+              </div>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleProceedToSignup}
+                  className="w-full text-center text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#094843] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl shadow-2xs cursor-pointer transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create Account / Sign Up Now →</span>
+                </button>
+              </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Phone Number Input */}
+            {/* Phone Number / Email Input */}
             <div className="space-y-1.5 text-left">
               <Input
-                label="PHONE NUMBER"
+                label="PHONE NUMBER OR EMAIL"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter phone number"
+                placeholder="Enter phone number or email"
                 leftIcon={<Phone className="w-4 h-4 text-[#0B5A54]" />}
                 required
               />
@@ -211,7 +318,7 @@ export const LoginScreen: React.FC = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset link sent to your registered phone!')}
+                  onClick={() => alert('Password reset link sent to your registered contact!')}
                   className="text-[11px] font-bold text-[#0B5A54] hover:underline"
                 >
                   Forgot Password?
@@ -223,7 +330,6 @@ export const LoginScreen: React.FC = () => {
                 isPassword
                 leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
                 placeholder="Enter password"
-                required
               />
             </div>
 
@@ -306,6 +412,54 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Interactive Account Not Found -> Signup Modal Prompt */}
+      {showSignupPrompt && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-[#E4E7EC] relative animate-scale-up">
+            <button
+              onClick={() => setShowSignupPrompt(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#9CA3AF] hover:text-[#111827] hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-100 text-[#0B5A54] flex items-center justify-center mx-auto shadow-xs">
+              <UserPlus className="w-8 h-8 text-[#0B5A54]" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-extrabold font-heading text-[#111827]">Account Not Found</h3>
+              <p className="text-xs text-[#6B7280] leading-relaxed">
+                We couldn't find an account matching <span className="font-bold text-[#111827]">{unregisteredIdentifier}</span>. Would you like to create a new profile now?
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <Button
+                type="button"
+                size="lg"
+                fullWidth
+                onClick={handleProceedToSignup}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+                className="py-3.5 rounded-xl text-xs font-bold shadow-xs"
+              >
+                Sign Up & Create Account
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={() => setShowSignupPrompt(false)}
+                className="py-2.5 rounded-xl text-xs font-bold text-[#6B7280] border-[#E4E7EC] hover:bg-gray-50"
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
