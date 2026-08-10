@@ -7,7 +7,34 @@
       "phone": "+91 98765 43210",
       "dob": "1995-07-24",
       "gender": "Female",
-      "blood_group": "O+"
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "auth_provider": "google",
+      "google_id": "google-demo-sarah"
+    },
+    {
+      "id": "568164d1-16c0-4f30-bae2-44a5dc493485",
+      "full_name": "Sarah Jenkins",
+      "email": "test.google@carepulse.com",
+      "phone": "",
+      "dob": "1995-07-24",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
+      "google_id": "google-c20cc5b8f0",
+      "auth_provider": "google"
+    },
+    {
+      "id": "df62a12e-e160-4fb3-a2d7-f7aea6bc2a82",
+      "full_name": "Dr. John Smith",
+      "email": "doctor.smith@carepulse.com",
+      "phone": "",
+      "dob": "1995-07-24",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80",
+      "google_id": "google-b59bb7a3eb",
+      "auth_provider": "google"
     }
   ],
   "consultations": [
@@ -29,6 +56,22 @@
         }
       },
       "soap_embedding": []
+    },
+    {
+      "id": "c-1a384beeea7a",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "date": "2026-08-09",
+      "soap_data": {
+        "assessment": "Hypertension stage 1",
+        "plan": "Lifestyle modifications"
+      },
+      "soap_embedding": [
+        0.12,
+        0.45,
+        0.78
+      ]
     }
   ]
 }

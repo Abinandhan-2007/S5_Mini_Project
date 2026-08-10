@@ -6,12 +6,24 @@ CREATE TABLE IF NOT EXISTS patients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(50) NOT NULL,
-    dob DATE NOT NULL,
-    gender VARCHAR(50),
-    blood_group VARCHAR(10),
+    phone VARCHAR(50) DEFAULT '',
+    dob DATE DEFAULT CURRENT_DATE,
+    gender VARCHAR(50) DEFAULT 'Not specified',
+    blood_group VARCHAR(10) DEFAULT 'O+',
+    avatar_url TEXT DEFAULT '',
+    google_id VARCHAR(255) UNIQUE,
+    auth_provider VARCHAR(50) DEFAULT 'local',
+    password_hash VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration support if table already exists
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT '';
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'local';
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+ALTER TABLE patients ALTER COLUMN phone DROP NOT NULL;
+ALTER TABLE patients ALTER COLUMN dob DROP NOT NULL;
 
 -- Consultations Table with JSONB and pgvector
 CREATE TABLE IF NOT EXISTS consultations (

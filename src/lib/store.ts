@@ -7,6 +7,7 @@ interface CarePulseState {
   user: User | null;
   isAuthenticated: boolean;
   login: (phone: string) => void;
+  setUserAuth: (user: User, token?: string) => void;
   logout: () => void;
   updateUser: (updatedFields: Partial<User>) => void;
   registerUser: (userData: Partial<User>) => void;
@@ -49,9 +50,22 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     });
   },
 
+  setUserAuth: (user: User, token?: string) => {
+    localStorage.setItem('has_logged_in', 'true');
+    localStorage.setItem('carepulse_user', JSON.stringify(user));
+    if (token) {
+      localStorage.setItem('carepulse_token', token);
+    }
+    set({
+      user,
+      isAuthenticated: true,
+    });
+  },
+
   logout: () => {
     localStorage.removeItem('has_logged_in');
     localStorage.removeItem('carepulse_user');
+    localStorage.removeItem('carepulse_token');
     set({
       user: null,
       isAuthenticated: false,

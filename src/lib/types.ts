@@ -14,6 +14,7 @@ export interface User {
   allergies?: string;
   preExistingConditions?: string;
   avatarUrl: string;
+  authProvider?: string;
 }
 
 export interface Doctor {
