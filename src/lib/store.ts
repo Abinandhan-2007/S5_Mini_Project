@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Preferences } from '@capacitor/preferences';
 import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection } from './types';
 import { INITIAL_USER, INITIAL_APPOINTMENT, MOCK_MEDICAL_HISTORY, INITIAL_CHAT_MESSAGES } from './mockApi';
 
@@ -6,10 +7,12 @@ interface CarePulseState {
   // Auth state
   user: User | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   isBiometricEnabled: boolean;
   login: (phone: string) => void;
-  setUserAuth: (user: User, token?: string) => void;
-  logout: () => void;
+  setUserAuth: (user: User, token?: string) => Promise<void>;
+  checkAuthSession: () => Promise<boolean>;
+  logout: () => Promise<void>;
   toggleBiometric: (enabled: boolean) => void;
   updateUser: (updatedFields: Partial<User>) => void;
   registerUser: (userData: Partial<User>) => void;
@@ -41,40 +44,163 @@ const parsedUser = storedUser ? JSON.parse(storedUser) : null;
 const storedBio = localStorage.getItem('carepulse_biometric_enabled');
 
 export const useCarePulseStore = create<CarePulseState>((set, get) => ({
-  user: parsedUser || INITIAL_USER,
+  user: parsedUser || null,
   isAuthenticated: false,
+  isInitializing: true,
   isBiometricEnabled: storedBio === 'true',
 
   login: (_phone: string) => {
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(INITIAL_USER));
+    Preferences.set({ key: 'carepulse_user', value: JSON.stringify(INITIAL_USER) });
     set({
       user: INITIAL_USER,
       isAuthenticated: true,
+      isInitializing: false,
     });
   },
 
-  setUserAuth: (user: User, token?: string) => {
+  setUserAuth: async (user: User, token?: string) => {
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(user));
+    await Preferences.set({ key: 'carepulse_user', value: JSON.stringify(user) });
+
     if (token) {
       localStorage.setItem('carepulse_token', token);
+      localStorage.setItem('auth_token', token);
+      await Preferences.set({ key: 'auth_token', value: token });
     }
+
     set({
       user,
       isAuthenticated: true,
+      isInitializing: false,
     });
+
     // Trigger live background sync of appointments from PostgreSQL
     get().syncAppointments(user.id);
   },
 
-  logout: () => {
+  checkAuthSession: async () => {
+    try {
+      // 1. Check Capacitor Preferences for saved JWT token
+      let token: string | null = null;
+      try {
+        const { value } = await Preferences.get({ key: 'auth_token' });
+        token = value;
+      } catch {
+        token = null;
+      }
+
+      // Fallback to localStorage
+      if (!token) {
+        token = localStorage.getItem('carepulse_token') || localStorage.getItem('auth_token');
+      }
+
+      if (!token) {
+        set({ isInitializing: false, isAuthenticated: false });
+        return false;
+      }
+
+      // 2. Verify token against backend /api/auth/me
+      const tryVerify = async (baseUrl: string) => {
+        return await fetch(`${baseUrl}/auth/me`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      };
+
+      let res: Response | null = null;
+      try {
+        res = await tryVerify('/api');
+      } catch {
+        try {
+          res = await tryVerify('http://localhost:5000/api');
+        } catch {
+          res = null;
+        }
+      }
+
+      if (res && res.ok) {
+        const userData: User = await res.json();
+        await Preferences.set({ key: 'carepulse_user', value: JSON.stringify(userData) });
+        localStorage.setItem('carepulse_user', JSON.stringify(userData));
+        localStorage.setItem('has_logged_in', 'true');
+
+        set({
+          user: userData,
+          isAuthenticated: true,
+          isInitializing: false,
+        });
+
+        get().syncAppointments(userData.id);
+        return true;
+      }
+
+      // 3. If token invalid or expired (401 Unauthorized) -> Clear stored session
+      if (res && res.status === 401) {
+        await Preferences.remove({ key: 'auth_token' });
+        await Preferences.remove({ key: 'carepulse_user' });
+        localStorage.removeItem('carepulse_token');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('has_logged_in');
+
+        set({
+          user: null,
+          isAuthenticated: false,
+          isInitializing: false,
+        });
+        return false;
+      }
+
+      // 4. Offline / Server Unreachable: Fallback to cached user in Preferences
+      let cachedUserJson: string | null = null;
+      try {
+        const { value } = await Preferences.get({ key: 'carepulse_user' });
+        cachedUserJson = value;
+      } catch {
+        cachedUserJson = null;
+      }
+
+      if (!cachedUserJson) {
+        cachedUserJson = localStorage.getItem('carepulse_user');
+      }
+
+      if (cachedUserJson) {
+        const cachedUser = JSON.parse(cachedUserJson);
+        set({
+          user: cachedUser,
+          isAuthenticated: true,
+          isInitializing: false,
+        });
+        return true;
+      }
+
+      set({ isInitializing: false, isAuthenticated: false });
+      return false;
+    } catch {
+      set({ isInitializing: false });
+      return false;
+    }
+  },
+
+  logout: async () => {
+    try {
+      await Preferences.remove({ key: 'auth_token' });
+      await Preferences.remove({ key: 'carepulse_user' });
+    } catch {
+      // Ignore
+    }
     localStorage.removeItem('has_logged_in');
     localStorage.removeItem('carepulse_user');
     localStorage.removeItem('carepulse_token');
+    localStorage.removeItem('auth_token');
     set({
       user: null,
       isAuthenticated: false,
+      isInitializing: false,
     });
   },
 

@@ -7,11 +7,38 @@ import requests
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
-from config import GOOGLE_CLIENT_ID
+import datetime
+import jwt
+from config import GOOGLE_CLIENT_ID, JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRE_DAYS
 from database import use_pg, get_pg_connection, read_json_db, write_json_db
 from schemas import PatientResponse, AuthResponse
 
 logger = logging.getLogger("carepulse.auth")
+
+def generate_patient_jwt(patient_id: str, email: str) -> str:
+    """Generate signed JWT token for persistent patient session (~30 days)."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    expire = now + datetime.timedelta(days=JWT_EXPIRE_DAYS)
+    payload = {
+        "sub": str(patient_id),
+        "patient_id": str(patient_id),
+        "email": email,
+        "iat": int(now.timestamp()),
+        "exp": int(expire.timestamp()),
+        "type": "patient"
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def decode_patient_jwt(token: str) -> Optional[Dict[str, Any]]:
+    """Decode and verify patient JWT token."""
+    try:
+        if token.startswith("Bearer "):
+            token = token[7:].strip()
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except Exception as e:
+        logger.warning(f"Patient JWT decode error: {e}")
+        return None
 
 def verify_google_token(credential: str) -> Optional[Dict[str, Any]]:
     """Verify Google OAuth ID token using google-auth library, tokeninfo, or JWT claims."""
@@ -116,6 +143,7 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
                 conn.commit()
 
         dob_str = str(row.get("dob") or "")
+        token_str = generate_patient_jwt(str(row["id"]), row["email"])
         return AuthResponse(
             success=True,
             user=PatientResponse(
@@ -129,7 +157,7 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
                 avatarUrl=row.get("avatar_url") or picture,
                 authProvider="google"
             ),
-            token=f"cp-token-{row['id']}"
+            token=token_str
         )
     else:
         # JSON Database fallback
@@ -155,7 +183,7 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
                 "phone": "",
                 "dob": "1995-07-24",
                 "gender": "Not specified",
-                "blood_group": "O+",
+                "bloodGroup": "O+",
                 "avatar_url": picture,
                 "google_id": google_id,
                 "auth_provider": "google"
@@ -165,6 +193,7 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
 
         write_json_db(db)
 
+        token_str = generate_patient_jwt(str(found["id"]), found["email"])
         return AuthResponse(
             success=True,
             user=PatientResponse(
@@ -178,5 +207,5 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
                 avatarUrl=found.get("avatar_url", picture),
                 authProvider="google"
             ),
-            token=f"cp-token-{found['id']}"
+            token=token_str
         )

@@ -20,6 +20,9 @@ DB_PORT = int(os.getenv("DB_PORT", "5432"))
 PORT = int(os.getenv("PORT", "5000"))
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+JWT_SECRET = os.getenv("JWT_SECRET", "carepulse_super_secret_jwt_key_2026")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_DAYS = 30
 
 INIT_SQL_PATH = root_dir / "database" / "init.sql"
 JSON_DB_PATH = root_dir / "database" / "database.json"

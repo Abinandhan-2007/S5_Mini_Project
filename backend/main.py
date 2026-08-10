@@ -18,7 +18,7 @@ def normalize_phone_number(p: str) -> str:
     digits = re.sub(r"\D", "", p or "")
     return digits[-10:] if len(digits) >= 10 else digits
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -38,7 +38,7 @@ from schemas import (
     SearchRequest,
     SearchResultItem,
 )
-from auth import verify_google_token, process_google_login
+from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -191,7 +191,7 @@ def register_patient(request: RegisterRequest):
                         avatarUrl=row.get("avatar_url") or avatar,
                         authProvider="local"
                     ),
-                    token=f"cp-token-{row['id']}"
+                    token=generate_patient_jwt(str(row["id"]), row["email"])
                 )
     else:
         db = read_json_db()
@@ -249,7 +249,7 @@ def register_patient(request: RegisterRequest):
                 avatarUrl=avatar,
                 authProvider="local"
             ),
-            token=f"cp-token-{new_id}"
+            token=generate_patient_jwt(new_id, email)
         )
 
 
@@ -299,6 +299,7 @@ def standard_login(request: LoginRequest):
                     )
 
                 dob_str = str(row.get("dob") or "")
+                token_str = generate_patient_jwt(str(row["id"]), row["email"])
                 return AuthResponse(
                     success=True,
                     user=PatientResponse(
@@ -312,7 +313,7 @@ def standard_login(request: LoginRequest):
                         avatarUrl=row.get("avatar_url") or "",
                         authProvider=row.get("auth_provider") or "local"
                     ),
-                    token=f"cp-token-{row['id']}"
+                    token=token_str
                 )
 
     # Fallback to local JSON database
@@ -344,6 +345,7 @@ def standard_login(request: LoginRequest):
             detail="Incorrect password. Please verify your password and try again."
         )
 
+    token_str = generate_patient_jwt(found["id"], found["email"])
     return AuthResponse(
         success=True,
         user=PatientResponse(
@@ -357,8 +359,67 @@ def standard_login(request: LoginRequest):
             avatarUrl=found.get("avatar_url", ""),
             authProvider=found.get("auth_provider", "local")
         ),
-        token=f"cp-token-{found['id']}"
+        token=token_str
     )
+
+
+@app.get("/api/auth/me", response_model=PatientResponse)
+def get_current_authenticated_patient(authorization: Optional[str] = Header(None)):
+    """Verify persistent JWT token from Authorization header and return current patient data (401 if invalid/expired)."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header."
+        )
+
+    payload = decode_patient_jwt(authorization)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session token. Please log in again."
+        )
+
+    patient_id = payload.get("patient_id") or payload.get("sub")
+    email = payload.get("email")
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM patients WHERE id::text = %s OR (email = %s AND email != '') LIMIT 1",
+                    (str(patient_id), str(email))
+                )
+                row = cur.fetchone()
+                if row:
+                    dob_str = str(row.get("dob") or "")
+                    return PatientResponse(
+                        id=str(row["id"]),
+                        fullName=row["full_name"],
+                        email=row["email"],
+                        phone=row.get("phone") or "",
+                        dob=dob_str,
+                        gender=row.get("gender") or "Not specified",
+                        bloodGroup=row.get("blood_group") or "O+",
+                        avatarUrl=row.get("avatar_url") or "",
+                        authProvider=row.get("auth_provider") or "local"
+                    )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient account not found.")
+    else:
+        db = read_json_db()
+        for p in db.get("patients", []):
+            if p.get("id") == patient_id or (email and p.get("email") == email):
+                return PatientResponse(
+                    id=p["id"],
+                    fullName=p["full_name"],
+                    email=p["email"],
+                    phone=p.get("phone", ""),
+                    dob=p.get("dob", ""),
+                    gender=p.get("gender", "Female"),
+                    bloodGroup=p.get("blood_group", "O+"),
+                    avatarUrl=p.get("avatar_url", ""),
+                    authProvider=p.get("auth_provider", "local")
+                )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient account not found.")
 
 
 @app.get("/api/patients/{patient_id}", response_model=PatientResponse)
