@@ -288,10 +288,10 @@ export const HomeScreen: React.FC = () => {
 
       <BottomNav />
 
-      {/* REBUILT EXECUTIVE QUEUE STATUS POPUP MODAL (COMPACT SOLID WHITE) */}
+      {/* REBUILT EXECUTIVE QUEUE STATUS POPUP MODAL (SOLID WHITE BACKGROUND) */}
       {isQueueModalOpen && activeAppointment && (
-        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 select-none">
-          <div className="bg-white rounded-3xl w-[calc(100%-2rem)] max-w-[325px] sm:max-w-[340px] p-4 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-3 max-h-[90vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 sm:p-5 animate-in fade-in duration-200 select-none">
+          <div className="bg-white rounded-3xl w-[calc(100%-2rem)] max-w-[360px] sm:max-w-[385px] p-4 sm:p-5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-3.5 max-h-[90vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
             
             {/* 1. Header Row */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
