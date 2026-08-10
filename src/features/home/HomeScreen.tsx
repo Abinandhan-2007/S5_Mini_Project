@@ -287,10 +287,10 @@ export const HomeScreen: React.FC = () => {
 
       <BottomNav />
 
-      {/* REBUILT EXECUTIVE QUEUE STATUS POPUP MODAL */}
+      {/* REBUILT EXECUTIVE QUEUE STATUS POPUP MODAL (SOLID WHITE BACKGROUND) */}
       {isQueueModalOpen && activeAppointment && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 select-none">
-          <div className="bg-white/98 backdrop-blur-xl rounded-3xl max-w-[340px] sm:max-w-[365px] w-full p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.25)] space-y-3.5 max-h-[92vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-[340px] sm:max-w-[365px] w-full p-4 sm:p-5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-3.5 max-h-[92vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
             
             {/* 1. Header Row */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -300,7 +300,7 @@ export const HomeScreen: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-[11px] px-2 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
+                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-[11px] px-2.5 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
                   {activeAppointment.ticketNumber || 'TK-482'}
                 </span>
                 <button
@@ -313,8 +313,8 @@ export const HomeScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Doctor/Appointment Summary Strip */}
-            <div className="bg-slate-50/90 border border-slate-100/90 rounded-xl p-2.5 flex items-center justify-between">
+            {/* 2. Doctor/Appointment Summary Strip (Clean Solid Card) */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-2.5">
                 <Avatar src={activeAppointment.doctorPhoto} size="sm" />
                 <div>
@@ -323,7 +323,7 @@ export const HomeScreen: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-right pl-2 border-l border-slate-200/60">
+              <div className="text-right pl-2.5 border-l border-slate-200/80">
                 <div className="flex items-center justify-end gap-1 text-[11px] font-black text-[#111827]">
                   <CalendarIcon className="w-3 h-3 text-[#0B5A54]" />
                   <span>{activeAppointment.date}</span>
@@ -338,7 +338,7 @@ export const HomeScreen: React.FC = () => {
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                   OPD LIVE CONSULTATION TIMELINE
                 </span>
-                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Live Sync
                 </span>
@@ -384,7 +384,7 @@ export const HomeScreen: React.FC = () => {
                       ✕
                     </div>
                   </div>
-                  <div className="flex-1 bg-amber-50/80 border border-amber-200/90 rounded-xl p-2.5 space-y-1">
+                  <div className="flex-1 bg-amber-50/90 border border-amber-200 rounded-xl p-2.5 space-y-1">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1">
                         <p className="text-xs font-black text-amber-900 leading-none">Token-3 (TK-480)</p>
@@ -392,7 +392,7 @@ export const HomeScreen: React.FC = () => {
                           NOW SERVING
                         </span>
                       </div>
-                      <span className="text-[9px] font-bold text-amber-800 bg-white/90 px-1.5 py-0.5 rounded border border-amber-200/80">
+                      <span className="text-[9px] font-bold text-amber-800 bg-white px-1.5 py-0.5 rounded border border-amber-200/80">
                         In Consultation
                       </span>
                     </div>
@@ -418,7 +418,7 @@ export const HomeScreen: React.FC = () => {
                     ⭐
                   </div>
 
-                  <div className="flex-1 bg-[#E3F3F1]/80 border-2 border-[#0B5A54] rounded-xl p-2.5 space-y-1.5 shadow-2xs">
+                  <div className="flex-1 bg-[#E3F3F1] border-2 border-[#0B5A54] rounded-xl p-3 space-y-1.5 shadow-xs">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5">
                         <span className="bg-[#0B5A54] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -435,7 +435,7 @@ export const HomeScreen: React.FC = () => {
 
                     <p className="text-xs font-extrabold text-[#0B5A54]">{activeAppointment.patientName}</p>
 
-                    <div className="pt-1 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] text-[#0B5A54] font-semibold">
+                    <div className="pt-1.5 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] text-[#0B5A54] font-semibold">
                       <span>2 Persons Ahead of You</span>
                       <span className="font-bold">Scheduled: {activeAppointment.timeSlot}</span>
                     </div>
@@ -448,7 +448,7 @@ export const HomeScreen: React.FC = () => {
             <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
               <button
                 onClick={handleRefreshQueue}
-                className="flex-1 bg-[#0B5A54] hover:bg-[#084540] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="flex-1 bg-[#0B5A54] hover:bg-[#084540] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer border-0 outline-none"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span>Track Live</span>
@@ -459,7 +459,7 @@ export const HomeScreen: React.FC = () => {
                   setIsQueueModalOpen(false);
                   navigate('/hospitals');
                 }}
-                className="flex-1 border border-[#0B5A54]/30 text-[#0B5A54] hover:bg-[#E3F3F1]/50 active:scale-[0.98] font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="flex-1 border border-[#0B5A54]/30 text-[#0B5A54] hover:bg-[#E3F3F1]/50 active:scale-[0.98] font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer outline-none"
               >
                 <Navigation className="w-3.5 h-3.5 text-[#0B5A54]" />
                 <span>Get Directions</span>
