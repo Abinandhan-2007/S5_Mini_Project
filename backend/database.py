@@ -1,7 +1,13 @@
+import sys
+from pathlib import Path
+
+backend_dir = Path(__file__).resolve().parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 import json
 import math
 import logging
-from pathlib import Path
 from typing import Dict, Any, List, Optional
 import psycopg
 from psycopg.rows import dict_row

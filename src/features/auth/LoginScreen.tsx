@@ -172,27 +172,39 @@ export const LoginScreen: React.FC = () => {
       ? { email: inputVal, password: passVal }
       : { phone: inputVal, password: passVal };
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    const tryFetch = async (endpoint: string) => {
+      return await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+    };
 
-      const data = await res.json().catch(() => ({}));
+    let res: Response | null = null;
+    let data: any = {};
 
-      if (!res.ok) {
-        const errorDetail: string = data.detail || data.error || 'Authentication failed.';
+    try {
+      res = await tryFetch('/api/auth/login');
+    } catch {
+      try {
+        res = await tryFetch('http://localhost:5000/api/auth/login');
+      } catch {
+        res = null;
+      }
+    }
 
-        // If user is not found, show the Signup option modal prompt
-        if (res.status === 404 || errorDetail.toLowerCase().includes('not found') || errorDetail.toLowerCase().includes('sign up')) {
-          setUnregisteredIdentifier(inputVal);
-          setShowSignupPrompt(true);
-        }
-
-        setErrorMessage(errorDetail);
+    if (res) {
+      data = await res.json().catch(() => ({}));
+      
+      // 404 Not Found: User doesn't exist in PostgreSQL / backend
+      if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
+        setUnregisteredIdentifier(inputVal);
+        setShowSignupPrompt(true);
+        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+        setIsLoading(false);
+        return;
+      } else if (!res.ok) {
+        setErrorMessage(data.detail || data.error || 'Incorrect password or authentication error.');
         setIsLoading(false);
         return;
       }
@@ -200,11 +212,10 @@ export const LoginScreen: React.FC = () => {
       if (data.user) {
         setUserAuth(data.user, data.token);
         navigate('/home');
+        return;
       }
-    } catch (networkErr) {
-      console.warn('Network error, checking local storage fallback:', networkErr);
-
-      // Local Fallback Check
+    } else {
+      // Fallback check against local registered users if backend network is totally offline
       const storedUsersStr = localStorage.getItem('carepulse_registered_users');
       const registeredUsers: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
@@ -228,14 +239,13 @@ export const LoginScreen: React.FC = () => {
           navigate('/home');
         }
       } else {
-        // User not found in local store either -> trigger signup option modal
         setUnregisteredIdentifier(inputVal);
         setShowSignupPrompt(true);
-        setErrorMessage('No account found with this phone number or email. Please sign up to create an account.');
+        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
       }
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   const handleProceedToSignup = () => {
@@ -269,21 +279,21 @@ export const LoginScreen: React.FC = () => {
 
           {/* User existence & error alert */}
           {errorMessage && (
-            <div className="flex flex-col gap-2 p-3 rounded-xl bg-rose-50 text-rose-800 text-xs border border-rose-200">
+            <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-amber-50 text-amber-950 text-xs border border-amber-300 shadow-2xs animate-fade-in">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                <span className="leading-snug font-medium">{errorMessage}</span>
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span className="leading-snug font-semibold">{errorMessage}</span>
               </div>
-              {errorMessage.toLowerCase().includes('sign up') && (
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={handleProceedToSignup}
-                  className="self-start text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#E4E7EC] shadow-2xs mt-0.5 cursor-pointer"
+                  className="w-full text-center text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#094843] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl shadow-2xs cursor-pointer transition-all"
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
+                  <UserPlus className="w-4 h-4" />
                   <span>Create Account / Sign Up Now →</span>
                 </button>
-              )}
+              </div>
             </div>
           )}
 
@@ -320,7 +330,6 @@ export const LoginScreen: React.FC = () => {
                 isPassword
                 leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
                 placeholder="Enter password"
-                required
               />
             </div>
 
@@ -406,21 +415,21 @@ export const LoginScreen: React.FC = () => {
 
       {/* Interactive Account Not Found -> Signup Modal Prompt */}
       {showSignupPrompt && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-[#E4E7EC] relative animate-scale-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-[#E4E7EC] relative animate-scale-up">
             <button
               onClick={() => setShowSignupPrompt(false)}
-              className="absolute top-3.5 right-3.5 p-1 rounded-full text-[#9CA3AF] hover:text-[#111827] hover:bg-gray-100 transition-colors"
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#9CA3AF] hover:text-[#111827] hover:bg-gray-100 transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
 
-            <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-100 text-[#0B5A54] flex items-center justify-center mx-auto shadow-2xs">
-              <UserPlus className="w-7 h-7 text-[#0B5A54]" />
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-100 text-[#0B5A54] flex items-center justify-center mx-auto shadow-xs">
+              <UserPlus className="w-8 h-8 text-[#0B5A54]" />
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base sm:text-lg font-bold font-heading text-[#111827]">Account Not Found</h3>
+              <h3 className="text-lg font-extrabold font-heading text-[#111827]">Account Not Found</h3>
               <p className="text-xs text-[#6B7280] leading-relaxed">
                 We couldn't find an account matching <span className="font-bold text-[#111827]">{unregisteredIdentifier}</span>. Would you like to create a new profile now?
               </p>
@@ -433,7 +442,7 @@ export const LoginScreen: React.FC = () => {
                 fullWidth
                 onClick={handleProceedToSignup}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
-                className="py-3 rounded-xl text-xs font-bold shadow-xs"
+                className="py-3.5 rounded-xl text-xs font-bold shadow-xs"
               >
                 Sign Up & Create Account
               </Button>
