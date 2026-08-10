@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,7 +57,11 @@ type Step2Data = z.infer<typeof step2Schema>;
 
 export const RegisterScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const registerUser = useCarePulseStore((s) => s.registerUser);
+
+  const initialPhone = (location.state as any)?.initialPhone || '';
+  const initialEmail = (location.state as any)?.initialEmail || '';
 
   const [step, setStep] = useState<1 | 2>(1);
   const [formDataStep1, setFormDataStep1] = useState<Step1Data | null>(null);
@@ -78,8 +82,8 @@ export const RegisterScreen: React.FC = () => {
   const form2 = useForm<Step2Data>({
     resolver: zodResolver(step2Schema),
     defaultValues: {
-      phone: '',
-      email: '',
+      phone: initialPhone,
+      email: initialEmail,
       emergencyName: '',
       emergencyPhone: '',
       allergies: '',

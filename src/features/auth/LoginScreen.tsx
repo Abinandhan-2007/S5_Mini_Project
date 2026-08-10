@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Phone, Lock, ArrowRight, AlertCircle, UserPlus } from 'lucide-react';
+import { Activity, Phone, Lock, ArrowRight, AlertCircle, UserPlus, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -16,6 +16,10 @@ export const LoginScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sign up modal prompt state
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
@@ -93,7 +97,6 @@ export const LoginScreen: React.FC = () => {
   const handleGoogleClick = async () => {
     setErrorMessage(null);
 
-    // If client ID is configured and GIS prompt is ready
     if (GOOGLE_CLIENT_ID && window.google?.accounts?.id) {
       setIsGoogleLoading(true);
       try {
@@ -108,7 +111,6 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    // Interactive Demo / Sandbox Fallback if Client ID is not yet provided in .env
     setIsGoogleLoading(true);
     try {
       const demoEmail = prompt('Enter your Gmail address for login (or leave blank for demo user):', 'user@gmail.com');
@@ -182,7 +184,15 @@ export const LoginScreen: React.FC = () => {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErrorMessage(data.detail || data.error || 'Authentication failed. Please check your credentials.');
+        const errorDetail: string = data.detail || data.error || 'Authentication failed.';
+
+        // If user is not found, show the Signup option modal prompt
+        if (res.status === 404 || errorDetail.toLowerCase().includes('not found') || errorDetail.toLowerCase().includes('sign up')) {
+          setUnregisteredIdentifier(inputVal);
+          setShowSignupPrompt(true);
+        }
+
+        setErrorMessage(errorDetail);
         setIsLoading(false);
         return;
       }
@@ -218,6 +228,9 @@ export const LoginScreen: React.FC = () => {
           navigate('/home');
         }
       } else {
+        // User not found in local store either -> trigger signup option modal
+        setUnregisteredIdentifier(inputVal);
+        setShowSignupPrompt(true);
         setErrorMessage('No account found with this phone number or email. Please sign up to create an account.');
       }
     } finally {
@@ -225,8 +238,16 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  const handleProceedToSignup = () => {
+    setShowSignupPrompt(false);
+    const isEmail = unregisteredIdentifier.includes('@');
+    navigate('/register', {
+      state: isEmail ? { initialEmail: unregisteredIdentifier } : { initialPhone: unregisteredIdentifier },
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 py-8 sm:px-6 w-full">
+    <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 py-8 sm:px-6 w-full relative">
       <div className="w-full max-w-sm sm:max-w-md space-y-5">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
@@ -256,8 +277,8 @@ export const LoginScreen: React.FC = () => {
               {errorMessage.toLowerCase().includes('sign up') && (
                 <button
                   type="button"
-                  onClick={() => navigate('/register')}
-                  className="self-start text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#E4E7EC] shadow-2xs mt-0.5"
+                  onClick={handleProceedToSignup}
+                  className="self-start text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#E4E7EC] shadow-2xs mt-0.5 cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Create Account / Sign Up Now →</span>
@@ -382,6 +403,54 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Interactive Account Not Found -> Signup Modal Prompt */}
+      {showSignupPrompt && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-[#E4E7EC] relative animate-scale-up">
+            <button
+              onClick={() => setShowSignupPrompt(false)}
+              className="absolute top-3.5 right-3.5 p-1 rounded-full text-[#9CA3AF] hover:text-[#111827] hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-100 text-[#0B5A54] flex items-center justify-center mx-auto shadow-2xs">
+              <UserPlus className="w-7 h-7 text-[#0B5A54]" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base sm:text-lg font-bold font-heading text-[#111827]">Account Not Found</h3>
+              <p className="text-xs text-[#6B7280] leading-relaxed">
+                We couldn't find an account matching <span className="font-bold text-[#111827]">{unregisteredIdentifier}</span>. Would you like to create a new profile now?
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <Button
+                type="button"
+                size="lg"
+                fullWidth
+                onClick={handleProceedToSignup}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+                className="py-3 rounded-xl text-xs font-bold shadow-xs"
+              >
+                Sign Up & Create Account
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={() => setShowSignupPrompt(false)}
+                className="py-2.5 rounded-xl text-xs font-bold text-[#6B7280] border-[#E4E7EC] hover:bg-gray-50"
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
