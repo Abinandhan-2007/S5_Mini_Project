@@ -290,51 +290,51 @@ export const HomeScreen: React.FC = () => {
 
       {/* REBUILT EXECUTIVE QUEUE STATUS POPUP MODAL (SOLID WHITE BACKGROUND) */}
       {isQueueModalOpen && activeAppointment && (
-        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 select-none">
-          <div className="bg-white rounded-3xl max-w-[340px] sm:max-w-[365px] w-full p-4 sm:p-5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-3.5 max-h-[92vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200 select-none">
+          <div className="bg-white rounded-3xl w-full max-w-sm sm:max-w-md p-5 sm:p-6 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-4 max-h-[90vh] overflow-y-auto border border-slate-100 animate-in zoom-in-95 duration-200">
             
             {/* 1. Header Row */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <div className="flex items-center gap-1.5">
-                <Ticket className="w-4 h-4 text-[#0B5A54]" />
-                <h3 className="text-sm font-extrabold text-[#111827] tracking-tight">Queue Status</h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-4.5 h-4.5 text-[#0B5A54]" />
+                <h3 className="text-base font-extrabold text-[#111827] tracking-tight">Queue Status</h3>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-[11px] px-2.5 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
+                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
                   {activeAppointment.ticketNumber || 'TK-482'}
                 </span>
                 <button
                   onClick={() => setIsQueueModalOpen(false)}
-                  className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0 outline-none"
+                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0 outline-none"
                   title="Close"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* 2. Doctor/Appointment Summary Strip (Clean Solid Card) */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 <Avatar src={activeAppointment.doctorPhoto} size="sm" />
                 <div>
-                  <h4 className="text-xs font-extrabold text-[#111827] leading-tight">{activeAppointment.doctorName}</h4>
-                  <p className="text-[10px] font-bold text-[#0B5A54] leading-tight">{activeAppointment.doctorSpecialty}</p>
+                  <h4 className="text-xs sm:text-sm font-extrabold text-[#111827] leading-tight">{activeAppointment.doctorName}</h4>
+                  <p className="text-[11px] font-bold text-[#0B5A54] leading-tight">{activeAppointment.doctorSpecialty}</p>
                 </div>
               </div>
 
-              <div className="text-right pl-2.5 border-l border-slate-200/80">
-                <div className="flex items-center justify-end gap-1 text-[11px] font-black text-[#111827]">
-                  <CalendarIcon className="w-3 h-3 text-[#0B5A54]" />
+              <div className="text-right pl-3 border-l border-slate-200/80">
+                <div className="flex items-center justify-end gap-1 text-xs font-black text-[#111827]">
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
                   <span>{activeAppointment.date}</span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-semibold">{activeAppointment.timeSlot}</span>
+                <span className="text-[11px] text-slate-500 font-semibold">{activeAppointment.timeSlot}</span>
               </div>
             </div>
 
             {/* 3. Live Token Queue Tracker (Vertical Timeline) */}
-            <div className="space-y-2.5 pt-0.5">
+            <div className="space-y-3 pt-0.5">
               <div className="flex items-center justify-between px-0.5">
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                   OPD LIVE CONSULTATION TIMELINE
@@ -345,16 +345,16 @@ export const HomeScreen: React.FC = () => {
                 </span>
               </div>
 
-              <div className="relative pl-1 pr-0.5 space-y-3">
+              <div className="relative pl-1 space-y-3">
                 {/* Thin Vertical Timeline Line */}
                 <div className="absolute left-[11px] top-2.5 bottom-2.5 w-[1.5px] bg-slate-200 z-0" />
 
                 {/* Token-1 (Completed - NO STRIKETHROUGH) */}
-                <div className="relative flex items-center gap-2.5 z-10">
+                <div className="relative flex items-center gap-3 z-10">
                   <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
                     <Check className="w-3 h-3 text-white stroke-[3]" />
                   </div>
-                  <div className="flex-1 flex items-center justify-between pr-0.5">
+                  <div className="flex-1 flex items-center justify-between">
                     <div>
                       <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-1 (TK-478)</p>
                       <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
@@ -364,11 +364,11 @@ export const HomeScreen: React.FC = () => {
                 </div>
 
                 {/* Token-2 (Completed - NO STRIKETHROUGH) */}
-                <div className="relative flex items-center gap-2.5 z-10">
+                <div className="relative flex items-center gap-3 z-10">
                   <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
                     <Check className="w-3 h-3 text-white stroke-[3]" />
                   </div>
-                  <div className="flex-1 flex items-center justify-between pr-0.5">
+                  <div className="flex-1 flex items-center justify-between">
                     <div>
                       <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-2 (TK-479)</p>
                       <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
@@ -378,7 +378,7 @@ export const HomeScreen: React.FC = () => {
                 </div>
 
                 {/* Token-3 (Current Patient Consulting - NO WRAPPING PREMUM CARD) */}
-                <div className="relative flex items-start gap-2.5 z-10">
+                <div className="relative flex items-start gap-3 z-10">
                   <div className="relative flex items-center justify-center w-5 h-5 shrink-0 mt-1 z-10">
                     <span className="absolute inset-0 rounded-full bg-amber-400/50 animate-ping" />
                     <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs z-10">
@@ -386,14 +386,14 @@ export const HomeScreen: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex-1 bg-amber-50/90 border border-amber-300 rounded-xl p-3 space-y-1.5 shadow-2xs">
-                    <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center justify-between gap-1 flex-wrap sm:flex-nowrap">
                       <div className="flex items-center gap-1.5 shrink-0">
                         <p className="text-xs font-black text-amber-950 whitespace-nowrap">Token-3 (TK-480)</p>
                         <span className="bg-amber-500 text-white font-black text-[8.5px] px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
                           NOW SERVING
                         </span>
                       </div>
-                      <span className="text-[9.5px] font-extrabold text-amber-900 bg-white/90 px-2 py-0.5 rounded border border-amber-200 whitespace-nowrap shrink-0">
+                      <span className="text-[9.5px] font-extrabold text-amber-900 bg-white px-2 py-0.5 rounded border border-amber-200 whitespace-nowrap shrink-0 ml-auto sm:ml-0">
                         In Consultation
                       </span>
                     </div>
@@ -402,34 +402,27 @@ export const HomeScreen: React.FC = () => {
                 </div>
 
                 {/* Token-4 (Upcoming - NO 'WAITING IN LOUNGE' TEXT) */}
-                <div className="relative flex items-center gap-2.5 z-10">
+                <div className="relative flex items-center gap-3 z-10">
                   <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0" />
-                  <div className="flex-1 flex items-center justify-between pr-0.5">
+                  <div className="flex-1 flex items-center justify-between">
                     <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-4 (TK-481)</p>
                     <span className="text-[10px] font-semibold text-slate-500">Est. 10:25 AM</span>
                   </div>
                 </div>
 
                 {/* Token-5 (Patient's Own Token - Highlighted Box) */}
-                <div className="relative flex items-start gap-2.5 z-10">
+                <div className="relative flex items-start gap-3 z-10">
                   <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1.5 shadow-2xs">
                     ⭐
                   </div>
 
-                  <div className="flex-1 bg-[#E3F3F1]/90 border-2 border-[#0B5A54] rounded-2xl p-3 space-y-2 shadow-xs">
-                    {/* Top Row: YOUR TOKEN badge + Token Number + Wait Time Pill */}
-                    <div className="flex items-center justify-between gap-1 flex-wrap sm:flex-nowrap">
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="bg-[#0B5A54] text-white text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
-                          YOUR TOKEN
-                        </span>
-                        <span className="text-xs font-black text-[#111827] tracking-tight whitespace-nowrap">TK-482</span>
-                      </div>
-
-                      <div className="bg-[#0B5A54] text-white font-extrabold text-[9.5px] px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 shadow-2xs ml-auto">
-                        <Clock className="w-3 h-3 text-teal-200" />
-                        <span>~35 min remaining</span>
-                      </div>
+                  <div className="flex-1 bg-[#E3F3F1] border-2 border-[#0B5A54] rounded-2xl p-3.5 space-y-2 shadow-xs">
+                    {/* Top Row: YOUR TOKEN badge + Token Number */}
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#0B5A54] text-white text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
+                        YOUR TOKEN
+                      </span>
+                      <span className="text-xs font-black text-[#111827] tracking-tight whitespace-nowrap">Token-5 (TK-482)</span>
                     </div>
 
                     {/* Patient Name & Time */}
