@@ -25,6 +25,27 @@ ALTER TABLE patients ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 ALTER TABLE patients ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE patients ALTER COLUMN dob DROP NOT NULL;
 
+-- Appointments Table (Placed after patients as it references patients.id)
+CREATE TABLE IF NOT EXISTS appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+    ticket_number VARCHAR(50) NOT NULL,
+    doctor_id VARCHAR(100) NOT NULL,
+    doctor_name VARCHAR(255) NOT NULL,
+    doctor_specialty VARCHAR(255) DEFAULT 'General Medicine',
+    doctor_photo TEXT DEFAULT '',
+    hospital_name VARCHAR(255) DEFAULT 'CarePulse Central Hospital',
+    date DATE NOT NULL,
+    time_slot VARCHAR(50) NOT NULL,
+    type VARCHAR(50) DEFAULT 'In-Person',
+    status VARCHAR(50) DEFAULT 'Upcoming',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for appointments
+CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
+
 -- Consultations Table with JSONB and pgvector
 CREATE TABLE IF NOT EXISTS consultations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,27 +63,8 @@ CREATE TABLE IF NOT EXISTS consultations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Appointments Table
-CREATE TABLE IF NOT EXISTS appointments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
-    ticket_number VARCHAR(50) NOT NULL,
-    doctor_id VARCHAR(100) NOT NULL,
-    doctor_name VARCHAR(255) NOT NULL,
-    doctor_specialty VARCHAR(255) DEFAULT 'General Medicine',
-    doctor_photo TEXT DEFAULT '',
-    hospital_name VARCHAR(255) DEFAULT 'CarePulse Central Hospital',
-    date DATE NOT NULL,
-    time_slot VARCHAR(50) NOT NULL,
-    type VARCHAR(50) DEFAULT 'In-Person',
-    status VARCHAR(50) DEFAULT 'Upcoming',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Indexes for optimal performance
 CREATE INDEX IF NOT EXISTS idx_consultations_soap_data ON consultations USING gin (soap_data);
-CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
-CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
 
 -- Insert Mock Patient and Consultation if empty
 INSERT INTO patients (id, full_name, email, phone, dob, gender, blood_group)
