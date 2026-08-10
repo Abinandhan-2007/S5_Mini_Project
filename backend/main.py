@@ -117,16 +117,32 @@ def register_patient(request: RegisterRequest):
     if not email and not phone:
         raise HTTPException(status_code=400, detail="Phone number or email is required for registration.")
 
+    norm_phone_digits = normalize_phone_number(phone)
+    lower_email = email.lower()
+
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
-                # Check for existing patient
-                cur.execute(
-                    "SELECT id FROM patients WHERE (email = %s AND email != '') OR (phone = %s AND phone != '') LIMIT 1",
-                    (email, phone)
-                )
-                if cur.fetchone():
-                    raise HTTPException(status_code=409, detail="An account with this email or phone number already exists. Please log in.")
+                # 1. Check if email already exists
+                if lower_email:
+                    cur.execute("SELECT id, email FROM patients WHERE LOWER(email) = %s LIMIT 1", (lower_email,))
+                    if cur.fetchone():
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=f"An account with email '{email}' already exists. Please log in instead."
+                        )
+
+                # 2. Check if phone number already exists
+                if norm_phone_digits:
+                    cur.execute(
+                        "SELECT id, phone FROM patients WHERE phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\D', '', 'g'), 10) = %s LIMIT 1",
+                        (norm_phone_digits,)
+                    )
+                    if cur.fetchone():
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=f"An account with phone number '{phone}' already exists. Please log in instead."
+                        )
 
                 cur.execute(
                     """
@@ -158,8 +174,20 @@ def register_patient(request: RegisterRequest):
         db = read_json_db()
         patients = db.get("patients", [])
         for p in patients:
-            if (email and p.get("email") == email) or (phone and p.get("phone") == phone):
-                raise HTTPException(status_code=409, detail="An account with this email or phone number already exists. Please log in.")
+            p_phone_digits = normalize_phone_number(p.get("phone", ""))
+            p_email = (p.get("email") or "").strip().lower()
+
+            if lower_email and p_email and lower_email == p_email:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"An account with email '{email}' already exists. Please log in instead."
+                )
+
+            if norm_phone_digits and p_phone_digits and norm_phone_digits == p_phone_digits:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"An account with phone number '{phone}' already exists. Please log in instead."
+                )
 
         new_id = str(uuid.uuid4())
         new_patient = {
