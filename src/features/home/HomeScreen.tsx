@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lightbulb, Clock, Pill, ChevronRight, Ticket, Calendar as CalendarIcon, User as UserIcon, Building2, Search, Mic } from 'lucide-react';
+import {
+  Lightbulb,
+  Clock,
+  Pill,
+  ChevronRight,
+  Ticket,
+  Calendar as CalendarIcon,
+  User as UserIcon,
+  Building2,
+  Search,
+  Mic,
+  Users,
+  X,
+  RefreshCw,
+} from 'lucide-react';
 
 import { TopBar } from '../../components/ui/TopBar';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -18,6 +32,15 @@ export const HomeScreen: React.FC = () => {
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [isTokenQueueOpen, setIsTokenQueueOpen] = useState(false);
+  const [isRefreshingQueue, setIsRefreshingQueue] = useState(false);
+
+  const handleRefreshQueue = () => {
+    setIsRefreshingQueue(true);
+    setTimeout(() => {
+      setIsRefreshingQueue(false);
+    }, 600);
+  };
 
   // Prompt native mobile OS system location permission on app startup without redirecting
   useEffect(() => {
@@ -70,40 +93,42 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white pb-28 w-full relative overflow-hidden">
-      {/* VIBRANT EXTENDED CYAN HERO TOP SECTION */}
-      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-60% to-white pt-2 pb-10 sm:pb-12 px-4 w-full relative space-y-4 sm:rounded-t-3xl shadow-2xs">
+      {/* VIBRANT EXTENDED CYAN HERO TOP SECTION - FULL WIDTH FIT */}
+      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-60% to-white pt-0 pb-10 sm:pb-12 w-full relative shadow-2xs">
         <TopBar variant="cyan" />
 
         {/* PILL SEARCH BAR WITH VOICE MIC BUTTON */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all"
-        >
-          <button
-            type="submit"
-            className="p-1 text-[#6B7280] hover:text-[#0B5A54] transition-colors shrink-0 flex items-center justify-center cursor-pointer"
-            title="Search"
+        <div className="px-4 mt-4">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all"
           >
-            <Search className="w-4 h-4" />
-          </button>
+            <button
+              type="submit"
+              className="p-1 text-[#6B7280] hover:text-[#0B5A54] transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+              title="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
 
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Doctor's, Hospitals..."
-            className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
-          />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search Doctor's, Hospitals..."
+              className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
+            />
 
-          <button
-            type="button"
-            onClick={() => alert('Voice Search: Speak your query...')}
-            className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-colors shrink-0 shadow-2xs"
-            title="Voice Search"
-          >
-            <Mic className="w-4 h-4 text-[#111827]" />
-          </button>
-        </form>
+            <button
+              type="button"
+              onClick={() => alert('Voice Search: Speak your query...')}
+              className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-colors shrink-0 shadow-2xs"
+              title="Voice Search"
+            >
+              <Mic className="w-4 h-4 text-[#111827]" />
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* MAIN BODY CONTENT */}
@@ -123,9 +148,18 @@ export const HomeScreen: React.FC = () => {
                   <Ticket className="w-4 h-4 text-[#14B8A6]" />
                   <span>APPOINTMENT TICKET</span>
                 </div>
-                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-pill font-bold">
-                  {activeAppointment.ticketNumber}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsTokenQueueOpen(true)}
+                    className="bg-amber-50 text-amber-700 border border-amber-200/80 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-amber-100 transition-colors cursor-pointer"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                    Queue: 3 Ahead
+                  </button>
+                  <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-pill font-bold">
+                    {activeAppointment.ticketNumber}
+                  </span>
+                </div>
               </div>
 
               {/* Ticket Body */}
@@ -165,10 +199,18 @@ export const HomeScreen: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-1 flex justify-end">
+                <div className="pt-1 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => navigate('/history')}
-                    className="bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white px-3.5 py-1.5 rounded-pill text-xs font-bold transition-all shadow-2xs"
+                    onClick={() => setIsTokenQueueOpen(true)}
+                    className="bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-pill text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Users className="w-3.5 h-3.5 text-amber-600" />
+                    Persons Before Me (3)
+                  </button>
+
+                  <button
+                    onClick={() => setIsTokenQueueOpen(true)}
+                    className="bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white px-3.5 py-1.5 rounded-pill text-xs font-bold transition-all shadow-2xs cursor-pointer"
                   >
                     View Details →
                   </button>
@@ -192,7 +234,7 @@ export const HomeScreen: React.FC = () => {
 
             <button
               onClick={() => navigate('/health-ai')}
-              className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1 rounded-pill transition-colors shrink-0 ml-2"
+              className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1 rounded-pill transition-colors shrink-0 ml-2 cursor-pointer"
             >
               Ask AI →
             </button>
@@ -260,6 +302,180 @@ export const HomeScreen: React.FC = () => {
       </main>
 
       <BottomNav />
+
+      {/* LIVE TOKEN QUEUE POPUP MODAL */}
+      {isTokenQueueOpen && activeAppointment && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border border-gray-100 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-gray-100 pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-base font-extrabold text-gray-900 tracking-tight">Live Token Queue Status</h3>
+                </div>
+                <p className="text-xs text-gray-500 font-medium">
+                  {activeAppointment.doctorName} • {activeAppointment.hospitalName}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsTokenQueueOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Hero Token Status Card */}
+            <div className="bg-gradient-to-br from-[#0B5A54] via-[#14B8A6] to-[#0B5A54] text-white p-4 rounded-2xl shadow-md space-y-3 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-teal-100">NOW CONSULTING</span>
+                  <div className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                    <span>TK-479</span>
+                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full text-teal-50">Room 4</span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-teal-100">YOUR TOKEN</span>
+                  <div className="text-2xl font-black tracking-tight text-yellow-300">
+                    {activeAppointment.ticketNumber}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/15 backdrop-blur-md rounded-xl p-2.5 flex items-center justify-between text-xs font-semibold">
+                <div className="flex items-center gap-2 text-white">
+                  <Users className="w-4 h-4 text-yellow-300" />
+                  <span>
+                    <strong>3 Persons</strong> Ahead of You
+                  </span>
+                </div>
+                <span className="bg-white/20 text-white px-2 py-0.5 rounded-full text-[11px] font-bold">
+                  ~15 mins wait
+                </span>
+              </div>
+            </div>
+
+            {/* List of Persons / Tokens Before You */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between px-1">
+                <h4 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                  TOKENS AHEAD OF YOU (3 PATIENTS)
+                </h4>
+                <button
+                  onClick={handleRefreshQueue}
+                  className="text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshingQueue ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {/* Token 1: In Room */}
+                <div className="bg-emerald-50 border border-emerald-200/80 p-3 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-500 text-white font-mono font-black text-xs flex items-center justify-center shadow-xs">
+                      479
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h5 className="text-xs font-bold text-gray-900">Token #TK-479</h5>
+                        <span className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase">
+                          In Cabin
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 font-medium">Inside OPD Room 4 • Consultation Active</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700">10:15 AM</span>
+                </div>
+
+                {/* Token 2: Next in Line */}
+                <div className="bg-amber-50/90 border border-amber-200/80 p-3 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-amber-500 text-white font-mono font-black text-xs flex items-center justify-center shadow-xs">
+                      480
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h5 className="text-xs font-bold text-gray-900">Token #TK-480</h5>
+                        <span className="bg-amber-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase">
+                          Next Up
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 font-medium">Vitals Desk • Called for Checkup</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-700">10:20 AM</span>
+                </div>
+
+                {/* Token 3: Waiting in Lounge */}
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-slate-600 text-white font-mono font-black text-xs flex items-center justify-center shadow-xs">
+                      481
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h5 className="text-xs font-bold text-gray-900">Token #TK-481</h5>
+                        <span className="bg-slate-200 text-slate-700 text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase">
+                          Waiting
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 font-medium">Lounge Waiting Area • Checked-In</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500">10:25 AM</span>
+                </div>
+
+                {/* YOUR TOKEN HIGHLIGHT */}
+                <div className="bg-[#E3F3F1] border-2 border-[#14B8A6] p-3 rounded-2xl flex items-center justify-between shadow-sm relative">
+                  <div className="absolute -top-2 right-3 bg-[#0B5A54] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    ⭐ YOUR TOKEN
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#0B5A54] text-white font-mono font-black text-xs flex items-center justify-center shadow-xs">
+                      482
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-black text-gray-900">
+                        {activeAppointment.patientName} (#{activeAppointment.ticketNumber})
+                      </h5>
+                      <p className="text-[11px] text-[#0B5A54] font-bold">You are 4th in Queue • Ready for Entry</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#0B5A54]">{activeAppointment.timeSlot}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Action Buttons */}
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setIsTokenQueueOpen(false);
+                  navigate('/history');
+                }}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-3 rounded-xl transition-colors text-center cursor-pointer"
+              >
+                Full History
+              </button>
+
+              <button
+                onClick={() => setIsTokenQueueOpen(false)}
+                className="flex-1 bg-[#0B5A54] hover:bg-[#084540] text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-colors text-center shadow-sm cursor-pointer"
+              >
+                Close Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
