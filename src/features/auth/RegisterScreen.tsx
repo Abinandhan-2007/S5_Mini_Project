@@ -89,7 +89,6 @@ export const RegisterScreen: React.FC = () => {
 
   // Modal alert for already existing user
   const [showAlreadyExistsModal, setShowAlreadyExistsModal] = useState(false);
-  const [existingIdentifier, setExistingIdentifier] = useState('');
 
   const form1 = useForm<Step1Data>({
     resolver: zodResolver(step1Schema),
@@ -176,8 +175,7 @@ export const RegisterScreen: React.FC = () => {
 
       // 409 Conflict: user already exists in PostgreSQL database
       if (res.status === 409 || (resData.detail && resData.detail.toLowerCase().includes('already exists'))) {
-        setExistingIdentifier(data.email || data.phone);
-        setRegisterError(resData.detail || 'An account with this email or phone number already exists.');
+        setRegisterError(resData.detail || 'An account with these details already exists.');
         setShowAlreadyExistsModal(true);
         setIsSubmitting(false);
         return;
@@ -204,20 +202,25 @@ export const RegisterScreen: React.FC = () => {
       const inputDigits = data.phone.replace(/\D/g, '').slice(-10);
       const inputLowerEmail = data.email.trim().toLowerCase();
 
-      const isConflict = existingList.some((u) => {
-        const uName = (u.fullName || '').trim().toLowerCase();
-        const uDigits = (u.phone || '').replace(/\D/g, '').slice(-10);
-        const uEmail = (u.email || '').trim().toLowerCase();
-        return (
-          (inputName && uName && inputName === uName) ||
-          (inputDigits && uDigits && inputDigits === uDigits) ||
-          (inputLowerEmail && uEmail && inputLowerEmail === uEmail)
-        );
-      });
+      // Check name conflict
+      if (inputName && existingList.some((u) => (u.fullName || '').trim().toLowerCase() === inputName)) {
+        setRegisterError(`An account with the name '${formDataStep1.fullName}' already exists. Please log in or use a different name.`);
+        setShowAlreadyExistsModal(true);
+        setIsSubmitting(false);
+        return;
+      }
 
-      if (isConflict) {
-        setExistingIdentifier(data.email || data.phone);
-        setRegisterError('An account with this email or phone number already exists.');
+      // Check email conflict
+      if (inputLowerEmail && existingList.some((u) => (u.email || '').trim().toLowerCase() === inputLowerEmail)) {
+        setRegisterError(`An account with email '${data.email}' already exists. Please log in instead.`);
+        setShowAlreadyExistsModal(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check phone conflict
+      if (inputDigits && existingList.some((u) => (u.phone || '').replace(/\D/g, '').slice(-10) === inputDigits)) {
+        setRegisterError(`An account with phone number '${data.phone}' already exists. Please log in instead.`);
         setShowAlreadyExistsModal(true);
         setIsSubmitting(false);
         return;
@@ -533,8 +536,8 @@ export const RegisterScreen: React.FC = () => {
 
             <div className="space-y-1.5">
               <h3 className="text-lg font-extrabold font-heading text-[#111827]">Account Already Exists</h3>
-              <p className="text-xs text-[#6B7280] leading-relaxed">
-                An account with <span className="font-bold text-[#111827]">{existingIdentifier}</span> is already registered. Please log in to access your profile.
+              <p className="text-xs text-[#6B7280] leading-relaxed font-medium">
+                {registerError || 'An account with these details is already registered. Please log in to access your profile.'}
               </p>
             </div>
 
