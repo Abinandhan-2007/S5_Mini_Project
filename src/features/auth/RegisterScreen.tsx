@@ -97,10 +97,12 @@ export const RegisterScreen: React.FC = () => {
     setStep(2);
   };
 
-  const onStep2Submit = (data: Step2Data) => {
+  const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
+
+  const onStep2Submit = async (data: Step2Data) => {
     if (!formDataStep1) return;
 
-    registerUser({
+    const payload = {
       fullName: formDataStep1.fullName,
       password: formDataStep1.password,
       dob: formDataStep1.dob,
@@ -115,7 +117,31 @@ export const RegisterScreen: React.FC = () => {
       },
       allergies: data.allergies,
       preExistingConditions: data.preExistingConditions,
-    });
+    };
+
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const resData = await res.json();
+      if (res.ok && resData.user) {
+        setUserAuth(resData.user, resData.token);
+      } else {
+        registerUser(payload);
+      }
+    } catch {
+      registerUser(payload);
+    }
+
+    // Save to local registered users list fallback
+    const storedUsersStr = localStorage.getItem('carepulse_registered_users');
+    const existingList: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+    existingList.push({ ...payload, id: `usr-${Date.now()}` });
+    localStorage.setItem('carepulse_registered_users', JSON.stringify(existingList));
 
     navigate('/home');
   };

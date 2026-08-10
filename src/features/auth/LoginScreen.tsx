@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Activity, Phone, Lock, ArrowRight, AlertCircle, UserPlus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -9,7 +9,6 @@ import { loadGoogleScript, authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt }
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
-  const login = useCarePulseStore((s) => s.login);
   const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
 
   const [phone, setPhone] = useState('');
@@ -152,14 +151,78 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
-    setTimeout(() => {
-      login(phone || '+91 98765 43210');
+
+    const inputVal = phone.trim();
+    const passVal = password.trim();
+
+    if (!inputVal) {
+      setErrorMessage('Please enter your registered phone number or email.');
       setIsLoading(false);
-      navigate('/home');
-    }, 600);
+      return;
+    }
+
+    const isEmail = inputVal.includes('@');
+    const payload = isEmail
+      ? { email: inputVal, password: passVal }
+      : { phone: inputVal, password: passVal };
+
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErrorMessage(data.detail || data.error || 'Authentication failed. Please check your credentials.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        setUserAuth(data.user, data.token);
+        navigate('/home');
+      }
+    } catch (networkErr) {
+      console.warn('Network error, checking local storage fallback:', networkErr);
+
+      // Local Fallback Check
+      const storedUsersStr = localStorage.getItem('carepulse_registered_users');
+      const registeredUsers: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+
+      const inputDigits = inputVal.replace(/\D/g, '').slice(-10);
+      const inputLowerEmail = inputVal.toLowerCase();
+
+      const localMatched = registeredUsers.find((u) => {
+        const uDigits = (u.phone || '').replace(/\D/g, '').slice(-10);
+        const uEmail = (u.email || '').toLowerCase();
+        return (
+          (inputDigits && uDigits && inputDigits === uDigits) ||
+          (inputLowerEmail && uEmail && inputLowerEmail === uEmail)
+        );
+      });
+
+      if (localMatched) {
+        if (localMatched.password && passVal && localMatched.password !== passVal) {
+          setErrorMessage('Incorrect password. Please verify and try again.');
+        } else {
+          setUserAuth(localMatched, `local-token-${Date.now()}`);
+          navigate('/home');
+        }
+      } else {
+        setErrorMessage('No account found with this phone number or email. Please sign up to create an account.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -183,21 +246,34 @@ export const LoginScreen: React.FC = () => {
             <p className="text-xs text-[#6B7280] leading-snug">Log in to manage appointments & health records</p>
           </div>
 
+          {/* User existence & error alert */}
           {errorMessage && (
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-50 text-red-700 text-xs border border-red-200">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="flex flex-col gap-2 p-3 rounded-xl bg-rose-50 text-rose-800 text-xs border border-rose-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span className="leading-snug font-medium">{errorMessage}</span>
+              </div>
+              {errorMessage.toLowerCase().includes('sign up') && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/register')}
+                  className="self-start text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#E4E7EC] shadow-2xs mt-0.5"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Create Account / Sign Up Now →</span>
+                </button>
+              )}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Phone Number Input */}
+            {/* Phone Number / Email Input */}
             <div className="space-y-1.5 text-left">
               <Input
-                label="PHONE NUMBER"
+                label="PHONE NUMBER OR EMAIL"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter phone number"
+                placeholder="Enter phone number or email"
                 leftIcon={<Phone className="w-4 h-4 text-[#0B5A54]" />}
                 required
               />
@@ -211,7 +287,7 @@ export const LoginScreen: React.FC = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset link sent to your registered phone!')}
+                  onClick={() => alert('Password reset link sent to your registered contact!')}
                   className="text-[11px] font-bold text-[#0B5A54] hover:underline"
                 >
                   Forgot Password?

@@ -8,9 +8,15 @@ if str(backend_dir) not in sys.path:
 
 import logging
 import uuid
+import re
 from contextlib import asynccontextmanager
 from typing import List, Optional
 import json
+
+def normalize_phone_number(p: str) -> str:
+    """Normalize phone numbers by keeping digits and extracting the last 10 digits."""
+    digits = re.sub(r"\D", "", p or "")
+    return digits[-10:] if len(digits) >= 10 else digits
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +29,7 @@ from schemas import (
     GoogleAuthRequest,
     AuthResponse,
     LoginRequest,
+    RegisterRequest,
     PatientResponse,
     ConsultationCreate,
     ConsultationResponse,
@@ -95,68 +102,205 @@ def google_auth(request: GoogleAuthRequest):
     return process_google_login(google_user)
 
 
+@app.post("/api/auth/register", response_model=AuthResponse)
+def register_patient(request: RegisterRequest):
+    """Register a new patient into PostgreSQL or JSON database."""
+    email = request.email.strip() if request.email else ""
+    phone = request.phone.strip() if request.phone else ""
+    name = request.fullName.strip()
+    password = request.password or ""
+    avatar = request.avatarUrl or "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80"
+    dob = request.dob or "1995-07-24"
+    gender = request.gender or "Female"
+    blood_group = request.bloodGroup or "O+"
+
+    if not email and not phone:
+        raise HTTPException(status_code=400, detail="Phone number or email is required for registration.")
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Check for existing patient
+                cur.execute(
+                    "SELECT id FROM patients WHERE (email = %s AND email != '') OR (phone = %s AND phone != '') LIMIT 1",
+                    (email, phone)
+                )
+                if cur.fetchone():
+                    raise HTTPException(status_code=409, detail="An account with this email or phone number already exists. Please log in.")
+
+                cur.execute(
+                    """
+                    INSERT INTO patients (full_name, email, phone, dob, gender, blood_group, avatar_url, password_hash, auth_provider)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'local')
+                    RETURNING *
+                    """,
+                    (name, email, phone, dob, gender, blood_group, avatar, password)
+                )
+                row = cur.fetchone()
+                conn.commit()
+
+                return AuthResponse(
+                    success=True,
+                    user=PatientResponse(
+                        id=str(row["id"]),
+                        fullName=row["full_name"],
+                        email=row["email"],
+                        phone=row.get("phone") or "",
+                        dob=str(row.get("dob") or ""),
+                        gender=row.get("gender") or "Not specified",
+                        bloodGroup=row.get("blood_group") or "O+",
+                        avatarUrl=row.get("avatar_url") or avatar,
+                        authProvider="local"
+                    ),
+                    token=f"cp-token-{row['id']}"
+                )
+    else:
+        db = read_json_db()
+        patients = db.get("patients", [])
+        for p in patients:
+            if (email and p.get("email") == email) or (phone and p.get("phone") == phone):
+                raise HTTPException(status_code=409, detail="An account with this email or phone number already exists. Please log in.")
+
+        new_id = str(uuid.uuid4())
+        new_patient = {
+            "id": new_id,
+            "full_name": name,
+            "email": email,
+            "phone": phone,
+            "dob": dob,
+            "gender": gender,
+            "blood_group": blood_group,
+            "avatar_url": avatar,
+            "password_hash": password,
+            "auth_provider": "local"
+        }
+        patients.append(new_patient)
+        db["patients"] = patients
+        write_json_db(db)
+
+        return AuthResponse(
+            success=True,
+            user=PatientResponse(
+                id=new_id,
+                fullName=name,
+                email=email,
+                phone=phone,
+                dob=dob,
+                gender=gender,
+                bloodGroup=blood_group,
+                avatarUrl=avatar,
+                authProvider="local"
+            ),
+            token=f"cp-token-{new_id}"
+        )
+
+
 @app.post("/api/auth/login", response_model=AuthResponse)
 def standard_login(request: LoginRequest):
-    """Standard login via phone number or email."""
-    phone = request.phone or ""
-    email = request.email or ""
+    """Strict login validation: check if patient exists and password matches."""
+    phone = (request.phone or "").strip()
+    email = (request.email or "").strip()
+    password = (request.password or "").strip()
+
+    # Normalize phone/email identifier
+    identifier = phone or email
+    if not identifier:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide your registered phone number or email address."
+        )
+
+    norm_identifier_digits = normalize_phone_number(identifier)
+    lower_identifier_email = identifier.lower()
 
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM patients WHERE (phone = %s AND phone != '') OR (email = %s AND email != '') LIMIT 1",
-                    (phone, email)
+                    """
+                    SELECT * FROM patients 
+                    WHERE (LOWER(email) = %s AND email != '') 
+                       OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\D', '', 'g'), 10) = %s)
+                    LIMIT 1
+                    """,
+                    (lower_identifier_email, norm_identifier_digits)
                 )
                 row = cur.fetchone()
-                if row:
-                    dob_str = str(row.get("dob") or "")
-                    return AuthResponse(
-                        success=True,
-                        user=PatientResponse(
-                            id=str(row["id"]),
-                            fullName=row["full_name"],
-                            email=row["email"],
-                            phone=row.get("phone") or "",
-                            dob=dob_str,
-                            gender=row.get("gender") or "Not specified",
-                            bloodGroup=row.get("blood_group") or "O+",
-                            avatarUrl=row.get("avatar_url") or "",
-                            authProvider=row.get("auth_provider") or "local"
-                        ),
-                        token=f"cp-token-{row['id']}"
+                if not row:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="No account found with this phone number or email. Please sign up to create an account."
                     )
+
+                # Validate password
+                stored_pass = row.get("password_hash")
+                if stored_pass and password and stored_pass != password:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Incorrect password. Please verify your password and try again."
+                    )
+
+                dob_str = str(row.get("dob") or "")
+                return AuthResponse(
+                    success=True,
+                    user=PatientResponse(
+                        id=str(row["id"]),
+                        fullName=row["full_name"],
+                        email=row["email"],
+                        phone=row.get("phone") or "",
+                        dob=dob_str,
+                        gender=row.get("gender") or "Not specified",
+                        bloodGroup=row.get("blood_group") or "O+",
+                        avatarUrl=row.get("avatar_url") or "",
+                        authProvider=row.get("auth_provider") or "local"
+                    ),
+                    token=f"cp-token-{row['id']}"
+                )
 
     # Fallback to local JSON database
     db = read_json_db()
     patients = db.get("patients", [])
     found = None
     for p in patients:
-        if (phone and p.get("phone") == phone) or (email and p.get("email") == email):
+        p_phone_digits = normalize_phone_number(p.get("phone") or "")
+        p_email = (p.get("email") or "").strip().lower()
+
+        is_phone_match = norm_identifier_digits and p_phone_digits and norm_identifier_digits == p_phone_digits
+        is_email_match = lower_identifier_email and p_email and lower_identifier_email == p_email
+
+        if is_phone_match or is_email_match:
             found = p
             break
 
-    if not found and len(patients) > 0:
-        found = patients[0]
-
-    if found:
-        return AuthResponse(
-            success=True,
-            user=PatientResponse(
-                id=found["id"],
-                fullName=found["full_name"],
-                email=found["email"],
-                phone=found.get("phone", phone),
-                dob=found.get("dob", ""),
-                gender=found.get("gender", "Female"),
-                bloodGroup=found.get("blood_group", "O+"),
-                avatarUrl=found.get("avatar_url", ""),
-                authProvider=found.get("auth_provider", "local")
-            ),
-            token=f"cp-token-{found['id']}"
+    if not found:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this phone number or email. Please sign up to create an account."
         )
 
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    # Check password if stored
+    stored_pass = found.get("password_hash") or found.get("password")
+    if stored_pass and password and stored_pass != password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password. Please verify your password and try again."
+        )
+
+    return AuthResponse(
+        success=True,
+        user=PatientResponse(
+            id=found["id"],
+            fullName=found["full_name"],
+            email=found["email"],
+            phone=found.get("phone", phone),
+            dob=found.get("dob", ""),
+            gender=found.get("gender", "Female"),
+            bloodGroup=found.get("blood_group", "O+"),
+            avatarUrl=found.get("avatar_url", ""),
+            authProvider=found.get("auth_provider", "local")
+        ),
+        token=f"cp-token-{found['id']}"
+    )
 
 
 @app.get("/api/patients/{patient_id}", response_model=PatientResponse)
