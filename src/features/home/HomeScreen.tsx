@@ -15,6 +15,7 @@ import {
   Check,
   RefreshCw,
   Navigation,
+  Users,
 } from 'lucide-react';
 
 import { TopBar } from '../../components/ui/TopBar';
@@ -414,30 +415,45 @@ export const HomeScreen: React.FC = () => {
 
                 {/* Token-5 (Patient's Own Token - Highlighted Box) */}
                 <div className="relative flex items-start gap-2.5 z-10">
-                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1">
+                  <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1.5 shadow-2xs">
                     ⭐
                   </div>
 
-                  <div className="flex-1 bg-[#E3F3F1] border-2 border-[#0B5A54] rounded-xl p-3 space-y-1.5 shadow-xs">
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="bg-[#0B5A54] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                  <div className="flex-1 bg-[#E3F3F1]/90 border-2 border-[#0B5A54] rounded-2xl p-3 space-y-2 shadow-xs">
+                    {/* Top Row: YOUR TOKEN badge + Token Number + Wait Time Pill */}
+                    <div className="flex items-center justify-between gap-1 flex-wrap sm:flex-nowrap">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="bg-[#0B5A54] text-white text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
                           YOUR TOKEN
                         </span>
-                        <span className="text-[11px] font-black text-[#111827]">Token-5 (TK-482)</span>
+                        <span className="text-xs font-black text-[#111827] tracking-tight whitespace-nowrap">TK-482</span>
                       </div>
 
-                      <div className="bg-[#0B5A54] text-white font-extrabold text-[9.5px] px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                      <div className="bg-[#0B5A54] text-white font-extrabold text-[9.5px] px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 shadow-2xs ml-auto">
                         <Clock className="w-3 h-3 text-teal-200" />
                         <span>~35 min remaining</span>
                       </div>
                     </div>
 
-                    <p className="text-xs font-extrabold text-[#0B5A54]">{activeAppointment.patientName}</p>
+                    {/* Patient Name & Time */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">PATIENT</p>
+                        <p className="text-xs font-extrabold text-[#0B5A54]">{activeAppointment.patientName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">ESTIMATED TIME</p>
+                        <p className="text-xs font-bold text-[#111827]">{activeAppointment.timeSlot}</p>
+                      </div>
+                    </div>
 
-                    <div className="pt-1.5 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] text-[#0B5A54] font-semibold">
-                      <span>2 Persons Ahead of You</span>
-                      <span className="font-bold">Scheduled: {activeAppointment.timeSlot}</span>
+                    {/* Footer Queue Position Bar */}
+                    <div className="pt-1.5 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] font-bold text-[#0B5A54]">
+                      <span className="bg-[#0B5A54]/10 text-[#0B5A54] px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Users className="w-3 h-3 text-[#0B5A54]" />
+                        2 Persons Ahead of You
+                      </span>
+                      <span className="text-slate-600 font-semibold">Scheduled Today</span>
                     </div>
                   </div>
                 </div>
