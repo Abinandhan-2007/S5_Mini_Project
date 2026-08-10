@@ -349,67 +349,64 @@ export const HomeScreen: React.FC = () => {
                 {/* Thin Vertical Timeline Line */}
                 <div className="absolute left-[11px] top-2.5 bottom-2.5 w-[1.5px] bg-slate-200 z-0" />
 
-                {/* Token-1 (Completed) */}
+                {/* Token-1 (Completed - NO STRIKETHROUGH) */}
                 <div className="relative flex items-center gap-2.5 z-10">
                   <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
                     <Check className="w-3 h-3 text-white stroke-[3]" />
                   </div>
                   <div className="flex-1 flex items-center justify-between pr-0.5">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-400 line-through leading-tight">Token-1 (TK-478)</p>
-                      <p className="text-[9.5px] text-slate-400 font-medium">Completed</p>
+                      <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-1 (TK-478)</p>
+                      <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-400">Called 10:05 AM</span>
+                    <span className="text-[10px] font-semibold text-slate-500">Called 10:05 AM</span>
                   </div>
                 </div>
 
-                {/* Token-2 (Completed) */}
+                {/* Token-2 (Completed - NO STRIKETHROUGH) */}
                 <div className="relative flex items-center gap-2.5 z-10">
                   <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
                     <Check className="w-3 h-3 text-white stroke-[3]" />
                   </div>
                   <div className="flex-1 flex items-center justify-between pr-0.5">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-400 line-through leading-tight">Token-2 (TK-479)</p>
-                      <p className="text-[9.5px] text-slate-400 font-medium">Completed</p>
+                      <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-2 (TK-479)</p>
+                      <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-400">Called 10:18 AM</span>
+                    <span className="text-[10px] font-semibold text-slate-500">Called 10:18 AM</span>
                   </div>
                 </div>
 
-                {/* Token-3 (Current Token - Now Serving / In Progress) */}
+                {/* Token-3 (Current Patient Consulting - NO WRAPPING PREMUM CARD) */}
                 <div className="relative flex items-start gap-2.5 z-10">
-                  <div className="relative flex items-center justify-center w-5 h-5 shrink-0 mt-0.5 z-10">
+                  <div className="relative flex items-center justify-center w-5 h-5 shrink-0 mt-1 z-10">
                     <span className="absolute inset-0 rounded-full bg-amber-400/50 animate-ping" />
                     <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs z-10">
                       ✕
                     </div>
                   </div>
-                  <div className="flex-1 bg-amber-50/90 border border-amber-200 rounded-xl p-2.5 space-y-1">
+                  <div className="flex-1 bg-amber-50/90 border border-amber-300 rounded-xl p-3 space-y-1.5 shadow-2xs">
                     <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1">
-                        <p className="text-xs font-black text-amber-900 leading-none">Token-3 (TK-480)</p>
-                        <span className="bg-amber-500 text-white font-black text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <p className="text-xs font-black text-amber-950 whitespace-nowrap">Token-3 (TK-480)</p>
+                        <span className="bg-amber-500 text-white font-black text-[8.5px] px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
                           NOW SERVING
                         </span>
                       </div>
-                      <span className="text-[9px] font-bold text-amber-800 bg-white px-1.5 py-0.5 rounded border border-amber-200/80">
+                      <span className="text-[9.5px] font-extrabold text-amber-900 bg-white/90 px-2 py-0.5 rounded border border-amber-200 whitespace-nowrap shrink-0">
                         In Consultation
                       </span>
                     </div>
-                    <p className="text-[10px] text-amber-800 font-semibold leading-tight">Inside Room 4 with Dr. Morgan</p>
+                    <p className="text-[10.5px] text-amber-900 font-bold leading-tight">Inside Room 4 with Dr. Morgan</p>
                   </div>
                 </div>
 
-                {/* Token-4 (Upcoming) */}
+                {/* Token-4 (Upcoming - NO 'WAITING IN LOUNGE' TEXT) */}
                 <div className="relative flex items-center gap-2.5 z-10">
                   <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0" />
                   <div className="flex-1 flex items-center justify-between pr-0.5">
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-600 leading-tight">Token-4 (TK-481)</p>
-                      <p className="text-[9.5px] text-slate-400 font-medium">Waiting in Lounge</p>
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-400">Est. 10:25 AM</span>
+                    <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-4 (TK-481)</p>
+                    <span className="text-[10px] font-semibold text-slate-500">Est. 10:25 AM</span>
                   </div>
                 </div>
 
