@@ -149,8 +149,6 @@ MOCK_TOKEN_QUEUE = [
     }
 ]
 
-@app_router = APIRouter()
-
 @router.get("/doctors")
 def get_doctors():
     """List doctor records with availability status and time slot capacity."""

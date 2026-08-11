@@ -158,7 +158,7 @@ def register_patient(request: RegisterRequest):
                 # 3. Check if phone number already exists
                 if norm_phone_digits:
                     cur.execute(
-                        "SELECT id, phone FROM patients WHERE phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\D', '', 'g'), 10) = %s LIMIT 1",
+                        "SELECT id, phone FROM patients WHERE phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s LIMIT 1",
                         (norm_phone_digits,)
                     )
                     if cur.fetchone():
@@ -278,7 +278,7 @@ def standard_login(request: LoginRequest):
                     """
                     SELECT * FROM patients 
                     WHERE (LOWER(email) = %s AND email != '') 
-                       OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\D', '', 'g'), 10) = %s)
+                       OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
                     LIMIT 1
                     """,
                     (lower_identifier_email, norm_identifier_digits)
