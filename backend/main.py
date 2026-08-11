@@ -765,5 +765,9 @@ def search_consultations(req: SearchRequest):
         matched.sort(key=lambda x: x.distance)
         return matched[:req.limit]
 
+from routes.receptionist_routes import router as receptionist_router
+app.include_router(receptionist_router)
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=config.PORT, reload=True)
+

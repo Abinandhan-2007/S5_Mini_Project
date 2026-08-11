@@ -21,7 +21,11 @@ interface CarePulseState {
   appointments: Appointment[];
   activeAppointment: Appointment | null;
   addAppointment: (appointment: Appointment) => void;
+  updateAppointment: (id: string, fields: Partial<Appointment>) => void;
+  cancelAppointment: (id: string, reason?: string) => void;
+  rescheduleAppointment: (id: string, newDate: string, newSlot: string) => void;
   syncAppointments: (patientId?: string) => Promise<void>;
+
 
   // Booking Flow Draft
   booking: BookingSelection;
@@ -250,6 +254,40 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       activeAppointment: appointment,
     }));
   },
+  updateAppointment: (id, fields) => {
+    set((state) => {
+      const updatedApps = state.appointments.map((app) =>
+        app.id === id ? { ...app, ...fields } : app
+      );
+      const active = state.activeAppointment?.id === id
+        ? { ...state.activeAppointment, ...fields }
+        : state.activeAppointment;
+      return { appointments: updatedApps, activeAppointment: active };
+    });
+  },
+  cancelAppointment: (id, _reason) => {
+    set((state) => {
+      const updatedApps = state.appointments.map((app) =>
+        app.id === id ? { ...app, status: 'Cancelled' as const } : app
+      );
+      const active = state.activeAppointment?.id === id
+        ? { ...state.activeAppointment, status: 'Cancelled' as const }
+        : state.activeAppointment;
+      return { appointments: updatedApps, activeAppointment: active };
+    });
+  },
+  rescheduleAppointment: (id, newDate, newSlot) => {
+    set((state) => {
+      const updatedApps = state.appointments.map((app) =>
+        app.id === id ? { ...app, date: newDate, timeSlot: newSlot, status: 'Upcoming' as const } : app
+      );
+      const active = state.activeAppointment?.id === id
+        ? { ...state.activeAppointment, date: newDate, timeSlot: newSlot, status: 'Upcoming' as const }
+        : state.activeAppointment;
+      return { appointments: updatedApps, activeAppointment: active };
+    });
+  },
+
 
   syncAppointments: async (patientId?: string) => {
     try {

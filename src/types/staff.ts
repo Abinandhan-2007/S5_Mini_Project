@@ -4,7 +4,8 @@ export type StaffRole = 'admin' | 'receptionist' | 'doctor';
 
 export interface Staff {
   id: string;
-  fullName: string;
+  name?: string;
+  fullName?: string;
   email: string;
   role: StaffRole;
   isActive?: boolean;

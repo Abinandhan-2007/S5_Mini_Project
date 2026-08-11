@@ -16,7 +16,12 @@ import {
   CheckCircle2,
   RefreshCw,
   Users,
+  Plus,
+  ChevronLeft,
 } from 'lucide-react';
+
+
+
 
 import { TopBar } from '../../components/ui/TopBar';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -34,6 +39,11 @@ export const HomeScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+
+
+
+
 
   // Dynamic Prescription Course Day Progress & Completion state
   const [prescriptionProgress, setPrescriptionProgress] = useState<{
@@ -457,9 +467,282 @@ export const HomeScreen: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* VIEW 1: TIMELINE LIST VIEW (WIDE PASTEL TOUCHABLE CARDS NAVIGATING TO VIEW 2 ROUTE) */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-sm space-y-6 text-left mt-4">
+              {/* Header Title Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Appointments Schedule</span>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <h3 className="text-2xl font-black text-slate-900 font-heading">August 2026</h3>
+                    <div className="flex items-center gap-1.5">
+                      <button className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 font-semibold mt-1">
+                    Today is Tuesday, August 12, 2026
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => navigate('/booking')}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-extrabold rounded-2xl shadow-md text-xs uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>+ New Appointment</span>
+                </button>
+              </div>
+
+              {/* VIEW 1: TRUE CALENDAR TIMELINE GRID (Starting 7:00 AM - 1 Hr Before First Appointment 8:45 AM) */}
+              <div className="pt-2">
+
+                {/* Timeline Grid Container (80px per hour slot, starting 7:00 AM) */}
+                <div className="relative min-h-[880px] border-l border-slate-100/80">
+
+                  {/* Hourly Background Horizontal Grid Lines & Left Time Axis (7 AM to 5 PM) */}
+                  {[
+                    '7:00 AM',
+                    '8:00 AM',
+                    '9:00 AM',
+                    '10:00 AM',
+                    '11:00 AM',
+                    '12:00 PM',
+                    '1:00 PM',
+                    '2:00 PM',
+                    '3:00 PM',
+                    '4:00 PM',
+                    '5:00 PM',
+                  ].map((timeLabel, idx) => (
+                    <div
+                      key={timeLabel}
+                      style={{ top: `${idx * 80}px` }}
+                      className="absolute left-0 right-0 h-[80px] border-t border-slate-100 flex items-start pointer-events-none"
+                    >
+                      <span className="-mt-2.5 text-[11px] font-bold text-slate-400 w-16 text-right pr-3 shrink-0">
+                        {timeLabel}
+                      </span>
+                      <div className="flex-1 h-full border-l border-slate-100/60" />
+                    </div>
+                  ))}
+
+                  {/* CARD 1: 8:45 AM - 10:25 AM (Top: 140px, Height: 133px) - Soft Lavender */}
+                  <div
+                    style={{ top: '140px', height: '133px' }}
+                    onClick={() =>
+                      navigate('/appointment-detail/app-1', {
+                        state: {
+                          id: 'app-1',
+                          timeSlot: '8:45 AM - 10:25 AM',
+                          type: 'General Consultation',
+                          clientName: 'Jane Cooper',
+                          doctorName: 'Dr. Jane Cooper',
+                          doctorSpecialty: 'General Practitioner',
+                          doctorPhoto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+                          facilityName: 'St. Jude Medical Center',
+                          bgColor: 'bg-[#F3E8FF]',
+                          borderColor: 'border-purple-200',
+                          textColor: 'text-purple-950',
+                        },
+                      })
+                    }
+                    className="absolute left-20 right-0 bg-[#F3E8FF] border border-purple-200/90 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between group active:scale-[0.99] overflow-hidden z-10"
+                  >
+                    {/* Thick Left Accent Line */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-purple-600 rounded-l-2xl" />
+
+                    {/* Top Right Dot */}
+                    <div className="w-2 h-2 rounded-full bg-purple-600 absolute right-3.5 top-3.5" />
+
+                    <div>
+                      <span className="text-[9.5px] font-black uppercase text-purple-600 tracking-wider block mb-0.5">
+                        ACTIVE
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-purple-950 font-heading leading-tight truncate pr-4">
+                        General Consultation
+                      </h4>
+                      <p className="text-[10.5px] font-bold text-purple-600/90 mt-0.5">
+                        12 Aug 2026
+                      </p>
+                      <p className="text-xs font-black text-purple-700 mt-1">
+                        8:45 AM - 10:25 AM
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-purple-200/60 text-[11px] font-bold text-purple-900">
+                      <UserIcon className="w-3 h-3 text-purple-600" />
+                      <span>Client: Jane Cooper</span>
+                    </div>
+                  </div>
+
+                  {/* CARD 2: 10:40 AM - 12:30 PM (Top: 293px, Height: 146px) - Soft Emerald */}
+                  <div
+                    style={{ top: '293px', height: '146px' }}
+                    onClick={() =>
+                      navigate('/appointment-detail/app-2', {
+                        state: {
+                          id: 'app-2',
+                          timeSlot: '10:40 AM - 12:30 PM',
+                          type: 'Vaccination Drive',
+                          clientName: 'Marvin McKinney',
+                          doctorName: 'Dr. Marvin McKinney',
+                          doctorSpecialty: 'Immunology Specialist',
+                          doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+                          facilityName: 'CarePulse Central Hospital',
+                          bgColor: 'bg-[#ECFDF5]',
+                          borderColor: 'border-emerald-200',
+                          textColor: 'text-emerald-950',
+                        },
+                      })
+                    }
+                    className="absolute left-20 right-0 bg-[#ECFDF5] border border-emerald-200/90 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between group active:scale-[0.99] overflow-hidden z-10"
+                  >
+                    {/* Thick Left Accent Line */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-600 rounded-l-2xl" />
+
+                    {/* Top Right Dot */}
+                    <div className="w-2 h-2 rounded-full bg-emerald-600 absolute right-3.5 top-3.5" />
+
+                    <div>
+                      <span className="text-[9.5px] font-black uppercase text-emerald-600 tracking-wider block mb-0.5">
+                        ACTIVE
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-emerald-950 font-heading leading-tight truncate pr-4">
+                        Vaccination Drive
+                      </h4>
+                      <p className="text-[10.5px] font-bold text-emerald-600/90 mt-0.5">
+                        12 Aug 2026
+                      </p>
+                      <p className="text-xs font-black text-emerald-700 mt-1">
+                        10:40 AM - 12:30 PM
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-emerald-200/60 text-[11px] font-bold text-emerald-900">
+                      <UserIcon className="w-3 h-3 text-emerald-600" />
+                      <span>Client: Marvin McKinney</span>
+                    </div>
+                  </div>
+
+                  {/* CARD 3: 1:00 PM - 2:30 PM (Top: 480px, Height: 120px) - Soft Sky Blue */}
+                  <div
+                    style={{ top: '480px', height: '120px' }}
+                    onClick={() =>
+                      navigate('/appointment-detail/app-3', {
+                        state: {
+                          id: 'app-3',
+                          timeSlot: '1:00 PM - 2:30 PM',
+                          type: 'Digital X-Ray & Imaging',
+                          clientName: 'Cody Fisher',
+                          doctorName: 'Dr. Cody Fisher',
+                          doctorSpecialty: 'Radiology Expert',
+                          doctorPhoto: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
+                          facilityName: 'Metropolitan Medical Hub',
+                          bgColor: 'bg-[#EFF6FF]',
+                          borderColor: 'border-blue-200',
+                          textColor: 'text-blue-950',
+                        },
+                      })
+                    }
+                    className="absolute left-20 right-0 bg-[#EFF6FF] border border-blue-200/90 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between group active:scale-[0.99] overflow-hidden z-10"
+                  >
+                    {/* Thick Left Accent Line */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600 rounded-l-2xl" />
+
+                    {/* Top Right Dot */}
+                    <div className="w-2 h-2 rounded-full bg-blue-600 absolute right-3.5 top-3.5" />
+
+                    <div>
+                      <span className="text-[9.5px] font-black uppercase text-blue-600 tracking-wider block mb-0.5">
+                        UPCOMING
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-blue-950 font-heading leading-tight truncate pr-4">
+                        Digital X-Ray & Imaging
+                      </h4>
+                      <p className="text-[10.5px] font-bold text-blue-600/90 mt-0.5">
+                        12 Aug 2026
+                      </p>
+                      <p className="text-xs font-black text-blue-700 mt-1">
+                        1:00 PM - 2:30 PM
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-blue-200/60 text-[11px] font-bold text-blue-900">
+                      <UserIcon className="w-3 h-3 text-blue-600" />
+                      <span>Client: Cody Fisher</span>
+                    </div>
+                  </div>
+
+                  {/* CARD 4: 3:00 PM - 4:40 PM (Top: 640px, Height: 133px) - Soft Rose Pink */}
+                  <div
+                    style={{ top: '640px', height: '133px' }}
+                    onClick={() =>
+                      navigate('/appointment-detail/app-4', {
+                        state: {
+                          id: 'app-4',
+                          timeSlot: '3:00 PM - 4:40 PM',
+                          type: 'Specialized Treatment',
+                          clientName: 'Ronald Richards',
+                          doctorName: 'Dr. Ronald Richards',
+                          doctorSpecialty: 'Dermatology Specialist',
+                          doctorPhoto: 'https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80',
+                          facilityName: 'Cedar Skin & Wellness Clinic',
+                          bgColor: 'bg-[#FFF1F2]',
+                          borderColor: 'border-rose-200',
+                          textColor: 'text-rose-950',
+                        },
+                      })
+                    }
+                    className="absolute left-20 right-0 bg-[#FFF1F2] border border-rose-200/90 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between group active:scale-[0.99] overflow-hidden z-10"
+                  >
+                    {/* Thick Left Accent Line */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-600 rounded-l-2xl" />
+
+                    {/* Top Right Dot */}
+                    <div className="w-2 h-2 rounded-full bg-rose-600 absolute right-3.5 top-3.5" />
+
+                    <div>
+                      <span className="text-[9.5px] font-black uppercase text-rose-600 tracking-wider block mb-0.5">
+                        UPCOMING
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-rose-950 font-heading leading-tight truncate pr-4">
+                        Specialized Treatment
+                      </h4>
+                      <p className="text-[10.5px] font-bold text-rose-600/90 mt-0.5">
+                        12 Aug 2026
+                      </p>
+                      <p className="text-xs font-black text-rose-700 mt-1">
+                        3:00 PM - 4:40 PM
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-rose-200/60 text-[11px] font-bold text-rose-900">
+                      <UserIcon className="w-3 h-3 text-rose-600" />
+                      <span>Client: Ronald Richards</span>
+                    </div>
+                  </div>
+
+
+
+
+
+                </div>
+              </div>
+            </div>
+
+
+
           </div>
         </div>
       </main>
+
+
+
 
       <BottomNav />
 
@@ -628,3 +911,7 @@ export const HomeScreen: React.FC = () => {
     </div>
   );
 };
+
+
+
+

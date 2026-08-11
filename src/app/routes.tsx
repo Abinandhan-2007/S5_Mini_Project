@@ -9,14 +9,19 @@ import { AssessmentConfirmScreen } from '../features/health-ai/AssessmentConfirm
 import { FindHospitalsScreen } from '../features/hospitals/FindHospitalsScreen';
 import { HospitalDetailScreen } from '../features/hospitals/HospitalDetailScreen';
 import { BookAppointmentScreen } from '../features/appointments/BookAppointmentScreen';
+import { AppointmentDetailScreen } from '../features/appointments/AppointmentDetailScreen';
 import { MedicalHistoryScreen } from '../features/history/MedicalHistoryScreen';
+
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
+import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
+import { ReceptionistLogin } from '../portals/receptionist/ReceptionistLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
+
 
 export const AppRoutes: React.FC = () => {
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
@@ -129,6 +134,31 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/appointment-detail"
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <AppointmentDetailScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/appointment-detail/:id"
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <AppointmentDetailScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
         path="/history"
         element={
           isAuthenticated ? (
@@ -189,7 +219,26 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
+      {/* Receptionist Portal Routes */}
+      <Route
+        path="/receptionist"
+        element={
+          <PageTransition>
+            <ReceptionistLayout />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/receptionist/login"
+        element={
+          <PageTransition>
+            <ReceptionistLogin />
+          </PageTransition>
+        }
+      />
+
       {/* Default Catch-all */}
+
       <Route
         path="*"
         element={<Navigate to={isAuthenticated ? '/home' : '/login'} replace />}

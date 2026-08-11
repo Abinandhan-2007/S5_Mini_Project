@@ -112,3 +112,48 @@ class SearchResultItem(BaseModel):
     date: str
     soap_data: Dict[str, Any]
     distance: float
+
+class SlotCapacitySchema(BaseModel):
+    id: str
+    timeSlot: str
+    maxSeats: int
+    bookedSeats: int
+    availableSeats: int
+    isAvailable: bool
+
+class DoctorCreateRequest(BaseModel):
+    name: str
+    specialty: str
+    department: str
+    experienceYears: int
+    consultationFee: float
+    photo: Optional[str] = ""
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    roomNumber: Optional[str] = "Room 101"
+    isAvailable: Optional[bool] = True
+    availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    slotCapacities: Optional[List[SlotCapacitySchema]] = None
+
+class DoctorAvailabilityUpdate(BaseModel):
+    isAvailable: bool
+
+class SlotCapacityUpdate(BaseModel):
+    timeSlot: str
+    maxSeats: int
+    isAvailable: Optional[bool] = True
+
+class TokenStatusUpdate(BaseModel):
+    status: str
+
+class WalkInAppointmentCreate(BaseModel):
+    patientName: str
+    patientPhone: str
+    patientEmail: Optional[str] = ""
+    doctorId: str
+    doctorName: str
+    doctorSpecialty: Optional[str] = "General Physician"
+    date: str
+    timeSlot: str
+    type: Optional[str] = "Walk-In"
+

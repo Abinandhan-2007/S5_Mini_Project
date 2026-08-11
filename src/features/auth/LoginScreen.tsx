@@ -195,7 +195,7 @@ export const LoginScreen: React.FC = () => {
 
     if (res) {
       data = await res.json().catch(() => ({}));
-      
+
       // 404 Not Found: User doesn't exist in PostgreSQL / backend
       if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
         setUnregisteredIdentifier(inputVal);
