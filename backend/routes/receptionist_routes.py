@@ -150,6 +150,7 @@ MOCK_TOKEN_QUEUE = [
 ]
 
 @router.get("/doctors")
+
 def get_doctors():
     """List doctor records with availability status and time slot capacity."""
     return {"success": True, "doctors": MOCK_DOCTOR_RECORDS}

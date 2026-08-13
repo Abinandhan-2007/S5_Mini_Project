@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Image } from 'lucide-react';
+import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Upload, CheckCircle2, FileText } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 
 interface CreateDoctorProps {
@@ -18,10 +18,25 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose }) =
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [roomNumber, setRoomNumber] = useState('Cabin 105 - 1st Floor');
+  const [about, setAbout] = useState('');
   const [photo, setPhoto] = useState('');
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setPhoto(result);
+        setFilePreview(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +52,7 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose }) =
       phone: phone || '+91 98765 00000',
       email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@carepulse.com`,
       roomNumber,
+      about: about || `Senior ${specialty} with ${experienceYears}+ years of clinical experience in advanced medical care and patient consultation.`,
       photo: photo || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
       isAvailable: true,
       availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -45,6 +61,8 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose }) =
     setIsSubmitting(false);
     onClose();
   };
+
+
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -175,18 +193,61 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose }) =
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Photo Image URL</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">About Doctor (Biography & Summary)</label>
             <div className="relative">
-              <Image className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input
-                type="url"
-                placeholder="https://images.unsplash.com/..."
-                value={photo}
-                onChange={(e) => setPhoto(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium"
+              <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <textarea
+                rows={3}
+                placeholder="Senior specialist with clinical experience in advanced medical care, consultations, and patient wellness..."
+                value={about}
+                onChange={(e) => setAbout(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0B5A54] resize-none"
               />
             </div>
           </div>
+
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Upload Doctor Photo (From Computer)</label>
+            {filePreview ? (
+              <div className="flex items-center gap-4 p-3 bg-teal-50/70 border border-teal-200 rounded-2xl">
+                <img
+                  src={filePreview}
+                  alt="Doctor Upload Preview"
+                  className="w-14 h-14 rounded-2xl object-cover border border-teal-200 shadow-xs"
+                />
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#0B5A54]">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Photo Uploaded Successfully</span>
+                  </div>
+                  <label className="inline-block text-[11px] font-bold text-[#0B5A54] hover:underline cursor-pointer">
+                    Change Photo from Computer
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setPhoto(''); setFilePreview(null); }}
+                  className="px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-100/60 rounded-xl transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#0B5A54] bg-slate-50 hover:bg-teal-50/30 rounded-2xl p-4 cursor-pointer transition-all text-center space-y-1.5 group">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center text-[#0B5A54] group-hover:scale-110 transition-transform">
+                  <Upload className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Click to upload doctor photo from computer</span>
+                  <span className="text-[10.5px] font-medium text-slate-400">Supports JPG, PNG, WEBP files</span>
+                </div>
+                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+              </label>
+            )}
+          </div>
+
 
           <button
             type="submit"

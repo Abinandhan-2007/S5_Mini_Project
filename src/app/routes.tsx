@@ -10,7 +10,9 @@ import { FindHospitalsScreen } from '../features/hospitals/FindHospitalsScreen';
 import { HospitalDetailScreen } from '../features/hospitals/HospitalDetailScreen';
 import { BookAppointmentScreen } from '../features/appointments/BookAppointmentScreen';
 import { AppointmentDetailScreen } from '../features/appointments/AppointmentDetailScreen';
+import { AppointmentScheduleScreen } from '../features/appointments/AppointmentScheduleScreen';
 import { MedicalHistoryScreen } from '../features/history/MedicalHistoryScreen';
+
 
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
@@ -98,7 +100,20 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/schedule"
+        element={
+          isAuthenticated ? (
+            <PageTransition>
+              <AppointmentScheduleScreen />
+            </PageTransition>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
         path="/hospitals"
+
         element={
           isAuthenticated ? (
             <PageTransition>

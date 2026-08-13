@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Building2, Activity, Sparkles, User } from 'lucide-react';
+import { Home, Building2, Activity, Sparkles, User, Calendar } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
@@ -37,8 +37,10 @@ export const BottomNav: React.FC = () => {
     { path: '/health-ai', label: 'Health AI', icon: Sparkles, isAi: true },
     { path: '/history', label: 'History', icon: Activity },
     { path: '/hospitals', label: 'Hospitals', icon: Building2 },
+    { path: '/schedule', label: 'Schedule', icon: Calendar },
     { path: '/profile', label: 'Profile', icon: User },
   ];
+
 
   if (['/login', '/register'].includes(location.pathname)) {
     return null;

@@ -1,78 +1,79 @@
 import React, { useState } from 'react';
-import { Users, UserCheck, Stethoscope, Ticket, Plus, Clock, Volume2, CheckCircle2, XCircle } from 'lucide-react';
+import { Users, UserCheck, Stethoscope, Ticket, Plus, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { NewAppointmentModal } from './NewAppointmentModal';
+import type { DoctorRecord } from '../../types/receptionist';
 
 
 export const ReceptionistDashboard: React.FC = () => {
   const doctors = useStaffStore((s) => s.doctors);
   const tokens = useStaffStore((s) => s.tokens);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
-  const callNextToken = useStaffStore((s) => s.callNextToken);
-  const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
 
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
 
   const activeDoctorsCount = doctors.filter((d) => d.isAvailable).length;
-  const activeToken = tokens.find((t) => t.status === 'In Consultation');
-  const waitingTokens = tokens.filter((t) => t.status === 'Waiting');
   const completedTokensCount = tokens.filter((t) => t.status === 'Completed').length;
+
+  const handleConfirmToggleAvailability = async () => {
+    if (doctorToToggle) {
+      await toggleDoctorAvailability(doctorToToggle.id);
+      setDoctorToToggle(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
       {/* Top Banner / Welcome Action Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-[#0B5A54] p-8 rounded-3xl text-white shadow-xl shadow-teal-900/10 relative overflow-hidden">
         <div className="space-y-2 max-w-2xl relative z-10">
-          <span className="px-3.5 py-1 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold tracking-wide">
-            OPD Operations Hub
-          </span>
-          <h1 className="text-3xl font-black tracking-tight text-white font-heading">
-            Good day
-          </h1>
-          <p className="text-sm text-teal-100/90 leading-relaxed">
-            Monitor real-time patient arrivals, toggle doctor availability status, issue live queue tokens, and manage hourly seat allocations.
+          <h1 className="text-3xl font-black font-heading tracking-tight">OPD Reception Desk</h1>
+          <p className="text-teal-100 text-sm font-medium">
+            Manage live patient arrival queues, token calls, and doctor consultation room availability.
           </p>
         </div>
 
-
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
-          <button
-            onClick={() => setIsBookModalOpen(true)}
-            className="px-6 py-3.5 bg-white text-[#0B5A54] hover:bg-teal-50 font-black rounded-2xl shadow-lg transition-all flex items-center gap-2 text-xs uppercase tracking-wider hover:scale-[1.02]"
-          >
-            <Plus className="w-4 h-4" />
-            + New Appointment
-          </button>
-        </div>
+        <button
+          onClick={() => setIsBookModalOpen(true)}
+          className="px-6 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider shrink-0"
+        >
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span>+ Book Walk-In Patient</span>
+        </button>
       </div>
 
-      {/* Metrics Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Total Booked Patients */}
+      {/* KPI Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Waiting */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Today's Patients</span>
-            <div className="p-3 bg-teal-50 rounded-2xl text-[#0B5A54]">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Queue Waiting</span>
+            <div className="p-3 bg-amber-50 rounded-2xl text-amber-600">
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-black text-slate-900">{tokens.length}</div>
-          <p className="text-xs text-slate-400 font-medium">Total appointments logged</p>
+          <div className="text-3xl font-black text-slate-900">
+            {tokens.filter((t) => t.status === 'Waiting').length}
+          </div>
+          <p className="text-xs text-slate-400 font-medium">Patients in waiting hall</p>
         </div>
 
-        {/* Checked-In Waiting Queue */}
+        {/* Currently In Consultation */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Waiting in Queue</span>
-            <div className="p-3 bg-amber-50 rounded-2xl text-amber-600">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">In Consultation</span>
+            <div className="p-3 bg-teal-50 rounded-2xl text-[#0B5A54]">
               <UserCheck className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-black text-amber-600">{waitingTokens.length}</div>
-          <p className="text-xs text-slate-400 font-medium">Pending consultation</p>
+          <div className="text-3xl font-black text-[#0B5A54]">
+            {tokens.filter((t) => t.status === 'In Consultation').length}
+          </div>
+          <p className="text-xs text-slate-400 font-medium">Active doctor consultations</p>
         </div>
 
-        {/* Active Doctors Available */}
+        {/* Active Doctors */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Available Doctors</span>
@@ -101,53 +102,8 @@ export const ReceptionistDashboard: React.FC = () => {
 
       {/* Main Grid: Live Queue & Doctor Quick Availability List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column (2 Cols): Live Queue & Quick Caller */}
+        {/* Left Column (2 Cols): Live Queue Preview */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Active Consultation Call Card */}
-          <div className="bg-white rounded-3xl p-7 border border-slate-200/80 shadow-xs space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                <Volume2 className="w-5 h-5 text-[#0B5A54]" />
-                Live OPD Token Caller
-              </h2>
-
-              <button
-                onClick={() => callNextToken()}
-                disabled={waitingTokens.length === 0}
-                className="px-4 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold rounded-xl text-xs shadow-md transition-all disabled:opacity-50"
-              >
-                Call Next Token
-              </button>
-            </div>
-
-            {activeToken ? (
-              <div className="p-6 bg-teal-50/70 rounded-2xl border border-teal-200/80 flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] uppercase font-black text-[#0B5A54] tracking-wider">
-                    Currently In Consultation
-                  </span>
-                  <div className="text-3xl font-black font-mono text-slate-900 mt-1">
-                    {activeToken.tokenNumber} <span className="text-xs font-medium text-slate-500">({activeToken.ticketNumber})</span>
-                  </div>
-                  <p className="text-sm font-bold text-slate-800 mt-1">
-                    {activeToken.patientName} • <span className="text-[#0B5A54]">{activeToken.doctorName}</span>
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => updateTokenStatus(activeToken.id, 'Completed')}
-                  className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all"
-                >
-                  Mark Completed
-                </button>
-              </div>
-            ) : (
-              <div className="p-6 bg-slate-50 rounded-2xl text-center text-slate-500 text-xs font-medium border border-slate-100">
-                No active token in consultation. Click "Call Next Token" to advance queue.
-              </div>
-            )}
-          </div>
-
           {/* Today's Queue Preview */}
           <div className="bg-white rounded-3xl p-7 border border-slate-200/80 shadow-xs space-y-5">
             <div className="flex items-center justify-between">
@@ -178,11 +134,11 @@ export const ReceptionistDashboard: React.FC = () => {
 
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      item.status === 'In Consultation'
-                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                        : item.status === 'Waiting'
-                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      item.status === 'Completed'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : item.status === 'In Consultation'
+                        ? 'bg-teal-50 text-[#0B5A54] border border-teal-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}
                   >
                     {item.status}
@@ -193,13 +149,13 @@ export const ReceptionistDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column (1 Col): Doctor Availability Status Switches */}
-        <div className="space-y-8">
-          <div className="bg-white rounded-3xl p-7 border border-slate-200/80 shadow-xs space-y-5">
+        {/* Right Column (1 Col): Quick Doctor Duty Toggle */}
+        <div>
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
             <div>
-              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
                 <Stethoscope className="w-5 h-5 text-[#0B5A54]" />
-                Doctor Live Status
+                On-Duty Doctors
               </h2>
               <p className="text-xs text-slate-500 mt-1">Toggle Available / Not Available status for active doctors.</p>
             </div>
@@ -223,11 +179,11 @@ export const ReceptionistDashboard: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => toggleDoctorAvailability(doctor.id)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    onClick={() => setDoctorToToggle(doctor)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95 ${
                       doctor.isAvailable
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                     }`}
                   >
                     {doctor.isAvailable ? (
@@ -248,6 +204,64 @@ export const ReceptionistDashboard: React.FC = () => {
       </div>
 
       <NewAppointmentModal isOpen={isBookModalOpen} onClose={() => setIsBookModalOpen(false)} />
+
+      {/* PREMIUM WARNING & CONFIRMATION MODAL */}
+      {doctorToToggle && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
+            {/* Warning Icon Badge */}
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                Confirm Doctor Availability Change?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                You are about to set <strong className="text-slate-900 font-extrabold">{doctorToToggle.name}</strong> to{' '}
+                <span className={`font-black ${doctorToToggle.isAvailable ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {doctorToToggle.isAvailable ? 'UNAVAILABLE' : 'AVAILABLE'}
+                </span>.
+              </p>
+            </div>
+
+            {/* Premium Notice Box */}
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200/70 rounded-2xl text-left space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Operational Warning</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-normal font-medium">
+                {doctorToToggle.isAvailable
+                  ? 'Marking this doctor as Unavailable will pause walk-in token assignments and notify patient queue handlers.'
+                  : 'Marking this doctor as Available will resume patient token calls and open consultation room slots.'}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setDoctorToToggle(null)}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmToggleAvailability}
+                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${
+                  doctorToToggle.isAvailable
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-[#0B5A54] hover:bg-[#084540]'
+                }`}
+              >
+                Confirm {doctorToToggle.isAvailable ? 'Unavailable' : 'Available'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

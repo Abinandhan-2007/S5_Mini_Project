@@ -111,7 +111,12 @@ export const receptionistService = {
     doctorSpecialty: string;
     date: string;
     timeSlot: string;
+    age?: number;
+    bloodGroup?: string;
+    address?: string;
+    healthIssue?: string;
   }): Promise<{ ticketNumber: string; token: TokenQueueItem } | null> {
+
     try {
       const res = await fetch(`${API_BASE}/appointments`, {
         method: 'POST',

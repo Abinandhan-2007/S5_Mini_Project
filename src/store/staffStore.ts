@@ -4,13 +4,42 @@ import type { Staff } from '../types/staff';
 import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile, TimeSlotCapacity } from '../types/receptionist';
 import { receptionistService } from '../services/receptionistService';
 
+export function createSplitSlot(
+  id: string,
+  timeSlot: string,
+  maxSeats: number,
+  onlineBooked = 0,
+  offlineBooked = 0,
+  isAvailable = true
+): TimeSlotCapacity {
+  const onlineMaxSeats = Math.ceil(maxSeats / 2);
+  const offlineMaxSeats = Math.floor(maxSeats / 2);
+  const onlineAvailableSeats = Math.max(0, onlineMaxSeats - onlineBooked);
+  const offlineAvailableSeats = Math.max(0, offlineMaxSeats - offlineBooked);
+
+  return {
+    id,
+    timeSlot,
+    maxSeats,
+    bookedSeats: onlineBooked + offlineBooked,
+    availableSeats: onlineAvailableSeats + offlineAvailableSeats,
+    onlineMaxSeats,
+    onlineBookedSeats: onlineBooked,
+    onlineAvailableSeats,
+    offlineMaxSeats,
+    offlineBookedSeats: offlineBooked,
+    offlineAvailableSeats,
+    isAvailable,
+  };
+}
+
 const DEFAULT_SLOTS: TimeSlotCapacity[] = [
-  { id: 'slot-1', timeSlot: '09:00 AM - 10:00 AM', maxSeats: 5, bookedSeats: 2, availableSeats: 3, isAvailable: true },
-  { id: 'slot-2', timeSlot: '10:00 AM - 11:00 AM', maxSeats: 6, bookedSeats: 4, availableSeats: 2, isAvailable: true },
-  { id: 'slot-3', timeSlot: '11:00 AM - 12:00 PM', maxSeats: 5, bookedSeats: 1, availableSeats: 4, isAvailable: true },
-  { id: 'slot-4', timeSlot: '02:00 PM - 03:00 PM', maxSeats: 6, bookedSeats: 3, availableSeats: 3, isAvailable: true },
-  { id: 'slot-5', timeSlot: '03:00 PM - 04:00 PM', maxSeats: 4, bookedSeats: 0, availableSeats: 4, isAvailable: true },
-  { id: 'slot-6', timeSlot: '04:00 PM - 05:00 PM', maxSeats: 5, bookedSeats: 2, availableSeats: 3, isAvailable: true },
+  createSplitSlot('slot-1', '09:00 AM - 10:00 AM', 6, 1, 1, true),
+  createSplitSlot('slot-2', '10:00 AM - 11:00 AM', 6, 2, 2, true),
+  createSplitSlot('slot-3', '11:00 AM - 12:00 PM', 6, 1, 0, true),
+  createSplitSlot('slot-4', '02:00 PM - 03:00 PM', 6, 2, 1, true),
+  createSplitSlot('slot-5', '03:00 PM - 04:00 PM', 6, 0, 0, true),
+  createSplitSlot('slot-6', '04:00 PM - 05:00 PM', 6, 1, 1, true),
 ];
 
 const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
@@ -90,7 +119,8 @@ const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
     status: 'In Consultation',
     arrivalTime: '09:45 AM',
     issueTime: '09:50 AM',
-    type: 'In-Person'
+    type: 'In-Person',
+    date: '13 Aug 2026'
   },
   {
     id: 'tok-2',
@@ -105,7 +135,8 @@ const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
     status: 'Waiting',
     arrivalTime: '10:05 AM',
     issueTime: '10:08 AM',
-    type: 'Walk-In'
+    type: 'Walk-In',
+    date: '13 Aug 2026'
   },
   {
     id: 'tok-3',
@@ -120,7 +151,8 @@ const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
     status: 'Waiting',
     arrivalTime: '10:15 AM',
     issueTime: '10:20 AM',
-    type: 'In-Person'
+    type: 'In-Person',
+    date: '13 Aug 2026'
   },
   {
     id: 'tok-4',
@@ -135,7 +167,8 @@ const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
     status: 'Waiting',
     arrivalTime: '10:25 AM',
     issueTime: '10:28 AM',
-    type: 'Walk-In'
+    type: 'Walk-In',
+    date: '13 Aug 2026'
   }
 ];
 
@@ -148,30 +181,29 @@ const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
   clinicName: 'CarePulse Central Hospital',
   department: 'Main Reception & OPD Queue',
   shift: 'Morning Shift (08:00 AM - 04:00 PM)',
-  avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
+  avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
 };
 
-interface StaffState {
+export interface StaffState {
   currentStaff: Staff | null;
   receptionistProfile: ReceptionistProfile;
-  token: string | null;
-  isAuthenticated: boolean;
-  
   doctors: DoctorRecord[];
   tokens: TokenQueueItem[];
   isLoading: boolean;
+  error: string | null;
 
-  setStaffAuth: (staff: Staff, token: string) => void;
+  // Actions
+  setStaffAuth: (staff: Staff, token?: string) => void;
   logoutStaff: () => void;
-  
+  fetchReceptionistProfile: () => Promise<void>;
+  updateReceptionistProfile: (profile: Partial<ReceptionistProfile>) => Promise<void>;
   fetchDoctors: () => Promise<void>;
   toggleDoctorAvailability: (doctorId: string) => Promise<void>;
+  updateDoctorSlotCapacity: (doctorId: string, timeSlot: string, availableSeats: number) => Promise<void>;
   updateSlotCapacity: (doctorId: string, timeSlot: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
   addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => void;
   removeTimeSlot: (doctorId: string, slotId: string) => void;
   createDoctor: (doctorData: Partial<DoctorRecord>) => Promise<void>;
-
-
   fetchTokens: (doctorId?: string) => Promise<void>;
   callNextToken: (doctorId?: string) => Promise<void>;
   updateTokenStatus: (tokenId: string, status: TokenStatus) => Promise<void>;
@@ -183,6 +215,10 @@ interface StaffState {
     doctorSpecialty: string;
     date: string;
     timeSlot: string;
+    age?: number;
+    bloodGroup?: string;
+    address?: string;
+    healthIssue?: string;
   }) => Promise<void>;
 }
 
@@ -190,41 +226,82 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   currentStaff: {
     id: 'rec-101',
     name: 'Emily Watson',
+    role: 'receptionist',
     email: 'emily.watson@carepulse.com',
-    role: 'receptionist'
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
   },
   receptionistProfile: DEFAULT_RECEPTIONIST_PROFILE,
-  token: 'mock-receptionist-token-123',
-  isAuthenticated: true,
-
   doctors: MOCK_INITIAL_DOCTORS,
   tokens: MOCK_INITIAL_TOKENS,
   isLoading: false,
+  error: null,
 
-  setStaffAuth: (staff, token) => set({ currentStaff: staff, token, isAuthenticated: true }),
-  logoutStaff: () => set({ currentStaff: null, token: null, isAuthenticated: false }),
+  setStaffAuth: (staff, token) => {
+    if (token) localStorage.setItem('staff_token', token);
+    set({ currentStaff: staff });
+  },
+
+  logoutStaff: () => {
+    localStorage.removeItem('staff_token');
+    set({ currentStaff: null });
+  },
+
+  fetchReceptionistProfile: async () => {
+    set({ isLoading: true });
+    set({ isLoading: false });
+  },
+
+  updateReceptionistProfile: async (updatedData) => {
+    set((state) => ({
+      receptionistProfile: { ...state.receptionistProfile, ...updatedData },
+    }));
+  },
 
   fetchDoctors: async () => {
     set({ isLoading: true });
-    const fetched = await receptionistService.getDoctors();
-    if (fetched && fetched.length > 0) {
-      set({ doctors: fetched, isLoading: false });
-    } else {
+    try {
+      const doctors = await receptionistService.getDoctors();
+      if (doctors && doctors.length > 0) {
+        set({ doctors, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
+    } catch {
       set({ isLoading: false });
     }
   },
 
   toggleDoctorAvailability: async (doctorId: string) => {
-    const doctor = get().doctors.find(d => d.id === doctorId);
-    if (!doctor) return;
-    const newStatus = !doctor.isAvailable;
-
-    // Optimistic update
     set(state => ({
-      doctors: state.doctors.map(d => d.id === doctorId ? { ...d, isAvailable: newStatus } : d)
+      doctors: state.doctors.map(doc =>
+        doc.id === doctorId ? { ...doc, isAvailable: !doc.isAvailable } : doc
+      )
     }));
 
-    await receptionistService.toggleDoctorAvailability(doctorId, newStatus);
+    const doc = get().doctors.find(d => d.id === doctorId);
+    if (doc) {
+      await receptionistService.toggleDoctorAvailability(doctorId, doc.isAvailable);
+    }
+  },
+
+  updateDoctorSlotCapacity: async (doctorId: string, timeSlot: string, availableSeats: number) => {
+    set(state => ({
+      doctors: state.doctors.map(doc => {
+        if (doc.id !== doctorId) return doc;
+        const updatedSlots = doc.slotCapacities.map(slot => {
+          if (slot.timeSlot !== timeSlot) return slot;
+          const offlineAvail = Math.max(0, availableSeats);
+          return {
+            ...slot,
+            offlineAvailableSeats: offlineAvail,
+            availableSeats: slot.onlineAvailableSeats + offlineAvail
+          };
+        });
+        return { ...doc, slotCapacities: updatedSlots };
+      })
+    }));
+
+    await receptionistService.updateSlotCapacity(doctorId, timeSlot, availableSeats);
   },
 
   updateSlotCapacity: async (doctorId: string, timeSlot: string, maxSeats: number, isAvailable = true) => {
@@ -233,8 +310,20 @@ export const useStaffStore = create<StaffState>((set, get) => ({
         if (doc.id !== doctorId) return doc;
         const updatedSlots = doc.slotCapacities.map(slot => {
           if (slot.timeSlot !== timeSlot) return slot;
-          const available = Math.max(0, maxSeats - slot.bookedSeats);
-          return { ...slot, maxSeats, availableSeats: available, isAvailable };
+          const onlineMax = Math.ceil(maxSeats / 2);
+          const offlineMax = Math.floor(maxSeats / 2);
+          const onlineAvail = Math.max(0, onlineMax - slot.onlineBookedSeats);
+          const offlineAvail = Math.max(0, offlineMax - slot.offlineBookedSeats);
+          return {
+            ...slot,
+            maxSeats,
+            onlineMaxSeats: onlineMax,
+            onlineAvailableSeats: onlineAvail,
+            offlineMaxSeats: offlineMax,
+            offlineAvailableSeats: offlineAvail,
+            availableSeats: onlineAvail + offlineAvail,
+            isAvailable
+          };
         });
         return { ...doc, slotCapacities: updatedSlots };
       })
@@ -247,17 +336,9 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     set(state => ({
       doctors: state.doctors.map(doc => {
         if (doc.id !== doctorId) return doc;
-        // Check if slot already exists
         const exists = doc.slotCapacities.some(s => s.timeSlot === timeSlot);
         if (exists) return doc;
-        const newSlot: TimeSlotCapacity = {
-          id: `slot-${Date.now()}`,
-          timeSlot,
-          maxSeats,
-          bookedSeats: 0,
-          availableSeats: maxSeats,
-          isAvailable: true
-        };
+        const newSlot = createSplitSlot(`slot-${Date.now()}`, timeSlot, maxSeats, 0, 0, true);
         return { ...doc, slotCapacities: [...doc.slotCapacities, newSlot] };
       })
     }));
@@ -275,7 +356,6 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     }));
   },
 
-
   createDoctor: async (doctorData: Partial<DoctorRecord>) => {
     const newDoc: DoctorRecord = {
       id: `doc-${Date.now()}`,
@@ -288,48 +368,44 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       phone: doctorData.phone || '+91 98765 00000',
       email: doctorData.email || 'doctor@carepulse.com',
       roomNumber: doctorData.roomNumber || 'Cabin 105',
+      about: doctorData.about || `Senior specialist with ${doctorData.experienceYears || 5}+ years of clinical experience.`,
       isAvailable: true,
       availableDays: doctorData.availableDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
       slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
     };
 
-    set(state => ({ doctors: [newDoc, ...state.doctors] }));
-    await receptionistService.createDoctor(doctorData);
+    set(state => ({
+      doctors: [newDoc, ...state.doctors]
+    }));
+
+    await receptionistService.createDoctor(newDoc);
   },
 
   fetchTokens: async (doctorId?: string) => {
     set({ isLoading: true });
-    const fetched = await receptionistService.getTokenQueue(doctorId);
-    if (fetched && fetched.length > 0) {
-      set({ tokens: fetched, isLoading: false });
-    } else {
+    try {
+      const tokens = await receptionistService.getTokenQueue(doctorId);
+      if (tokens && tokens.length > 0) {
+        set({ tokens, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
+    } catch {
       set({ isLoading: false });
     }
   },
 
   callNextToken: async (doctorId?: string) => {
-    // Optimistic queue transition
-    const tokens = [...get().tokens];
-
-    for (let i = 0; i < tokens.length; i++) {
-      if (doctorId && tokens[i].doctorId !== doctorId) continue;
-      if (tokens[i].status === 'In Consultation') {
-        tokens[i].status = 'Completed';
-        break;
-      }
-    }
-
-
-    for (let i = 0; i < tokens.length; i++) {
-      if (doctorId && tokens[i].doctorId !== doctorId) continue;
-      if (tokens[i].status === 'Waiting') {
-        tokens[i].status = 'In Consultation';
-        break;
-      }
-    }
-
-    set({ tokens });
     await receptionistService.callNextToken(doctorId);
+    const waitingTokens = get().tokens.filter(t => t.status === 'Waiting');
+    if (waitingTokens.length > 0) {
+      const targetToken = doctorId ? waitingTokens.find(t => t.doctorId === doctorId) : waitingTokens[0];
+      if (targetToken) {
+        set(state => ({
+          tokens: state.tokens.map(t => t.id === targetToken.id ? { ...t, status: 'In Consultation' } : t)
+        }));
+      }
+    }
   },
 
   updateTokenStatus: async (tokenId: string, status: TokenStatus) => {
@@ -358,7 +434,12 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       status: 'Waiting',
       arrivalTime: nowStr,
       issueTime: nowStr,
-      type: 'Walk-In'
+      type: 'Walk-In',
+      date: payload.date || '13 Aug 2026',
+      age: payload.age,
+      bloodGroup: payload.bloodGroup,
+      address: payload.address,
+      healthIssue: payload.healthIssue,
     };
 
     set(state => ({
@@ -369,11 +450,17 @@ export const useStaffStore = create<StaffState>((set, get) => ({
           ...doc,
           slotCapacities: doc.slotCapacities.map(slot => {
             if (slot.timeSlot !== payload.timeSlot) return slot;
-            const booked = slot.bookedSeats + 1;
+            const offlineBooked = slot.offlineBookedSeats + 1;
+            const offlineAvail = Math.max(0, slot.offlineMaxSeats - offlineBooked);
+            const totalBooked = slot.onlineBookedSeats + offlineBooked;
+            const totalAvail = slot.onlineAvailableSeats + offlineAvail;
+
             return {
               ...slot,
-              bookedSeats: booked,
-              availableSeats: Math.max(0, slot.maxSeats - booked)
+              offlineBookedSeats: offlineBooked,
+              offlineAvailableSeats: offlineAvail,
+              bookedSeats: totalBooked,
+              availableSeats: totalAvail,
             };
           })
         };
