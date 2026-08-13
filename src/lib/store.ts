@@ -65,23 +65,32 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   },
 
   setUserAuth: async (user: User, token?: string) => {
-    localStorage.setItem('has_logged_in', 'true');
-    localStorage.setItem('carepulse_user', JSON.stringify(user));
-    await Preferences.set({ key: 'carepulse_user', value: JSON.stringify(user) });
-
-    if (token) {
-      localStorage.setItem('carepulse_token', token);
-      localStorage.setItem('auth_token', token);
-      await Preferences.set({ key: 'auth_token', value: token });
-    }
-
+    // 1. Immediately update Zustand reactive state so routes pass instantly on first click
     set({
       user,
       isAuthenticated: true,
       isInitializing: false,
     });
 
-    // Trigger live background sync of appointments from PostgreSQL
+    // 2. Persist to localStorage synchronously
+    localStorage.setItem('has_logged_in', 'true');
+    localStorage.setItem('carepulse_user', JSON.stringify(user));
+    if (token) {
+      localStorage.setItem('carepulse_token', token);
+      localStorage.setItem('auth_token', token);
+    }
+
+    // 3. Persist to native Capacitor Preferences in background
+    try {
+      await Preferences.set({ key: 'carepulse_user', value: JSON.stringify(user) });
+      if (token) {
+        await Preferences.set({ key: 'auth_token', value: token });
+      }
+    } catch (e) {
+      console.warn('Preferences storage note:', e);
+    }
+
+    // 4. Trigger live background sync of appointments from PostgreSQL
     get().syncAppointments(user.id);
   },
 

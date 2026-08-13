@@ -48,18 +48,18 @@ const step1Schema = z
 
 const step2Schema = z
   .object({
-    phone: z.string().min(10, 'Valid phone number is required'),
-    email: z.string().email('Valid email is required'),
-    emergencyName: z.string().min(2, 'Emergency contact name required'),
-    emergencyPhone: z.string().min(10, 'Emergency phone required'),
+    phone: z.string().min(10, 'Valid 10-digit phone number is required'),
+    email: z.string().email('Valid email address is required'),
+    emergencyName: z.string().optional(),
+    emergencyPhone: z.string().optional(),
     allergies: z.string().optional(),
     preExistingConditions: z.string().optional(),
   })
   .refine(
     (data) => {
-      const primaryDigits = data.phone.replace(/\D/g, '').slice(-10);
-      const emergencyDigits = data.emergencyPhone.replace(/\D/g, '').slice(-10);
-      if (primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
+      const primaryDigits = (data.phone || '').replace(/\D/g, '').slice(-10);
+      const emergencyDigits = (data.emergencyPhone || '').replace(/\D/g, '').slice(-10);
+      if (primaryDigits && emergencyDigits && primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
         return primaryDigits !== emergencyDigits;
       }
       return true;
@@ -105,6 +105,7 @@ export const RegisterScreen: React.FC = () => {
 
   const form2 = useForm<Step2Data>({
     resolver: zodResolver(step2Schema),
+    mode: 'onChange',
     defaultValues: {
       phone: initialPhone,
       email: initialEmail,
@@ -141,32 +142,35 @@ export const RegisterScreen: React.FC = () => {
       phone: data.phone.trim(),
       email: data.email.trim(),
       emergencyContact: {
-        name: data.emergencyName,
-        phone: data.emergencyPhone,
+        name: data.emergencyName || 'Emergency Contact',
+        phone: data.emergencyPhone || '+91 98765 00000',
         relationship: 'Primary Contact',
       },
-      allergies: data.allergies,
-      preExistingConditions: data.preExistingConditions,
+      allergies: data.allergies || '',
+      preExistingConditions: data.preExistingConditions || '',
     };
 
-    const tryRegister = async (url: string) => {
-      return await fetch(`${url}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    };
+    const apiEnvUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+    const endpointsToTry: string[] = [];
+    if (apiEnvUrl) {
+      endpointsToTry.push(apiEnvUrl.endsWith('/api') ? `${apiEnvUrl}/auth/register` : `${apiEnvUrl}/api/auth/register`);
+    }
+    endpointsToTry.push('/api/auth/register');
+    endpointsToTry.push('http://localhost:5000/api/auth/register');
 
     let res: Response | null = null;
     let resData: any = {};
 
-    try {
-      res = await tryRegister('/api');
-    } catch {
+    for (const ep of endpointsToTry) {
       try {
-        res = await tryRegister('http://localhost:5000/api');
+        res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res) break;
       } catch {
-        res = null;
+        // try next endpoint
       }
     }
 

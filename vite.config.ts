@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ['.trycloudflare.com'],
+    allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.loca.lt'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

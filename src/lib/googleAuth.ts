@@ -37,7 +37,6 @@ declare global {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 /**
@@ -80,7 +79,10 @@ export const authenticateWithBackend = async (payload: {
     googleId?: string;
   };
 }): Promise<{ success: boolean; user: User; token: string }> => {
-  const res = await fetch(`${API_BASE_URL}/auth/google`, {
+  const base = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '') || 'http://localhost:5000/api';
+  const url = base.endsWith('/api') ? `${base}/auth/google` : `${base}/api/auth/google`;
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -90,7 +92,7 @@ export const authenticateWithBackend = async (payload: {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Google login failed' }));
-    throw new Error(err.error || `Server responded with status ${res.status}`);
+    throw new Error(err.error || err.detail || `Server responded with status ${res.status}`);
   }
 
   return res.json();

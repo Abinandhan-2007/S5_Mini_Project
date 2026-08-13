@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Phone, Lock, ArrowRight, AlertCircle, UserPlus, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -21,65 +21,104 @@ export const LoginScreen: React.FC = () => {
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
 
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-
   // Initialize Google Identity Services SDK
+  // Initialize Google Identity Services SDK & Handle OAuth Redirect Tokens
   useEffect(() => {
     let isMounted = true;
 
+    // 1. Check if returning from Google OAuth Redirect (#access_token=...)
+    const checkRedirectToken = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token=')) {
+        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+        const accessToken = hashParams.get('access_token');
+        if (accessToken) {
+          setIsGoogleLoading(true);
+          setErrorMessage(null);
+          try {
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            const gProfile = await userRes.json();
+            if (gProfile?.email) {
+              const authResult = await authenticateWithBackend({
+                profile: {
+                  email: gProfile.email,
+                  name: gProfile.name || gProfile.email.split('@')[0],
+                  picture: gProfile.picture || '',
+                  googleId: gProfile.sub,
+                },
+              });
+              if (authResult?.user) {
+                await setUserAuth(authResult.user, authResult.token);
+                window.history.replaceState(null, '', window.location.pathname);
+                navigate('/home');
+                return;
+              }
+            }
+          } catch (err: any) {
+            console.error('Google OAuth redirect token error:', err);
+            setErrorMessage('Failed to sign in with Google account.');
+          } finally {
+            setIsGoogleLoading(false);
+          }
+        }
+      }
+    };
+
+    checkRedirectToken();
+
+    // 2. Initialize Google Identity Services for web One-Tap & buttons
     const initGoogle = async () => {
       try {
         await loadGoogleScript();
-        if (!isMounted || !window.google?.accounts?.id) return;
+        if (!isMounted) return;
 
         if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.trim() !== '') {
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: async (response: { credential: string }) => {
-              try {
-                setIsGoogleLoading(true);
-                setErrorMessage(null);
-                const authResult = await authenticateWithBackend({ credential: response.credential });
-                if (authResult?.user) {
-                  setUserAuth(authResult.user, authResult.token);
-                  navigate('/home');
+          if (window.google?.accounts?.id) {
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              auto_select: false,
+              callback: async (response: { credential: string }) => {
+                try {
+                  setIsGoogleLoading(true);
+                  setErrorMessage(null);
+                  const authResult = await authenticateWithBackend({ credential: response.credential });
+                  if (authResult?.user) {
+                    await setUserAuth(authResult.user, authResult.token);
+                    navigate('/home');
+                  }
+                } catch (err: any) {
+                  console.error('Backend Google Auth error:', err);
+                  const decoded = parseJwt(response.credential);
+                  if (decoded?.email) {
+                    await setUserAuth({
+                      id: decoded.sub || `usr-${Date.now()}`,
+                      fullName: decoded.name || decoded.email.split('@')[0],
+                      email: decoded.email,
+                      phone: '',
+                      dob: '1995-07-24',
+                      gender: 'Not specified',
+                      bloodGroup: 'O+',
+                      emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
+                      avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+                      authProvider: 'google',
+                    });
+                    navigate('/home');
+                  } else {
+                    setErrorMessage(err.message || 'Failed to authenticate with Google.');
+                  }
+                } finally {
+                  setIsGoogleLoading(false);
                 }
-              } catch (err: any) {
-                console.error('Backend Google Auth error:', err);
-                const decoded = parseJwt(response.credential);
-                if (decoded?.email) {
-                  setUserAuth({
-                    id: decoded.sub || `usr-${Date.now()}`,
-                    fullName: decoded.name || decoded.email.split('@')[0],
-                    email: decoded.email,
-                    phone: '',
-                    dob: '1995-07-24',
-                    gender: 'Not specified',
-                    bloodGroup: 'O+',
-                    emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
-                    avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
-                    authProvider: 'google',
-                  });
-                  navigate('/home');
-                } else {
-                  setErrorMessage(err.message || 'Failed to authenticate with Google.');
-                }
-              } finally {
-                setIsGoogleLoading(false);
-              }
-            },
-          });
-
-          // Render official Google button inside ref if available
-          if (googleBtnRef.current) {
-            window.google.accounts.id.renderButton(googleBtnRef.current, {
-              type: 'standard',
-              theme: 'outline',
-              size: 'large',
-              text: 'continue_with',
-              shape: 'rectangular',
-              width: 320,
+              },
             });
+
+            try {
+              window.google.accounts.id.prompt();
+            } catch (promptErr) {
+              console.warn('Google One-Tap prompt note:', promptErr);
+            }
           }
         }
       } catch (err) {
@@ -96,61 +135,68 @@ export const LoginScreen: React.FC = () => {
 
   const handleGoogleClick = async () => {
     setErrorMessage(null);
+    setIsGoogleLoading(true);
 
-    if (GOOGLE_CLIENT_ID && window.google?.accounts?.id) {
-      setIsGoogleLoading(true);
+    // 1. Try Official Google OAuth2 Token Client (opens real Google account popup in desktop browsers)
+    if (window.google?.accounts?.oauth2 && GOOGLE_CLIENT_ID) {
       try {
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setIsGoogleLoading(false);
-          }
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'email profile openid',
+          callback: async (tokenResponse: any) => {
+            if (tokenResponse?.access_token) {
+              try {
+                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                const gProfile = await userRes.json();
+                if (gProfile?.email) {
+                  const authResult = await authenticateWithBackend({
+                    profile: {
+                      email: gProfile.email,
+                      name: gProfile.name || gProfile.email.split('@')[0],
+                      picture: gProfile.picture || '',
+                      googleId: gProfile.sub,
+                    },
+                  });
+                  if (authResult?.user) {
+                    await setUserAuth(authResult.user, authResult.token);
+                    navigate('/home');
+                    return;
+                  }
+                }
+              } catch (authErr: any) {
+                console.error('Google profile fetch/auth error:', authErr);
+                setErrorMessage(authErr.message || 'Failed to authenticate with Google profile.');
+              } finally {
+                setIsGoogleLoading(false);
+              }
+            } else {
+              setIsGoogleLoading(false);
+            }
+          },
         });
-      } catch {
-        setIsGoogleLoading(false);
+        client.requestAccessToken();
+        return;
+      } catch (e) {
+        console.warn('OAuth2 popup note (falling back to direct OAuth page):', e);
       }
+    }
+
+    // 2. Official Google OAuth "Choose an account" Page (for Mobile App / Android WebView & fallback)
+    if (GOOGLE_CLIENT_ID) {
+      const redirectUri = window.location.origin + '/login';
+      const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        GOOGLE_CLIENT_ID
+      )}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+
+      window.location.href = oauthUrl;
       return;
     }
 
-    setIsGoogleLoading(true);
-    try {
-      const demoEmail = prompt('Enter your Gmail address for login (or leave blank for demo user):', 'user@gmail.com');
-      if (demoEmail === null) {
-        setIsGoogleLoading(false);
-        return;
-      }
-      const email = demoEmail.trim() || 'sarah.mitchell@gmail.com';
-      const name = email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-
-      const res = await authenticateWithBackend({
-        profile: {
-          email,
-          name,
-          picture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
-        },
-      });
-
-      if (res?.user) {
-        setUserAuth(res.user, res.token);
-        navigate('/home');
-      }
-    } catch (err: any) {
-      console.error('Demo auth fallback error:', err);
-      setUserAuth({
-        id: `usr-${Date.now()}`,
-        fullName: 'Sarah Mitchell',
-        email: 'sarah.mitchell@gmail.com',
-        phone: '+1 (555) 234-5678',
-        dob: '1992-04-15',
-        gender: 'Female',
-        bloodGroup: 'O+',
-        emergencyContact: { name: 'David Mitchell', phone: '+1 (555) 987-6543', relationship: 'Spouse' },
-        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
-        authProvider: 'google',
-      });
-      navigate('/home');
-    } finally {
-      setIsGoogleLoading(false);
-    }
+    setIsGoogleLoading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,23 +219,37 @@ export const LoginScreen: React.FC = () => {
       : { phone: inputVal, password: passVal };
 
     const tryFetch = async (endpoint: string) => {
-      return await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      try {
+        return await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
     };
+
+    const apiEnvUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    const endpointsToTry: string[] = [];
+    if (apiEnvUrl) {
+      endpointsToTry.push(apiEnvUrl.endsWith('/api') ? `${apiEnvUrl}/auth/login` : `${apiEnvUrl}/api/auth/login`);
+    }
+    endpointsToTry.push('/api/auth/login');
+    endpointsToTry.push('http://localhost:5000/api/auth/login');
 
     let res: Response | null = null;
     let data: any = {};
 
-    try {
-      res = await tryFetch('/api/auth/login');
-    } catch {
+    for (const ep of endpointsToTry) {
       try {
-        res = await tryFetch('http://localhost:5000/api/auth/login');
+        res = await tryFetch(ep);
+        if (res) break;
       } catch {
-        res = null;
+        // try next endpoint
       }
     }
 
@@ -210,7 +270,8 @@ export const LoginScreen: React.FC = () => {
       }
 
       if (data.user) {
-        setUserAuth(data.user, data.token);
+        await setUserAuth(data.user, data.token);
+        setIsLoading(false);
         navigate('/home');
         return;
       }
@@ -235,8 +296,10 @@ export const LoginScreen: React.FC = () => {
         if (localMatched.password && passVal && localMatched.password !== passVal) {
           setErrorMessage('Incorrect password. Please verify and try again.');
         } else {
-          setUserAuth(localMatched, `local-token-${Date.now()}`);
+          await setUserAuth(localMatched, `local-token-${Date.now()}`);
+          setIsLoading(false);
           navigate('/home');
+          return;
         }
       } else {
         setUnregisteredIdentifier(inputVal);
@@ -355,19 +418,15 @@ export const LoginScreen: React.FC = () => {
               </span>
             </div>
 
-            {/* Google Sign-in (Single Clean Button) */}
-            {GOOGLE_CLIENT_ID ? (
-              <div className="flex justify-center w-full min-h-[44px] overflow-hidden rounded-xl">
-                <div ref={googleBtnRef} className="w-full flex justify-center" />
-              </div>
-            ) : (
+            {/* Google Sign-in (Always Rendered on Android & Web) */}
+            <div className="w-full flex flex-col items-center justify-center">
               <Button
                 type="button"
                 variant="outline"
                 fullWidth
                 isLoading={isGoogleLoading}
                 onClick={handleGoogleClick}
-                className="flex items-center justify-center gap-2 font-bold text-xs text-[#111827] bg-white border border-[#E4E7EC] shadow-2xs py-2.5 rounded-xl hover:bg-gray-50"
+                className="flex items-center justify-center gap-2 font-bold text-xs text-[#111827] bg-white border border-[#E4E7EC] shadow-2xs py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -389,7 +448,7 @@ export const LoginScreen: React.FC = () => {
                 </svg>
                 <span>Continue with Google</span>
               </Button>
-            )}
+            </div>
           </form>
         </Card>
 
