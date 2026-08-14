@@ -39,6 +39,7 @@ from schemas import (
     SearchResultItem,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
+from routes.receptionist_routes import router as receptionist_router, MOCK_TOKEN_QUEUE, MOCK_DOCTOR_RECORDS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -595,11 +596,43 @@ def book_appointment(data: AppointmentCreate):
                 row = cur.fetchone()
                 conn.commit()
 
+                p_name = data.patientName or (row_p.get("full_name") if row_p else "") or "Online Patient"
+                p_phone = (row_p.get("phone") if row_p else "") or ""
+
+                # Push to Receptionist live token queue
+                from datetime import datetime as dt
+                token_num = f"#TOK-{str(len(MOCK_TOKEN_QUEUE) + 1).zfill(3)}"
+                now_str = dt.now().strftime("%I:%M %p")
+                MOCK_TOKEN_QUEUE.append({
+                    "id": f"tok-{uuid.uuid4().hex[:6]}",
+                    "tokenNumber": token_num,
+                    "patientName": p_name,
+                    "patientPhone": p_phone,
+                    "doctorId": data.doctorId,
+                    "doctorName": data.doctorName,
+                    "doctorSpecialty": specialty,
+                    "ticketNumber": ticket_no,
+                    "timeSlot": data.timeSlot,
+                    "status": "Waiting",
+                    "arrivalTime": now_str,
+                    "issueTime": now_str,
+                    "type": app_type,
+                    "date": data.date
+                })
+
+                # Increment booked seats in doctor slotCapacities
+                for doc in MOCK_DOCTOR_RECORDS:
+                    if doc["id"] == data.doctorId:
+                        for slot in doc.get("slotCapacities", []):
+                            if slot["timeSlot"] == data.timeSlot:
+                                slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
+                                slot["availableSeats"] = max(0, slot["maxSeats"] - slot["bookedSeats"])
+
                 return AppointmentResponse(
                     id=str(row["id"]),
                     ticketNumber=row["ticket_number"],
                     patientId=str(row["patient_id"]),
-                    patientName=data.patientName or "",
+                    patientName=p_name,
                     doctorId=row["doctor_id"],
                     doctorName=row["doctor_name"],
                     doctorSpecialty=row.get("doctor_specialty") or specialty,
@@ -630,6 +663,27 @@ def book_appointment(data: AppointmentCreate):
         }
         db.setdefault("appointments", []).insert(0, new_app)
         write_json_db(db)
+
+        # Also push to Receptionist live token queue for JSON fallback mode
+        from datetime import datetime as dt
+        token_num = f"#TOK-{str(len(MOCK_TOKEN_QUEUE) + 1).zfill(3)}"
+        now_str = dt.now().strftime("%I:%M %p")
+        MOCK_TOKEN_QUEUE.append({
+            "id": f"tok-{uuid.uuid4().hex[:6]}",
+            "tokenNumber": token_num,
+            "patientName": data.patientName or "Online Patient",
+            "patientPhone": "",
+            "doctorId": data.doctorId,
+            "doctorName": data.doctorName,
+            "doctorSpecialty": specialty,
+            "ticketNumber": ticket_no,
+            "timeSlot": data.timeSlot,
+            "status": "Waiting",
+            "arrivalTime": now_str,
+            "issueTime": now_str,
+            "type": app_type,
+            "date": data.date
+        })
 
         return AppointmentResponse(
             id=new_app["id"],
@@ -765,7 +819,6 @@ def search_consultations(req: SearchRequest):
         matched.sort(key=lambda x: x.distance)
         return matched[:req.limit]
 
-from routes.receptionist_routes import router as receptionist_router
 app.include_router(receptionist_router)
 
 if __name__ == "__main__":

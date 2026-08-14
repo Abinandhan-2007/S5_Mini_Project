@@ -1,11 +1,10 @@
 import type { DoctorRecord, TokenQueueItem, TokenStatus } from '../types/receptionist';
-
-const API_BASE = '/api/receptionist';
+import { apiFetch } from '../lib/apiFetch';
 
 export const receptionistService = {
   async getDoctors(): Promise<DoctorRecord[]> {
     try {
-      const res = await fetch(`${API_BASE}/doctors`);
+      const res = await apiFetch('/receptionist/doctors', { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         return data.doctors || [];
@@ -18,9 +17,8 @@ export const receptionistService = {
 
   async createDoctor(payload: Partial<DoctorRecord>): Promise<DoctorRecord | null> {
     try {
-      const res = await fetch(`${API_BASE}/doctors`, {
+      const res = await apiFetch('/receptionist/doctors', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
@@ -35,9 +33,8 @@ export const receptionistService = {
 
   async toggleDoctorAvailability(doctorId: string, isAvailable: boolean): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE}/doctors/${doctorId}/availability`, {
+      const res = await apiFetch(`/receptionist/doctors/${doctorId}/availability`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isAvailable }),
       });
       return res.ok;
@@ -49,9 +46,8 @@ export const receptionistService = {
 
   async updateSlotCapacity(doctorId: string, timeSlot: string, maxSeats: number, isAvailable: boolean = true): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE}/doctors/${doctorId}/slots`, {
+      const res = await apiFetch(`/receptionist/doctors/${doctorId}/slots`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timeSlot, maxSeats, isAvailable }),
       });
       return res.ok;
@@ -63,8 +59,8 @@ export const receptionistService = {
 
   async getTokenQueue(doctorId?: string): Promise<TokenQueueItem[]> {
     try {
-      const url = doctorId ? `${API_BASE}/tokens?doctor_id=${doctorId}` : `${API_BASE}/tokens`;
-      const res = await fetch(url);
+      const path = doctorId ? `/receptionist/tokens?doctor_id=${doctorId}` : '/receptionist/tokens';
+      const res = await apiFetch(path, { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         return data.tokens || [];
@@ -77,8 +73,8 @@ export const receptionistService = {
 
   async callNextToken(doctorId?: string): Promise<TokenQueueItem | null> {
     try {
-      const url = doctorId ? `${API_BASE}/tokens/call-next?doctor_id=${doctorId}` : `${API_BASE}/tokens/call-next`;
-      const res = await fetch(url, { method: 'POST' });
+      const path = doctorId ? `/receptionist/tokens/call-next?doctor_id=${doctorId}` : '/receptionist/tokens/call-next';
+      const res = await apiFetch(path, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         return data.activeToken || null;
@@ -91,9 +87,8 @@ export const receptionistService = {
 
   async updateTokenStatus(tokenId: string, status: TokenStatus): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE}/tokens/${tokenId}/status`, {
+      const res = await apiFetch(`/receptionist/tokens/${tokenId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
       return res.ok;
@@ -118,9 +113,8 @@ export const receptionistService = {
   }): Promise<{ ticketNumber: string; token: TokenQueueItem } | null> {
 
     try {
-      const res = await fetch(`${API_BASE}/appointments`, {
+      const res = await apiFetch('/receptionist/appointments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
