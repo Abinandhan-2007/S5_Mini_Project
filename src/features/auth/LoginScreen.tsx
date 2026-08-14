@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
-import { loadGoogleScript, authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt } from '../../lib/googleAuth';
+import { loadGoogleScript, authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt, useGoogleAuth } from '../../lib/googleAuth';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -14,15 +14,21 @@ export const LoginScreen: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { signIn: googleSignIn, isLoading: isGoogleLoading, error: googleError, setError: setGoogleError } = useGoogleAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sign up modal prompt state
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
 
-  // Initialize Google Identity Services SDK
-  // Initialize Google Identity Services SDK & Handle OAuth Redirect Tokens
+  // Sync google auth error to local error message
+  useEffect(() => {
+    if (googleError) {
+      setErrorMessage(googleError);
+    }
+  }, [googleError]);
+
+  // Sign up modal prompt & OAuth Redirect check
   useEffect(() => {
     let isMounted = true;
 
@@ -33,7 +39,6 @@ export const LoginScreen: React.FC = () => {
         const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
         const accessToken = hashParams.get('access_token');
         if (accessToken) {
-          setIsGoogleLoading(true);
           setErrorMessage(null);
           try {
             const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -59,8 +64,6 @@ export const LoginScreen: React.FC = () => {
           } catch (err: any) {
             console.error('Google OAuth redirect token error:', err);
             setErrorMessage('Failed to sign in with Google account.');
-          } finally {
-            setIsGoogleLoading(false);
           }
         }
       }
@@ -81,7 +84,6 @@ export const LoginScreen: React.FC = () => {
               auto_select: false,
               callback: async (response: { credential: string }) => {
                 try {
-                  setIsGoogleLoading(true);
                   setErrorMessage(null);
                   const authResult = await authenticateWithBackend({ credential: response.credential });
                   if (authResult?.user) {
@@ -108,8 +110,6 @@ export const LoginScreen: React.FC = () => {
                   } else {
                     setErrorMessage(err.message || 'Failed to authenticate with Google.');
                   }
-                } finally {
-                  setIsGoogleLoading(false);
                 }
               },
             });
@@ -133,70 +133,13 @@ export const LoginScreen: React.FC = () => {
     };
   }, [navigate, setUserAuth]);
 
-  const handleGoogleClick = async () => {
+  const handleGoogleClick = () => {
     setErrorMessage(null);
-    setIsGoogleLoading(true);
-
-    // 1. Try Official Google OAuth2 Token Client (opens real Google account popup in desktop browsers)
-    if (window.google?.accounts?.oauth2 && GOOGLE_CLIENT_ID) {
-      try {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: 'email profile openid',
-          callback: async (tokenResponse: any) => {
-            if (tokenResponse?.access_token) {
-              try {
-                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-                const gProfile = await userRes.json();
-                if (gProfile?.email) {
-                  const authResult = await authenticateWithBackend({
-                    profile: {
-                      email: gProfile.email,
-                      name: gProfile.name || gProfile.email.split('@')[0],
-                      picture: gProfile.picture || '',
-                      googleId: gProfile.sub,
-                    },
-                  });
-                  if (authResult?.user) {
-                    await setUserAuth(authResult.user, authResult.token);
-                    navigate('/home');
-                    return;
-                  }
-                }
-              } catch (authErr: any) {
-                console.error('Google profile fetch/auth error:', authErr);
-                setErrorMessage(authErr.message || 'Failed to authenticate with Google profile.');
-              } finally {
-                setIsGoogleLoading(false);
-              }
-            } else {
-              setIsGoogleLoading(false);
-            }
-          },
-        });
-        client.requestAccessToken();
-        return;
-      } catch (e) {
-        console.warn('OAuth2 popup note (falling back to direct OAuth page):', e);
-      }
-    }
-
-    // 2. Official Google OAuth "Choose an account" Page (for Mobile App / Android WebView & fallback)
-    if (GOOGLE_CLIENT_ID) {
-      const redirectUri = window.location.origin + '/login';
-      const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-        GOOGLE_CLIENT_ID
-      )}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
-
-      window.location.href = oauthUrl;
-      return;
-    }
-
-    setIsGoogleLoading(false);
+    setGoogleError(null);
+    googleSignIn(async (user, token) => {
+      await setUserAuth(user, token);
+      navigate('/home');
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -347,16 +290,18 @@ export const LoginScreen: React.FC = () => {
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span className="leading-snug font-semibold">{errorMessage}</span>
               </div>
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleProceedToSignup}
-                  className="w-full text-center text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#094843] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl shadow-2xs cursor-pointer transition-all"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Create Account / Sign Up Now →</span>
-                </button>
-              </div>
+              {showSignupPrompt && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleProceedToSignup}
+                    className="w-full text-center text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#094843] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl shadow-2xs cursor-pointer transition-all"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Create Account / Sign Up Now →</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

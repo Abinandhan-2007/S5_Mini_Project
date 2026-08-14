@@ -24,9 +24,6 @@ allprojects {
     }
 }
 
-subprojects {
-    buildDir = "${rootProject.buildDir}/${project.name}"
-}
 
 task clean(type: Delete) {
     delete rootProject.buildDir

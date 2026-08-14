@@ -1,3 +1,5 @@
+import { useState, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import type { User } from './types';
 
 declare global {
@@ -30,6 +32,7 @@ declare global {
             client_id: string;
             scope: string;
             callback: (tokenResponse: any) => void;
+            error_callback?: (error: any) => void;
           }) => { requestAccessToken: () => void };
         };
       };
@@ -37,7 +40,7 @@ declare global {
   }
 }
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+export const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 
 /**
  * Dynamically load Google Identity Services script
@@ -68,7 +71,7 @@ export const loadGoogleScript = (): Promise<void> => {
 };
 
 /**
- * Exchange Google credential with backend
+ * Exchange Google ID token or Profile credential with backend
  */
 export const authenticateWithBackend = async (payload: {
   credential?: string;
@@ -91,15 +94,15 @@ export const authenticateWithBackend = async (payload: {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Google login failed' }));
-    throw new Error(err.error || err.detail || `Server responded with status ${res.status}`);
+    const err = await res.json().catch(() => ({ error: 'Google authentication server error' }));
+    throw new Error(err.error || err.detail || `Server error (${res.status})`);
   }
 
   return res.json();
 };
 
 /**
- * Decode JWT token client-side helper
+ * Client-side JWT parser helper
  */
 export const parseJwt = (token: string) => {
   try {
@@ -117,4 +120,105 @@ export const parseJwt = (token: string) => {
   }
 };
 
-export { GOOGLE_CLIENT_ID };
+/**
+ * Custom hook for Google Sign-In with status & error management
+ */
+export const useGoogleAuth = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const signIn = useCallback(
+    async (onSuccess: (user: User, token: string) => void) => {
+      setIsLoading(true);
+      setError(null);
+
+      // Safety timeout to prevent infinite button loading state
+      const safetyTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 6000);
+
+      try {
+        if (!GOOGLE_CLIENT_ID) {
+          clearTimeout(safetyTimer);
+          setError('Google Client ID is missing. Please set VITE_GOOGLE_CLIENT_ID in your .env file.');
+          setIsLoading(false);
+          return;
+        }
+
+        const isNativeMobile = Capacitor.isNativePlatform() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const redirectUri = window.location.origin + '/login';
+        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+          GOOGLE_CLIENT_ID
+        )}&redirect_uri=${encodeURIComponent(
+          redirectUri
+        )}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+
+        // Mobile Android WebViews do not support GIS popups due to Google security policies. Use direct OAuth redirect.
+        if (isNativeMobile) {
+          window.location.href = oauthUrl;
+          return;
+        }
+
+        await loadGoogleScript();
+
+        // Desktop Web Popup Client
+        if (window.google?.accounts?.oauth2) {
+          const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'email profile openid',
+            callback: async (tokenResponse: any) => {
+              clearTimeout(safetyTimer);
+              if (tokenResponse?.access_token) {
+                try {
+                  const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                  });
+                  const gProfile = await userRes.json();
+                  if (gProfile?.email) {
+                    const authResult = await authenticateWithBackend({
+                      profile: {
+                        email: gProfile.email,
+                        name: gProfile.name || gProfile.email.split('@')[0],
+                        picture: gProfile.picture || '',
+                        googleId: gProfile.sub,
+                      },
+                    });
+                    if (authResult?.user) {
+                      onSuccess(authResult.user, authResult.token);
+                    }
+                  } else {
+                    throw new Error('Could not retrieve user email from Google.');
+                  }
+                } catch (e: any) {
+                  setError(e.message || 'Failed to authenticate Google profile.');
+                } finally {
+                  setIsLoading(false);
+                }
+              } else {
+                setIsLoading(false);
+              }
+            },
+            error_callback: (err: any) => {
+              clearTimeout(safetyTimer);
+              console.warn('OAuth popup closed or failed, falling back to redirect:', err);
+              window.location.href = oauthUrl;
+            },
+          });
+          client.requestAccessToken();
+          return;
+        }
+
+        // Redirect Fallback
+        window.location.href = oauthUrl;
+      } catch (err: any) {
+        clearTimeout(safetyTimer);
+        setError(err.message || 'Google sign-in failed.');
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  return { signIn, isLoading, error, setError };
+};
+

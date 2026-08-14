@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "server": "python backend/main.py",
     "db:up": "docker-compose up -d",
-    "db:down": "docker-compose down"
+    "db:down": "docker-compose down",
+    "android:build": "npm run build && npx cap sync android && cd android && set JAVA_HOME=C:\\Program Files\\Android\\Android Studio\\jbr && gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
