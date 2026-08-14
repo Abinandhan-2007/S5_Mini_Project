@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
   VITE_API_URL = "https://straggler-boss-unselect.ngrok-free.dev/api"
 
 # Proxy all /api/* calls to the ngrok backend (fallback for any env issues)
