@@ -451,7 +451,9 @@ export const RegisterScreen: React.FC = () => {
 
                 <Input
                   label="EMAIL ADDRESS"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
                   leftIcon={<Mail className="w-4 h-4 text-[#0B5A54]" />}
                   placeholder="Enter email address"
                   error={form2.formState.errors.email?.message}

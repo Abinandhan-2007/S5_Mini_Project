@@ -4,8 +4,18 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  VITE_API_URL = "https://straggler-boss-unselect.ngrok-free.dev/api"
 
+# Proxy all /api/* calls to the ngrok backend (fallback for any env issues)
+[[redirects]]
+  from = "/api/*"
+  to = "https://straggler-boss-unselect.ngrok-free.dev/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback — all other routes serve index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+

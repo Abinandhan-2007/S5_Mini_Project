@@ -126,14 +126,20 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         });
       };
 
+      const apiEnvUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+      const baseUrls = [
+        ...(apiEnvUrl ? [apiEnvUrl] : []),
+        '/api',
+        'http://localhost:5000/api',
+      ];
+
       let res: Response | null = null;
-      try {
-        res = await tryVerify('/api');
-      } catch {
+      for (const base of baseUrls) {
         try {
-          res = await tryVerify('http://localhost:5000/api');
+          res = await tryVerify(base);
+          if (res) break;
         } catch {
-          res = null;
+          // try next
         }
       }
 
@@ -317,14 +323,19 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     try {
       const pid = patientId || get().user?.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
       const tryFetch = async (url: string) => fetch(`${url}/appointments/patient/${pid}`);
+      const apiEnvUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+      const baseUrls = [
+        ...(apiEnvUrl ? [apiEnvUrl] : []),
+        '/api',
+        'http://localhost:5000/api',
+      ];
       let res: Response | null = null;
-      try {
-        res = await tryFetch('/api');
-      } catch {
+      for (const base of baseUrls) {
         try {
-          res = await tryFetch('http://localhost:5000/api');
+          res = await tryFetch(base);
+          if (res) break;
         } catch {
-          res = null;
+          // try next
         }
       }
       if (res && res.ok) {
