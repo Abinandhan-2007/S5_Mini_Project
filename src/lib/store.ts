@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Preferences } from '@capacitor/preferences';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection } from './types';
 import { INITIAL_USER, INITIAL_APPOINTMENT, MOCK_MEDICAL_HISTORY, INITIAL_CHAT_MESSAGES } from './mockApi';
 
@@ -200,6 +201,19 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   },
 
   logout: async () => {
+    // 1. Sign out from Capacitor Google Auth (Android native)
+    try {
+      await GoogleAuth.signOut();
+    } catch {
+      // Not signed in via Google — safe to ignore
+    }
+    // 2. Clear browser-level Google Identity Services cache (web/PWA)
+    try {
+      const w = window as any;
+      if (w.google?.accounts?.id) {
+        w.google.accounts.id.disableAutoSelect();
+      }
+    } catch { /* GIS not loaded — ignore */ }
     try {
       await Preferences.remove({ key: 'auth_token' });
       await Preferences.remove({ key: 'carepulse_user' });
@@ -210,6 +224,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     localStorage.removeItem('carepulse_user');
     localStorage.removeItem('carepulse_token');
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('google_last_email');
     set({
       user: null,
       isAuthenticated: false,

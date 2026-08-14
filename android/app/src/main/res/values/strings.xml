@@ -4,4 +4,5 @@
     <string name="title_activity_main">CarePulse</string>
     <string name="package_name">com.carepulse.app</string>
     <string name="custom_url_scheme">com.carepulse.app</string>
+    <string name="server_client_id">328652220146-7rb9ulr62r40ue0qr3dk7fjo7ba76evb.apps.googleusercontent.com</string>
 </resources>

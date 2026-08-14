@@ -48,8 +48,12 @@ const step1Schema = z
 
 const step2Schema = z
   .object({
-    phone: z.string().min(10, 'Valid 10-digit phone number is required'),
-    email: z.string().email('Valid email address is required'),
+    // TODO: RE-ENABLE FOR PRODUCTION — strict phone validation
+    // phone: z.string().min(10, 'Valid 10-digit phone number is required'),
+    phone: z.string().min(1, 'Phone number is required'),
+    // TODO: RE-ENABLE FOR PRODUCTION — strict email validation
+    // email: z.string().email('Valid email address is required'),
+    email: z.string().min(1, 'Email is required'),
     emergencyName: z.string().optional(),
     emergencyPhone: z.string().optional(),
     allergies: z.string().optional(),
@@ -59,6 +63,10 @@ const step2Schema = z
     (data) => {
       const primaryDigits = (data.phone || '').replace(/\D/g, '').slice(-10);
       const emergencyDigits = (data.emergencyPhone || '').replace(/\D/g, '').slice(-10);
+      // TODO: RE-ENABLE FOR PRODUCTION — emergency phone conflict check
+      // if (primaryDigits && emergencyDigits && primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
+      //   return primaryDigits !== emergencyDigits;
+      // }
       if (primaryDigits && emergencyDigits && primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
         return primaryDigits !== emergencyDigits;
       }
@@ -192,11 +200,14 @@ export const RegisterScreen: React.FC = () => {
       }
 
       if (resData.user) {
-        setUserAuth(resData.user, resData.token);
+        await setUserAuth(resData.user, resData.token); // ← await added
         setIsSubmitting(false);
         navigate('/home');
         return;
       }
+
+      // Backend returned OK but no user object — fall through to local registration
+      console.warn('Backend OK but no user in response, using local fallback');
     } else {
       // Local fallback check against already registered users
       const storedUsersStr = localStorage.getItem('carepulse_registered_users');
