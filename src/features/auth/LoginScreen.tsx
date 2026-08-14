@@ -122,21 +122,6 @@ export const LoginScreen: React.FC = () => {
       ? { email: inputVal, password: passVal }
       : { phone: inputVal, password: passVal };
 
-    const tryFetch = async (endpoint: string) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
-      try {
-        return await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    };
-
     let res: Response | null = null;
     let data: any = {};
 
