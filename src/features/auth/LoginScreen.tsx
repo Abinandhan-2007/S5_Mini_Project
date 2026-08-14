@@ -150,11 +150,12 @@ export const LoginScreen: React.FC = () => {
     const inputVal = phone.trim();
     const passVal = password.trim();
 
-    if (!inputVal) {
-      setErrorMessage('Please enter your registered phone number or email.');
-      setIsLoading(false);
-      return;
-    }
+    // TODO: RE-ENABLE FOR PRODUCTION — Empty field constraint
+    // if (!inputVal) {
+    //   setErrorMessage('Please enter your registered phone number or email.');
+    //   setIsLoading(false);
+    //   return;
+    // }
 
     const isEmail = inputVal.includes('@');
     const payload = isEmail
@@ -199,18 +200,18 @@ export const LoginScreen: React.FC = () => {
     if (res) {
       data = await res.json().catch(() => ({}));
 
-      // 404 Not Found: User doesn't exist in PostgreSQL / backend
-      if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
-        setUnregisteredIdentifier(inputVal);
-        setShowSignupPrompt(true);
-        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
-        setIsLoading(false);
-        return;
-      } else if (!res.ok) {
-        setErrorMessage(data.detail || data.error || 'Incorrect password or authentication error.');
-        setIsLoading(false);
-        return;
-      }
+      // TODO: RE-ENABLE FOR PRODUCTION — 404 Not Found constraint (user doesn't exist in backend)
+      // if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
+      //   setUnregisteredIdentifier(inputVal);
+      //   setShowSignupPrompt(true);
+      //   setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+      //   setIsLoading(false);
+      //   return;
+      // } else if (!res.ok) {
+      //   setErrorMessage(data.detail || data.error || 'Incorrect password or authentication error.');
+      //   setIsLoading(false);
+      //   return;
+      // }
 
       if (data.user) {
         await setUserAuth(data.user, data.token);
@@ -236,18 +237,20 @@ export const LoginScreen: React.FC = () => {
       });
 
       if (localMatched) {
-        if (localMatched.password && passVal && localMatched.password !== passVal) {
-          setErrorMessage('Incorrect password. Please verify and try again.');
-        } else {
+        // TODO: RE-ENABLE FOR PRODUCTION — Password mismatch constraint (local fallback)
+        // if (localMatched.password && passVal && localMatched.password !== passVal) {
+        //   setErrorMessage('Incorrect password. Please verify and try again.');
+        // } else {
           await setUserAuth(localMatched, `local-token-${Date.now()}`);
           setIsLoading(false);
           navigate('/home');
           return;
-        }
+        // }
       } else {
-        setUnregisteredIdentifier(inputVal);
-        setShowSignupPrompt(true);
-        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+        // TODO: RE-ENABLE FOR PRODUCTION — Unregistered user constraint (local fallback)
+        // setUnregisteredIdentifier(inputVal);
+        // setShowSignupPrompt(true);
+        // setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
       }
     }
 
