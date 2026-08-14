@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -13,6 +13,8 @@ import { CalendarPicker } from '../../components/ui/CalendarPicker';
 import { DateScroller } from '../../components/ui/DateScroller';
 import { TimeSlotGrid } from '../../components/ui/TimeSlotGrid';
 import { Button } from '../../components/ui/Button';
+import { doctorService } from '../../services/doctorService';
+import type { Doctor } from '../../lib/types';
 import { MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
 
@@ -22,7 +24,21 @@ export const BookAppointmentScreen: React.FC = () => {
   const appointments = useCarePulseStore((s) => s.appointments);
   const addAppointment = useCarePulseStore((s) => s.addAppointment);
 
-  const doctor = MOCK_DOCTORS.find((d) => d.id === doctorId) || MOCK_DOCTORS[0];
+  const initialDoctor = MOCK_DOCTORS.find((d) => d.id === doctorId) || MOCK_DOCTORS[0];
+  const [doctor, setDoctor] = useState<Doctor>(initialDoctor);
+
+  useEffect(() => {
+    if (!doctorId) return;
+    let isMounted = true;
+    doctorService.getDoctorById(doctorId).then((doc) => {
+      if (isMounted && doc) {
+        setDoctor(doc);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [doctorId]);
 
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]

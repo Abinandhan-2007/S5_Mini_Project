@@ -46,13 +46,19 @@ interface CarePulseState {
 }
 
 const storedUser = localStorage.getItem('carepulse_user');
-const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+let parsedUser: User | null = null;
+try {
+  parsedUser = storedUser ? JSON.parse(storedUser) : null;
+} catch {
+  parsedUser = null;
+}
 const storedBio = localStorage.getItem('carepulse_biometric_enabled');
+const hasLoggedIn = localStorage.getItem('has_logged_in') === 'true' || !!parsedUser;
 
 export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   user: parsedUser || null,
-  isAuthenticated: false,
-  isInitializing: true,
+  isAuthenticated: hasLoggedIn,
+  isInitializing: !hasLoggedIn,
   isBiometricEnabled: storedBio === 'true',
 
   login: (_phone: string) => {
@@ -98,7 +104,41 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
 
   checkAuthSession: async () => {
     try {
-      // 1. Check Capacitor Preferences for saved JWT token
+      // 1. Check Capacitor Preferences and localStorage for cached user
+      let cachedUser: User | null = get().user;
+
+      if (!cachedUser) {
+        let cachedUserJson: string | null = null;
+        try {
+          const { value } = await Preferences.get({ key: 'carepulse_user' });
+          cachedUserJson = value;
+        } catch {
+          cachedUserJson = null;
+        }
+
+        if (!cachedUserJson) {
+          cachedUserJson = localStorage.getItem('carepulse_user');
+        }
+
+        if (cachedUserJson) {
+          try {
+            cachedUser = JSON.parse(cachedUserJson);
+          } catch {
+            cachedUser = null;
+          }
+        }
+      }
+
+      // If we already have a cached user or have logged in previously, stay authenticated
+      if (cachedUser) {
+        set({
+          user: cachedUser,
+          isAuthenticated: true,
+          isInitializing: false,
+        });
+      }
+
+      // 2. Check for saved JWT token
       let token: string | null = null;
       try {
         const { value } = await Preferences.get({ key: 'auth_token' });
@@ -107,83 +147,62 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         token = null;
       }
 
-      // Fallback to localStorage
       if (!token) {
         token = localStorage.getItem('carepulse_token') || localStorage.getItem('auth_token');
       }
 
-      if (!token) {
+      // If no token and no cached user, then user is not authenticated
+      if (!token && !cachedUser) {
         set({ isInitializing: false, isAuthenticated: false });
         return false;
       }
 
-      // 2. Verify token against backend /api/auth/me
-      let res: Response | null = null;
-      try {
-        res = await apiGet('/auth/me', { Authorization: `Bearer ${token}` });
-      } catch {
-        res = null;
+      // 3. If token exists, attempt to verify / refresh latest profile from backend /api/auth/me
+      if (token) {
+        try {
+          const res = await apiGet('/auth/me', { Authorization: `Bearer ${token}` });
+          if (res && res.ok) {
+            const userData: User = await res.json();
+            await Preferences.set({ key: 'carepulse_user', value: JSON.stringify(userData) });
+            localStorage.setItem('carepulse_user', JSON.stringify(userData));
+            localStorage.setItem('has_logged_in', 'true');
+
+            set({
+              user: userData,
+              isAuthenticated: true,
+              isInitializing: false,
+            });
+
+            get().syncAppointments(userData.id);
+            return true;
+          }
+        } catch (err) {
+          console.warn('Background token refresh notice:', err);
+        }
       }
 
-      if (res && res.ok) {
-        const userData: User = await res.json();
-        await Preferences.set({ key: 'carepulse_user', value: JSON.stringify(userData) });
-        localStorage.setItem('carepulse_user', JSON.stringify(userData));
-        localStorage.setItem('has_logged_in', 'true');
-
-        set({
-          user: userData,
-          isAuthenticated: true,
-          isInitializing: false,
-        });
-
-        get().syncAppointments(userData.id);
-        return true;
-      }
-
-      // 3. If token invalid or expired (401 Unauthorized) -> Clear stored session
-      if (res && res.status === 401) {
-        await Preferences.remove({ key: 'auth_token' });
-        await Preferences.remove({ key: 'carepulse_user' });
-        localStorage.removeItem('carepulse_token');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('has_logged_in');
-
-        set({
-          user: null,
-          isAuthenticated: false,
-          isInitializing: false,
-        });
-        return false;
-      }
-
-      // 4. Offline / Server Unreachable: Fallback to cached user in Preferences
-      let cachedUserJson: string | null = null;
-      try {
-        const { value } = await Preferences.get({ key: 'carepulse_user' });
-        cachedUserJson = value;
-      } catch {
-        cachedUserJson = null;
-      }
-
-      if (!cachedUserJson) {
-        cachedUserJson = localStorage.getItem('carepulse_user');
-      }
-
-      if (cachedUserJson) {
-        const cachedUser = JSON.parse(cachedUserJson);
+      // If backend was unreachable or token check returned non-200, but we have a cached user,
+      // preserve the user session so the user never gets logged out on app reopen
+      if (cachedUser) {
         set({
           user: cachedUser,
           isAuthenticated: true,
           isInitializing: false,
         });
+        get().syncAppointments(cachedUser.id);
         return true;
       }
 
       set({ isInitializing: false, isAuthenticated: false });
       return false;
     } catch {
-      set({ isInitializing: false });
+      // On any unexpected error, if we had a user cached, keep them logged in
+      const existingUser = get().user;
+      if (existingUser) {
+        set({ isInitializing: false, isAuthenticated: true });
+        return true;
+      }
+      set({ isInitializing: false, isAuthenticated: false });
       return false;
     }
   },
@@ -252,9 +271,11 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     };
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(newUser));
+    Preferences.set({ key: 'carepulse_user', value: JSON.stringify(newUser) }).catch(() => {});
     set({
       user: newUser,
       isAuthenticated: true,
+      isInitializing: false,
     });
   },
 

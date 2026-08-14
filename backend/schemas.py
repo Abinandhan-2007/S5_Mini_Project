@@ -157,3 +157,50 @@ class WalkInAppointmentCreate(BaseModel):
     timeSlot: str
     type: Optional[str] = "Walk-In"
 
+class HospitalResponse(BaseModel):
+    id: str
+    name: str
+    address: str
+    phone: Optional[str] = ""
+    rating: float
+    reviewsCount: int
+    reviews_count: Optional[int] = None
+    emergencyAvailable: bool
+    emergency_available: Optional[bool] = None
+    imageUrl: str
+    image_url: Optional[str] = None
+    specialties: List[str]
+    facilityType: str
+    facility_type: Optional[str] = None
+    distanceMiles: float
+    distance_miles: Optional[float] = None
+
+class DoctorResponse(BaseModel):
+    id: str
+    name: str
+    specialty: str
+    department: Optional[str] = "General Medicine"
+    hospitalId: Optional[str] = ""
+    hospital_id: Optional[str] = None
+    hospitalName: Optional[str] = "St. Jude Heart & Medical Center"
+    hospital_name: Optional[str] = None
+    photoUrl: str
+    photo: Optional[str] = None
+    rating: float
+    reviewsCount: int
+    reviews_count: Optional[int] = None
+    experienceYears: int
+    experience_years: Optional[int] = None
+    consultationFee: Optional[float] = 500.0
+    consultation_fee: Optional[float] = None
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    roomNumber: Optional[str] = ""
+    room_number: Optional[str] = None
+    isAvailable: bool
+    is_available: Optional[bool] = None
+    about: Optional[str] = ""
+    availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    slotCapacities: Optional[List[Any]] = []
+
+

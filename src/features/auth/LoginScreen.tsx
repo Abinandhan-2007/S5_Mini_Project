@@ -96,7 +96,7 @@ export const LoginScreen: React.FC = () => {
             emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
             avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
             authProvider: 'google',
-          });
+          }, idToken);
           navigate('/home');
         } else {
           setErrorMessage('Failed to authenticate with Google.');

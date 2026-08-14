@@ -37,9 +37,11 @@ from schemas import (
     ConsultationResponse,
     SearchRequest,
     SearchResultItem,
+    HospitalResponse,
+    DoctorResponse,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
-from routes.receptionist_routes import router as receptionist_router, MOCK_TOKEN_QUEUE, MOCK_DOCTOR_RECORDS
+from routes.receptionist_routes import router as receptionist_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -819,8 +821,238 @@ def search_consultations(req: SearchRequest):
         matched.sort(key=lambda x: x.distance)
         return matched[:req.limit]
 
+# ==========================================
+# 4. HOSPITALS & DOCTORS ENDPOINTS
+# ==========================================
+
+def format_hospital(h: dict) -> HospitalResponse:
+    specs = h.get("specialties") or []
+    if isinstance(specs, str):
+        try:
+            specs = json.loads(specs)
+        except Exception:
+            specs = [s.strip() for s in specs.split(",") if s.strip()]
+    if not isinstance(specs, list):
+        specs = ["General"]
+
+    rating = float(h.get("rating") or 4.8)
+    reviews = int(h.get("reviews_count") or h.get("reviewsCount") or 1500)
+    emergency = bool(h.get("emergency_available") if h.get("emergency_available") is not None else h.get("emergencyAvailable", True))
+    dist = float(h.get("distance_miles") or h.get("distanceMiles") or 1.0)
+    image = h.get("image_url") or h.get("imageUrl") or "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80"
+    fac_type = h.get("facility_type") or h.get("facilityType") or "General"
+
+    return HospitalResponse(
+        id=str(h["id"]),
+        name=h["name"],
+        address=h["address"],
+        phone=h.get("phone") or "",
+        rating=rating,
+        reviewsCount=reviews,
+        reviews_count=reviews,
+        emergencyAvailable=emergency,
+        emergency_available=emergency,
+        imageUrl=image,
+        image_url=image,
+        specialties=specs,
+        facilityType=fac_type,
+        facility_type=fac_type,
+        distanceMiles=dist,
+        distance_miles=dist
+    )
+
+def format_doctor(d: dict) -> DoctorResponse:
+    days = d.get("available_days") or d.get("availableDays") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    if isinstance(days, str):
+        try:
+            days = json.loads(days)
+        except Exception:
+            days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+
+    slots = d.get("slot_capacities") or d.get("slotCapacities") or []
+    if isinstance(slots, str):
+        try:
+            slots = json.loads(slots)
+        except Exception:
+            slots = []
+
+    photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80"
+    is_avail = bool(d.get("is_available") if d.get("is_available") is not None else d.get("isAvailable", True))
+    hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-1"
+    hosp_name = d.get("hospital_name") or d.get("hospitalName") or "St. Jude Heart & Medical Center"
+    rating = float(d.get("rating") or 4.8)
+    reviews = int(d.get("reviews_count") or d.get("reviewsCount") or 85)
+    exp = int(d.get("experience_years") or d.get("experienceYears") or 5)
+    fee = float(d.get("consultation_fee") or d.get("consultationFee") or 500.0)
+    dept = d.get("department") or "General Medicine"
+    room = d.get("room_number") or d.get("roomNumber") or ""
+
+    return DoctorResponse(
+        id=str(d["id"]),
+        name=d["name"],
+        specialty=d["specialty"],
+        department=dept,
+        hospitalId=hosp_id,
+        hospital_id=hosp_id,
+        hospitalName=hosp_name,
+        hospital_name=hosp_name,
+        photoUrl=photo,
+        photo=photo,
+        rating=rating,
+        reviewsCount=reviews,
+        reviews_count=reviews,
+        experienceYears=exp,
+        experience_years=exp,
+        consultationFee=fee,
+        consultation_fee=fee,
+        phone=d.get("phone") or "",
+        email=d.get("email") or "",
+        roomNumber=room,
+        room_number=room,
+        isAvailable=is_avail,
+        is_available=is_avail,
+        about=d.get("about") or "",
+        availableDays=days,
+        slotCapacities=slots
+    )
+
+@app.get("/api/hospitals", response_model=List[HospitalResponse])
+def get_all_hospitals(search: Optional[str] = None):
+    """Retrieve all hospitals from database with optional search filtering."""
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                if search:
+                    term = f"%{search.strip().lower()}%"
+                    cur.execute(
+                        "SELECT * FROM hospitals WHERE LOWER(name) LIKE %s OR LOWER(address) LIKE %s OR specialties::text ILIKE %s ORDER BY rating DESC",
+                        (term, term, term)
+                    )
+                else:
+                    cur.execute("SELECT * FROM hospitals ORDER BY rating DESC")
+                rows = cur.fetchall()
+                if rows and len(rows) > 0:
+                    return [format_hospital(dict(r)) for r in rows]
+
+    db = read_json_db()
+    hospitals = db.get("hospitals", [])
+    if search:
+        term = search.strip().lower()
+        hospitals = [
+            h for h in hospitals
+            if term in h.get("name", "").lower()
+            or term in h.get("address", "").lower()
+            or any(term in s.lower() for s in h.get("specialties", []))
+        ]
+    return [format_hospital(h) for h in hospitals]
+
+@app.get("/api/hospitals/{hospital_id}")
+def get_hospital_by_id(hospital_id: str):
+    """Retrieve hospital details and associated doctors."""
+    found_hosp = None
+    doctors_list = []
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM hospitals WHERE id = %s LIMIT 1", (hospital_id,))
+                row = cur.fetchone()
+                if row:
+                    found_hosp = format_hospital(dict(row))
+
+                cur.execute("SELECT * FROM doctors WHERE hospital_id = %s OR hospital_id IS NULL ORDER BY rating DESC", (hospital_id,))
+                doc_rows = cur.fetchall()
+                if doc_rows and len(doc_rows) > 0:
+                    doctors_list = [format_doctor(dict(d)) for d in doc_rows]
+
+    if not found_hosp:
+        db = read_json_db()
+        hospitals = db.get("hospitals", [])
+        for h in hospitals:
+            if h.get("id") == hospital_id:
+                found_hosp = format_hospital(h)
+                break
+        if not doctors_list:
+            doctors = db.get("doctors", [])
+            doctors_list = [format_doctor(d) for d in doctors if d.get("hospital_id") == hospital_id or d.get("hospitalId") == hospital_id]
+
+    if not found_hosp:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+
+    return {
+        "success": True,
+        "hospital": found_hosp,
+        "doctors": doctors_list
+    }
+
+@app.get("/api/doctors", response_model=List[DoctorResponse])
+def get_all_doctors(
+    hospital_id: Optional[str] = None,
+    specialty: Optional[str] = None,
+    search: Optional[str] = None
+):
+    """Retrieve doctors from database with optional filters."""
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                query = "SELECT * FROM doctors WHERE 1=1"
+                params = []
+                if hospital_id:
+                    query += " AND (hospital_id = %s OR hospital_id IS NULL)"
+                    params.append(hospital_id)
+                if specialty and specialty.lower() != "all":
+                    query += " AND LOWER(specialty) = %s"
+                    params.append(specialty.lower())
+                if search:
+                    term = f"%{search.strip().lower()}%"
+                    query += " AND (LOWER(name) LIKE %s OR LOWER(specialty) LIKE %s OR LOWER(department) LIKE %s)"
+                    params.extend([term, term, term])
+                query += " ORDER BY rating DESC, experience_years DESC"
+                cur.execute(query, tuple(params))
+                rows = cur.fetchall()
+                if rows and len(rows) > 0:
+                    return [format_doctor(dict(r)) for r in rows]
+
+    db = read_json_db()
+    doctors = db.get("doctors", [])
+    filtered = doctors
+    if hospital_id:
+        filtered = [d for d in filtered if d.get("hospital_id") == hospital_id or d.get("hospitalId") == hospital_id]
+    if specialty and specialty.lower() != "all":
+        filtered = [d for d in filtered if d.get("specialty", "").lower() == specialty.lower()]
+    if search:
+        term = search.strip().lower()
+        filtered = [
+            d for d in filtered
+            if term in d.get("name", "").lower()
+            or term in d.get("specialty", "").lower()
+            or term in d.get("department", "").lower()
+        ]
+    return [format_doctor(d) for d in filtered]
+
+@app.get("/api/doctors/{doctor_id}", response_model=DoctorResponse)
+def get_doctor_by_id(doctor_id: str):
+    """Retrieve single doctor profile by ID."""
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
+                row = cur.fetchone()
+                if row:
+                    return format_doctor(dict(row))
+    else:
+        db = read_json_db()
+        doctors = db.get("doctors", [])
+        for d in doctors:
+            if d.get("id") == doctor_id:
+                return format_doctor(d)
+
+    raise HTTPException(status_code=404, detail="Doctor not found")
+
+
 app.include_router(receptionist_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=config.PORT, reload=True)
+
 

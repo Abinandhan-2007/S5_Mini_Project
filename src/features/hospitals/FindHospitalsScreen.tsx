@@ -5,18 +5,42 @@ import { MapPin, Search, Star, ChevronRight, LocateFixed, Loader2, X, Bell } fro
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Chip } from '../../components/ui/Chip';
 import { requestNativeLocation } from '../../lib/locationService';
+import { hospitalService } from '../../services/hospitalService';
+import { doctorService } from '../../services/doctorService';
+import type { Hospital, Doctor } from '../../lib/types';
 import { MOCK_HOSPITALS, MOCK_DOCTORS } from '../../lib/mockApi';
 
 export const FindHospitalsScreen: React.FC = () => {
   const navigate = useNavigate();
   const locationRoute = useLocation();
 
+  const [hospitals, setHospitals] = useState<Hospital[]>(MOCK_HOSPITALS);
+  const [doctors, setDoctors] = useState<Doctor[]>(MOCK_DOCTORS);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All Facilities');
   const [isLocating, setIsLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
 
   const categories = ['All Facilities', 'Cardiology', 'General', 'Pediatrics', 'Specialty Clinic'];
+
+  // Load hospitals & doctors from database
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([
+      hospitalService.getHospitals(),
+      doctorService.getDoctors(),
+    ]).then(([hospData, docData]) => {
+      if (isMounted) {
+        if (hospData && hospData.length > 0) setHospitals(hospData);
+        if (docData && docData.length > 0) setDoctors(docData);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Handle auto-redirected search parameter
   useEffect(() => {
@@ -53,7 +77,7 @@ export const FindHospitalsScreen: React.FC = () => {
     }
   };
 
-  const filteredHospitals = MOCK_HOSPITALS.filter((hosp) => {
+  const filteredHospitals = hospitals.filter((hosp) => {
     const matchesCategory =
       activeCategory === 'All Facilities' ||
       hosp.facilityType.toLowerCase() === activeCategory.toLowerCase() ||
@@ -67,7 +91,7 @@ export const FindHospitalsScreen: React.FC = () => {
     const matchesFacility = hosp.facilityType.toLowerCase().includes(q);
     const matchesSpecialty = hosp.specialties.some((s) => s.toLowerCase().includes(q));
 
-    const matchesDoctor = MOCK_DOCTORS.some(
+    const matchesDoctor = doctors.some(
       (doc) => (doc.hospitalId === hosp.id || hosp.id === 'hosp-1') &&
         (doc.name.toLowerCase().includes(q) || doc.specialty.toLowerCase().includes(q))
     );

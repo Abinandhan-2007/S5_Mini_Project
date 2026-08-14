@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, ArrowLeft, ArrowUpRight, Clock, ShieldCheck, Check, Filter } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
+import { hospitalService } from '../../services/hospitalService';
+import type { Hospital, Doctor } from '../../lib/types';
 import { MOCK_HOSPITALS, MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
 
@@ -13,11 +15,32 @@ export const HospitalDetailScreen: React.FC = () => {
   const navigate = useNavigate();
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
+  const initialHospital = MOCK_HOSPITALS.find((h) => h.id === id) || MOCK_HOSPITALS[0];
+  const initialDoctors = MOCK_DOCTORS.filter((d) => d.hospitalId === id || d.hospitalId === 'hosp-1');
+
+  const [hospital, setHospital] = useState<Hospital>(initialHospital);
+  const [doctors, setDoctors] = useState<Doctor[]>(initialDoctors);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
 
-  const hospital = MOCK_HOSPITALS.find((h) => h.id === id) || MOCK_HOSPITALS[0];
-  const doctors = MOCK_DOCTORS.filter((d) => d.hospitalId === hospital.id || d.hospitalId === 'hosp-1');
+  // Fetch hospital and affiliated doctors from backend database
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    hospitalService.getHospitalById(id).then((res) => {
+      if (isMounted && res) {
+        setHospital(res.hospital);
+        if (res.doctors && res.doctors.length > 0) {
+          setDoctors(res.doctors);
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   // Extract available specialty options for this hospital
   const specialtyOptions = Array.from(new Set(doctors.map((d) => d.specialty)));
@@ -41,7 +64,7 @@ export const HospitalDetailScreen: React.FC = () => {
     return selectedSpecialties.some((spec) => spec.toLowerCase() === d.specialty.toLowerCase());
   });
 
-  const handleSelectDoctor = (doctor: typeof MOCK_DOCTORS[0]) => {
+  const handleSelectDoctor = (doctor: Doctor) => {
     setBookingDoctor(doctor);
     navigate(`/appointments/book/${doctor.id}`);
   };

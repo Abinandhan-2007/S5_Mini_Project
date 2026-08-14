@@ -29,7 +29,9 @@ import { Avatar } from '../../components/ui/Avatar';
 import { requestNativeLocation } from '../../lib/locationService';
 
 import { useCarePulseStore } from '../../lib/store';
-import { MOCK_PRESCRIPTIONS, MOCK_DOCTORS, MOCK_HOSPITALS } from '../../lib/mockApi';
+import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
+import { doctorService } from '../../services/doctorService';
+import { hospitalService } from '../../services/hospitalService';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -105,32 +107,26 @@ export const HomeScreen: React.FC = () => {
     }
 
     // 1. Check if query matches a Doctor's Name or Specialty -> Go to Doctor Booking Page
-    const matchedDoctor = MOCK_DOCTORS.find((d) => {
-      const docName = (d?.name || '').toLowerCase();
-      const docSpec = (d?.specialty || '').toLowerCase();
-      return docName.includes(query) || docSpec.includes(query);
+    doctorService.getDoctors({ search: query }).then((matchedDocs) => {
+      if (matchedDocs && matchedDocs.length > 0) {
+        setBookingDoctor(matchedDocs[0]);
+        navigate(`/appointments/book/${matchedDocs[0].id}`);
+        return;
+      }
+
+      // 2. Check if query matches a Hospital's Name -> Go to Hospital Detail Page
+      hospitalService.getHospitals(query).then((matchedHosps) => {
+        if (matchedHosps && matchedHosps.length > 0) {
+          navigate(`/hospitals/${matchedHosps[0].id}`);
+          return;
+        }
+
+        // 3. Fallback: Redirect to Hospitals list with search filter
+        navigate('/hospitals', { state: { initialSearch: searchQuery.trim() } });
+      });
+    }).catch(() => {
+      navigate('/hospitals', { state: { initialSearch: searchQuery.trim() } });
     });
-
-    if (matchedDoctor) {
-      setBookingDoctor(matchedDoctor);
-      navigate(`/appointments/book/${matchedDoctor.id}`);
-      return;
-    }
-
-    // 2. Check if query matches a Hospital's Name -> Go to Hospital Detail Page showing Doctors available there
-    const matchedHospital = MOCK_HOSPITALS.find((h) => {
-      const hospName = (h?.name || '').toLowerCase();
-      const hospAddr = (h?.address || '').toLowerCase();
-      return hospName.includes(query) || hospAddr.includes(query);
-    });
-
-    if (matchedHospital) {
-      navigate(`/hospitals/${matchedHospital.id}`);
-      return;
-    }
-
-    // 3. Fallback: Redirect to Hospitals list with search filter
-    navigate('/hospitals', { state: { initialSearch: searchQuery.trim() } });
   };
 
   return (
