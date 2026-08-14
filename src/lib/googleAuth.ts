@@ -40,7 +40,10 @@ declare global {
   }
 }
 
-export const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+export const GOOGLE_CLIENT_ID = (
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  '328652220146-7rb9ulr62r40ue0qr3dk7fjo7ba76evb.apps.googleusercontent.com'
+).trim();
 
 /**
  * Dynamically load Google Identity Services script
