@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { apiPost } from '../../lib/apiFetch';
 import {
   Activity,
   User,
@@ -158,28 +159,13 @@ export const RegisterScreen: React.FC = () => {
       preExistingConditions: data.preExistingConditions || '',
     };
 
-    const apiEnvUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-    const endpointsToTry: string[] = [];
-    if (apiEnvUrl) {
-      endpointsToTry.push(apiEnvUrl.endsWith('/api') ? `${apiEnvUrl}/auth/register` : `${apiEnvUrl}/api/auth/register`);
-    }
-    endpointsToTry.push('/api/auth/register');
-    endpointsToTry.push('http://localhost:5000/api/auth/register');
-
     let res: Response | null = null;
     let resData: any = {};
 
-    for (const ep of endpointsToTry) {
-      try {
-        res = await fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (res) break;
-      } catch {
-        // try next endpoint
-      }
+    try {
+      res = await apiPost('/auth/register', payload);
+    } catch {
+      // All endpoints unreachable — fall through to local fallback below
     }
 
     if (res) {

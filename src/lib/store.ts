@@ -3,6 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection } from './types';
 import { INITIAL_USER, INITIAL_APPOINTMENT, MOCK_MEDICAL_HISTORY, INITIAL_CHAT_MESSAGES } from './mockApi';
+import { apiGet, apiFetch } from './apiFetch';
 
 interface CarePulseState {
   // Auth state
@@ -117,30 +118,11 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       }
 
       // 2. Verify token against backend /api/auth/me
-      const tryVerify = async (baseUrl: string) => {
-        return await fetch(`${baseUrl}/auth/me`, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      };
-
-      const apiEnvUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-      const baseUrls = [
-        ...(apiEnvUrl ? [apiEnvUrl] : []),
-        '/api',
-        'http://localhost:5000/api',
-      ];
-
       let res: Response | null = null;
-      for (const base of baseUrls) {
-        try {
-          res = await tryVerify(base);
-          if (res) break;
-        } catch {
-          // try next
-        }
+      try {
+        res = await apiGet('/auth/me', { Authorization: `Bearer ${token}` });
+      } catch {
+        res = null;
       }
 
       if (res && res.ok) {
@@ -322,21 +304,11 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   syncAppointments: async (patientId?: string) => {
     try {
       const pid = patientId || get().user?.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
-      const tryFetch = async (url: string) => fetch(`${url}/appointments/patient/${pid}`);
-      const apiEnvUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
-      const baseUrls = [
-        ...(apiEnvUrl ? [apiEnvUrl] : []),
-        '/api',
-        'http://localhost:5000/api',
-      ];
       let res: Response | null = null;
-      for (const base of baseUrls) {
-        try {
-          res = await tryFetch(base);
-          if (res) break;
-        } catch {
-          // try next
-        }
+      try {
+        res = await apiFetch(`/appointments/patient/${pid}`, { method: 'GET' });
+      } catch {
+        res = null;
       }
       if (res && res.ok) {
         const data = await res.json();

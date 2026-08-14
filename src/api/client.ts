@@ -2,7 +2,7 @@
  * CarePulse Centralized Backend API Client
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { apiFetch } from '../lib/apiFetch';
 
 export interface ConsultationPayload {
   patientId?: string;
@@ -25,7 +25,7 @@ export const apiClient = {
    */
   async getConsultations() {
     try {
-      const response = await fetch(`${BASE_URL}/consultations`);
+      const response = await apiFetch('/consultations', { method: 'GET' });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (err) {
@@ -39,9 +39,8 @@ export const apiClient = {
    */
   async createConsultation(payload: ConsultationPayload) {
     try {
-      const response = await fetch(`${BASE_URL}/consultations`, {
+      const response = await apiFetch('/consultations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -57,9 +56,8 @@ export const apiClient = {
    */
   async searchVectorSimilarity(queryEmbedding: number[], limit = 5) {
     try {
-      const response = await fetch(`${BASE_URL}/consultations/search`, {
+      const response = await apiFetch('/consultations/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ queryEmbedding, limit }),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

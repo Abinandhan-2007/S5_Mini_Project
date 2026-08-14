@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import type { User } from './types';
+import { apiPost } from './apiFetch';
 
 declare global {
   interface Window {
@@ -85,16 +86,7 @@ export const authenticateWithBackend = async (payload: {
     googleId?: string;
   };
 }): Promise<{ success: boolean; user: User; token: string }> => {
-  const base = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '') || 'http://localhost:5000/api';
-  const url = base.endsWith('/api') ? `${base}/auth/google` : `${base}/api/auth/google`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  const res = await apiPost('/auth/google', payload);
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Google authentication server error' }));

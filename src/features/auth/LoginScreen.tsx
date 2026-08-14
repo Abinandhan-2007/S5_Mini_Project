@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
+import { apiPost } from '../../lib/apiFetch';
 import { authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt } from '../../lib/googleAuth';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
@@ -136,24 +137,13 @@ export const LoginScreen: React.FC = () => {
       }
     };
 
-    const apiEnvUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
-    const endpointsToTry: string[] = [];
-    if (apiEnvUrl) {
-      endpointsToTry.push(apiEnvUrl.endsWith('/api') ? `${apiEnvUrl}/auth/login` : `${apiEnvUrl}/api/auth/login`);
-    }
-    endpointsToTry.push('/api/auth/login');
-    endpointsToTry.push('http://localhost:5000/api/auth/login');
-
     let res: Response | null = null;
     let data: any = {};
 
-    for (const ep of endpointsToTry) {
-      try {
-        res = await tryFetch(ep);
-        if (res) break;
-      } catch {
-        // try next endpoint
-      }
+    try {
+      res = await apiPost('/auth/login', payload);
+    } catch {
+      // All endpoints unreachable — fall through to local fallback below
     }
 
     if (res) {
