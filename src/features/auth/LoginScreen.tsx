@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Phone, Lock, ArrowRight, AlertCircle, User } from 'lucide-react';
+import { Activity, Phone, Lock, ArrowRight, AlertCircle, User, UserPlus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
-import { apiPost } from '../../lib/apiFetch';
-import { authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt } from '../../lib/googleAuth';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import {
+  authenticateWithBackend,
+  GOOGLE_CLIENT_ID,
+  parseJwt,
+  loadGoogleScript,
+  useGoogleAuth,
+} from '../../lib/googleAuth';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 export const LoginScreen: React.FC = () => {
@@ -17,99 +21,134 @@ export const LoginScreen: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { signIn: googleSignIn, isLoading: isGoogleLoading, error: googleError, setError: setGoogleError } = useGoogleAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
-  // Initialize Capacitor Google Auth when the screen loads
+  // Sign up modal prompt state
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
+
+  // Sync google auth error to local error message
+  useEffect(() => {
+    if (googleError) {
+      setErrorMessage(googleError);
+    }
+  }, [googleError]);
+
+  // Sign up modal prompt & OAuth Redirect check
   useEffect(() => {
     let isMounted = true;
-    
-    if (isMounted) {
-      GoogleAuth.initialize({
-        clientId: GOOGLE_CLIENT_ID,
-        scopes: ['profile', 'email'],
-        grantOfflineAccess: true,
-      });
-    }
+
+    // 1. Check if returning from Google OAuth Redirect (#access_token=...)
+    const checkRedirectToken = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token=')) {
+        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+        const accessToken = hashParams.get('access_token');
+        if (accessToken) {
+          setErrorMessage(null);
+          try {
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            const gProfile = await userRes.json();
+            if (gProfile?.email) {
+              const authResult = await authenticateWithBackend({
+                profile: {
+                  email: gProfile.email,
+                  name: gProfile.name || gProfile.email.split('@')[0],
+                  picture: gProfile.picture || '',
+                  googleId: gProfile.sub,
+                },
+              });
+              if (authResult?.user) {
+                await setUserAuth(authResult.user, authResult.token);
+                window.history.replaceState(null, '', window.location.pathname);
+                navigate('/home');
+                return;
+              }
+            }
+          } catch (err: any) {
+            console.error('Google OAuth redirect token error:', err);
+            setErrorMessage('Failed to sign in with Google account.');
+          }
+        }
+      }
+    };
+
+    checkRedirectToken();
+
+    // 2. Initialize Google Identity Services for web One-Tap & buttons
+    const initGoogle = async () => {
+      try {
+        await loadGoogleScript();
+        if (!isMounted) return;
+
+        if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.trim() !== '') {
+          if (window.google?.accounts?.id) {
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              auto_select: false,
+              callback: async (response: { credential: string }) => {
+                try {
+                  setErrorMessage(null);
+                  const authResult = await authenticateWithBackend({ credential: response.credential });
+                  if (authResult?.user) {
+                    await setUserAuth(authResult.user, authResult.token);
+                    navigate('/home');
+                  }
+                } catch (err: any) {
+                  console.error('Backend Google Auth error:', err);
+                  const decoded = parseJwt(response.credential);
+                  if (decoded?.email) {
+                    await setUserAuth({
+                      id: decoded.sub || `usr-${Date.now()}`,
+                      fullName: decoded.name || decoded.email.split('@')[0],
+                      email: decoded.email,
+                      phone: '',
+                      dob: '1995-07-24',
+                      gender: 'Not specified',
+                      bloodGroup: 'O+',
+                      emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
+                      avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+                      authProvider: 'google',
+                    });
+                    navigate('/home');
+                  } else {
+                    setErrorMessage(err.message || 'Failed to authenticate with Google.');
+                  }
+                }
+              },
+            });
+
+            try {
+              window.google.accounts.id.prompt();
+            } catch (promptErr) {
+              console.warn('Google One-Tap prompt note:', promptErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Google SDK init notice:', err);
+      }
+    };
+
+    initGoogle();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [navigate, setUserAuth]);
 
-  // Native Click Handler
-  const handleGoogleClick = async () => {
+  const handleGoogleClick = () => {
     setErrorMessage(null);
-    setIsGoogleLoading(true);
-
-    try {
-      // 1. Clear Capacitor plugin session (Android native)
-      await GoogleAuth.signOut();
-    } catch {
-      // Not previously signed in — safe to ignore
-    }
-
-    // 2. Clear browser-level Google Identity Services session (web/PWA)
-    // This is what causes the "signing back in" screen — the browser caches the credential
-    try {
-      const w = window as any;
-      if (w.google?.accounts?.id) {
-        w.google.accounts.id.disableAutoSelect(); // Prevent auto-selecting last account
-        // Revoke the cached credential so the full account picker shows
-        const lastEmail = localStorage.getItem('google_last_email');
-        if (lastEmail) {
-          w.google.accounts.id.revoke(lastEmail, () => {});
-        }
-      }
-    } catch {
-      // Browser GIS not loaded — native Android path, safe to ignore
-    }
-
-    try {
-      const googleUser = await GoogleAuth.signIn();
-      const idToken = googleUser.authentication.idToken;
-      // Store the email so we can revoke it on next signout
-      try {
-        const decoded = parseJwt(idToken);
-        if (decoded?.email) localStorage.setItem('google_last_email', decoded.email);
-      } catch { /* ignore */ }
-
-      try {
-        const authResult = await authenticateWithBackend({ credential: idToken });
-        if (authResult?.user) {
-          await setUserAuth(authResult.user, authResult.token);
-          navigate('/home');
-        }
-      } catch (backendErr: any) {
-        console.warn('Backend Google Auth error, utilizing local fallback:', backendErr);
-        
-        const decoded = parseJwt(idToken);
-        if (decoded?.email) {
-          await setUserAuth({
-            id: decoded.sub || `usr-${Date.now()}`,
-            fullName: decoded.name || decoded.email.split('@')[0],
-            email: decoded.email,
-            phone: '',
-            dob: '1995-07-24',
-            gender: 'Not specified',
-            bloodGroup: 'O+',
-            emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
-            avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
-            authProvider: 'google',
-          }, idToken);
-          navigate('/home');
-        } else {
-          setErrorMessage('Failed to authenticate with Google.');
-        }
-      }
-    } catch (error: any) {
-      console.error('Google SDK prompt error:', error);
-      setErrorMessage('Google sign-in was cancelled or failed.');
-    } finally {
-      setIsGoogleLoading(false);
-    }
+    setGoogleError(null);
+    googleSignIn(async (user, token) => {
+      await setUserAuth(user, token);
+      navigate('/home');
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,6 +159,7 @@ export const LoginScreen: React.FC = () => {
 
     const inputVal = phone.trim();
     const passVal = password.trim();
+
     const payload = {
       username: inputVal,
       email: inputVal,
@@ -127,17 +167,56 @@ export const LoginScreen: React.FC = () => {
       password: passVal,
     };
 
+    const tryFetch = async (endpoint: string) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      try {
+        return await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    const apiEnvUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    const endpointsToTry: string[] = [];
+    if (apiEnvUrl) {
+      endpointsToTry.push(apiEnvUrl.endsWith('/api') ? `${apiEnvUrl}/auth/login` : `${apiEnvUrl}/api/auth/login`);
+    }
+    endpointsToTry.push('/api/auth/login');
+    endpointsToTry.push('http://localhost:5000/api/auth/login');
+
     let res: Response | null = null;
     let data: any = {};
 
-    try {
-      res = await apiPost('/auth/login', payload);
-    } catch {
-      // All endpoints unreachable — fall through to local fallback below
+    for (const ep of endpointsToTry) {
+      try {
+        res = await tryFetch(ep);
+        if (res) break;
+      } catch {
+        // try next endpoint
+      }
     }
 
     if (res) {
       data = await res.json().catch(() => ({}));
+
+      // 404 Not Found: User doesn't exist in PostgreSQL / backend
+      if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
+        setUnregisteredIdentifier(inputVal);
+        setShowSignupPrompt(true);
+        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+        setIsLoading(false);
+        return;
+      } else if (!res.ok) {
+        setErrorMessage(data.detail || data.error || 'Incorrect password or authentication error.');
+        setIsLoading(false);
+        return;
+      }
 
       if (res.ok && data.user) {
         await setUserAuth(data.user, data.token);
@@ -148,6 +227,7 @@ export const LoginScreen: React.FC = () => {
 
       setErrorMessage(data.detail || data.error || 'Incorrect username or password. Please verify your credentials.');
     } else {
+      // Fallback check against local registered users if backend network is totally offline
       const storedUsersStr = localStorage.getItem('carepulse_registered_users');
       const registeredUsers: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
@@ -176,17 +256,26 @@ export const LoginScreen: React.FC = () => {
         navigate('/home');
         return;
       } else {
-        setErrorMessage(`No account found matching "${inputVal}". Please verify your username or sign up.`);
+        setUnregisteredIdentifier(inputVal);
+        setShowSignupPrompt(true);
+        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
       }
     }
 
     setIsLoading(false);
   };
 
+  const handleProceedToSignup = () => {
+    setShowSignupPrompt(false);
+    const isEmail = unregisteredIdentifier.includes('@');
+    navigate('/register', {
+      state: isEmail ? { initialEmail: unregisteredIdentifier } : { initialPhone: unregisteredIdentifier },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4 py-8 sm:px-6 w-full relative">
       <div className="w-full max-w-sm sm:max-w-md space-y-5">
-        
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-teal flex items-center justify-center text-white shadow-xs">
@@ -214,27 +303,45 @@ export const LoginScreen: React.FC = () => {
             </div>
           )}
 
+          {/* User existence & error alert */}
           {errorMessage && (
-            <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-amber-50 text-amber-950 text-xs border border-amber-300 shadow-2xs animate-fade-in">
+            <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-amber-50 text-amber-950 text-xs border border-amber-300 shadow-2xs animate-fade-in text-left">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span className="leading-snug font-semibold">{errorMessage}</span>
               </div>
+              {showSignupPrompt && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleProceedToSignup}
+                    className="w-full text-center text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#094843] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl shadow-2xs cursor-pointer transition-all"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Create Account / Sign Up Now →</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Username / Email / Phone Input */}
             <div className="space-y-1.5 text-left">
               <Input
                 label="USERNAME, EMAIL, OR PHONE"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setShowSignupPrompt(false);
+                }}
                 placeholder="Enter username, email, or phone number"
                 leftIcon={<User className="w-4 h-4 text-[#0B5A54]" />}
                 required
               />
             </div>
 
+            {/* Password Input */}
             <div className="space-y-1.5 text-left">
               <div className="flex justify-between items-center">
                 <label className="block text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider">
@@ -261,6 +368,7 @@ export const LoginScreen: React.FC = () => {
               />
             </div>
 
+            {/* Submit Button */}
             <Button
               type="submit"
               size="lg"
@@ -272,6 +380,7 @@ export const LoginScreen: React.FC = () => {
               LOGIN
             </Button>
 
+            {/* Divider */}
             <div className="relative my-3 text-center">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#E4E7EC]" />
@@ -281,7 +390,7 @@ export const LoginScreen: React.FC = () => {
               </span>
             </div>
 
-            <div className="w-full">
+            <div className="w-full flex flex-col items-center justify-center">
               <Button
                 type="button"
                 variant="outline"

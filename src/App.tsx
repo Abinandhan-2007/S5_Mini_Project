@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Activity } from 'lucide-react';
 import { AppRoutes } from './app/routes';
 import { useCarePulseStore } from './lib/store';
+import { SplashScreen } from './components/ui/SplashScreen';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,13 +15,31 @@ const queryClient = new QueryClient({
   },
 });
 
+// Key stored in localStorage to track first launch
+const SPLASH_SEEN_KEY = 'carepulse_splash_seen';
+
 export const App: React.FC = () => {
+  // On first ever launch: localStorage has no key → show splash.
+  // On all subsequent opens: key exists → skip splash immediately.
+  const [showSplash, setShowSplash] = useState<boolean>(
+    () => !localStorage.getItem(SPLASH_SEEN_KEY)
+  );
   const isInitializing = useCarePulseStore((s) => s.isInitializing);
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
   useEffect(() => {
     checkAuthSession();
   }, [checkAuthSession]);
+
+  const handleSplashComplete = () => {
+    // Mark splash as seen permanently so it never shows again
+    localStorage.setItem(SPLASH_SEEN_KEY, '1');
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
 
   if (isInitializing) {
     return (
@@ -32,7 +51,7 @@ export const App: React.FC = () => {
           <div className="absolute inset-0 rounded-3xl bg-teal-400/20 blur-xl animate-ping pointer-events-none" />
         </div>
         <h1 className="text-2xl font-black font-heading tracking-tight text-white mb-1.5">CarePulse</h1>
-        <p className="text-xs text-teal-100/80 font-medium tracking-wide">Restoring secure session...</p>
+        <p className="text-xs text-teal-100/80 font-medium tracking-wide">Loading CarePulse...</p>
       </div>
     );
   }
