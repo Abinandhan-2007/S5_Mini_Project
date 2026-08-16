@@ -9,7 +9,6 @@ import {
   AlertCircle,
   X,
   RefreshCw,
-  Sparkles,
   Circle,
   User,
   ShieldCheck,
@@ -254,7 +253,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         return;
       }
 
-      const errData = await res.json().catch(() => ({}));
+      await res.json().catch(() => ({}));
       // Fallback
       updateLocalPassword(username.trim(), newPassword.trim());
       setIsResetting(false);
