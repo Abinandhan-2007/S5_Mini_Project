@@ -22,6 +22,9 @@ allprojects {
         google()
         mavenCentral()
     }
+    // Redirect all build outputs outside OneDrive to completely eliminate Windows file-locking issues
+    def cacheDir = new File(System.getProperty("user.home"), ".android-build-cache/s52/${project.name}")
+    layout.buildDirectory.set(cacheDir)
 }
 
 

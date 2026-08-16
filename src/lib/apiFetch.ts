@@ -47,17 +47,22 @@ export async function apiFetch(
   for (const base of urls) {
     const url = `${base}${path}`;
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
       const res = await fetch(url, {
         ...options,
+        signal: options.signal || controller.signal,
         headers: {
           ...API_HEADERS,
           ...(options.headers as Record<string, string> | undefined),
         },
       });
+      clearTimeout(timeoutId);
       return res; // Return on first successful network call (any status code)
     } catch (err) {
       lastError = err;
-      // Network error — try next base URL
+      // Network error or timeout — try next base URL
     }
   }
 

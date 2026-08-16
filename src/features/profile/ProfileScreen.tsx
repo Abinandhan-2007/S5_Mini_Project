@@ -119,9 +119,13 @@ export const ProfileScreen: React.FC = () => {
     setIsEditVitalsModalOpen(false);
   };
 
-  const handleSignOut = () => {
-    logout();
-    navigate('/login');
+  const handleSignOut = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.warn('Signout warning:', err);
+    }
+    navigate('/login', { replace: true });
   };
 
   // Removed 'Personal & Contact Information' and 'Insurance & Coverage' as per previous request
