@@ -253,10 +253,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         return;
       }
 
-<<<<<<< HEAD
       await res.json().catch(() => ({}));
-=======
->>>>>>> 518ccc44114c6b9338c65bb32df490c0856d10f8
       // Fallback
       updateLocalPassword(username.trim(), newPassword.trim());
       setIsResetting(false);
