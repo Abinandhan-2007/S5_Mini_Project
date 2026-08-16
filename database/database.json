@@ -23,6 +23,18 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "google_id": "google-e45d43deca",
       "auth_provider": "google"
+    },
+    {
+      "id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "full_name": "SIVANAGU E",
+      "email": "sivanagu7771@gmail.com",
+      "phone": "",
+      "dob": "1995-07-24",
+      "gender": "Not specified",
+      "bloodGroup": "O+",
+      "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocLjbVs3uo4L92uNGJ9Tp6grAXyfZTAemlu8cdNP0QTvGKJ-dGPL=s96-c",
+      "google_id": "110145146189776698078",
+      "auth_provider": "google"
     }
   ],
   "consultations": [
@@ -88,7 +100,12 @@
       "reviews_count": 2420,
       "emergency_available": true,
       "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
-      "specialties": ["Cardiology", "General Medicine", "Surgery", "Pediatrics"],
+      "specialties": [
+        "Cardiology",
+        "General Medicine",
+        "Surgery",
+        "Pediatrics"
+      ],
       "facility_type": "Cardiology",
       "distance_miles": 0.8
     },
@@ -101,7 +118,12 @@
       "reviews_count": 1850,
       "emergency_available": true,
       "image_url": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&auto=format&fit=crop&q=80",
-      "specialties": ["General", "Emergency Care", "Orthopedics", "Neurology"],
+      "specialties": [
+        "General",
+        "Emergency Care",
+        "Orthopedics",
+        "Neurology"
+      ],
       "facility_type": "General",
       "distance_miles": 1.4
     },
@@ -114,7 +136,11 @@
       "reviews_count": 940,
       "emergency_available": false,
       "image_url": "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=800&auto=format&fit=crop&q=80",
-      "specialties": ["Dermatology", "Wellness", "Allergy"],
+      "specialties": [
+        "Dermatology",
+        "Wellness",
+        "Allergy"
+      ],
       "facility_type": "Specialty Clinic",
       "distance_miles": 2.1
     },
@@ -127,7 +153,11 @@
       "reviews_count": 3100,
       "emergency_available": true,
       "image_url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80",
-      "specialties": ["Pediatrics", "Neonatology", "General"],
+      "specialties": [
+        "Pediatrics",
+        "Neonatology",
+        "General"
+      ],
       "facility_type": "Pediatrics",
       "distance_miles": 3.5
     }
@@ -312,6 +342,66 @@
       "rating": 4.8,
       "reviews_count": 160,
       "about": "Specialist in stroke recovery, cognitive disorders, migraines, and neuro-rehabilitation."
+    }
+  ],
+  "staff": [
+    {
+      "id": "rec-101",
+      "name": "Emily Watson",
+      "email": "receptionist@carepulse.com",
+      "password": "password123",
+      "role": "receptionist",
+      "department": "Front Desk",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "rec-102",
+      "name": "Anna Mathews",
+      "email": "anna.m@carepulse.com",
+      "password": "password123",
+      "role": "receptionist",
+      "department": "Front Desk",
+      "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "doc-olivia",
+      "name": "Dr. Olivia Wilson",
+      "email": "olivia.w@carepulse.com",
+      "password": "doctor123",
+      "role": "doctor",
+      "specialty": "Cardiologist",
+      "department": "Cardiology",
+      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "doc-marcus",
+      "name": "Dr. Marcus Vance",
+      "email": "marcus.v@carepulse.com",
+      "password": "doctor123",
+      "role": "doctor",
+      "specialty": "Dermatologist",
+      "department": "Dermatology",
+      "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "doc-sophia",
+      "name": "Dr. Sophia Patel",
+      "email": "sophia.p@carepulse.com",
+      "password": "doctor123",
+      "role": "doctor",
+      "specialty": "Pediatrician",
+      "department": "Pediatrics",
+      "avatar": "https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "doc-ethan",
+      "name": "Dr. Ethan Reynolds",
+      "email": "ethan.r@carepulse.com",
+      "password": "doctor123",
+      "role": "doctor",
+      "specialty": "Neurologist",
+      "department": "Neurology",
+      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80"
     }
   ]
 }

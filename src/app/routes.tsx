@@ -20,6 +20,8 @@ import { NotificationsScreen } from '../features/notifications/NotificationsScre
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
 import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
 import { ReceptionistLogin } from '../portals/receptionist/ReceptionistLogin';
+import { DoctorLogin } from '../portals/doctor/DoctorLogin';
+import { DoctorLayout } from '../portals/doctor/DoctorLayout';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
@@ -248,6 +250,24 @@ export const AppRoutes: React.FC = () => {
         element={
           <PageTransition>
             <ReceptionistLogin />
+          </PageTransition>
+        }
+      />
+
+      {/* Doctor Portal Routes */}
+      <Route
+        path="/doctor"
+        element={
+          <PageTransition>
+            <DoctorLayout />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/doctor/login"
+        element={
+          <PageTransition>
+            <DoctorLogin />
           </PageTransition>
         }
       />
