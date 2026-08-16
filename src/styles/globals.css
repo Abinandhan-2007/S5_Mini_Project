@@ -138,3 +138,12 @@
 .pb-safe {
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
+
+/* ─── Seamless ECG Scroll Animation ─────────────────────────────────────────
+   Scrolls the 2-tile ECG strip left by exactly 1 tile width (180px).
+   At -180px the view is pixel-identical to 0px → zero visible jump, ever.
+──────────────────────────────────────────────────────────────────────────── */
+@keyframes ecgScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-180px); }
+}

@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Activity, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, CheckCircle2, RotateCw } from 'lucide-react';
+import { useCarePulseStore } from '../../lib/store';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -10,22 +12,100 @@ export type SplashState = 'loading' | 'success' | 'error';
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [splashState, setSplashState] = useState<SplashState>('loading');
   const [progress, setProgress] = useState(0);
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [statusText, setStatusText] = useState('Connecting to server...');
+  const [statusText, setStatusText] = useState('Checking connection...');
   const [isRetrying, setIsRetrying] = useState(false);
+  const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
-  // Monitor network status
+  const isCancelledRef = useRef(false);
+
+  // Linear Loading Animation (0% to 100% strictly linear over 2200ms)
+  const startLinearLoading = useCallback(() => {
+    isCancelledRef.current = false;
+    setProgress(0);
+    setSplashState('loading');
+    setStatusText('Checking connection...');
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSplashState('error');
+      setStatusText('Unable to connect. Please check your internet connection.');
+      return;
+    }
+
+    // Trigger backend session check in parallel
+    checkAuthSession().catch(() => null);
+
+    const totalDuration = 2200; // 2.2 seconds total duration
+    const intervalTime = 16; // ~60fps smooth linear updates
+    const increment = 100 / (totalDuration / intervalTime);
+
+    const timer = setInterval(() => {
+      if (isCancelledRef.current) {
+        clearInterval(timer);
+        return;
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        clearInterval(timer);
+        setSplashState('error');
+        setStatusText('Unable to connect. Please check your internet connection.');
+        return;
+      }
+
+      setProgress((prev) => {
+        const next = prev + increment;
+
+        // Linear status text milestones
+        if (next >= 0 && next < 30) {
+          setStatusText('Checking connection...');
+        } else if (next >= 30 && next < 70) {
+          setStatusText('Connecting to server...');
+        } else if (next >= 70 && next < 95) {
+          setStatusText('Fetching your data...');
+        } else if (next >= 95 && next < 100) {
+          setStatusText('Almost ready...');
+        }
+
+        if (next >= 100) {
+          clearInterval(timer);
+          setSplashState('success');
+          setStatusText('Ready');
+          return 100;
+        }
+        return next;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [checkAuthSession]);
+
+  // Initial startup
+  useEffect(() => {
+    const cleanup = startLinearLoading();
+    return () => {
+      isCancelledRef.current = true;
+      if (cleanup) cleanup();
+    };
+  }, [startLinearLoading]);
+
+  // Navigate to App once linear progress hits 100%
+  useEffect(() => {
+    if (splashState === 'success') {
+      const timer = setTimeout(() => {
+        onComplete();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [splashState, onComplete]);
+
+  // Monitor network online/offline
   useEffect(() => {
     const handleOnline = () => {
-      setIsOnline(true);
       if (splashState === 'error') {
-        setSplashState('loading');
-        setStatusText('Reconnecting to server...');
+        startLinearLoading();
       }
     };
 
     const handleOffline = () => {
-      setIsOnline(false);
       setSplashState('error');
       setStatusText('Unable to connect. Please check your internet connection.');
     };
@@ -37,162 +117,209 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [splashState]);
+  }, [splashState, startLinearLoading]);
 
-  // Loading progress bar animation (0% -> 100% in 3 seconds)
-  useEffect(() => {
-    if (!isOnline || splashState === 'error' || splashState === 'success') return;
-
-    const totalDuration = 3000; // 3 seconds
-    const intervalTime = 25;
-    const increment = 100 / (totalDuration / intervalTime);
-
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + increment;
-
-        // Dynamic status text milestones
-        if (next > 30 && next < 70) {
-          setStatusText('Checking server authentication...');
-        } else if (next >= 70 && next < 100) {
-          setStatusText('Securing health data channel...');
-        }
-
-        if (next >= 100) {
-          clearInterval(timer);
-          setSplashState('success');
-          setStatusText('Connection verified');
-          return 100;
-        }
-        return next;
-      });
-    }, intervalTime);
-
-    return () => clearInterval(timer);
-  }, [isOnline, splashState]);
-
-  // Handle completion on success state
-  useEffect(() => {
-    if (splashState === 'success') {
-      const completionTimer = setTimeout(() => {
-        onComplete();
-      }, 500); // Smooth fade transition into app
-      return () => clearTimeout(completionTimer);
-    }
-  }, [splashState, onComplete]);
-
-  // Retry Connection
+  // Manual Retry
   const handleRetry = useCallback(() => {
     setIsRetrying(true);
-    setStatusText('Verifying connection...');
+    setStatusText('Testing connection...');
 
     setTimeout(() => {
-      const online = navigator.onLine;
-      setIsOnline(online);
       setIsRetrying(false);
-
-      if (online) {
-        setSplashState('loading');
-        setProgress(0);
-        setStatusText('Connecting to server...');
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        startLinearLoading();
       } else {
         setSplashState('error');
         setStatusText('Unable to connect. Please check your internet connection.');
       }
-    }, 1000);
-  }, []);
+    }, 600);
+  }, [startLinearLoading]);
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-[#073633] bg-gradient-to-b from-[#09423E] via-[#073633] to-[#042422] flex flex-col items-center justify-between px-6 py-10 text-white select-none overflow-hidden font-sans antialiased">
-      
-      {/* Top Subtle Status Pill */}
-      <div className="w-full flex justify-center pt-2">
-        <div className="px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-teal-200/70 font-semibold backdrop-blur-sm">
-          CarePulse HealthTech
-        </div>
-      </div>
+    <div className="fixed inset-0 z-[99999] flex flex-col justify-between items-center px-6 py-12 text-white select-none overflow-hidden font-sans antialiased bg-[#041614]">
+      {/* Ambient Background Radial Bloom */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,#0B423D_0%,#052320_50%,#031210_100%)] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Centered Branding Section (Vertically Centered, Slightly Above Middle) */}
-      <div className="flex flex-col items-center text-center my-auto -mt-8 space-y-7 max-w-sm w-full">
-        {/* Minimal Clinical Logo */}
-        <div className={`relative flex items-center justify-center transition-all duration-700 ${
-          splashState === 'error' ? 'opacity-60 scale-95' : 'opacity-100 scale-100'
-        }`}>
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/15 flex items-center justify-center shadow-xl">
-            <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-teal-300 stroke-[1.75]" />
+      {/* Top Spacer */}
+      <div className="w-full h-4 z-10" />
+
+      {/* Center Hero Unit: Logo, Brand & Linear Loading */}
+      <div className="flex flex-col items-center text-center my-auto w-full max-w-sm z-10">
+
+        {/* Animated Brand Emblem */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{
+            scale: splashState === 'error' ? 0.95 : 1,
+            opacity: splashState === 'error' ? 0.6 : 1
+          }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="relative mb-8"
+        >
+          {/* Outer Breathing Halo Ring */}
+          <div className={`absolute -inset-4 rounded-full blur-xl transition-all duration-700 ${splashState === 'error' ? 'bg-rose-500/15' : 'bg-teal-400/20 animate-pulse'
+            }`} />
+
+          {/* Glassmorphic ECG Monitor Disc */}
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-b from-white/[0.16] to-white/[0.04] border border-white/25 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-center overflow-hidden">
+            {/* Subtle Clinical Grid */}
+            <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,rgba(45,212,191,0.25)_1px,transparent_1px),linear-gradient(to_bottom,rgba(45,212,191,0.25)_1px,transparent_1px)] bg-[size:12px_12px] pointer-events-none" />
+
+            {/* Edge Fade Mask */}
+            <div 
+              className="w-full h-full flex items-center overflow-hidden relative z-10"
+              style={{
+                maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
+              }}
+            >
+              {/*
+                TRUE SEAMLESS CSS LOOP:
+                - One tile = 180px wide containing exactly 3 heartbeat cycles
+                - We render 2 tiles side by side = 360px total
+                - CSS keyframes scrolls translateX(0) → translateX(-180px) = exactly 1 tile width
+                - At -180px the visual is identical to 0px → zero visible jump, ever
+              */}
+              <div
+                style={{
+                  display: 'flex',
+                  width: '360px',
+                  flexShrink: 0,
+                  animation: 'ecgScroll 1.8s linear infinite',
+                  filter: splashState === 'error'
+                    ? 'drop-shadow(0 0 8px rgba(244,63,94,0.7))'
+                    : 'drop-shadow(0 0 10px #5EEAD4) drop-shadow(0 0 18px rgba(45,212,191,0.9))',
+                }}
+              >
+                {/* Tile A */}
+                <svg
+                  viewBox="0 0 180 48"
+                  width="180"
+                  height="48"
+                  fill="none"
+                  stroke={splashState === 'error' ? '#f87171' : '#5eead4'}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                >
+                  <path d="M0 24 H18 C21 18 27 18 30 24 H36 L40 32 L46 4 L52 44 L56 24 H60 C64 16 72 16 76 24 H90 C94 18 100 18 103 24 H109 L113 32 L119 4 L125 44 L129 24 H133 C137 16 145 16 149 24 H162 C165 18 171 18 174 24 H180" />
+                </svg>
+                {/* Tile B (identical copy — when A scrolls out, B is already in place) */}
+                <svg
+                  viewBox="0 0 180 48"
+                  width="180"
+                  height="48"
+                  fill="none"
+                  stroke={splashState === 'error' ? '#f87171' : '#5eead4'}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                >
+                  <path d="M0 24 H18 C21 18 27 18 30 24 H36 L40 32 L46 4 L52 44 L56 24 H60 C64 16 72 16 76 24 H90 C94 18 100 18 103 24 H109 L113 32 L119 4 L125 44 L129 24 H133 C137 16 145 16 149 24 H162 C165 18 171 18 174 24 H180" />
+                </svg>
+              </div>
+            </div>
           </div>
-          {/* Subtle Glow */}
-          <div className="absolute inset-0 rounded-2xl bg-teal-400/10 blur-xl pointer-events-none" />
-        </div>
+        </motion.div>
 
-        {/* Wordmark with generous letter spacing */}
-        <div className="space-y-1">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-[0.2em] font-heading text-white uppercase drop-shadow-sm">
+        {/* Brand Titles */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="space-y-1.5 mb-10"
+        >
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-[0.2em] uppercase text-white drop-shadow-sm font-heading">
             CarePulse
           </h1>
-          <p className="text-xs text-teal-100/70 font-normal tracking-wider">
+          <p className="text-xs sm:text-sm text-teal-100/60 font-medium tracking-wide">
             Empathetic healthcare at your fingertips
           </p>
-        </div>
+        </motion.div>
 
-        {/* Dynamic Loading / Success / Error Section */}
-        <div className="w-full max-w-[260px] pt-4 space-y-3">
-          {splashState === 'loading' && (
-            <>
-              {/* Thin Sleek Horizontal Loading Bar */}
-              <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden relative border border-white/5">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-300 transition-all duration-75 ease-out shadow-[0_0_12px_rgba(45,212,191,0.6)]"
-                  style={{ width: `${Math.min(100, progress)}%` }}
-                />
-              </div>
-
-              {/* Status Text */}
-              <p className="text-[11px] font-medium text-teal-200/80 tracking-wide transition-all animate-pulse">
-                {statusText}
-              </p>
-            </>
-          )}
-
-          {splashState === 'success' && (
-            <div className="flex flex-col items-center space-y-1.5 animate-scale-up">
-              <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-400/30 shadow-sm">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <p className="text-[11px] font-semibold text-emerald-200 tracking-wide">
-                {statusText}
-              </p>
-            </div>
-          )}
-
-          {splashState === 'error' && (
-            <div className="flex flex-col items-center space-y-3 animate-fade-in">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-400/20 text-amber-200 text-xs">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-[11px] font-medium leading-tight">{statusText}</span>
-              </div>
-
-              {/* Rounded Brand-Colored Retry Button */}
-              <button
-                type="button"
-                onClick={handleRetry}
-                disabled={isRetrying}
-                className="w-full py-2.5 px-4 rounded-full bg-teal-400 text-[#073633] hover:bg-teal-300 active:scale-95 text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-60 cursor-pointer"
+        {/* Linear Progress Bar & Status Section */}
+        <div className="w-full max-w-[280px]">
+          <AnimatePresence mode="wait">
+            {splashState === 'loading' && (
+              <motion.div
+                key="loading-linear"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-3"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
-                <span>{isRetrying ? 'Retrying...' : 'Retry'}</span>
-              </button>
-            </div>
-          )}
+                {/* Thin Sleek Linear Progress Track */}
+                <div className="w-full h-1.5 rounded-full bg-white/[0.08] backdrop-blur-sm overflow-hidden p-[1px] border border-white/[0.06]">
+                  <div
+                    className={`h-full rounded-full transition-all duration-75 ease-linear shadow-[0_0_12px_rgba(45,212,191,0.8)] ${progress >= 90
+                        ? 'bg-gradient-to-r from-teal-400 via-emerald-400 to-green-300'
+                        : 'bg-gradient-to-r from-teal-400 via-teal-300 to-emerald-300'
+                      }`}
+                    style={{ width: `${Math.min(100, progress)}%` }}
+                  />
+                </div>
+
+                {/* Status Message & Monospace Percentage */}
+                <div className="flex justify-between items-center text-[11px] font-medium text-teal-200/70 px-0.5">
+                  <span className="truncate">{statusText}</span>
+                  <span className="font-mono text-white/90 font-semibold ml-2">{Math.min(100, Math.round(progress))}%</span>
+                </div>
+              </motion.div>
+            )}
+
+            {splashState === 'success' && (
+              <motion.div
+                key="success-badge"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex items-center justify-center gap-2 py-2 px-4 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-sm"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>{statusText}</span>
+              </motion.div>
+            )}
+
+            {splashState === 'error' && (
+              <motion.div
+                key="error-state"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3.5"
+              >
+                <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-400/20 backdrop-blur-md flex items-center gap-2.5 text-rose-200 text-xs">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span className="text-[11px] font-medium leading-tight text-left">{statusText}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                  className="w-full py-2.5 px-4 rounded-full bg-teal-400 hover:bg-teal-300 text-[#041614] active:scale-95 text-xs font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(45,212,191,0.25)] transition-all cursor-pointer disabled:opacity-60"
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                  <span>{isRetrying ? 'Checking Connection...' : 'Retry'}</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Unobtrusive Bottom Tagline & Version */}
-      <div className="w-full text-center pb-2 z-10">
-        <p className="text-[10px] tracking-widest text-teal-100/40 uppercase font-light">
-          CarePulse Patient Portal • v1.0.0
+      {/* Bottom Minimal Version Tagline */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="w-full text-center z-10"
+      >
+        <p className="text-[10px] tracking-[0.25em] text-teal-100/30 uppercase font-mono">
+          CarePulse • v1.0.0
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };
