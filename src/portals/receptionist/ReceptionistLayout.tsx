@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Bell, User } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Plus, Bell, User, LogOut } from 'lucide-react';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
 import { DoctorManagement } from './DoctorManagement';
 import { PatientBookings } from './PatientBookings';
@@ -14,6 +15,19 @@ export const ReceptionistLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const profile = useStaffStore((s) => s.receptionistProfile);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const logoutStaff = useStaffStore((s) => s.logoutStaff);
+  const navigate = useNavigate();
+
+  // Role-based auth guard
+  if (!currentStaff || currentStaff.role !== 'receptionist') {
+    return <Navigate to="/receptionist/login" replace />;
+  }
+
+  const handleLogout = () => {
+    logoutStaff();
+    navigate('/receptionist/login');
+  };
 
   const navItems: { id: NavTab; label: string }[] = [
     { id: 'home', label: 'Dashboard' },
@@ -88,6 +102,16 @@ export const ReceptionistLayout: React.FC = () => {
               title={profile.name}
             >
               <User className="w-5 h-5 text-slate-700" />
+            </button>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
 

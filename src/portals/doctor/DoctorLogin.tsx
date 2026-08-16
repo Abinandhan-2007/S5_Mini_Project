@@ -1,8 +1,8 @@
 import React from 'react';
+import { StaffPortalLogin } from '../shared/StaffPortalLogin';
 
-// TODO: Implement Doctor portal login
-const DoctorLogin: React.FC = () => {
-  return <div>TODO: DoctorLogin</div>;
-};
+export const DoctorLogin: React.FC = () => (
+  <StaffPortalLogin defaultRole="doctor" />
+);
 
 export default DoctorLogin;
