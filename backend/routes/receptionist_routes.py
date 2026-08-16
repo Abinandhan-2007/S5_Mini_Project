@@ -303,54 +303,198 @@ def update_slot_capacity(doctor_id: str, payload: SlotCapacityUpdate):
 
     raise HTTPException(status_code=404, detail="Doctor not found")
 
+def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
+    """Fetch live appointments from PostgreSQL or JSON DB and format them as TokenQueueItem records."""
+    tokens = []
+    seen_ids = set()
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = """
+                        SELECT a.*, 
+                               p.full_name as patient_full_name, 
+                               p.phone as patient_phone_db, 
+                               p.blood_group as patient_blood_group,
+                               p.dob as patient_dob
+                        FROM appointments a
+                        LEFT JOIN patients p ON a.patient_id = p.id
+                    """
+                    params = []
+                    if doctor_id:
+                        query += " WHERE a.doctor_id = %s"
+                        params.append(doctor_id)
+                    query += " ORDER BY a.created_at ASC"
+                    
+                    cur.execute(query, tuple(params))
+                    rows = cur.fetchall()
+
+                    for idx, row in enumerate(rows, start=1):
+                        app_dict = dict(row)
+                        app_id = str(app_dict["id"])
+                        seen_ids.add(app_id)
+
+                        raw_status = app_dict.get("status") or "Waiting"
+                        token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
+
+                        p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Online Patient"
+                        p_phone = app_dict.get("patient_phone_db") or "+91 98765 43210"
+
+                        # Calculate age if dob available
+                        age = 28
+                        if app_dict.get("patient_dob"):
+                            try:
+                                birth_year = int(str(app_dict["patient_dob"])[:4])
+                                age = max(1, 2026 - birth_year)
+                            except Exception:
+                                age = 28
+
+                        tokens.append({
+                            "id": app_id,
+                            "tokenNumber": f"#TOK-{idx:03d}",
+                            "patientId": str(app_dict.get("patient_id") or ""),
+                            "patientName": p_name,
+                            "patientPhone": p_phone,
+                            "doctorId": str(app_dict.get("doctor_id") or "doc-1"),
+                            "doctorName": app_dict.get("doctor_name") or "Dr. Olivia Wilson",
+                            "doctorSpecialty": app_dict.get("doctor_specialty") or "Cardiologist",
+                            "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
+                            "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
+                            "status": token_status,
+                            "arrivalTime": app_dict.get("created_at").strftime("%I:%M %p") if app_dict.get("created_at") and hasattr(app_dict.get("created_at"), "strftime") else "09:45 AM",
+                            "issueTime": "09:45 AM",
+                            "type": app_dict.get("type") or "In-Person",
+                            "date": str(app_dict.get("date") or "Today"),
+                            "age": age,
+                            "bloodGroup": app_dict.get("patient_blood_group") or "O+",
+                            "healthIssue": "General Consultation"
+                        })
+        except Exception as e:
+            print("DB fetch tokens note:", e)
+
+    if not tokens:
+        # Read from JSON DB
+        db = database.read_json_db()
+        raw_apps = db.get("appointments", [])
+        raw_patients = {str(p.get("id")): p for p in db.get("patients", [])}
+
+        idx = 1
+        for app_dict in reversed(raw_apps): # chronological order
+            app_id = str(app_dict.get("id"))
+            if app_id in seen_ids:
+                continue
+            
+            if doctor_id and app_dict.get("doctor_id") != doctor_id:
+                continue
+
+            p_id = str(app_dict.get("patient_id", ""))
+            p_obj = raw_patients.get(p_id, {})
+
+            p_name = app_dict.get("patient_name") or p_obj.get("full_name") or "Online Patient"
+            p_phone = app_dict.get("patient_phone") or p_obj.get("phone") or "+91 98765 43210"
+
+            raw_status = app_dict.get("status") or "Waiting"
+            token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
+
+            tokens.append({
+                "id": app_id,
+                "tokenNumber": f"#TOK-{idx:03d}",
+                "patientId": p_id,
+                "patientName": p_name,
+                "patientPhone": p_phone,
+                "doctorId": str(app_dict.get("doctor_id") or "doc-1"),
+                "doctorName": app_dict.get("doctor_name") or "Dr. Olivia Wilson",
+                "doctorSpecialty": app_dict.get("doctor_specialty") or "Cardiologist",
+                "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
+                "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
+                "status": token_status,
+                "arrivalTime": "09:45 AM",
+                "issueTime": "09:45 AM",
+                "type": app_dict.get("type") or "In-Person",
+                "date": str(app_dict.get("date") or "Today"),
+                "age": 29,
+                "bloodGroup": p_obj.get("blood_group") or p_obj.get("bloodGroup") or "O+",
+                "healthIssue": "General Consultation"
+            })
+            idx += 1
+
+    # Fallback to MOCK_TOKEN_QUEUE if both DB and JSON are empty
+    if not tokens:
+        for t in MOCK_TOKEN_QUEUE:
+            if not doctor_id or t.get("doctorId") == doctor_id:
+                tokens.append(dict(t))
+
+    return tokens
+
 @router.get("/tokens")
 def get_token_queue(doctor_id: Optional[str] = None):
-    """Get active live queue tokens from database."""
-    if doctor_id:
-        filtered = [t for t in MOCK_TOKEN_QUEUE if t.get("doctorId") == doctor_id]
-        return {"success": True, "tokens": filtered}
-    return {"success": True, "tokens": MOCK_TOKEN_QUEUE}
+    """Get active live queue tokens from database including patient bookings."""
+    tokens = fetch_all_tokens_from_db(doctor_id)
+    return {"success": True, "tokens": tokens}
 
 @router.post("/tokens/call-next")
 def call_next_token(doctor_id: Optional[str] = None):
     """Advance queue token state from Waiting -> In Consultation."""
-    # Complete current in-consultation if any
-    for tok in MOCK_TOKEN_QUEUE:
-        if doctor_id and tok.get("doctorId") != doctor_id:
-            continue
+    tokens = fetch_all_tokens_from_db(doctor_id)
+    target_token = None
+
+    for tok in tokens:
         if tok.get("status") == "In Consultation":
-            tok["status"] = "Completed"
+            update_token_status(tok["id"], TokenStatusUpdate(status="Completed"))
             break
 
-    # Call next waiting token
-    for tok in MOCK_TOKEN_QUEUE:
-        if doctor_id and tok.get("doctorId") != doctor_id:
-            continue
+    for tok in tokens:
         if tok.get("status") == "Waiting":
-            tok["status"] = "In Consultation"
-            return {"success": True, "activeToken": tok}
-    return {"success": True, "activeToken": None, "message": "No waiting tokens in queue"}
+            target_token = tok
+            target_token["status"] = "In Consultation"
+            update_token_status(tok["id"], TokenStatusUpdate(status="In Consultation"))
+            break
+
+    return {"success": True, "activeToken": target_token, "message": "Queue updated"}
 
 @router.patch("/tokens/{token_id}/status")
 def update_token_status(token_id: str, payload: TokenStatusUpdate):
-    """Update token status in live queue."""
+    """Update token status in live queue and database."""
+    # 1. Update in PostgreSQL
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE appointments SET status = %s WHERE id::text = %s OR ticket_number = %s", (payload.status, token_id, token_id))
+                conn.commit()
+        except Exception as e:
+            print("DB update status note:", e)
+
+    # 2. Update in JSON DB
+    try:
+        db = database.read_json_db()
+        for app in db.get("appointments", []):
+            if str(app.get("id")) == token_id or str(app.get("ticket_number")) == token_id:
+                app["status"] = payload.status
+                database.write_json_db(db)
+                break
+    except Exception as e:
+        print("JSON update status note:", e)
+
+    # 3. Update in memory mock if present
     for tok in MOCK_TOKEN_QUEUE:
         if tok.get("id") == token_id:
             tok["status"] = payload.status
-            return {"success": True, "token": tok}
-    raise HTTPException(status_code=404, detail="Token not found")
+
+    return {"success": True, "tokenId": token_id, "status": payload.status}
 
 @router.post("/appointments")
 def create_walkin_appointment(payload: WalkInAppointmentCreate):
     """Book a walk-in appointment and persist to appointments database table."""
     ticket_num = f"#CP-{uuid.uuid4().hex[:4].upper()}"
-    token_num = f"#TOK-00{len(MOCK_TOKEN_QUEUE) + 1}"
     now_str = datetime.now().strftime("%I:%M %p")
     today_str = payload.date if payload.date else datetime.now().strftime("%Y-%m-%d")
+    app_id = f"app-{uuid.uuid4().hex[:8]}"
 
     token_item = {
-        "id": f"tok-{uuid.uuid4().hex[:6]}",
-        "tokenNumber": token_num,
+        "id": app_id,
+        "tokenNumber": "#TOK-NEW",
         "patientName": payload.patientName,
         "patientPhone": payload.patientPhone,
         "doctorId": payload.doctorId,
@@ -361,9 +505,13 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
         "status": "Waiting",
         "arrivalTime": now_str,
         "issueTime": now_str,
-        "type": payload.type or "Walk-In"
+        "type": payload.type or "Walk-In",
+        "date": today_str,
+        "age": payload.age or 30,
+        "bloodGroup": payload.bloodGroup or "O+",
+        "address": payload.address or "",
+        "healthIssue": payload.healthIssue or "General Checkup"
     }
-    MOCK_TOKEN_QUEUE.append(token_item)
 
     # Persist walk-in appointment to Database
     if database.use_pg:
@@ -387,7 +535,7 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
                         INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, hospital_name, date, time_slot, type, status)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
                     """, (
-                        str(uuid.uuid4()),
+                        app_id,
                         pat_id,
                         ticket_num,
                         payload.doctorId,
@@ -401,12 +549,12 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
                 conn.commit()
         except Exception as e:
             print("DB walkin appointment insert note:", e)
-    else:
+
+    # Also persist to JSON DB
+    try:
         db = database.read_json_db()
-        if "appointments" not in db:
-            db["appointments"] = []
-        db["appointments"].append({
-            "id": f"app-{uuid.uuid4().hex[:8]}",
+        db.setdefault("appointments", []).insert(0, {
+            "id": app_id,
             "patient_name": payload.patientName,
             "patient_phone": payload.patientPhone,
             "ticket_number": ticket_num,
@@ -420,6 +568,8 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
             "status": "Upcoming"
         })
         database.write_json_db(db)
+    except Exception as e:
+        print("JSON walkin insert note:", e)
 
     return {
         "success": True,

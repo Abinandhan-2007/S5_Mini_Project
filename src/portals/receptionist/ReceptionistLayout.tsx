@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Bell, User } from 'lucide-react';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
 import { DoctorManagement } from './DoctorManagement';
@@ -14,6 +14,21 @@ export const ReceptionistLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const profile = useStaffStore((s) => s.receptionistProfile);
+  const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
+  const fetchTokens = useStaffStore((s) => s.fetchTokens);
+
+  useEffect(() => {
+    // Initial fetch on mount
+    fetchDoctors();
+    fetchTokens();
+
+    // Live polling every 3.5 seconds to sync patient bookings in real time
+    const interval = setInterval(() => {
+      fetchTokens();
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [fetchDoctors, fetchTokens]);
 
   const navItems: { id: NavTab; label: string }[] = [
     { id: 'home', label: 'Dashboard' },

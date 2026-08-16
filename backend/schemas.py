@@ -12,6 +12,7 @@ class GoogleAuthRequest(BaseModel):
     profile: Optional[GoogleAuthProfile] = None
 
 class LoginRequest(BaseModel):
+    username: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     password: Optional[str] = None
@@ -20,6 +21,7 @@ class RegisterRequest(BaseModel):
     fullName: str
     phone: Optional[str] = ""
     email: Optional[str] = ""
+    address: Optional[str] = ""
     password: Optional[str] = None
     dob: Optional[str] = ""
     gender: Optional[str] = "Not specified"
@@ -34,6 +36,7 @@ class PatientResponse(BaseModel):
     fullName: str
     email: str
     phone: Optional[str] = ""
+    address: Optional[str] = ""
     dob: Optional[str] = ""
     gender: Optional[str] = "Not specified"
     bloodGroup: Optional[str] = "O+"
@@ -44,6 +47,34 @@ class AuthResponse(BaseModel):
     success: bool
     user: PatientResponse
     token: str
+
+class ForgotPasswordRequestOtp(BaseModel):
+    username: str
+    deliveryMethod: Optional[str] = "email"
+
+class ForgotPasswordOtpResponse(BaseModel):
+    success: bool
+    message: str
+    fullName: str
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    maskedDestination: str
+    deliveryMethod: str
+    otp: str
+
+class ForgotPasswordVerifyOtpRequest(BaseModel):
+    username: str
+    otp: str
+
+class ForgotPasswordVerifyOtpResponse(BaseModel):
+    success: bool
+    message: str
+    verified: bool
+
+class ForgotPasswordResetRequest(BaseModel):
+    username: str
+    otp: str
+    newPassword: str
 
 class AppointmentCreate(BaseModel):
     patientId: Optional[str] = None

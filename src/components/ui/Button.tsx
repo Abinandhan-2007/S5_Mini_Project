@@ -56,9 +56,9 @@ export const Button: React.FC<ButtonProps> = ({
         <Loader2 className="w-3.5 h-3.5 animate-spin text-current mr-1" />
       ) : (
         <>
-          {leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>}
-          <span>{children}</span>
-          {rightIcon && <span className="inline-flex shrink-0">{rightIcon}</span>}
+          {leftIcon && <span className="inline-flex items-center justify-center shrink-0">{leftIcon}</span>}
+          {typeof children === 'string' ? <span>{children}</span> : children}
+          {rightIcon && <span className="inline-flex items-center justify-center shrink-0">{rightIcon}</span>}
         </>
       )}
     </button>

@@ -17,6 +17,7 @@ import {
   FileCheck,
   QrCode,
   Fingerprint,
+  MapPin,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -28,6 +29,7 @@ import { Select } from '../../components/ui/Select';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
 import { registerDeviceBiometrics } from '../../lib/biometricAuthService';
+import { calculateAge, getTodayDateString } from '../../lib/dateUtils';
 
 export const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -64,6 +66,7 @@ export const ProfileScreen: React.FC = () => {
   const [editName, setEditName] = useState(user?.fullName || '');
   const [editEmail, setEditEmail] = useState(user?.email || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editAddress, setEditAddress] = useState(user?.address || '');
 
   const [editDob, setEditDob] = useState(user?.dob || '');
   const [editGender, setEditGender] = useState(user?.gender || 'Female');
@@ -73,6 +76,9 @@ export const ProfileScreen: React.FC = () => {
   const [editEmergencyRel, setEditEmergencyRel] = useState(user?.emergencyContact?.relationship || 'Spouse');
   const [editAllergies, setEditAllergies] = useState(user?.allergies || '');
   const [editConditions, setEditConditions] = useState(user?.preExistingConditions || '');
+
+  const userAge = calculateAge(user?.dob);
+  const editDobAge = calculateAge(editDob);
 
   if (!user) {
     return (
@@ -91,6 +97,7 @@ export const ProfileScreen: React.FC = () => {
       fullName: editName,
       email: editEmail,
       phone: editPhone,
+      address: editAddress,
     });
     setIsEditModalOpen(false);
   };
@@ -207,6 +214,12 @@ export const ProfileScreen: React.FC = () => {
                 <span className="w-1 h-1 rounded-full bg-slate-300" />
                 <span className="text-[#0B5A54] font-bold">{user.phone}</span>
               </div>
+              {user.address && (
+                <div className="flex items-center justify-center gap-1 text-[11px] text-[#6B7280] font-medium max-w-xs mx-auto">
+                  <MapPin className="w-3 h-3 text-[#0B5A54] shrink-0" />
+                  <span className="truncate">{user.address}</span>
+                </div>
+              )}
             </div>
 
             {/* EDIT PROFILE PILL BUTTON */}
@@ -244,7 +257,14 @@ export const ProfileScreen: React.FC = () => {
                 </div>
                 <span>DATE OF BIRTH</span>
               </div>
-              <p className="text-xs font-extrabold font-heading text-[#111827] pl-0.5">{user.dob}</p>
+              <div className="flex items-center gap-1.5 pl-0.5">
+                <p className="text-xs font-extrabold font-heading text-[#111827]">{user.dob || 'Not set'}</p>
+                {userAge !== null && (
+                  <span className="text-[10px] font-bold text-[#0B5A54] bg-[#E3F3F1] px-1.5 py-0.5 rounded-md">
+                    {userAge} yrs
+                  </span>
+                )}
+              </div>
             </Card>
 
             <Card padding="sm" className="space-y-1 border border-[#E4E7EC] bg-white shadow-2xs hover:shadow-xs transition-all">
@@ -397,6 +417,12 @@ export const ProfileScreen: React.FC = () => {
                 onChange={(e) => setEditPhone(e.target.value)}
                 required
               />
+              <Input
+                label="RESIDENTIAL ADDRESS"
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+                placeholder="Enter complete address"
+              />
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditModalOpen(false)}>
@@ -423,8 +449,9 @@ export const ProfileScreen: React.FC = () => {
 
             <form onSubmit={handleSaveVitals} className="space-y-3 text-left">
               <Input
-                label="DATE OF BIRTH"
+                label={editDobAge !== null ? `DATE OF BIRTH (${editDobAge} YEARS OLD)` : 'DATE OF BIRTH'}
                 type="date"
+                max={getTodayDateString()}
                 value={editDob}
                 onChange={(e) => setEditDob(e.target.value)}
               />

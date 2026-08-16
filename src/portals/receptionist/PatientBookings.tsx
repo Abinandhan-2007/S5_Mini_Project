@@ -1,19 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Clock,
   FileText,
   Phone,
   Stethoscope,
-
   Sparkles,
   CheckCircle2,
-
   Smartphone,
   UserPlus,
   Calendar,
   X,
-
+  RefreshCw,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { NewAppointmentModal } from './NewAppointmentModal';
@@ -21,6 +19,8 @@ import { NewAppointmentModal } from './NewAppointmentModal';
 export const PatientBookings: React.FC = () => {
   const tokens = useStaffStore((s) => s.tokens);
   const doctors = useStaffStore((s) => s.doctors);
+  const fetchTokens = useStaffStore((s) => s.fetchTokens);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'ONLINE' | 'OFFLINE' | 'ALL'>('ONLINE');
@@ -29,6 +29,16 @@ export const PatientBookings: React.FC = () => {
   const [selectedSlotFilter, setSelectedSlotFilter] = useState('ALL');
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [showOfflineSuccessAlert, setShowOfflineSuccessAlert] = useState(false);
+
+  useEffect(() => {
+    fetchTokens();
+  }, [fetchTokens]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchTokens();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const availableDates = useMemo(() => {
     const datesSet = new Set<string>();
@@ -107,13 +117,25 @@ export const PatientBookings: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsBookModalOpen(true)}
-            className="px-6 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 shrink-0"
-          >
-            <UserPlus className="w-4.5 h-4.5 stroke-[2.5]" />
-            <span>Add Offline Patient (Walk-In)</span>
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="px-4 py-3.5 bg-white/15 hover:bg-white/25 text-white font-bold rounded-2xl border border-white/20 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider active:scale-95 disabled:opacity-50"
+              title="Sync live patient bookings"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Syncing...' : 'Sync Live'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsBookModalOpen(true)}
+              className="px-6 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
+            >
+              <UserPlus className="w-4.5 h-4.5 stroke-[2.5]" />
+              <span>Add Offline Patient (Walk-In)</span>
+            </button>
+          </div>
 
         </div>
       </div>

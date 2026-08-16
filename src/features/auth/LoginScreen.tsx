@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Removed the unused UserPlus and X icons here
-import { Activity, Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Activity, Phone, Lock, ArrowRight, AlertCircle, User } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +8,7 @@ import { useCarePulseStore } from '../../lib/store';
 import { apiPost } from '../../lib/apiFetch';
 import { authenticateWithBackend, GOOGLE_CLIENT_ID, parseJwt } from '../../lib/googleAuth';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +19,8 @@ export const LoginScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   // Initialize Capacitor Google Auth when the screen loads
   useEffect(() => {
@@ -113,14 +115,17 @@ export const LoginScreen: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setResetSuccessMessage(null);
     setIsLoading(true);
 
     const inputVal = phone.trim();
     const passVal = password.trim();
-    const isEmail = inputVal.includes('@');
-    const payload = isEmail
-      ? { email: inputVal, password: passVal }
-      : { phone: inputVal, password: passVal };
+    const payload = {
+      username: inputVal,
+      email: inputVal,
+      phone: inputVal,
+      password: passVal,
+    };
 
     let res: Response | null = null;
     let data: any = {};
@@ -134,33 +139,44 @@ export const LoginScreen: React.FC = () => {
     if (res) {
       data = await res.json().catch(() => ({}));
 
-      if (data.user) {
+      if (res.ok && data.user) {
         await setUserAuth(data.user, data.token);
         setIsLoading(false);
         navigate('/home');
         return;
       }
+
+      setErrorMessage(data.detail || data.error || 'Incorrect username or password. Please verify your credentials.');
     } else {
       const storedUsersStr = localStorage.getItem('carepulse_registered_users');
       const registeredUsers: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
+      const inputLower = inputVal.toLowerCase();
       const inputDigits = inputVal.replace(/\D/g, '').slice(-10);
-      const inputLowerEmail = inputVal.toLowerCase();
 
       const localMatched = registeredUsers.find((u) => {
+        const uName = (u.fullName || '').trim().toLowerCase();
         const uDigits = (u.phone || '').replace(/\D/g, '').slice(-10);
         const uEmail = (u.email || '').toLowerCase();
         return (
+          (inputLower && uName && inputLower === uName) ||
           (inputDigits && uDigits && inputDigits === uDigits) ||
-          (inputLowerEmail && uEmail && inputLowerEmail === uEmail)
+          (inputLower && uEmail && inputLower === uEmail)
         );
       });
 
       if (localMatched) {
-          await setUserAuth(localMatched, `local-token-${Date.now()}`);
+        if (localMatched.password && localMatched.password !== passVal) {
+          setErrorMessage('Incorrect password. Please verify your password.');
           setIsLoading(false);
-          navigate('/home');
           return;
+        }
+        await setUserAuth(localMatched, `local-token-${Date.now()}`);
+        setIsLoading(false);
+        navigate('/home');
+        return;
+      } else {
+        setErrorMessage(`No account found matching "${inputVal}". Please verify your username or sign up.`);
       }
     }
 
@@ -189,6 +205,15 @@ export const LoginScreen: React.FC = () => {
             <p className="text-xs text-[#6B7280] leading-snug">Log in to manage appointments & health records</p>
           </div>
 
+          {resetSuccessMessage && (
+            <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-emerald-50 text-emerald-950 text-xs border border-emerald-300 shadow-2xs animate-fade-in text-left">
+              <div className="flex items-start gap-2">
+                <Activity className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span className="leading-snug font-semibold">{resetSuccessMessage}</span>
+              </div>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-amber-50 text-amber-950 text-xs border border-amber-300 shadow-2xs animate-fade-in">
               <div className="flex items-start gap-2">
@@ -201,11 +226,11 @@ export const LoginScreen: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5 text-left">
               <Input
-                label="PHONE NUMBER OR EMAIL"
+                label="USERNAME, EMAIL, OR PHONE"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter phone number or email"
-                leftIcon={<Phone className="w-4 h-4 text-[#0B5A54]" />}
+                placeholder="Enter username, email, or phone number"
+                leftIcon={<User className="w-4 h-4 text-[#0B5A54]" />}
                 required
               />
             </div>
@@ -217,8 +242,12 @@ export const LoginScreen: React.FC = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset link sent to your registered contact!')}
-                  className="text-[11px] font-bold text-[#0B5A54] hover:underline"
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setResetSuccessMessage(null);
+                    setIsForgotPasswordOpen(true);
+                  }}
+                  className="text-[11px] font-bold text-[#0B5A54] hover:underline cursor-pointer"
                 >
                   Forgot Password?
                 </button>
@@ -252,34 +281,36 @@ export const LoginScreen: React.FC = () => {
               </span>
             </div>
 
-            <div className="w-full flex flex-col items-center justify-center">
+            <div className="w-full">
               <Button
                 type="button"
                 variant="outline"
                 fullWidth
                 isLoading={isGoogleLoading}
                 onClick={handleGoogleClick}
-                className="flex items-center justify-center gap-2 font-bold text-xs text-[#111827] bg-white border border-[#E4E7EC] shadow-2xs py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer"
+                leftIcon={
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.13C3.26 21.35 7.37 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.6H1.24C.45 8.17 0 9.99 0 12s.45 3.83 1.24 5.4s3.28 3.13 5.28 3.13z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.26 2.65 1.24 6.6l4.04 3.13c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
+                  </svg>
+                }
+                className="font-bold text-xs text-[#111827] bg-white border border-[#E4E7EC] shadow-2xs py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer"
               >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.13C3.26 21.35 7.37 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.6H1.24C.45 8.17 0 9.99 0 12s.45 3.83 1.24 5.4s3.28 3.13 5.28 3.13z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.26 2.65 1.24 6.6l4.04 3.13c.95-2.83 3.6-4.98 6.72-4.98z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
+                Continue with Google
               </Button>
             </div>
           </form>
@@ -304,6 +335,18 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Verification & Reset Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialIdentifier={phone}
+        onSuccessReset={(loginId) => {
+          if (loginId) setPhone(loginId);
+          setPassword('');
+          setResetSuccessMessage('Your password was updated successfully! Please enter your new password to log in.');
+        }}
+      />
     </div>
   );
 };

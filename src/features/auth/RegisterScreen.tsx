@@ -12,6 +12,7 @@ import {
   Droplet,
   Phone,
   Mail,
+  MapPin,
   ShieldAlert,
   ArrowRight,
   ArrowLeft,
@@ -28,6 +29,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { useCarePulseStore } from '../../lib/store';
+import { getTodayDateString, calculateAge } from '../../lib/dateUtils';
 
 const step1Schema = z
   .object({
@@ -38,7 +40,12 @@ const step1Schema = z
       .regex(/[A-Za-z]/, 'Password must contain at least one letter')
       .regex(/[0-9]/, 'Password must contain at least one number'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
-    dob: z.string().min(1, 'Date of birth is required'),
+    dob: z
+      .string()
+      .min(1, 'Date of birth is required')
+      .refine((val) => !val || val <= getTodayDateString(), {
+        message: 'Date of birth cannot be in the future',
+      }),
     gender: z.string().min(1, 'Please select gender'),
     bloodGroup: z.string().min(1, 'Please select blood group'),
   })
@@ -49,25 +56,16 @@ const step1Schema = z
 
 const step2Schema = z
   .object({
-    // TODO: RE-ENABLE FOR PRODUCTION — strict phone validation
-    // phone: z.string().min(10, 'Valid 10-digit phone number is required'),
     phone: z.string().min(1, 'Phone number is required'),
-    // TODO: RE-ENABLE FOR PRODUCTION — strict email validation
-    // email: z.string().email('Valid email address is required'),
     email: z.string().min(1, 'Email is required'),
+    address: z.string().min(1, 'Address is required'),
     emergencyName: z.string().optional(),
     emergencyPhone: z.string().optional(),
-    allergies: z.string().optional(),
-    preExistingConditions: z.string().optional(),
   })
   .refine(
     (data) => {
       const primaryDigits = (data.phone || '').replace(/\D/g, '').slice(-10);
       const emergencyDigits = (data.emergencyPhone || '').replace(/\D/g, '').slice(-10);
-      // TODO: RE-ENABLE FOR PRODUCTION — emergency phone conflict check
-      // if (primaryDigits && emergencyDigits && primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
-      //   return primaryDigits !== emergencyDigits;
-      // }
       if (primaryDigits && emergencyDigits && primaryDigits.length >= 10 && emergencyDigits.length >= 10) {
         return primaryDigits !== emergencyDigits;
       }
@@ -118,10 +116,9 @@ export const RegisterScreen: React.FC = () => {
     defaultValues: {
       phone: initialPhone,
       email: initialEmail,
+      address: '',
       emergencyName: '',
       emergencyPhone: '',
-      allergies: '',
-      preExistingConditions: '',
     },
   });
 
@@ -129,6 +126,8 @@ export const RegisterScreen: React.FC = () => {
   const isMinLength = watchPassword.length >= 6;
   const hasLetter = /[A-Za-z]/.test(watchPassword);
   const hasNumber = /[0-9]/.test(watchPassword);
+  const watchDob = form1.watch('dob') || '';
+  const calculatedAge = calculateAge(watchDob);
 
   const onStep1Submit = (data: Step1Data) => {
     setRegisterError(null);
@@ -150,13 +149,12 @@ export const RegisterScreen: React.FC = () => {
       bloodGroup: formDataStep1.bloodGroup,
       phone: data.phone.trim(),
       email: data.email.trim(),
+      address: data.address.trim(),
       emergencyContact: {
         name: data.emergencyName || 'Emergency Contact',
         phone: data.emergencyPhone || '+91 98765 00000',
         relationship: 'Primary Contact',
       },
-      allergies: data.allergies || '',
-      preExistingConditions: data.preExistingConditions || '',
     };
 
     let res: Response | null = null;
@@ -372,8 +370,9 @@ export const RegisterScreen: React.FC = () => {
 
                 {/* Date of Birth */}
                 <Input
-                  label="DATE OF BIRTH"
+                  label={calculatedAge !== null ? `DATE OF BIRTH (${calculatedAge} YEARS OLD)` : 'DATE OF BIRTH'}
                   type="date"
+                  max={getTodayDateString()}
                   leftIcon={<Calendar className="w-4 h-4 text-[#0B5A54]" />}
                   error={form1.formState.errors.dob?.message}
                   {...form1.register('dob')}
@@ -446,6 +445,14 @@ export const RegisterScreen: React.FC = () => {
                   {...form2.register('email')}
                 />
 
+                <Input
+                  label="RESIDENTIAL ADDRESS"
+                  leftIcon={<MapPin className="w-4 h-4 text-[#0B5A54]" />}
+                  placeholder="Enter complete address"
+                  error={form2.formState.errors.address?.message}
+                  {...form2.register('address')}
+                />
+
                 <div className="space-y-2 pt-2 border-t border-[#E4E7EC]/60">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-[#0B5A54]">
                     <ShieldAlert className="w-4 h-4 text-amber-500" />
@@ -468,19 +475,6 @@ export const RegisterScreen: React.FC = () => {
                   <p className="text-[10px] text-[#6B7280] italic leading-tight">
                     Relationship and contact info required for emergency response.
                   </p>
-                </div>
-
-                <div className="space-y-2 pt-2 border-t border-[#E4E7EC]/60">
-                  <Input
-                    label="KNOWN ALLERGIES (OPTIONAL)"
-                    placeholder="e.g. Penicillin, Peanuts"
-                    {...form2.register('allergies')}
-                  />
-                  <Input
-                    label="PRE-EXISTING CONDITIONS (OPTIONAL)"
-                    placeholder="e.g. Asthma, Diabetes"
-                    {...form2.register('preExistingConditions')}
-                  />
                 </div>
               </div>
             </Card>

@@ -359,6 +359,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                       <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                       <input
                         type="date"
+                        min={new Date().toISOString().split('T')[0]}
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
                         className="w-full pl-10 pr-3 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 cursor-pointer"

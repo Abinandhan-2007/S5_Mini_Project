@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS patients (
 );
 
 -- Migration support if table already exists
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS address TEXT DEFAULT '';
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT '';
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'local';

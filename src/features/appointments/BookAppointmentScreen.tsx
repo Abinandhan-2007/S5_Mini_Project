@@ -17,6 +17,7 @@ import { doctorService } from '../../services/doctorService';
 import type { Doctor } from '../../lib/types';
 import { MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
+import { apiFetch } from '../../lib/apiFetch';
 
 export const BookAppointmentScreen: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
@@ -70,24 +71,10 @@ export const BookAppointmentScreen: React.FC = () => {
     };
 
     try {
-      const tryBook = async (url: string) => {
-        return await fetch(`${url}/appointments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      };
-
-      let res: Response | null = null;
-      try {
-        res = await tryBook('/api');
-      } catch {
-        try {
-          res = await tryBook('http://localhost:5000/api');
-        } catch {
-          res = null;
-        }
-      }
+      const res = await apiFetch('/appointments', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
 
       if (res && res.ok) {
         const data = await res.json();

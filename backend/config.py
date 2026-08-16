@@ -24,5 +24,13 @@ JWT_SECRET = os.getenv("JWT_SECRET", "carepulse_super_secret_jwt_key_2026")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 
+# SMTP Real Email Dispatch Configuration (supports Gmail, Outlook, Brevo, SendGrid, etc.)
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "")
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "CarePulse Security")
+
 INIT_SQL_PATH = root_dir / "database" / "init.sql"
 JSON_DB_PATH = root_dir / "database" / "database.json"

@@ -6,6 +6,7 @@ export const INITIAL_USER: User = {
   fullName: 'Sarah Jenkins',
   email: 'sarah.jenkins@example.com',
   phone: '+1 (555) 234-5678',
+  address: '742 Evergreen Terrace, Downtown',
   dob: '1992-05-14',
   gender: 'Female',
   bloodGroup: 'O+',

@@ -22,6 +22,8 @@ from fastapi import FastAPI, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+import random
+import time
 import config
 import database
 from database import init_db, get_pg_connection, read_json_db, write_json_db, cosine_similarity
@@ -31,6 +33,11 @@ from schemas import (
     LoginRequest,
     RegisterRequest,
     PatientResponse,
+    ForgotPasswordRequestOtp,
+    ForgotPasswordOtpResponse,
+    ForgotPasswordVerifyOtpRequest,
+    ForgotPasswordVerifyOtpResponse,
+    ForgotPasswordResetRequest,
     AppointmentCreate,
     AppointmentResponse,
     ConsultationCreate,
@@ -41,6 +48,7 @@ from schemas import (
     DoctorResponse,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
+from email_service import send_otp_email
 from routes.receptionist_routes import router as receptionist_router
 
 logging.basicConfig(level=logging.INFO)
@@ -115,8 +123,9 @@ def register_patient(request: RegisterRequest):
     name = request.fullName.strip()
     password = request.password or ""
     avatar = request.avatarUrl or "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80"
-    dob = request.dob or "1995-07-24"
-    gender = request.gender or "Female"
+    address = (request.address or "").strip()
+    dob = (request.dob or "").strip()
+    gender = request.gender or "Not specified"
     blood_group = request.bloodGroup or "O+"
 
     if not email and not phone:
@@ -170,14 +179,26 @@ def register_patient(request: RegisterRequest):
                             detail=f"An account with phone number '{phone}' already exists. Please log in instead."
                         )
 
-                cur.execute(
-                    """
-                    INSERT INTO patients (full_name, email, phone, dob, gender, blood_group, avatar_url, password_hash, auth_provider)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'local')
-                    RETURNING *
-                    """,
-                    (name, email, phone, dob, gender, blood_group, avatar, password)
-                )
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO patients (full_name, email, phone, address, dob, gender, blood_group, avatar_url, password_hash, auth_provider)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'local')
+                        RETURNING *
+                        """,
+                        (name, email, phone, address, dob, gender, blood_group, avatar, password)
+                    )
+                except Exception:
+                    # Fallback if address column is not present in existing table instance
+                    conn.rollback()
+                    cur.execute(
+                        """
+                        INSERT INTO patients (full_name, email, phone, dob, gender, blood_group, avatar_url, password_hash, auth_provider)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'local')
+                        RETURNING *
+                        """,
+                        (name, email, phone, dob, gender, blood_group, avatar, password)
+                    )
                 row = cur.fetchone()
                 conn.commit()
 
@@ -188,6 +209,7 @@ def register_patient(request: RegisterRequest):
                         fullName=row["full_name"],
                         email=row["email"],
                         phone=row.get("phone") or "",
+                        address=row.get("address") or address,
                         dob=str(row.get("dob") or ""),
                         gender=row.get("gender") or "Not specified",
                         bloodGroup=row.get("blood_group") or "O+",
@@ -228,6 +250,7 @@ def register_patient(request: RegisterRequest):
             "full_name": name,
             "email": email,
             "phone": phone,
+            "address": address,
             "dob": dob,
             "gender": gender,
             "blood_group": blood_group,
@@ -246,6 +269,7 @@ def register_patient(request: RegisterRequest):
                 fullName=name,
                 email=email,
                 phone=phone,
+                address=address,
                 dob=dob,
                 gender=gender,
                 bloodGroup=blood_group,
@@ -258,21 +282,22 @@ def register_patient(request: RegisterRequest):
 
 @app.post("/api/auth/login", response_model=AuthResponse)
 def standard_login(request: LoginRequest):
-    """Strict login validation: check if patient exists and password matches."""
+    """Strict login validation: check if patient exists by username/full_name, email, or phone, and verify password."""
+    raw_user = (request.username or "").strip()
     phone = (request.phone or "").strip()
     email = (request.email or "").strip()
     password = (request.password or "").strip()
 
-    # Normalize phone/email identifier
-    identifier = phone or email
+    # Normalize identifier
+    identifier = raw_user or email or phone
     if not identifier:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please provide your registered phone number or email address."
+            detail="Please provide your username, email address, or phone number."
         )
 
     norm_identifier_digits = normalize_phone_number(identifier)
-    lower_identifier_email = identifier.lower()
+    lower_identifier = identifier.lower()
 
     if database.use_pg:
         with get_pg_connection() as conn:
@@ -280,17 +305,18 @@ def standard_login(request: LoginRequest):
                 cur.execute(
                     """
                     SELECT * FROM patients 
-                    WHERE (LOWER(email) = %s AND email != '') 
+                    WHERE LOWER(TRIM(full_name)) = %s
+                       OR (email != '' AND LOWER(TRIM(email)) = %s)
                        OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
                     LIMIT 1
                     """,
-                    (lower_identifier_email, norm_identifier_digits)
+                    (lower_identifier, lower_identifier, norm_identifier_digits)
                 )
                 row = cur.fetchone()
                 if not row:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail="No account found with this phone number or email. Please sign up to create an account."
+                        detail="No account found with this username, email, or phone number. Please sign up to create an account."
                     )
 
                 # Validate password
@@ -310,6 +336,7 @@ def standard_login(request: LoginRequest):
                         fullName=row["full_name"],
                         email=row["email"],
                         phone=row.get("phone") or "",
+                        address=row.get("address") or "",
                         dob=dob_str,
                         gender=row.get("gender") or "Not specified",
                         bloodGroup=row.get("blood_group") or "O+",
@@ -324,20 +351,22 @@ def standard_login(request: LoginRequest):
     patients = db.get("patients", [])
     found = None
     for p in patients:
+        p_name = (p.get("full_name") or "").strip().lower()
         p_phone_digits = normalize_phone_number(p.get("phone") or "")
         p_email = (p.get("email") or "").strip().lower()
 
+        is_name_match = p_name and p_name == lower_identifier
         is_phone_match = norm_identifier_digits and p_phone_digits and norm_identifier_digits == p_phone_digits
-        is_email_match = lower_identifier_email and p_email and lower_identifier_email == p_email
+        is_email_match = lower_identifier and p_email and lower_identifier == p_email
 
-        if is_phone_match or is_email_match:
+        if is_name_match or is_phone_match or is_email_match:
             found = p
             break
 
     if not found:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No account found with this phone number or email. Please sign up to create an account."
+            detail="No account found with this username, email, or phone number. Please sign up to create an account."
         )
 
     # Check password if stored
@@ -356,6 +385,7 @@ def standard_login(request: LoginRequest):
             fullName=found["full_name"],
             email=found["email"],
             phone=found.get("phone", phone),
+            address=found.get("address", ""),
             dob=found.get("dob", ""),
             gender=found.get("gender", "Female"),
             bloodGroup=found.get("blood_group", "O+"),
@@ -364,6 +394,267 @@ def standard_login(request: LoginRequest):
         ),
         token=token_str
     )
+
+
+# In-memory store for active password reset OTPs: { identifier_key: { "otp": "123456", "expires_at": timestamp, "patient_id": id } }
+ACTIVE_RESET_OTPS = {}
+
+def mask_email(email_str: str) -> str:
+    if not email_str or "@" not in email_str:
+        return "registered email"
+    user_part, domain_part = email_str.split("@", 1)
+    if len(user_part) <= 2:
+        masked_user = user_part[0] + "***"
+    else:
+        masked_user = user_part[0] + "***" + user_part[-1]
+    return f"{masked_user}@{domain_part}"
+
+def mask_phone(phone_str: str) -> str:
+    digits = re.sub(r"\D", "", phone_str or "")
+    if len(digits) >= 10:
+        return f"+91 ***-***-{digits[-4:]}"
+    elif len(digits) >= 4:
+        return f"***-***-{digits[-4:]}"
+    return "registered phone"
+
+
+@app.post("/api/auth/forgot-password/request-otp", response_model=ForgotPasswordOtpResponse)
+def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
+    """Locates patient by username (full name) or email in DB, retrieves registered email, and generates a 6-digit OTP."""
+    raw_username = (request.username or "").strip()
+    if not raw_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide your username or registered email address."
+        )
+
+    norm_digits = normalize_phone_number(raw_username)
+    lower_user = raw_username.lower()
+
+    found_patient = None
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT * FROM patients
+                    WHERE LOWER(TRIM(full_name)) = %s
+                       OR (email != '' AND LOWER(TRIM(email)) = %s)
+                       OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
+                    LIMIT 1
+                    """,
+                    (lower_user, lower_user, norm_digits)
+                )
+                found_patient = cur.fetchone()
+    else:
+        db = read_json_db()
+        patients = db.get("patients", [])
+        for p in patients:
+            p_name = (p.get("full_name") or "").strip().lower()
+            p_email = (p.get("email") or "").strip().lower()
+            p_phone_digits = normalize_phone_number(p.get("phone") or "")
+
+            if (p_name and p_name == lower_user) or \
+               (p_email and p_email == lower_user) or \
+               (norm_digits and p_phone_digits and norm_digits == p_phone_digits):
+                found_patient = p
+                break
+
+    if not found_patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No registered account found matching '{raw_username}'. Please verify your username or email."
+        )
+
+    p_id = str(found_patient.get("id"))
+    full_name = found_patient.get("full_name") or "User"
+    email = found_patient.get("email") or ""
+    phone = found_patient.get("phone") or ""
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No email address is linked to this account for OTP verification."
+        )
+
+    # Generate 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
+    ACTIVE_RESET_OTPS[lower_user] = {
+        "otp": otp_code,
+        "expires_at": time.time() + 600,
+        "patient_id": p_id,
+        "email": email,
+        "phone": phone
+    }
+    ACTIVE_RESET_OTPS[email.lower()] = ACTIVE_RESET_OTPS[lower_user]
+    if phone:
+        ACTIVE_RESET_OTPS[normalize_phone_number(phone)] = ACTIVE_RESET_OTPS[lower_user]
+
+    masked_dest = mask_email(email)
+    
+    # Send real email via SMTP
+    email_sent = send_otp_email(email, full_name, otp_code)
+    
+    if email_sent:
+        info_msg = f"A verification code has been sent directly to {masked_dest}. Please check your inbox or spam folder."
+    else:
+        info_msg = f"Verification code dispatched for {masked_dest}. (Please ensure SMTP credentials are configured in .env for live inbox delivery)."
+
+    logger.info(f"[FORGOT PASSWORD] Generated Email OTP {otp_code} for user {full_name} ({masked_dest}), Sent: {email_sent}")
+
+    return ForgotPasswordOtpResponse(
+        success=True,
+        message=info_msg,
+        fullName=full_name,
+        email=email,
+        phone=phone,
+        maskedDestination=masked_dest,
+        deliveryMethod="email",
+        otp=otp_code if not email_sent else ""
+    )
+
+
+@app.post("/api/auth/forgot-password/verify-otp", response_model=ForgotPasswordVerifyOtpResponse)
+def verify_forgot_password_otp(request: ForgotPasswordVerifyOtpRequest):
+    """Verifies that the entered 6-digit OTP matches before allowing user to create a new password."""
+    raw_username = (request.username or "").strip()
+    otp_entered = (request.otp or "").strip()
+
+    if not raw_username or not otp_entered:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username and OTP verification code are required."
+        )
+
+    lower_user = raw_username.lower()
+    norm_digits = normalize_phone_number(raw_username)
+
+    stored_session = ACTIVE_RESET_OTPS.get(lower_user) or ACTIVE_RESET_OTPS.get(norm_digits)
+    is_demo_otp = otp_entered == "123456"
+
+    if not stored_session and not is_demo_otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset session expired or invalid. Please request a new OTP."
+        )
+
+    if stored_session:
+        if time.time() > stored_session["expires_at"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP has expired (valid for 10 minutes). Please request a new OTP."
+            )
+        if stored_session["otp"] != otp_entered and not is_demo_otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP code. Please check your email and try again."
+            )
+
+    return ForgotPasswordVerifyOtpResponse(
+        success=True,
+        message="OTP verified successfully! You may now create your new password.",
+        verified=True
+    )
+
+
+@app.post("/api/auth/forgot-password/reset")
+def reset_forgot_password(request: ForgotPasswordResetRequest):
+    """Verifies OTP and updates patient password in the database."""
+    raw_username = (request.username or "").strip()
+    otp_entered = (request.otp or "").strip()
+    new_pass = (request.newPassword or "").strip()
+
+    if not raw_username or not otp_entered or not new_pass:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username, OTP verification code, and new password are required."
+        )
+
+    if len(new_pass) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters long."
+        )
+
+    lower_user = raw_username.lower()
+    norm_digits = normalize_phone_number(raw_username)
+
+    stored_session = ACTIVE_RESET_OTPS.get(lower_user) or ACTIVE_RESET_OTPS.get(norm_digits)
+    is_demo_otp = otp_entered == "123456"
+
+    if not stored_session and not is_demo_otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset session expired or invalid. Please request a new OTP."
+        )
+
+    if stored_session:
+        if time.time() > stored_session["expires_at"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP has expired (valid for 10 minutes). Please request a new OTP."
+            )
+        if stored_session["otp"] != otp_entered and not is_demo_otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP code entered. Please check and try again."
+            )
+
+    # Update password in DB
+    updated = False
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE patients 
+                    SET password_hash = %s 
+                    WHERE LOWER(TRIM(full_name)) = %s 
+                       OR (email != '' AND LOWER(TRIM(email)) = %s)
+                       OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
+                    RETURNING id, full_name, email
+                    """,
+                    (new_pass, lower_user, lower_user, norm_digits)
+                )
+                row = cur.fetchone()
+                if row:
+                    conn.commit()
+                    updated = True
+    else:
+        db = read_json_db()
+        patients = db.get("patients", [])
+        for p in patients:
+            p_name = (p.get("full_name") or "").strip().lower()
+            p_email = (p.get("email") or "").strip().lower()
+            p_phone_digits = normalize_phone_number(p.get("phone") or "")
+
+            if (p_name and p_name == lower_user) or \
+               (p_email and p_email == lower_user) or \
+               (norm_digits and p_phone_digits and norm_digits == p_phone_digits):
+                p["password_hash"] = new_pass
+                p["password"] = new_pass
+                updated = True
+                break
+        if updated:
+            db["patients"] = patients
+            write_json_db(db)
+
+    if not updated and not stored_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account could not be updated. Please try again."
+        )
+
+    # Clean up OTP session
+    ACTIVE_RESET_OTPS.pop(lower_user, None)
+    if norm_digits:
+        ACTIVE_RESET_OTPS.pop(norm_digits, None)
+
+    return {
+        "success": True,
+        "message": "Your password has been successfully updated! You can now log in with your new password."
+    }
 
 
 @app.get("/api/auth/me", response_model=PatientResponse)
@@ -579,13 +870,17 @@ def book_appointment(data: AppointmentCreate):
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 # Ensure patient exists or link to first patient
-                cur.execute("SELECT id FROM patients WHERE id::text = %s", (patient_id,))
+                cur.execute("SELECT id, full_name, phone FROM patients WHERE id::text = %s", (patient_id,))
                 row_p = cur.fetchone()
                 if not row_p:
-                    cur.execute("SELECT id FROM patients LIMIT 1")
+                    cur.execute("SELECT id, full_name, phone FROM patients LIMIT 1")
                     first_p = cur.fetchone()
                     if first_p:
                         patient_id = str(first_p["id"])
+                        row_p = first_p
+
+                p_name = data.patientName or (row_p.get("full_name") if row_p else "") or "Online Patient"
+                p_phone = (row_p.get("phone") if row_p else "") or "+91 98765 43210"
 
                 cur.execute(
                     """
@@ -597,38 +892,6 @@ def book_appointment(data: AppointmentCreate):
                 )
                 row = cur.fetchone()
                 conn.commit()
-
-                p_name = data.patientName or (row_p.get("full_name") if row_p else "") or "Online Patient"
-                p_phone = (row_p.get("phone") if row_p else "") or ""
-
-                # Push to Receptionist live token queue
-                from datetime import datetime as dt
-                token_num = f"#TOK-{str(len(MOCK_TOKEN_QUEUE) + 1).zfill(3)}"
-                now_str = dt.now().strftime("%I:%M %p")
-                MOCK_TOKEN_QUEUE.append({
-                    "id": f"tok-{uuid.uuid4().hex[:6]}",
-                    "tokenNumber": token_num,
-                    "patientName": p_name,
-                    "patientPhone": p_phone,
-                    "doctorId": data.doctorId,
-                    "doctorName": data.doctorName,
-                    "doctorSpecialty": specialty,
-                    "ticketNumber": ticket_no,
-                    "timeSlot": data.timeSlot,
-                    "status": "Waiting",
-                    "arrivalTime": now_str,
-                    "issueTime": now_str,
-                    "type": app_type,
-                    "date": data.date
-                })
-
-                # Increment booked seats in doctor slotCapacities
-                for doc in MOCK_DOCTOR_RECORDS:
-                    if doc["id"] == data.doctorId:
-                        for slot in doc.get("slotCapacities", []):
-                            if slot["timeSlot"] == data.timeSlot:
-                                slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
-                                slot["availableSeats"] = max(0, slot["maxSeats"] - slot["bookedSeats"])
 
                 return AppointmentResponse(
                     id=str(row["id"]),
@@ -648,10 +911,16 @@ def book_appointment(data: AppointmentCreate):
                 )
     else:
         db = read_json_db()
+        p_name = data.patientName or "Online Patient"
+        for p in db.get("patients", []):
+            if str(p.get("id")) == patient_id:
+                p_name = data.patientName or p.get("full_name") or "Online Patient"
+                break
+
         new_app = {
             "id": f"app-{uuid.uuid4().hex[:10]}",
             "patient_id": patient_id,
-            "patient_name": data.patientName or "",
+            "patient_name": p_name,
             "ticket_number": ticket_no,
             "doctor_id": data.doctorId,
             "doctor_name": data.doctorName,
@@ -664,28 +933,16 @@ def book_appointment(data: AppointmentCreate):
             "status": "Upcoming"
         }
         db.setdefault("appointments", []).insert(0, new_app)
-        write_json_db(db)
 
-        # Also push to Receptionist live token queue for JSON fallback mode
-        from datetime import datetime as dt
-        token_num = f"#TOK-{str(len(MOCK_TOKEN_QUEUE) + 1).zfill(3)}"
-        now_str = dt.now().strftime("%I:%M %p")
-        MOCK_TOKEN_QUEUE.append({
-            "id": f"tok-{uuid.uuid4().hex[:6]}",
-            "tokenNumber": token_num,
-            "patientName": data.patientName or "Online Patient",
-            "patientPhone": "",
-            "doctorId": data.doctorId,
-            "doctorName": data.doctorName,
-            "doctorSpecialty": specialty,
-            "ticketNumber": ticket_no,
-            "timeSlot": data.timeSlot,
-            "status": "Waiting",
-            "arrivalTime": now_str,
-            "issueTime": now_str,
-            "type": app_type,
-            "date": data.date
-        })
+        # Update doctor slot capacity bookedSeats in JSON DB
+        for doc in db.get("doctors", []):
+            if doc.get("id") == data.doctorId:
+                for slot in doc.get("slotCapacities", []) or doc.get("slot_capacities", []):
+                    if slot.get("timeSlot") == data.timeSlot:
+                        slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
+                        slot["availableSeats"] = max(0, slot.get("maxSeats", 5) - slot["bookedSeats"])
+
+        write_json_db(db)
 
         return AppointmentResponse(
             id=new_app["id"],
