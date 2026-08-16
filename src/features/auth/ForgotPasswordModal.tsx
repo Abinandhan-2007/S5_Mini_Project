@@ -49,6 +49,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   } | null>(null);
 
   const [enteredOtp, setEnteredOtp] = useState('');
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -188,10 +189,16 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     try {
       const res = await apiPost('/auth/forgot-password/verify-otp', {
         username: username.trim(),
+        email: otpInfo?.email || username.trim(),
         otp: cleanOtp,
+        submitted_otp: cleanOtp,
       });
 
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.reset_token) {
+          setResetToken(data.reset_token);
+        }
         setIsVerifyingOtp(false);
         setSlide(3); // OTP confirmed! Move to Create New Password slide
         return;
@@ -233,9 +240,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
     try {
       const res = await apiPost('/auth/forgot-password/reset', {
+        reset_token: resetToken,
         username: username.trim(),
         otp: enteredOtp.trim(),
         newPassword: newPassword.trim(),
+        new_password: newPassword.trim(),
       });
 
       if (res.ok) {

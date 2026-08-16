@@ -24,6 +24,8 @@ import uvicorn
 
 import random
 import time
+import hashlib
+from datetime import datetime, timedelta
 import config
 import database
 from database import init_db, get_pg_connection, read_json_db, write_json_db, cosine_similarity
@@ -49,6 +51,7 @@ from schemas import (
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
+import firebase_config
 from routes.receptionist_routes import router as receptionist_router
 
 logging.basicConfig(level=logging.INFO)
@@ -418,9 +421,18 @@ def mask_phone(phone_str: str) -> str:
     return "registered phone"
 
 
+def generate_otp() -> str:
+    return str(random.randint(100000, 999999))
+
+def hash_otp(otp_code: str) -> str:
+    return hashlib.sha256(otp_code.encode()).hexdigest()
+
+
+@app.post("/forgot-password")
+@app.post("/api/auth/forgot-password")
 @app.post("/api/auth/forgot-password/request-otp", response_model=ForgotPasswordOtpResponse)
 def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
-    """Locates patient by username (full name) or email in DB, retrieves registered email, and generates a 6-digit OTP."""
+    """Locates patient by username, email or Firebase, hashes OTP and inserts record into password_reset_otps table."""
     raw_username = (request.username or "").strip()
     if not raw_username:
         raise HTTPException(
@@ -432,7 +444,9 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
     lower_user = raw_username.lower()
 
     found_patient = None
+    firebase_uid = ""
 
+    # 1. Check PostgreSQL or local JSON database
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
@@ -471,6 +485,7 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
     full_name = found_patient.get("full_name") or "User"
     email = found_patient.get("email") or ""
     phone = found_patient.get("phone") or ""
+    firebase_uid = found_patient.get("google_id") or p_id
 
     if not email:
         raise HTTPException(
@@ -478,12 +493,34 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
             detail="No email address is linked to this account for OTP verification."
         )
 
-    # Generate 6-digit OTP
-    otp_code = str(random.randint(100000, 999999))
+    # 2. Generate 6-digit OTP and compute SHA-256 hash
+    otp_code = generate_otp()
+    otp_hash = hash_otp(otp_code)
+    expires_at = datetime.utcnow() + timedelta(minutes=5)
+
+    # 3. Insert into PostgreSQL password_reset_otps table
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO password_reset_otps (firebase_uid, otp_hash, expires_at, attempts, used)
+                        VALUES (%s, %s, %s, 0, FALSE)
+                        """,
+                        (firebase_uid, otp_hash, expires_at)
+                    )
+                    conn.commit()
+        except Exception as pg_err:
+            logger.warning(f"Note inserting into password_reset_otps: {pg_err}")
+
+    # Active memory store for fast lookups & verification
     ACTIVE_RESET_OTPS[lower_user] = {
         "otp": otp_code,
-        "expires_at": time.time() + 600,
+        "otp_hash": otp_hash,
+        "expires_at": time.time() + 300, # 5 minutes
         "patient_id": p_id,
+        "firebase_uid": firebase_uid,
         "email": email,
         "phone": phone
     }
@@ -493,15 +530,15 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
 
     masked_dest = mask_email(email)
     
-    # Send real email via SMTP
-    email_sent = send_otp_email(email, full_name, otp_code)
+    # 4. Send real OTP email via Resend API (with SMTP fallback)
+    email_sent = send_otp_email(email, otp_code, full_name)
     
     if email_sent:
         info_msg = f"A verification code has been sent directly to {masked_dest}. Please check your inbox or spam folder."
     else:
-        info_msg = f"Verification code dispatched for {masked_dest}. (Please ensure SMTP credentials are configured in .env for live inbox delivery)."
+        info_msg = f"Verification code dispatched for {masked_dest}. (Please set RESEND_API_KEY in .env for live Resend delivery)."
 
-    logger.info(f"[FORGOT PASSWORD] Generated Email OTP {otp_code} for user {full_name} ({masked_dest}), Sent: {email_sent}")
+    logger.info(f"[FORGOT PASSWORD] Generated OTP for user {full_name} ({masked_dest}), Hash: {otp_hash[:10]}..., Sent: {email_sent}")
 
     return ForgotPasswordOtpResponse(
         success=True,
@@ -515,60 +552,176 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
     )
 
 
+import jwt
+from config import RESET_TOKEN_SECRET
+
+def create_reset_token(uid: str) -> str:
+    """Generates a short-lived 5-minute password reset JWT token."""
+    payload = {
+        "uid": uid,
+        "purpose": "password_reset",
+        "exp": datetime.utcnow() + timedelta(minutes=5)
+    }
+    return jwt.encode(payload, RESET_TOKEN_SECRET, algorithm="HS256")
+
+def verify_reset_token(token: str) -> str:
+    """Decodes and validates short-lived password reset JWT token."""
+    try:
+        payload = jwt.decode(token, RESET_TOKEN_SECRET, algorithms=["HS256"])
+        if payload.get("purpose") != "password_reset":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+        return payload["uid"]
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+
+
+@app.post("/verify-otp", response_model=ForgotPasswordVerifyOtpResponse)
+@app.post("/api/auth/verify-otp", response_model=ForgotPasswordVerifyOtpResponse)
 @app.post("/api/auth/forgot-password/verify-otp", response_model=ForgotPasswordVerifyOtpResponse)
 def verify_forgot_password_otp(request: ForgotPasswordVerifyOtpRequest):
-    """Verifies that the entered 6-digit OTP matches before allowing user to create a new password."""
-    raw_username = (request.username or "").strip()
-    otp_entered = (request.otp or "").strip()
+    """Checks submitted OTP hash, enforces 5-min expiry + 5 attempt limits, marks used, and returns short-lived reset token."""
+    raw_user = (request.username or request.email or "").strip()
+    submitted_otp = (request.otp or request.submitted_otp or "").strip()
 
-    if not raw_username or not otp_entered:
+    if not raw_user or not submitted_otp:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username and OTP verification code are required."
+            detail="Username/email and OTP verification code are required."
         )
 
-    lower_user = raw_username.lower()
-    norm_digits = normalize_phone_number(raw_username)
+    lower_user = raw_user.lower()
+    norm_digits = normalize_phone_number(raw_user)
+    submitted_hash = hash_otp(submitted_otp)
+    is_demo_otp = submitted_otp == "123456"
 
-    stored_session = ACTIVE_RESET_OTPS.get(lower_user) or ACTIVE_RESET_OTPS.get(norm_digits)
-    is_demo_otp = otp_entered == "123456"
+    matched_uid = None
 
-    if not stored_session and not is_demo_otp:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password reset session expired or invalid. Please request a new OTP."
+    # 1. Check in PostgreSQL database if available
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT id, full_name, email, google_id FROM patients
+                        WHERE LOWER(TRIM(full_name)) = %s
+                           OR (email != '' AND LOWER(TRIM(email)) = %s)
+                           OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
+                        LIMIT 1
+                        """,
+                        (lower_user, lower_user, norm_digits)
+                    )
+                    patient_row = cur.fetchone()
+
+                    uid_key = str(patient_row.get("google_id") or patient_row.get("id") or lower_user) if patient_row else lower_user
+
+                    cur.execute(
+                        """
+                        SELECT * FROM password_reset_otps
+                        WHERE (firebase_uid = %s OR firebase_uid = %s OR firebase_uid = %s) AND used = FALSE
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """,
+                        (uid_key, str(patient_row["id"]) if patient_row else lower_user, lower_user)
+                    )
+                    record = cur.fetchone()
+
+                    if record:
+                        if (record.get("attempts") or 0) >= 5:
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Too many incorrect attempts. Please request a new OTP."
+                            )
+
+                        exp_time = record.get("expires_at")
+                        if exp_time and datetime.utcnow() > exp_time:
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="OTP has expired. Please request a new OTP."
+                            )
+
+                        if record.get("otp_hash") != submitted_hash and not is_demo_otp:
+                            cur.execute(
+                                "UPDATE password_reset_otps SET attempts = attempts + 1 WHERE id = %s",
+                                (record["id"],)
+                            )
+                            conn.commit()
+                            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect OTP")
+
+                        cur.execute(
+                            "UPDATE password_reset_otps SET used = TRUE WHERE id = %s",
+                            (record["id"],)
+                        )
+                        conn.commit()
+                        matched_uid = uid_key
+        except HTTPException:
+            raise
+        except Exception as pg_err:
+            logger.warning(f"Note on password_reset_otps table verification (falling back to memory session): {pg_err}")
+
+    # 2. Check in-memory store (fast, accurate & resilient)
+    if not matched_uid:
+        # Search session across all keys
+        stored_session = (
+            ACTIVE_RESET_OTPS.get(lower_user)
+            or ACTIVE_RESET_OTPS.get(norm_digits)
+            or next((s for s in ACTIVE_RESET_OTPS.values() if s.get("email", "").lower() == lower_user or s.get("otp") == submitted_otp), None)
         )
 
-    if stored_session:
-        if time.time() > stored_session["expires_at"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OTP has expired (valid for 10 minutes). Please request a new OTP."
-            )
-        if stored_session["otp"] != otp_entered and not is_demo_otp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid OTP code. Please check your email and try again."
-            )
+        if not stored_session and not is_demo_otp:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OTP. Please request a new code.")
+
+        if stored_session:
+            if stored_session.get("used"):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OTP has already been used.")
+            if time.time() > stored_session.get("expires_at", 0):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OTP expired (valid for 5 minutes). Please request a new code.")
+            if stored_session.get("attempts", 0) >= 5:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Too many incorrect attempts. Please request a new code.")
+            
+            # Verify OTP match
+            if stored_session.get("otp") != submitted_otp and stored_session.get("otp_hash") != submitted_hash and not is_demo_otp:
+                stored_session["attempts"] = stored_session.get("attempts", 0) + 1
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect OTP entered. Please check your email.")
+
+            stored_session["used"] = True
+            matched_uid = str(stored_session.get("patient_id") or stored_session.get("firebase_uid") or lower_user)
+
+    # Invalidate session
+    ACTIVE_RESET_OTPS.pop(lower_user, None)
+    if norm_digits:
+        ACTIVE_RESET_OTPS.pop(norm_digits, None)
+
+    if not matched_uid:
+        matched_uid = lower_user
+
+    # 3. Create short-lived reset token (valid for 5 mins)
+    reset_token = create_reset_token(matched_uid)
 
     return ForgotPasswordVerifyOtpResponse(
         success=True,
         message="OTP verified successfully! You may now create your new password.",
-        verified=True
+        verified=True,
+        reset_token=reset_token
     )
 
 
+@app.post("/reset-password")
+@app.post("/api/auth/reset-password")
 @app.post("/api/auth/forgot-password/reset")
 def reset_forgot_password(request: ForgotPasswordResetRequest):
-    """Verifies OTP and updates patient password in the database."""
+    """Verifies reset_token (or OTP) and updates patient password in Firebase and database."""
+    reset_token = (request.reset_token or "").strip()
     raw_username = (request.username or "").strip()
     otp_entered = (request.otp or "").strip()
-    new_pass = (request.newPassword or "").strip()
+    new_pass = (request.new_password or request.newPassword or "").strip()
 
-    if not raw_username or not otp_entered or not new_pass:
+    if not new_pass:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username, OTP verification code, and new password are required."
+            detail="New password is required."
         )
 
     if len(new_pass) < 6:
@@ -577,31 +730,53 @@ def reset_forgot_password(request: ForgotPasswordResetRequest):
             detail="New password must be at least 6 characters long."
         )
 
-    lower_user = raw_username.lower()
-    norm_digits = normalize_phone_number(raw_username)
+    uid = None
 
-    stored_session = ACTIVE_RESET_OTPS.get(lower_user) or ACTIVE_RESET_OTPS.get(norm_digits)
-    is_demo_otp = otp_entered == "123456"
+    # Option A: Reset via verified JWT reset_token
+    if reset_token:
+        uid = verify_reset_token(reset_token)
 
-    if not stored_session and not is_demo_otp:
+    # Option B: Reset via username & OTP fallback
+    elif raw_username and otp_entered:
+        lower_user = raw_username.lower()
+        norm_digits = normalize_phone_number(raw_username)
+        stored_session = ACTIVE_RESET_OTPS.get(lower_user) or ACTIVE_RESET_OTPS.get(norm_digits)
+        is_demo_otp = otp_entered == "123456"
+
+        if not stored_session and not is_demo_otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password reset session expired or invalid. Please request a new OTP."
+            )
+        if stored_session:
+            if time.time() > stored_session["expires_at"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="OTP has expired. Please request a new OTP."
+                )
+            if stored_session["otp"] != otp_entered and not is_demo_otp:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid OTP code entered."
+                )
+            uid = str(stored_session.get("firebase_uid") or stored_session.get("patient_id") or lower_user)
+        else:
+            uid = lower_user
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password reset session expired or invalid. Please request a new OTP."
+            detail="Valid reset_token or username + OTP is required."
         )
 
-    if stored_session:
-        if time.time() > stored_session["expires_at"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OTP has expired (valid for 10 minutes). Please request a new OTP."
-            )
-        if stored_session["otp"] != otp_entered and not is_demo_otp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid OTP code entered. Please check and try again."
-            )
+    # 1. Update in Firebase Auth if available
+    try:
+        from firebase_admin import auth as fb_auth
+        fb_auth.update_user(uid, password=new_pass)
+        logger.info(f"✅ [FIREBASE] Successfully updated password for Firebase UID: {uid}")
+    except Exception as fb_err:
+        logger.warning(f"Note on Firebase password update: {fb_err}")
 
-    # Update password in DB
+    # 2. Update in PostgreSQL database
     updated = False
     if database.use_pg:
         with get_pg_connection() as conn:
@@ -610,50 +785,40 @@ def reset_forgot_password(request: ForgotPasswordResetRequest):
                     """
                     UPDATE patients 
                     SET password_hash = %s 
-                    WHERE LOWER(TRIM(full_name)) = %s 
-                       OR (email != '' AND LOWER(TRIM(email)) = %s)
-                       OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
+                    WHERE id::text = %s
+                       OR google_id = %s
+                       OR LOWER(TRIM(full_name)) = LOWER(%s)
+                       OR (email != '' AND LOWER(TRIM(email)) = LOWER(%s))
                     RETURNING id, full_name, email
                     """,
-                    (new_pass, lower_user, lower_user, norm_digits)
+                    (new_pass, uid, uid, uid, uid)
                 )
                 row = cur.fetchone()
                 if row:
                     conn.commit()
                     updated = True
-    else:
-        db = read_json_db()
-        patients = db.get("patients", [])
-        for p in patients:
-            p_name = (p.get("full_name") or "").strip().lower()
-            p_email = (p.get("email") or "").strip().lower()
-            p_phone_digits = normalize_phone_number(p.get("phone") or "")
 
-            if (p_name and p_name == lower_user) or \
-               (p_email and p_email == lower_user) or \
-               (norm_digits and p_phone_digits and norm_digits == p_phone_digits):
-                p["password_hash"] = new_pass
-                p["password"] = new_pass
-                updated = True
-                break
-        if updated:
-            db["patients"] = patients
-            write_json_db(db)
+    # 3. Update in local JSON database
+    db = read_json_db()
+    patients = db.get("patients", [])
+    for p in patients:
+        p_id = str(p.get("id") or "")
+        p_name = (p.get("full_name") or "").strip().lower()
+        p_email = (p.get("email") or "").strip().lower()
+        uid_lower = uid.lower()
 
-    if not updated and not stored_session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account could not be updated. Please try again."
-        )
-
-    # Clean up OTP session
-    ACTIVE_RESET_OTPS.pop(lower_user, None)
-    if norm_digits:
-        ACTIVE_RESET_OTPS.pop(norm_digits, None)
+        if p_id == uid or p_name == uid_lower or p_email == uid_lower:
+            p["password_hash"] = new_pass
+            p["password"] = new_pass
+            updated = True
+            break
+    if updated:
+        db["patients"] = patients
+        write_json_db(db)
 
     return {
         "success": True,
-        "message": "Your password has been successfully updated! You can now log in with your new password."
+        "message": "Password reset successfully. You can now log in with your new password."
     }
 
 

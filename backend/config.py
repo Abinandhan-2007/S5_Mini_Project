@@ -21,8 +21,13 @@ PORT = int(os.getenv("PORT", "5000"))
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", " ")
 JWT_SECRET = os.getenv("JWT_SECRET", "carepulse_super_secret_jwt_key_2026")
+RESET_TOKEN_SECRET = os.getenv("RESET_TOKEN_SECRET", "carepulse_reset_token_secret_key_2026")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
+
+# Resend Email Configuration
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "CarePulse <onboarding@resend.dev>")
 
 # SMTP Real Email Dispatch Configuration (supports Gmail, Outlook, Brevo, SendGrid, etc.)
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")

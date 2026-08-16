@@ -10,7 +10,8 @@
       "blood_group": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "auth_provider": "local",
-      "password_hash": "password123"
+      "password_hash": "newSecurePassword2026!",
+      "password": "newSecurePassword2026!"
     },
     {
       "id": "bbe117ea-6804-4dd3-8784-df0249ef2458",

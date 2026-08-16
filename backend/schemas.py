@@ -63,18 +63,23 @@ class ForgotPasswordOtpResponse(BaseModel):
     otp: str
 
 class ForgotPasswordVerifyOtpRequest(BaseModel):
-    username: str
-    otp: str
+    username: Optional[str] = None
+    email: Optional[str] = None
+    otp: Optional[str] = None
+    submitted_otp: Optional[str] = None
 
 class ForgotPasswordVerifyOtpResponse(BaseModel):
     success: bool
     message: str
     verified: bool
+    reset_token: Optional[str] = None
 
 class ForgotPasswordResetRequest(BaseModel):
-    username: str
-    otp: str
-    newPassword: str
+    reset_token: Optional[str] = None
+    new_password: Optional[str] = None
+    newPassword: Optional[str] = None
+    username: Optional[str] = None
+    otp: Optional[str] = None
 
 class AppointmentCreate(BaseModel):
     patientId: Optional[str] = None

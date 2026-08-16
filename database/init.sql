@@ -191,3 +191,15 @@ VALUES (
     'In-Person',
     'Upcoming'
 ) ON CONFLICT DO NOTHING;
+
+-- Password Reset OTPs Table (Firebase / PostgreSQL Integration)
+CREATE TABLE IF NOT EXISTS password_reset_otps (
+    id SERIAL PRIMARY KEY,
+    firebase_uid TEXT NOT NULL,
+    otp_hash TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
