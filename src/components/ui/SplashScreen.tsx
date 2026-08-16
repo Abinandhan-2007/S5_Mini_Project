@@ -25,12 +25,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     setSplashState('loading');
     setStatusText('Checking connection...');
 
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setSplashState('error');
-      setStatusText('Unable to connect. Please check your internet connection.');
-      return;
-    }
-
     // Trigger backend session check in parallel
     checkAuthSession().catch(() => null);
 
@@ -41,13 +35,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     const timer = setInterval(() => {
       if (isCancelledRef.current) {
         clearInterval(timer);
-        return;
-      }
-
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        clearInterval(timer);
-        setSplashState('error');
-        setStatusText('Unable to connect. Please check your internet connection.');
         return;
       }
 
