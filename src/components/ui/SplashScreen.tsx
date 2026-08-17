@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, RotateCw } from 'lucide-react';
+import { CheckCircle2, RotateCw, WifiOff } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
 
 interface SplashScreenProps {
@@ -10,9 +10,12 @@ interface SplashScreenProps {
 export type SplashState = 'loading' | 'success' | 'error';
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
-  const [splashState, setSplashState] = useState<SplashState>('loading');
+  const isOnlineInitially = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const [splashState, setSplashState] = useState<SplashState>(() => (isOnlineInitially ? 'loading' : 'error'));
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('Checking connection...');
+  const [statusText, setStatusText] = useState(
+    () => (isOnlineInitially ? 'Checking connection...' : 'Internet is turned off. Please turn on Wi-Fi or Mobile Data.')
+  );
   const [isRetrying, setIsRetrying] = useState(false);
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
@@ -20,6 +23,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   // Linear Loading Animation (0% to 100% strictly linear over 2200ms)
   const startLinearLoading = useCallback(() => {
+    // 1. Immediately verify network status
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSplashState('error');
+      setStatusText('Internet is turned off. Please turn on Wi-Fi or Mobile Data.');
+      return () => {};
+    }
+
     isCancelledRef.current = false;
     setProgress(0);
     setSplashState('loading');
@@ -35,6 +45,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     const timer = setInterval(() => {
       if (isCancelledRef.current) {
         clearInterval(timer);
+        return;
+      }
+
+      // Check if network dropped mid-loading
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        clearInterval(timer);
+        setSplashState('error');
+        setStatusText('Internet connection lost. Please reconnect to continue.');
         return;
       }
 
@@ -67,6 +85,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   // Initial startup
   useEffect(() => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSplashState('error');
+      setStatusText('Internet is turned off. Please turn on Wi-Fi or Mobile Data.');
+      return;
+    }
+
     const cleanup = startLinearLoading();
     return () => {
       isCancelledRef.current = true;
@@ -84,17 +108,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     }
   }, [splashState, onComplete]);
 
-  // Monitor network online/offline
+  // Monitor network online/offline transitions
   useEffect(() => {
     const handleOnline = () => {
-      if (splashState === 'error') {
-        startLinearLoading();
-      }
+      setSplashState('loading');
+      setStatusText('Reconnecting to CarePulse...');
+      startLinearLoading();
     };
 
     const handleOffline = () => {
+      isCancelledRef.current = true;
       setSplashState('error');
-      setStatusText('Unable to connect. Please check your internet connection.');
+      setStatusText('Internet is turned off. Please turn on Wi-Fi or Mobile Data.');
     };
 
     window.addEventListener('online', handleOnline);
@@ -104,7 +129,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [splashState, startLinearLoading]);
+  }, [startLinearLoading]);
 
   // Manual Retry
   const handleRetry = useCallback(() => {
@@ -117,7 +142,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         startLinearLoading();
       } else {
         setSplashState('error');
-        setStatusText('Unable to connect. Please check your internet connection.');
+        setStatusText('Internet is still off. Please connect to the internet and tap Retry.');
       }
     }, 600);
   }, [startLinearLoading]);
@@ -276,9 +301,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-3.5"
               >
-                <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-400/20 backdrop-blur-md flex items-center gap-2.5 text-rose-200 text-xs">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span className="text-[11px] font-medium leading-tight text-left">{statusText}</span>
+                <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-400/30 backdrop-blur-md flex items-center gap-3 text-rose-200 text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0">
+                    <WifiOff className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <div className="text-left space-y-0.5">
+                    <h4 className="font-bold text-white text-xs">Internet is Off</h4>
+                    <p className="text-[11px] text-rose-200/90 font-medium leading-tight">{statusText}</p>
+                  </div>
                 </div>
 
                 <button
@@ -288,7 +318,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   className="w-full py-2.5 px-4 rounded-full bg-teal-400 hover:bg-teal-300 text-[#041614] active:scale-95 text-xs font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(45,212,191,0.25)] transition-all cursor-pointer disabled:opacity-60"
                 >
                   <RotateCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
-                  <span>{isRetrying ? 'Checking Connection...' : 'Retry'}</span>
+                  <span>{isRetrying ? 'Checking Connection...' : 'Retry Connection'}</span>
                 </button>
               </motion.div>
             )}

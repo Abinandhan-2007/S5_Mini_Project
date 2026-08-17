@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import type { User } from './types';
 import { apiPost } from './apiFetch';
 
@@ -116,6 +117,35 @@ export const parseJwt = (token: string) => {
 };
 
 /**
+ * Completely sign out from Google on both native Android & Web
+ * Clears cached Google accounts so next sign-in prompts the full account selection dialog.
+ */
+export const signOutGoogle = async (): Promise<void> => {
+  // 1. Clear Web GIS
+  try {
+    const w = window as any;
+    if (w.google?.accounts?.id) {
+      w.google.accounts.id.disableAutoSelect();
+    }
+  } catch {}
+
+  // 2. Clear Native Capacitor Google Auth session safely without crashing
+  if (Capacitor.isNativePlatform()) {
+    try {
+      if (GOOGLE_CLIENT_ID) {
+        GoogleAuth.initialize({
+          clientId: GOOGLE_CLIENT_ID,
+          scopes: ['profile', 'email'],
+        });
+      }
+      await GoogleAuth.signOut();
+    } catch (e) {
+      console.warn('Native GoogleAuth signOut safe note:', e);
+    }
+  }
+};
+
+/**
  * Custom hook for Google Sign-In with status & error management
  */
 export const useGoogleAuth = () => {
@@ -140,7 +170,46 @@ export const useGoogleAuth = () => {
           return;
         }
 
-        const isNativeMobile = Capacitor.isNativePlatform() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (Capacitor.isNativePlatform()) {
+          try {
+            GoogleAuth.initialize({
+              clientId: GOOGLE_CLIENT_ID,
+              scopes: ['profile', 'email'],
+              grantOfflineAccess: true,
+              forceCodeForRefreshToken: true,
+            } as any);
+
+            // Sign out of previous native Google session to force account picker
+            await GoogleAuth.signOut().catch(() => {});
+
+            const gUser = await GoogleAuth.signIn();
+            clearTimeout(safetyTimer);
+
+            if (gUser?.email) {
+              const authResult = await authenticateWithBackend({
+                credential: gUser.authentication?.idToken,
+                profile: {
+                  email: gUser.email,
+                  name: gUser.name || gUser.givenName || gUser.email.split('@')[0],
+                  picture: gUser.imageUrl || '',
+                  googleId: gUser.id,
+                },
+              });
+              if (authResult?.user) {
+                onSuccess(authResult.user, authResult.token);
+              }
+            }
+          } catch (nativeErr: any) {
+            clearTimeout(safetyTimer);
+            console.warn('Native Google Auth note:', nativeErr);
+            setError(nativeErr?.message || 'Google Sign-in was cancelled.');
+          } finally {
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         const redirectUri = window.location.origin + '/login';
         const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
           GOOGLE_CLIENT_ID
@@ -148,8 +217,8 @@ export const useGoogleAuth = () => {
           redirectUri
         )}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
 
-        // Mobile Android WebViews do not support GIS popups due to Google security policies. Use direct OAuth redirect.
-        if (isNativeMobile) {
+        // Mobile browser fallback
+        if (isMobileBrowser) {
           window.location.href = oauthUrl;
           return;
         }

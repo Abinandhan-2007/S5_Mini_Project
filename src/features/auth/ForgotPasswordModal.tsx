@@ -128,16 +128,29 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     const clean = identifier.toLowerCase();
     const digits = identifier.replace(/\D/g, '').slice(-10);
 
-    return users.find((u) => {
+    const found = users.find((u) => {
       const uName = (u.fullName || '').toLowerCase();
       const uEmail = (u.email || '').toLowerCase();
+      const uEmailPrefix = uEmail.split('@')[0] || '';
       const uDigits = (u.phone || '').replace(/\D/g, '').slice(-10);
       return (
-        (uName && uName === clean) ||
-        (uEmail && uEmail === clean) ||
+        (uName && (uName === clean || clean.includes(uName) || uName.includes(clean))) ||
+        (uEmail && (uEmail === clean || clean === uEmailPrefix || uEmail.includes(clean))) ||
         (digits && uDigits && digits === uDigits)
       );
     });
+
+    if (found) return found;
+
+    if (clean.includes('@') && clean.includes('.')) {
+      return {
+        fullName: clean.split('@')[0],
+        email: clean,
+        phone: '',
+      };
+    }
+
+    return null;
   };
 
   const setupLocalOtpSession = (userObj: any) => {
