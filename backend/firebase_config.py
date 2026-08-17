@@ -1,8 +1,13 @@
 import os
 import logging
 from pathlib import Path
-import firebase_admin
-from firebase_admin import credentials, auth
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth
+except ImportError:
+    firebase_admin = None
+    credentials = None
+    auth = None
 
 logger = logging.getLogger("carepulse.firebase")
 
@@ -22,6 +27,9 @@ def get_firebase_credentials_path() -> Path:
 
 def initialize_firebase():
     """Initializes the Firebase Admin SDK if not already initialized."""
+    if firebase_admin is None:
+        logger.warning("⚠️ firebase_admin package is not installed. Skipping Firebase initialization.")
+        return None
     if not firebase_admin._apps:
         cred_path = get_firebase_credentials_path()
         if cred_path.exists():
