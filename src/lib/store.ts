@@ -236,12 +236,15 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       // Ignore
     }
 
-    // 3. Clear localStorage flags
+    // 3. Clear localStorage flags & session locks
     localStorage.removeItem('has_logged_in');
     localStorage.removeItem('carepulse_user');
     localStorage.removeItem('carepulse_token');
     localStorage.removeItem('auth_token');
     localStorage.removeItem('google_last_email');
+    try {
+      sessionStorage.removeItem('carepulse_app_unlocked');
+    } catch {}
 
     // 4. Synchronously update Zustand auth state
     set({

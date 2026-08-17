@@ -26,6 +26,7 @@ import {
 import { TopBar } from '../../components/ui/TopBar';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Avatar } from '../../components/ui/Avatar';
+import { AppLockModal } from '../../components/ui/AppLockModal';
 import { requestNativeLocation } from '../../lib/locationService';
 
 import { useCarePulseStore } from '../../lib/store';
@@ -37,6 +38,11 @@ export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
+  const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
+
+  const [isUnlockedThisSession, setIsUnlockedThisSession] = useState(() => {
+    return sessionStorage.getItem('carepulse_app_unlocked') === 'true';
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
@@ -131,6 +137,18 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white pb-28 w-full relative overflow-hidden">
+      {/* WhatsApp / Samsung Knox Style App Lock Screen on Home Page */}
+      {isBiometricEnabled && !isUnlockedThisSession && (
+        <AppLockModal
+          onUnlock={() => {
+            setIsUnlockedThisSession(true);
+            try {
+              sessionStorage.setItem('carepulse_app_unlocked', 'true');
+            } catch {}
+          }}
+        />
+      )}
+
       {/* VIBRANT EXTENDED CYAN HERO TOP SECTION - FULL WIDTH FIT */}
       <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] via-60% to-white pt-0 pb-10 sm:pb-12 w-full relative shadow-2xs">
         <TopBar variant="cyan" />

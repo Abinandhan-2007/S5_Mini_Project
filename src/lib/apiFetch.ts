@@ -7,6 +7,8 @@
  *   the ngrok browser interstitial HTML page instead of JSON
  */
 
+import { Capacitor } from '@capacitor/core';
+
 const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
 
 /**
@@ -15,9 +17,10 @@ const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, 
  */
 export function getApiBaseUrls(): string[] {
   return [
-    'http://10.24.200.106:5000/api', // Direct Wi-Fi LAN access to PC backend
+    'http://10.10.119.4:5000/api', // Current active Wi-Fi LAN IP to PC backend
+    'http://10.24.200.106:5000/api',
     ...(ENV_API_URL ? [ENV_API_URL] : []),
-    '/api', // Vite proxy / web browser
+    ...(Capacitor.isNativePlatform() ? [] : ['/api']), // Only use relative /api in web browser, not Android WebView
     'http://10.0.2.2:5000/api', // Android Emulator to host machine localhost:5000
     'http://localhost:5000/api',
   ];
@@ -47,10 +50,15 @@ export async function apiFetch(
   let lastError: unknown;
 
   for (const base of urls) {
-    const url = `${base}${path}`;
+    const cleanBase = base.replace(/\/+$/, '');
+    const cleanPath = path.startsWith('/api') ? path.replace(/^\/api/, '') : path;
+    const url = cleanBase.endsWith('/api')
+      ? `${cleanBase}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`
+      : `${cleanBase}/api${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const res = await fetch(url, {
         ...options,
@@ -61,7 +69,14 @@ export async function apiFetch(
         },
       });
       clearTimeout(timeoutId);
-      return res; // Return on first successful network call (any status code)
+
+      // Verify that the response is NOT an HTML SPA fallback (e.g. index.html from WebView asset loader)
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('text/html') && !path.endsWith('.html')) {
+        throw new Error('Received HTML instead of JSON API response');
+      }
+
+      return res; // Return on first real API response
     } catch (err) {
       lastError = err;
       // Network error or timeout — try next base URL

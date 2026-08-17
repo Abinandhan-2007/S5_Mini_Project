@@ -81,7 +81,14 @@ export async function registerDeviceBiometrics(_userEmail?: string): Promise<boo
       description: 'Confirm your biometric identity to enable instant 1-touch access',
       negativeButtonText: 'Cancel',
       maxAttempts: 5,
-    });
+      allowedBiometryTypes: [
+        BiometryType.FACE_AUTHENTICATION,
+        BiometryType.FACE_ID,
+        BiometryType.FINGERPRINT,
+        BiometryType.TOUCH_ID,
+        BiometryType.MULTIPLE,
+      ],
+    } as any);
 
     return true;
   } catch (err: any) {
@@ -119,7 +126,14 @@ export async function authenticateDeviceBiometrics(options?: {
       description: options?.description || 'Confirm your Face or Fingerprint to securely access your health records',
       negativeButtonText: 'Use Password',
       maxAttempts: 5,
-    });
+      allowedBiometryTypes: [
+        BiometryType.FACE_AUTHENTICATION,
+        BiometryType.FACE_ID,
+        BiometryType.FINGERPRINT,
+        BiometryType.TOUCH_ID,
+        BiometryType.MULTIPLE,
+      ],
+    } as any);
 
     return true;
   } catch (err: any) {

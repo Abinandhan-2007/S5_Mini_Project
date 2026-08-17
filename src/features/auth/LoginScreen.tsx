@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
-import { authenticateDeviceBiometrics, checkDeviceBiometricSupport } from '../../lib/biometricAuthService';
+import { authenticateDeviceBiometrics } from '../../lib/biometricAuthService';
 import {
   authenticateWithBackend,
   GOOGLE_CLIENT_ID,
@@ -14,6 +14,7 @@ import {
   useGoogleAuth,
 } from '../../lib/googleAuth';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { apiPost } from '../../lib/apiFetch';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -145,72 +146,6 @@ export const LoginScreen: React.FC = () => {
     };
   }, [navigate, setUserAuth]);
 
-  // Automatically prompt native Fingerprint / Device Lock (PIN / Pattern) on entering the app
-  useEffect(() => {
-    let isCancelled = false;
-
-    const attemptAutoBiometric = async () => {
-      // Small pause to allow view transitions and layout to settle
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      if (isCancelled) return;
-
-      // Check if device supports native biometrics or screen lock (Fingerprint / PIN / Pattern)
-      const support = await checkDeviceBiometricSupport();
-      if (!support.isAvailable) {
-        // Phone has no fingerprint/pattern/PIN lock security -> Directly let user use password or Google login
-        return;
-      }
-
-      setIsBiometricLoading(true);
-      try {
-        const isVerified = await authenticateDeviceBiometrics({
-          title: 'CarePulse Quick Unlock',
-          subtitle: 'Scan Face or touch Fingerprint sensor',
-        });
-        if (isCancelled) return;
-
-        if (isVerified) {
-          // Check if user has an existing account on device
-          let existingUser = useCarePulseStore.getState().user;
-          if (!existingUser) {
-            const storedStr = localStorage.getItem('carepulse_user');
-            if (storedStr) {
-              try {
-                existingUser = JSON.parse(storedStr);
-              } catch {
-                existingUser = null;
-              }
-            }
-          }
-
-          if (existingUser) {
-            const token = localStorage.getItem('auth_token') || localStorage.getItem('carepulse_token') || undefined;
-            await setUserAuth(existingUser, token);
-            navigate('/home');
-          } else {
-            // First time login: Device confirmed, user can choose Password or Google login
-            setResetSuccessMessage('Face / Fingerprint verified! You can now log in or continue with Google.');
-          }
-        } else {
-          // Biometric dismissed -> User can type password or use Google Sign-in
-          setErrorMessage('Face / Fingerprint unlock dismissed. Please log in with your credentials or Google.');
-        }
-      } catch (err: any) {
-        console.warn('Auto biometric error:', err);
-      } finally {
-        if (!isCancelled) {
-          setIsBiometricLoading(false);
-        }
-      }
-    };
-
-    attemptAutoBiometric();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [navigate, setUserAuth]);
-
   const handleGoogleClick = () => {
     setErrorMessage(null);
     setGoogleError(null);
@@ -279,39 +214,13 @@ export const LoginScreen: React.FC = () => {
       password: passVal,
     };
 
-    const tryFetch = async (endpoint: string) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
-      try {
-        return await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    };
-
-    const apiEnvUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
-    const endpointsToTry: string[] = [];
-    if (apiEnvUrl) {
-      endpointsToTry.push(apiEnvUrl.endsWith('/api') ? `${apiEnvUrl}/auth/login` : `${apiEnvUrl}/api/auth/login`);
-    }
-    endpointsToTry.push('/api/auth/login');
-    endpointsToTry.push('http://localhost:5000/api/auth/login');
-
     let res: Response | null = null;
     let data: any = {};
 
-    for (const ep of endpointsToTry) {
-      try {
-        res = await tryFetch(ep);
-        if (res) break;
-      } catch {
-        // try next endpoint
-      }
+    try {
+      res = await apiPost('/auth/login', payload);
+    } catch {
+      // All endpoints unreachable — fall through to local fallback below
     }
 
     if (res) {
