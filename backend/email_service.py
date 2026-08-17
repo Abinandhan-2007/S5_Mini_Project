@@ -4,7 +4,10 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
-import resend
+try:
+    import resend
+except ImportError:
+    resend = None
 import config
 
 logger = logging.getLogger("carepulse.email")
@@ -15,7 +18,7 @@ def send_otp_email(to_email: str, otp: str, patient_name: str = "User") -> bool:
     """
     # 1. Primary: Resend API
     resend_api_key = (config.RESEND_API_KEY or os.getenv("RESEND_API_KEY") or "").strip()
-    if resend_api_key:
+    if resend_api_key and resend is not None:
         try:
             resend.api_key = resend_api_key
             from_sender = config.RESEND_FROM_EMAIL or "CarePulse <onboarding@resend.dev>"
