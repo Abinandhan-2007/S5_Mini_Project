@@ -18,6 +18,7 @@ import {
   QrCode,
   Fingerprint,
   MapPin,
+  AlertCircle,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -28,7 +29,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
-import { registerDeviceBiometrics } from '../../lib/biometricAuthService';
+import { registerDeviceBiometrics, checkDeviceBiometricSupport } from '../../lib/biometricAuthService';
 import { calculateAge, getTodayDateString } from '../../lib/dateUtils';
 
 export const ProfileScreen: React.FC = () => {
@@ -39,6 +40,7 @@ export const ProfileScreen: React.FC = () => {
 
   const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
   const toggleBiometric = useCarePulseStore((s) => s.toggleBiometric);
+  const [biometricNotice, setBiometricNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditVitalsModalOpen, setIsEditVitalsModalOpen] = useState(false);
@@ -137,12 +139,44 @@ export const ProfileScreen: React.FC = () => {
   ];
 
   const handleToggleBiometric = async () => {
+    setBiometricNotice(null);
     const nextState = !isBiometricEnabled;
+
     if (nextState) {
-      // Trigger native phone device biometric prompt
-      await registerDeviceBiometrics(user.email);
+      // 1. Verify hardware support and enrolled biometrics first
+      const support = await checkDeviceBiometricSupport();
+      if (!support.isAvailable) {
+        setBiometricNotice({
+          type: 'error',
+          text: support.message || 'No enrolled fingerprint or device lock found. Please enroll fingerprint in Android Settings.',
+        });
+        return;
+      }
+
+      // 2. Trigger native fingerprint prompt to confirm user identity
+      const isVerified = await registerDeviceBiometrics(user.email);
+      if (!isVerified) {
+        setBiometricNotice({
+          type: 'error',
+          text: 'Fingerprint verification cancelled or not recognized. Biometric security was not enabled.',
+        });
+        return;
+      }
+
+      toggleBiometric(true);
+      setBiometricNotice({
+        type: 'success',
+        text: 'Fingerprint authentication successfully verified and enabled for CarePulse!',
+      });
+      setTimeout(() => setBiometricNotice(null), 4000);
+    } else {
+      toggleBiometric(false);
+      setBiometricNotice({
+        type: 'success',
+        text: 'Biometric login disabled. Password authentication will be required.',
+      });
+      setTimeout(() => setBiometricNotice(null), 3000);
     }
-    toggleBiometric(nextState);
   };
 
   return (
@@ -346,6 +380,24 @@ export const ProfileScreen: React.FC = () => {
               />
             </button>
           </div>
+
+          {biometricNotice && (
+            <div
+              className={clsx(
+                'p-2.5 rounded-xl text-xs font-semibold flex items-start gap-2 animate-fade-in text-left',
+                biometricNotice.type === 'error'
+                  ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              )}
+            >
+              {biometricNotice.type === 'error' ? (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              )}
+              <span className="leading-snug">{biometricNotice.text}</span>
+            </div>
+          )}
         </div>
 
         {/* ACCOUNT PREFERENCES LIST */}

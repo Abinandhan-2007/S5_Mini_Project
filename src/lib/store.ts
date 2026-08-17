@@ -3,6 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection } from './types';
 import { INITIAL_USER, INITIAL_APPOINTMENT, MOCK_MEDICAL_HISTORY, INITIAL_CHAT_MESSAGES } from './mockApi';
 import { apiGet, apiFetch } from './apiFetch';
+import { signOutGoogle } from './googleAuth';
 
 interface CarePulseState {
   // Auth state
@@ -133,6 +134,14 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         }
       }
 
+      // Check saved biometric preference
+      try {
+        const { value: bioVal } = await Preferences.get({ key: 'carepulse_biometric_enabled' });
+        if (bioVal !== null) {
+          set({ isBiometricEnabled: bioVal === 'true' });
+        }
+      } catch {}
+
       // If we already have a cached user or have logged in previously, stay authenticated
       if (cachedUser) {
         set({
@@ -212,12 +221,9 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   },
 
   logout: async () => {
-    // 1. Clear browser-level Google Identity Services cache (web/PWA)
+    // 1. Clear Google session on native Android & web
     try {
-      const w = window as any;
-      if (w.google?.accounts?.id) {
-        w.google.accounts.id.disableAutoSelect();
-      }
+      await signOutGoogle();
     } catch {
       // Ignore
     }
@@ -247,6 +253,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
 
   toggleBiometric: (enabled: boolean) => {
     localStorage.setItem('carepulse_biometric_enabled', String(enabled));
+    Preferences.set({ key: 'carepulse_biometric_enabled', value: String(enabled) }).catch(() => {});
     set({ isBiometricEnabled: enabled });
   },
 

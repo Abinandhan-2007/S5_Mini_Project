@@ -16,6 +16,7 @@ const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, 
 export function getApiBaseUrls(): string[] {
   return [
     ...(ENV_API_URL ? [ENV_API_URL] : []),
+    'http://10.0.2.2:5000/api', // Android Emulator to host machine localhost:5000
     '/api',
     'http://localhost:5000/api',
   ];

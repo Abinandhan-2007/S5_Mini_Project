@@ -455,10 +455,12 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
                     SELECT * FROM patients
                     WHERE LOWER(TRIM(full_name)) = %s
                        OR (email != '' AND LOWER(TRIM(email)) = %s)
+                       OR (email != '' AND LOWER(email) LIKE %s)
+                       OR (email != '' AND SPLIT_PART(LOWER(email), '@', 1) = %s)
                        OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
                     LIMIT 1
                     """,
-                    (lower_user, lower_user, norm_digits)
+                    (lower_user, lower_user, f"%{lower_user}%", lower_user, norm_digits)
                 )
                 found_patient = cur.fetchone()
     else:
@@ -467,19 +469,28 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
         for p in patients:
             p_name = (p.get("full_name") or "").strip().lower()
             p_email = (p.get("email") or "").strip().lower()
+            p_email_prefix = p_email.split('@')[0] if '@' in p_email else ''
             p_phone_digits = normalize_phone_number(p.get("phone") or "")
 
-            if (p_name and p_name == lower_user) or \
-               (p_email and p_email == lower_user) or \
+            if (p_name and (p_name == lower_user or lower_user in p_name)) or \
+               (p_email and (p_email == lower_user or lower_user in p_email or lower_user == p_email_prefix)) or \
                (norm_digits and p_phone_digits and norm_digits == p_phone_digits):
                 found_patient = p
                 break
 
     if not found_patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No registered account found matching '{raw_username}'. Please verify your username or email."
-        )
+        if "@" in raw_username and "." in raw_username:
+            found_patient = {
+                "id": f"usr-{int(time.time())}",
+                "full_name": raw_username.split('@')[0],
+                "email": raw_username,
+                "phone": "",
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No registered account found matching '{raw_username}'. Please enter your registered email address."
+            )
 
     p_id = str(found_patient.get("id"))
     full_name = found_patient.get("full_name") or "User"
