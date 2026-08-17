@@ -18,6 +18,12 @@ def normalize_phone_number(p: str) -> str:
     digits = re.sub(r"\D", "", p or "")
     return digits[-10:] if len(digits) >= 10 else digits
 
+def normalize_text_key(val: str) -> str:
+    """Normalize names/usernames by stripping spaces, periods, and non-alphanumerics for resilient matching."""
+    if not val:
+        return ""
+    return re.sub(r"[^a-zA-Z0-9]", "", val).lower()
+
 from fastapi import FastAPI, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -301,6 +307,7 @@ def standard_login(request: LoginRequest):
 
     norm_identifier_digits = normalize_phone_number(identifier)
     lower_identifier = identifier.lower()
+    clean_identifier = normalize_text_key(identifier)
 
     if database.use_pg:
         with get_pg_connection() as conn:
@@ -309,11 +316,14 @@ def standard_login(request: LoginRequest):
                     """
                     SELECT * FROM patients 
                     WHERE LOWER(TRIM(full_name)) = %s
+                       OR (full_name != '' AND REGEXP_REPLACE(LOWER(full_name), '[^a-z0-9]', '', 'g') = %s)
                        OR (email != '' AND LOWER(TRIM(email)) = %s)
+                       OR (email != '' AND REGEXP_REPLACE(LOWER(email), '[^a-z0-9]', '', 'g') = %s)
+                       OR (email != '' AND SPLIT_PART(LOWER(email), '@', 1) = %s)
                        OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
                     LIMIT 1
                     """,
-                    (lower_identifier, lower_identifier, norm_identifier_digits)
+                    (lower_identifier, clean_identifier, lower_identifier, clean_identifier, lower_identifier, norm_identifier_digits)
                 )
                 row = cur.fetchone()
                 if not row:
@@ -354,13 +364,23 @@ def standard_login(request: LoginRequest):
     patients = db.get("patients", [])
     found = None
     for p in patients:
-        p_name = (p.get("full_name") or "").strip().lower()
+        p_name = (p.get("full_name") or "").strip()
         p_phone_digits = normalize_phone_number(p.get("phone") or "")
         p_email = (p.get("email") or "").strip().lower()
+        clean_p_name = normalize_text_key(p_name)
+        clean_p_email = normalize_text_key(p_email)
+        p_email_prefix = p_email.split('@')[0] if '@' in p_email else ''
 
-        is_name_match = p_name and p_name == lower_identifier
+        is_name_match = (
+            (p_name.lower() == lower_identifier) or
+            (clean_identifier and clean_p_name == clean_identifier)
+        )
         is_phone_match = norm_identifier_digits and p_phone_digits and norm_identifier_digits == p_phone_digits
-        is_email_match = lower_identifier and p_email and lower_identifier == p_email
+        is_email_match = (
+            (lower_identifier and p_email and lower_identifier == p_email) or
+            (clean_identifier and clean_p_email == clean_identifier) or
+            (lower_identifier and lower_identifier == p_email_prefix)
+        )
 
         if is_name_match or is_phone_match or is_email_match:
             found = p
@@ -442,6 +462,7 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
 
     norm_digits = normalize_phone_number(raw_username)
     lower_user = raw_username.lower()
+    clean_user = normalize_text_key(raw_username)
 
     found_patient = None
     firebase_uid = ""
@@ -454,27 +475,42 @@ def request_forgot_password_otp(request: ForgotPasswordRequestOtp):
                     """
                     SELECT * FROM patients
                     WHERE LOWER(TRIM(full_name)) = %s
+                       OR (full_name != '' AND REGEXP_REPLACE(LOWER(full_name), '[^a-z0-9]', '', 'g') = %s)
                        OR (email != '' AND LOWER(TRIM(email)) = %s)
-                       OR (email != '' AND LOWER(email) LIKE %s)
+                       OR (email != '' AND REGEXP_REPLACE(LOWER(email), '[^a-z0-9]', '', 'g') = %s)
                        OR (email != '' AND SPLIT_PART(LOWER(email), '@', 1) = %s)
+                       OR (email != '' AND LOWER(email) LIKE %s)
                        OR (phone != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = %s)
                     LIMIT 1
                     """,
-                    (lower_user, lower_user, f"%{lower_user}%", lower_user, norm_digits)
+                    (lower_user, clean_user, lower_user, clean_user, lower_user, f"%{lower_user}%", norm_digits)
                 )
                 found_patient = cur.fetchone()
     else:
         db = read_json_db()
         patients = db.get("patients", [])
         for p in patients:
-            p_name = (p.get("full_name") or "").strip().lower()
+            p_name = (p.get("full_name") or "").strip()
             p_email = (p.get("email") or "").strip().lower()
+            clean_p_name = normalize_text_key(p_name)
+            clean_p_email = normalize_text_key(p_email)
             p_email_prefix = p_email.split('@')[0] if '@' in p_email else ''
             p_phone_digits = normalize_phone_number(p.get("phone") or "")
 
-            if (p_name and (p_name == lower_user or lower_user in p_name)) or \
-               (p_email and (p_email == lower_user or lower_user in p_email or lower_user == p_email_prefix)) or \
-               (norm_digits and p_phone_digits and norm_digits == p_phone_digits):
+            is_name_match = (
+                (p_name.lower() == lower_user) or
+                (clean_user and clean_p_name == clean_user) or
+                (clean_user and clean_user in clean_p_name)
+            )
+            is_email_match = (
+                (p_email and p_email == lower_user) or
+                (clean_user and clean_p_email == clean_user) or
+                (clean_user and clean_user in clean_p_email) or
+                (lower_user and lower_user == p_email_prefix)
+            )
+            is_phone_match = norm_digits and p_phone_digits and norm_digits == p_phone_digits
+
+            if is_name_match or is_email_match or is_phone_match:
                 found_patient = p
                 break
 

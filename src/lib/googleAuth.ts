@@ -129,12 +129,18 @@ export const signOutGoogle = async (): Promise<void> => {
     }
   } catch {}
 
-  // 2. Clear Native Capacitor Google Auth session
+  // 2. Clear Native Capacitor Google Auth session safely without crashing
   if (Capacitor.isNativePlatform()) {
     try {
+      if (GOOGLE_CLIENT_ID) {
+        GoogleAuth.initialize({
+          clientId: GOOGLE_CLIENT_ID,
+          scopes: ['profile', 'email'],
+        });
+      }
       await GoogleAuth.signOut();
     } catch (e) {
-      console.warn('Native GoogleAuth signOut note:', e);
+      console.warn('Native GoogleAuth signOut safe note:', e);
     }
   }
 };

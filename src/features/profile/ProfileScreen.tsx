@@ -16,7 +16,7 @@ import {
   CheckCircle2,
   FileCheck,
   QrCode,
-  Fingerprint,
+  ScanFace,
   MapPin,
   AlertCircle,
 } from 'lucide-react';
@@ -148,17 +148,17 @@ export const ProfileScreen: React.FC = () => {
       if (!support.isAvailable) {
         setBiometricNotice({
           type: 'error',
-          text: support.message || 'No enrolled fingerprint or device lock found. Please enroll fingerprint in Android Settings.',
+          text: support.message || 'No enrolled Face ID / Fingerprint found. Please enroll biometric security in phone settings.',
         });
         return;
       }
 
-      // 2. Trigger native fingerprint prompt to confirm user identity
+      // 2. Trigger native Face / Fingerprint prompt to confirm user identity
       const isVerified = await registerDeviceBiometrics(user.email);
       if (!isVerified) {
         setBiometricNotice({
           type: 'error',
-          text: 'Fingerprint verification cancelled or not recognized. Biometric security was not enabled.',
+          text: 'Biometric verification cancelled or not recognized. Face / Fingerprint login was not enabled.',
         });
         return;
       }
@@ -166,7 +166,7 @@ export const ProfileScreen: React.FC = () => {
       toggleBiometric(true);
       setBiometricNotice({
         type: 'success',
-        text: 'Fingerprint authentication successfully verified and enabled for CarePulse!',
+        text: 'Face & Fingerprint authentication successfully verified and enabled for CarePulse!',
       });
       setTimeout(() => setBiometricNotice(null), 4000);
     } else {
@@ -342,21 +342,21 @@ export const ProfileScreen: React.FC = () => {
         {/* BIOMETRIC SECURITY TOGGLE CARD */}
         <div className="space-y-2 pt-1">
           <h2 className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest px-1">
-            BIOMETRIC SECURITY
+            BIOMETRIC & FACE SECURITY
           </h2>
 
           <div className="bg-white border border-[#E4E7EC] shadow-2xs rounded-2xl p-3.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
-                <Fingerprint className="w-5 h-5 text-[#0B5A54]" />
+                <ScanFace className="w-5 h-5 text-[#0B5A54]" />
               </div>
               <div className="text-left space-y-0.5">
                 <h4 className="text-xs font-black font-heading text-[#111827]">
-                  Biometric Login (Fingerprint / Mobile PIN)
+                  Biometric Login (Face & Fingerprint)
                 </h4>
                 <p className="text-[10px] text-[#6B7280] font-medium">
                   {isBiometricEnabled
-                    ? 'Synced with mobile phone Fingerprint / PIN'
+                    ? 'Active — 1-touch Face ID / Fingerprint unlock'
                     : 'Disabled — Password required to log in'}
                 </p>
               </div>

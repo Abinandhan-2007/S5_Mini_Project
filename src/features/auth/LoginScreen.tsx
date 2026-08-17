@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus, Fingerprint } from 'lucide-react';
+import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus, ScanFace } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -163,7 +163,10 @@ export const LoginScreen: React.FC = () => {
 
       setIsBiometricLoading(true);
       try {
-        const isVerified = await authenticateDeviceBiometrics();
+        const isVerified = await authenticateDeviceBiometrics({
+          title: 'CarePulse Quick Unlock',
+          subtitle: 'Scan Face or touch Fingerprint sensor',
+        });
         if (isCancelled) return;
 
         if (isVerified) {
@@ -186,11 +189,11 @@ export const LoginScreen: React.FC = () => {
             navigate('/home');
           } else {
             // First time login: Device confirmed, user can choose Password or Google login
-            setResetSuccessMessage('Device security verified! You can now log in or continue with Google.');
+            setResetSuccessMessage('Face / Fingerprint verified! You can now log in or continue with Google.');
           }
         } else {
-          // Fingerprint/Pattern dismissed -> User can type password or use Google Sign-in
-          setErrorMessage('Device lock / Fingerprint dismissed. Please log in with your credentials or Google.');
+          // Biometric dismissed -> User can type password or use Google Sign-in
+          setErrorMessage('Face / Fingerprint unlock dismissed. Please log in with your credentials or Google.');
         }
       } catch (err: any) {
         console.warn('Auto biometric error:', err);
@@ -223,9 +226,12 @@ export const LoginScreen: React.FC = () => {
     setIsBiometricLoading(true);
 
     try {
-      const isVerified = await authenticateDeviceBiometrics();
+      const isVerified = await authenticateDeviceBiometrics({
+        title: 'CarePulse Quick Unlock',
+        subtitle: 'Scan Face or touch Fingerprint sensor',
+      });
       if (!isVerified) {
-        setErrorMessage('Fingerprint authentication failed or was cancelled.');
+        setErrorMessage('Face / Fingerprint authentication failed or was cancelled.');
         setIsBiometricLoading(false);
         return;
       }
@@ -536,10 +542,10 @@ export const LoginScreen: React.FC = () => {
                     fullWidth
                     isLoading={isBiometricLoading}
                     onClick={handleBiometricLogin}
-                    leftIcon={<Fingerprint className="w-4 h-4 text-[#0B5A54] shrink-0" />}
+                    leftIcon={<ScanFace className="w-4 h-4 text-[#0B5A54] shrink-0" />}
                     className="font-bold text-xs text-[#0B5A54] bg-[#E3F3F1]/70 border border-[#0B5A54]/30 shadow-2xs py-2.5 rounded-xl hover:bg-[#E3F3F1] cursor-pointer flex items-center justify-center gap-2"
                   >
-                    {isBiometricLoading ? 'Scanning Fingerprint...' : 'Unlock with Fingerprint'}
+                    {isBiometricLoading ? 'Scanning Face / Fingerprint...' : 'Unlock with Face / Fingerprint'}
                   </Button>
                 </div>
               )}

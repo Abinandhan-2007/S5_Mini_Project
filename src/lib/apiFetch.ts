@@ -15,9 +15,10 @@ const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, 
  */
 export function getApiBaseUrls(): string[] {
   return [
+    'http://10.24.200.106:5000/api', // Direct Wi-Fi LAN access to PC backend
     ...(ENV_API_URL ? [ENV_API_URL] : []),
+    '/api', // Vite proxy / web browser
     'http://10.0.2.2:5000/api', // Android Emulator to host machine localhost:5000
-    '/api',
     'http://localhost:5000/api',
   ];
 }
@@ -49,7 +50,7 @@ export async function apiFetch(
     const url = `${base}${path}`;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
 
       const res = await fetch(url, {
         ...options,
