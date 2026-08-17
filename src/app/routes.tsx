@@ -22,6 +22,8 @@ import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
 import { ReceptionistLogin } from '../portals/receptionist/ReceptionistLogin';
 import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { DoctorLayout } from '../portals/doctor/DoctorLayout';
+import { AdminLayout } from '../portals/admin/AdminLayout';
+import { AdminLogin } from '../portals/admin/AdminLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
@@ -268,6 +270,24 @@ export const AppRoutes: React.FC = () => {
         element={
           <PageTransition>
             <DoctorLogin />
+          </PageTransition>
+        }
+      />
+
+      {/* Admin Portal Routes */}
+      <Route
+        path="/admin"
+        element={
+          <PageTransition>
+            <AdminLayout />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/admin/login"
+        element={
+          <PageTransition>
+            <AdminLogin />
           </PageTransition>
         }
       />

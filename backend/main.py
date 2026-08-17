@@ -51,8 +51,8 @@ from schemas import (
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
-import firebase_config
 from routes.receptionist_routes import router as receptionist_router
+from routes.admin_routes import router as admin_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -1473,6 +1473,7 @@ def get_doctor_by_id(doctor_id: str):
 
 
 app.include_router(receptionist_router)
+app.include_router(admin_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=config.PORT, reload=True)

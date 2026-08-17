@@ -14,11 +14,11 @@ interface StaffRecord {
   name: string;
   email: string;
   password: string;
-  role: 'receptionist' | 'doctor';
+  role: 'admin' | 'receptionist' | 'doctor';
 }
 
 interface StaffPortalLoginProps {
-  defaultRole?: 'receptionist' | 'doctor';
+  defaultRole?: 'admin' | 'receptionist' | 'doctor';
 }
 
 const STAFF_LIST: StaffRecord[] = (dbRaw as { staff?: StaffRecord[] }).staff ?? [];
@@ -56,7 +56,13 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         `token-${match.role}-${match.id}`
       );
       setIsLoading(false);
-      navigate(match.role === 'receptionist' ? '/receptionist' : '/doctor');
+      if (match.role === 'admin') {
+        navigate('/admin');
+      } else if (match.role === 'receptionist') {
+        navigate('/receptionist');
+      } else {
+        navigate('/doctor');
+      }
     }, 800);
   };
 
@@ -193,13 +199,32 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
           <div className="bg-white rounded-3xl shadow-[0_12px_40px_rgba(15,23,42,0.06)] border border-slate-200/80 p-8 sm:p-10">
 
             {/* Header */}
-            <div className="mb-7">
+            <div className="mb-5">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight font-heading">
                 Sign In
               </h2>
               <p className="text-xs text-slate-400 mt-1 font-medium">
                 Enter your work credentials to access your portal.
               </p>
+            </div>
+
+            {/* Quick Demo Fill Pill */}
+            <div className="p-3.5 mb-5 rounded-2xl bg-teal-50/70 border border-teal-200/80 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold text-[#0B5A54] uppercase tracking-wide">Quick Demo Account</p>
+                <p className="text-[11px] text-slate-600 font-medium truncate">receptionist@carepulse.com / password123</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('receptionist@carepulse.com');
+                  setPassword('password123');
+                  setError(null);
+                }}
+                className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white text-[11px] font-extrabold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+              >
+                Fill Receptionist
+              </button>
             </div>
 
             {/* Form */}

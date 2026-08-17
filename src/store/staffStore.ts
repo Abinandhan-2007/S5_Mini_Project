@@ -1,6 +1,6 @@
 // src/store/staffStore.ts
 import { create } from 'zustand';
-import type { Staff } from '../types/staff';
+import type { Staff, AdminProfile, ReceptionistRecord, HospitalSettings, HospitalBranch } from '../types/staff';
 import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile, TimeSlotCapacity } from '../types/receptionist';
 import { receptionistService } from '../services/receptionistService';
 
@@ -100,7 +100,7 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
     email: 'ethan.r@carepulse.com',
     roomNumber: 'Cabin 301 - 3rd Floor',
     isAvailable: true,
-    availableDays: ['Mon', 'Tue', 'Thu', 'Fri'],
+    availableDays: ['Mon', 'Tue', 'Wed', 'Thu'],
     slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
   }
 ];
@@ -141,8 +141,8 @@ const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
   {
     id: 'tok-3',
     tokenNumber: '#TOK-003',
-    patientName: 'Anita Sharma',
-    patientPhone: '+91 99887 76655',
+    patientName: 'Elena Rostova',
+    patientPhone: '+91 97777 88899',
     doctorId: 'doc-2',
     doctorName: 'Dr. Marcus Vance',
     doctorSpecialty: 'Dermatologist',
@@ -184,19 +184,169 @@ const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
   avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
 };
 
+const DEFAULT_ADMIN_PROFILE: AdminProfile = {
+  id: 'admin-1',
+  name: 'Dr. Arthur Vance',
+  email: 'admin@carepulse.com',
+  phone: '+1 (555) 735-4600',
+  role: 'admin',
+  department: 'Chief Medical Administration',
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+  hospitalName: 'CarePulse Central Hospital',
+};
+
+const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
+  name: 'CarePulse Central Hospital',
+  tagline: 'Advanced Clinical Care & Patient Guidance Center',
+  address: '4517 Washington Ave, Medical Hub, Metro District',
+  phone: '+1 (555) 735-4614',
+  emergencyHotline: '+1 (555) 911-0000',
+  email: 'contact@carepulse.com',
+  logoUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400&auto=format&fit=crop&q=80',
+  defaultSlotDurationMinutes: 30,
+  maxOnlineBookingPercentage: 50,
+  enableAiTriage: true,
+  enableSmsReminders: true,
+  enableAutoCancellation: false,
+};
+
+const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [
+  {
+    id: 'rec-101',
+    name: 'Emily Watson',
+    email: 'receptionist@carepulse.com',
+    password: 'password123',
+    hospitalName: 'CarePulse Central Hospital',
+    phone: '+91 98765 43220',
+    department: 'Main Reception',
+    deskNumber: 'Desk A-1 (Ground Floor)',
+    shift: 'Morning',
+    isActive: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+    assignedDoctorsCount: 4,
+    joinDate: '2024-03-15'
+  },
+  {
+    id: 'rec-102',
+    name: 'Anna Mathews',
+    email: 'anna.m@carepulse.com',
+    password: 'password123',
+    hospitalName: 'CarePulse Central Hospital',
+    phone: '+91 98765 43221',
+    department: 'Emergency & OPD Desk',
+    deskNumber: 'Desk B-2 (Wing C)',
+    shift: 'Evening',
+    isActive: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
+    assignedDoctorsCount: 3,
+    joinDate: '2024-06-10'
+  },
+  {
+    id: 'rec-103',
+    name: 'David Miller',
+    email: 'david.m@carepulse.com',
+    password: 'password123',
+    hospitalName: 'CarePulse Central Hospital',
+    phone: '+91 98765 43222',
+    department: 'Specialist Clinic Desk',
+    deskNumber: 'Desk C-1 (2nd Floor)',
+    shift: 'Full Day',
+    isActive: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+    assignedDoctorsCount: 2,
+    joinDate: '2025-01-20'
+  }
+];
+
+const DEFAULT_HOSPITALS: HospitalBranch[] = [
+  {
+    id: 'hosp-1',
+    name: 'CarePulse Metro Central Hospital',
+    address: '4517 Washington Ave, Medical Hub, Metro District',
+    city: 'Metro City',
+    phone: '+1 (555) 735-4614',
+    operatingHours: '24/7 Emergency & OPD (08:00 AM - 10:00 PM)',
+    doctorsCount: 10,
+    receptionDesksCount: 4,
+    logoUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400&auto=format&fit=crop&q=80',
+    isActive: true,
+  },
+  {
+    id: 'hosp-2',
+    name: 'CarePulse West Wing Specialty Clinic',
+    address: '8902 Health Boulevard, Westside District',
+    city: 'West Haven',
+    phone: '+1 (555) 890-1200',
+    operatingHours: 'Mon-Sat (08:00 AM - 08:00 PM)',
+    doctorsCount: 6,
+    receptionDesksCount: 2,
+    logoUrl: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&auto=format&fit=crop&q=80',
+    isActive: true,
+  },
+  {
+    id: 'hosp-3',
+    name: 'CarePulse Downtown Urgent Care',
+    address: '1240 Innovation Way, Financial District',
+    city: 'Downtown Core',
+    phone: '+1 (555) 345-9800',
+    operatingHours: '24/7 Walk-Ins & Emergency Trauma',
+    doctorsCount: 4,
+    receptionDesksCount: 2,
+    logoUrl: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=400&auto=format&fit=crop&q=80',
+    isActive: true,
+  },
+  {
+    id: 'hosp-4',
+    name: 'CarePulse Greenfield Pediatric Center',
+    address: '67 Greenfield Park, North Suburb',
+    city: 'Greenfield',
+    phone: '+1 (555) 234-7700',
+    operatingHours: 'Mon-Fri (07:30 AM - 06:30 PM)',
+    doctorsCount: 3,
+    receptionDesksCount: 1,
+    logoUrl: 'https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=400&auto=format&fit=crop&q=80',
+    isActive: true,
+  },
+];
+
 export interface StaffState {
   currentStaff: Staff | null;
   receptionistProfile: ReceptionistProfile;
+  adminProfile: AdminProfile;
+  hospitalSettings: HospitalSettings;
+  receptionists: ReceptionistRecord[];
+  hospitals: HospitalBranch[];
   doctors: DoctorRecord[];
   tokens: TokenQueueItem[];
   isLoading: boolean;
   error: string | null;
 
-  // Actions
+  // Auth Actions
   setStaffAuth: (staff: Staff, token?: string) => void;
   logoutStaff: () => void;
+
+  // Hospital Branch Actions
+  addHospital: (hospData: Partial<HospitalBranch>) => Promise<void>;
+  updateHospital: (id: string, updates: Partial<HospitalBranch>) => Promise<void>;
+  deleteHospital: (id: string) => Promise<void>;
+
+  // Receptionist Actions
   fetchReceptionistProfile: () => Promise<void>;
   updateReceptionistProfile: (profile: Partial<ReceptionistProfile>) => Promise<void>;
+
+  // Admin Actions
+  fetchReceptionists: () => Promise<void>;
+  createReceptionist: (recData: Partial<ReceptionistRecord>) => Promise<void>;
+  updateReceptionist: (id: string, updates: Partial<ReceptionistRecord>) => Promise<void>;
+  deleteReceptionist: (id: string) => Promise<void>;
+  toggleReceptionistStatus: (id: string) => Promise<void>;
+  updateHospitalSettings: (settings: Partial<HospitalSettings>) => Promise<void>;
+  updateAdminProfile: (profile: Partial<AdminProfile>) => Promise<void>;
+  globalSlotOverride: (doctorId: string, slotId: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
+  updateDoctor: (id: string, updates: Partial<DoctorRecord>) => Promise<void>;
+  deleteDoctor: (id: string) => Promise<void>;
+
+  // Doctor & Token Actions
   fetchDoctors: () => Promise<void>;
   toggleDoctorAvailability: (doctorId: string) => Promise<void>;
   updateDoctorSlotCapacity: (doctorId: string, timeSlot: string, availableSeats: number) => Promise<void>;
@@ -224,13 +374,17 @@ export interface StaffState {
 
 export const useStaffStore = create<StaffState>((set, get) => ({
   currentStaff: {
-    id: 'rec-101',
-    name: 'Emily Watson',
-    role: 'receptionist',
-    email: 'emily.watson@carepulse.com',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+    id: 'admin-1',
+    name: 'Dr. Arthur Vance',
+    role: 'admin',
+    email: 'admin@carepulse.com',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   },
   receptionistProfile: DEFAULT_RECEPTIONIST_PROFILE,
+  adminProfile: DEFAULT_ADMIN_PROFILE,
+  hospitalSettings: DEFAULT_HOSPITAL_SETTINGS,
+  receptionists: DEFAULT_RECEPTIONISTS,
+  hospitals: DEFAULT_HOSPITALS,
   doctors: MOCK_INITIAL_DOCTORS,
   tokens: MOCK_INITIAL_TOKENS,
   isLoading: false,
@@ -468,5 +622,137 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     }));
 
     await receptionistService.bookWalkInAppointment(payload);
-  }
+  },
+
+  // Admin Actions Implementation
+  fetchReceptionists: async () => {
+    // Already populated with DEFAULT_RECEPTIONISTS or synced with backend
+  },
+
+  createReceptionist: async (recData: Partial<ReceptionistRecord>) => {
+    const newRec: ReceptionistRecord = {
+      id: `rec-${Date.now()}`,
+      name: recData.name || 'New Receptionist',
+      email: recData.email || 'receptionist@carepulse.com',
+      password: recData.password || 'password123',
+      hospitalName: recData.hospitalName || 'CarePulse Central Hospital',
+      phone: recData.phone || '+91 98765 00000',
+      department: recData.department || 'Front Desk',
+      deskNumber: recData.deskNumber || 'Desk A-1',
+      shift: recData.shift || 'Morning',
+      isActive: true,
+      avatarUrl: recData.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+      assignedDoctorsCount: recData.assignedDoctorsCount || 2,
+      joinDate: new Date().toISOString().split('T')[0],
+    };
+
+    set((state) => ({
+      receptionists: [newRec, ...state.receptionists],
+    }));
+  },
+
+  updateReceptionist: async (id: string, updates: Partial<ReceptionistRecord>) => {
+    set((state) => ({
+      receptionists: state.receptionists.map((r) =>
+        r.id === id ? { ...r, ...updates } : r
+      ),
+    }));
+  },
+
+  deleteReceptionist: async (id: string) => {
+    set((state) => ({
+      receptionists: state.receptionists.filter((r) => r.id !== id),
+    }));
+  },
+
+  toggleReceptionistStatus: async (id: string) => {
+    set((state) => ({
+      receptionists: state.receptionists.map((r) =>
+        r.id === id ? { ...r, isActive: !r.isActive } : r
+      ),
+    }));
+  },
+
+  updateHospitalSettings: async (settings: Partial<HospitalSettings>) => {
+    set((state) => ({
+      hospitalSettings: { ...state.hospitalSettings, ...settings },
+    }));
+  },
+
+  updateAdminProfile: async (profile: Partial<AdminProfile>) => {
+    set((state) => ({
+      adminProfile: { ...state.adminProfile, ...profile },
+    }));
+  },
+
+  globalSlotOverride: async (
+    doctorId: string,
+    slotId: string,
+    maxSeats: number,
+    isAvailable = true
+  ) => {
+    set((state) => ({
+      doctors: state.doctors.map((doc) => {
+        if (doc.id !== doctorId) return doc;
+        return {
+          ...doc,
+          slotCapacities: doc.slotCapacities.map((slot) => {
+            if (slot.id !== slotId) return slot;
+            return createSplitSlot(
+              slot.id,
+              slot.timeSlot,
+              maxSeats,
+              slot.onlineBookedSeats,
+              slot.offlineBookedSeats,
+              isAvailable
+            );
+          }),
+        };
+      }),
+    }));
+  },
+
+  updateDoctor: async (id: string, updates: Partial<DoctorRecord>) => {
+    set((state) => ({
+      doctors: state.doctors.map((doc) =>
+        doc.id === id ? { ...doc, ...updates } : doc
+      ),
+    }));
+  },
+
+  deleteDoctor: async (id: string) => {
+    set((state) => ({
+      doctors: state.doctors.filter((doc) => doc.id !== id),
+    }));
+  },
+
+  addHospital: async (hospData: Partial<HospitalBranch>) => {
+    const newHosp: HospitalBranch = {
+      id: `hosp-${Date.now()}`,
+      name: hospData.name || 'New Hospital Location',
+      address: hospData.address || 'Medical Hub',
+      city: hospData.city || 'Metro District',
+      phone: hospData.phone || '+1 (555) 000-0000',
+      operatingHours: hospData.operatingHours || '24/7 Service',
+      doctorsCount: hospData.doctorsCount || 5,
+      receptionDesksCount: hospData.receptionDesksCount || 2,
+      logoUrl: hospData.logoUrl || 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400&auto=format&fit=crop&q=80',
+      isActive: true,
+    };
+    set((state) => ({
+      hospitals: [newHosp, ...state.hospitals],
+    }));
+  },
+
+  updateHospital: async (id: string, updates: Partial<HospitalBranch>) => {
+    set((state) => ({
+      hospitals: state.hospitals.map((h) => (h.id === id ? { ...h, ...updates } : h)),
+    }));
+  },
+
+  deleteHospital: async (id: string) => {
+    set((state) => ({
+      hospitals: state.hospitals.filter((h) => h.id !== id),
+    }));
+  },
 }));

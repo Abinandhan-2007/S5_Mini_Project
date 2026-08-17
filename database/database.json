@@ -61,6 +61,21 @@
   ],
   "appointments": [
     {
+      "id": "app-d1e35bbfd7",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "patient_name": "SIVANAGU E",
+      "ticket_number": "TK-484",
+      "doctor_id": "doc-2",
+      "doctor_name": "Dr. Marcus Vance",
+      "doctor_specialty": "Dermatologist",
+      "doctor_photo": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
+      "hospital_name": "Cedar Skin & Wellness Clinic",
+      "date": "2026-08-20",
+      "time_slot": "05:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
       "id": "app-333c4bfb09",
       "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
       "patient_name": "",
@@ -324,7 +339,8 @@
       "photo": "https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80",
       "rating": 4.9,
       "reviews_count": 210,
-      "about": "Senior Pediatrician dedicated to neonatal care, child development, and vaccinations."
+      "about": "Senior Pediatrician dedicated to neonatal care, child development, and vaccinations.",
+      "isAvailable": false
     },
     {
       "id": "doc-4",
@@ -403,6 +419,70 @@
       "specialty": "Neurologist",
       "department": "Neurology",
       "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "admin-1",
+      "name": "Dr. Arthur Vance",
+      "email": "admin@carepulse.com",
+      "password": "admin123",
+      "role": "admin",
+      "department": "Chief Medical Administration",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+    }
+  ],
+  "hospital_settings": {
+    "name": "CarePulse Central Hospital",
+    "tagline": "Advanced Clinical Care & Patient Guidance Center",
+    "address": "4517 Washington Ave, Medical Hub, Metro District",
+    "phone": "+1 (555) 735-4614",
+    "emergencyHotline": "+1 (555) 911-0000",
+    "email": "contact@carepulse.com",
+    "logoUrl": "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400&auto=format&fit=crop&q=80",
+    "defaultSlotDurationMinutes": 30,
+    "maxOnlineBookingPercentage": 50,
+    "enableAiTriage": true,
+    "enableSmsReminders": true,
+    "enableAutoCancellation": false
+  },
+  "receptionists": [
+    {
+      "id": "rec-101",
+      "name": "Emily Watson",
+      "email": "receptionist@carepulse.com",
+      "phone": "+91 98765 43220",
+      "department": "Main Reception",
+      "deskNumber": "Desk A-1 (Ground Floor)",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 4,
+      "joinDate": "2024-03-15"
+    },
+    {
+      "id": "rec-102",
+      "name": "Anna Mathews",
+      "email": "anna.m@carepulse.com",
+      "phone": "+91 98765 43221",
+      "department": "Emergency & OPD Desk",
+      "deskNumber": "Desk B-2 (Wing C)",
+      "shift": "Evening",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 3,
+      "joinDate": "2024-06-10"
+    },
+    {
+      "id": "rec-103",
+      "name": "David Miller",
+      "email": "david.m@carepulse.com",
+      "phone": "+91 98765 43222",
+      "department": "Specialist Clinic Desk",
+      "deskNumber": "Desk C-1 (2nd Floor)",
+      "shift": "Full Day",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 2,
+      "joinDate": "2025-01-20"
     }
   ]
 }
