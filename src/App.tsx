@@ -7,10 +7,13 @@ import { SplashScreen } from './components/ui/SplashScreen';
 // Helper to determine if current URL is a staff portal
 const isStaffLanding = (): boolean => {
   if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname.toLowerCase();
   const path = window.location.pathname.toLowerCase();
   return (
+    hostname.includes('carepulse-s5.netlify.app') ||
     path.startsWith('/receptionist') ||
     path.startsWith('/doctor') ||
+    path.startsWith('/admin') ||
     path.startsWith('/staff')
   );
 };

@@ -26,12 +26,12 @@ export const requestNativeLocation = async (): Promise<LocationResult> => {
       try {
         position = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 3000,
         });
       } catch {
         position = await Geolocation.getCurrentPosition({
           enableHighAccuracy: false,
-          timeout: 8000,
+          timeout: 2000,
         });
       }
 
@@ -93,7 +93,7 @@ export const requestNativeLocation = async (): Promise<LocationResult> => {
               error: error.message || 'GPS location detection timed out.',
             });
           },
-          { enableHighAccuracy: true, timeout: 10000 }
+          { enableHighAccuracy: false, timeout: 3000 }
         );
       } else {
         resolve({ latitude: 0, longitude: 0, error: 'Geolocation unsupported.' });

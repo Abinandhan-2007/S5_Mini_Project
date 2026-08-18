@@ -16,12 +16,33 @@ const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, 
  * Priority: VITE_API_URL (ngrok) → /api (Vite proxy / Netlify redirect) → localhost
  */
 export function getApiBaseUrls(): string[] {
+  // 1. Web Browser (Desktop / Mobile Web)
+  if (!Capacitor.isNativePlatform()) {
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '');
+
+    if (isLocalhost) {
+      return [
+        'http://localhost:5000/api',
+        '/api',
+        ...(ENV_API_URL ? [ENV_API_URL] : []),
+      ];
+    }
+
+    return [
+      '/api',
+      ...(ENV_API_URL ? [ENV_API_URL] : []),
+      'http://localhost:5000/api',
+    ];
+  }
+
+  // 2. Native Android / iOS Device
   return [
-    'http://10.10.119.4:5000/api', // Current active Wi-Fi LAN IP to PC backend
-    'http://10.24.200.106:5000/api',
     ...(ENV_API_URL ? [ENV_API_URL] : []),
-    ...(Capacitor.isNativePlatform() ? [] : ['/api']), // Only use relative /api in web browser, not Android WebView
-    'http://10.0.2.2:5000/api', // Android Emulator to host machine localhost:5000
+    'http://10.0.2.2:5000/api', // Android Emulator to host machine
     'http://localhost:5000/api',
   ];
 }

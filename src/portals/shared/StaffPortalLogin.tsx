@@ -7,6 +7,7 @@ import {
   ClipboardList, Stethoscope, CalendarCheck
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { apiPost } from '../../lib/apiFetch';
 import dbRaw from '../../../database/database.json';
 
 interface StaffRecord {
@@ -15,6 +16,8 @@ interface StaffRecord {
   email: string;
   password: string;
   role: 'admin' | 'receptionist' | 'doctor';
+  department?: string;
+  avatarUrl?: string;
 }
 
 interface StaffPortalLoginProps {
@@ -23,9 +26,17 @@ interface StaffPortalLoginProps {
 
 const STAFF_LIST: StaffRecord[] = (dbRaw as { staff?: StaffRecord[] }).staff ?? [];
 
-export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ defaultRole = 'receptionist' }) => {
+  const [activeRoleTab, setActiveRoleTab] = useState<'admin' | 'receptionist' | 'doctor'>(defaultRole);
+  const [email, setEmail] = useState(() => {
+    if (defaultRole === 'admin') return 'admin@carepulse.com';
+    if (defaultRole === 'doctor') return 'doctor@carepulse.com';
+    return 'receptionist@carepulse.com';
+  });
+  const [password, setPassword] = useState(() => {
+    if (defaultRole === 'admin') return 'admin123';
+    return 'password123';
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,37 +44,107 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
   const setStaffAuth = useStaffStore((s) => s.setStaffAuth);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSelectRole = (role: 'admin' | 'receptionist' | 'doctor') => {
+    setActiveRoleTab(role);
+    setError(null);
+    if (role === 'admin') {
+      setEmail('admin@carepulse.com');
+      setPassword('admin123');
+    } else if (role === 'doctor') {
+      setEmail('doctor@carepulse.com');
+      setPassword('password123');
+    } else {
+      setEmail('receptionist@carepulse.com');
+      setPassword('password123');
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      const match = STAFF_LIST.find(
-        (s) =>
-          s.email.toLowerCase() === email.trim().toLowerCase() &&
-          s.password === password
-      );
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
-      if (!match) {
-        setError('Incorrect email or password. Please check your credentials.');
-        setIsLoading(false);
-        return;
+    try {
+      // 1. Attempt API backend staff login
+      const res = await apiPost('/staff/login', { email: cleanEmail, password: cleanPassword });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.staff) {
+          setStaffAuth(
+            {
+              id: data.staff.id,
+              name: data.staff.name,
+              email: data.staff.email,
+              role: data.staff.role,
+              department: data.staff.department,
+              avatarUrl: data.staff.avatarUrl,
+            },
+            data.token
+          );
+          setIsLoading(false);
+          if (data.staff.role === 'admin') navigate('/admin');
+          else if (data.staff.role === 'receptionist') navigate('/receptionist');
+          else navigate('/doctor');
+          return;
+        }
       }
+    } catch {
+      // Fallback to local / static credentials
+    }
 
+    // 2. Local fallback credentials
+    const localMatch = STAFF_LIST.find(
+      (s) => s.email.toLowerCase() === cleanEmail && s.password === cleanPassword
+    );
+
+    if (localMatch) {
       setStaffAuth(
-        { id: match.id, name: match.name, email: match.email, role: match.role },
-        `token-${match.role}-${match.id}`
+        { id: localMatch.id, name: localMatch.name, email: localMatch.email, role: localMatch.role, department: localMatch.department, avatarUrl: localMatch.avatarUrl },
+        `token-${localMatch.role}-${localMatch.id}`
       );
       setIsLoading(false);
-      if (match.role === 'admin') {
-        navigate('/admin');
-      } else if (match.role === 'receptionist') {
-        navigate('/receptionist');
-      } else {
-        navigate('/doctor');
-      }
-    }, 800);
+      if (localMatch.role === 'admin') navigate('/admin');
+      else if (localMatch.role === 'receptionist') navigate('/receptionist');
+      else navigate('/doctor');
+      return;
+    }
+
+    // Default demo admin/receptionist accounts
+    if ((cleanEmail === 'admin@carepulse.com' || cleanEmail === 'admin') && (cleanPassword === 'admin123' || cleanPassword === 'admin')) {
+      setStaffAuth(
+        { id: 'admin-1', name: 'Dr. Arthur Vance', email: 'admin@carepulse.com', role: 'admin', department: 'Chief Medical Administration' },
+        'token-admin-session'
+      );
+      setIsLoading(false);
+      navigate('/admin');
+      return;
+    }
+
+    if (cleanEmail === 'receptionist@carepulse.com' && (cleanPassword === 'password123' || cleanPassword === 'receptionist')) {
+      setStaffAuth(
+        { id: 'rec-101', name: 'Emily Watson', email: 'receptionist@carepulse.com', role: 'receptionist', department: 'Front Desk' },
+        'token-rec-session'
+      );
+      setIsLoading(false);
+      navigate('/receptionist');
+      return;
+    }
+
+    if ((cleanEmail === 'doctor@carepulse.com' || cleanEmail === 'olivia.w@carepulse.com') && (cleanPassword === 'password123' || cleanPassword === 'doctor')) {
+      setStaffAuth(
+        { id: 'doc-1', name: 'Dr. Olivia Wilson', email: 'olivia.w@carepulse.com', role: 'doctor', department: 'Cardiology' },
+        'token-doc-session'
+      );
+      setIsLoading(false);
+      navigate('/doctor');
+      return;
+    }
+
+    setError('Incorrect email or password. Please check your credentials.');
+    setIsLoading(false);
   };
 
   return (
@@ -208,23 +289,47 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               </p>
             </div>
 
-            {/* Quick Demo Fill Pill */}
-            <div className="p-3.5 mb-5 rounded-2xl bg-teal-50/70 border border-teal-200/80 flex items-center justify-between gap-2 shadow-2xs">
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold text-[#0B5A54] uppercase tracking-wide">Quick Demo Account</p>
-                <p className="text-[11px] text-slate-600 font-medium truncate">receptionist@carepulse.com / password123</p>
+            {/* Role Switcher / Demo Presets */}
+            <div className="p-3 mb-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Quick Demo Login:</span>
+                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200 capitalize">{activeRoleTab}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('receptionist@carepulse.com');
-                  setPassword('password123');
-                  setError(null);
-                }}
-                className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white text-[11px] font-extrabold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
-              >
-                Fill Receptionist
-              </button>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelectRole('receptionist')}
+                  className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center ${
+                    activeRoleTab === 'receptionist'
+                      ? 'bg-[#0B5A54] text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Receptionist
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectRole('doctor')}
+                  className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center ${
+                    activeRoleTab === 'doctor'
+                      ? 'bg-[#0B5A54] text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Doctor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectRole('admin')}
+                  className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center ${
+                    activeRoleTab === 'admin'
+                      ? 'bg-[#0B5A54] text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Admin
+                </button>
+              </div>
             </div>
 
             {/* Form */}
@@ -316,10 +421,19 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               </button>
             </form>
 
-            {/* Security Notice */}
-            <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-center gap-1.5 text-slate-400 text-[11px] font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Authorized personnel only</span>
+            {/* Security Notice & Patient App Link */}
+            <div className="mt-8 pt-5 border-t border-slate-100 flex flex-col items-center justify-center gap-2.5 text-center">
+              <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Authorized personnel only</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-xs font-bold text-[#0B5A54] hover:text-[#073834] hover:underline cursor-pointer transition-colors"
+              >
+                Are you a patient? Go to Patient App &rarr;
+              </button>
             </div>
           </div>
         </motion.div>

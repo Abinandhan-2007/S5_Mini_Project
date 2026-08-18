@@ -40,59 +40,39 @@ def decode_patient_jwt(token: str) -> Optional[Dict[str, Any]]:
         logger.warning(f"Patient JWT decode error: {e}")
         return None
 
+# Persistent cached session for Google public certificates and HTTPS connection pooling
+_google_session = requests.Session()
+_google_request = google_requests.Request(session=_google_session)
+
+
 def verify_google_token(credential: str) -> Optional[Dict[str, Any]]:
-    """Verify Google OAuth ID token using google-auth library, tokeninfo, or JWT claims."""
-    if not credential:
+    """
+    Cryptographically verify Google OAuth ID token signature using Google's public certificates.
+    Uses google-auth's id_token.verify_oauth2_token which validates the cryptographic signature
+    and checks expiration & audience against internally cached Google certificates.
+    """
+    if not credential or not isinstance(credential, str):
         return None
 
-    # 1. Verify with Google OAuth library if GOOGLE_CLIENT_ID is configured
-    if GOOGLE_CLIENT_ID:
-        try:
-            req = google_requests.Request()
-            id_info = id_token.verify_oauth2_token(credential, req, GOOGLE_CLIENT_ID)
-            if id_info and "email" in id_info:
-                return {
-                    "google_id": id_info.get("sub"),
-                    "email": id_info.get("email"),
-                    "name": id_info.get("name", id_info.get("email", "").split("@")[0]),
-                    "picture": id_info.get("picture", ""),
-                    "email_verified": id_info.get("email_verified", True),
-                }
-        except Exception as e:
-            logger.warning(f"Google verify_oauth2_token failed: {e}")
+    clean_client_id = GOOGLE_CLIENT_ID.strip() if GOOGLE_CLIENT_ID else None
 
-    # 2. Verify via Google tokeninfo endpoint
+    # Cryptographic RSA/ECDSA signature verification against Google's public certs
     try:
-        resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}", timeout=4)
-        if resp.status_code == 200:
-            data = resp.json()
-            if "email" in data:
-                return {
-                    "google_id": data.get("sub"),
-                    "email": data.get("email"),
-                    "name": data.get("name", data.get("email", "").split("@")[0]),
-                    "picture": data.get("picture", ""),
-                    "email_verified": data.get("email_verified") in [True, "true"],
-                }
+        id_info = id_token.verify_oauth2_token(
+            credential,
+            _google_request,
+            audience=clean_client_id if clean_client_id else None
+        )
+        if id_info and "email" in id_info:
+            return {
+                "google_id": id_info.get("sub"),
+                "email": id_info.get("email"),
+                "name": id_info.get("name", id_info.get("email", "").split("@")[0]),
+                "picture": id_info.get("picture", ""),
+                "email_verified": id_info.get("email_verified", True),
+            }
     except Exception as e:
-        logger.warning(f"Google tokeninfo endpoint failed: {e}")
-
-    # 3. Base64 JWT decode fallback (useful for dev / offline sandbox tokens)
-    try:
-        parts = credential.split(".")
-        if len(parts) == 3:
-            padded = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
-            payload = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8"))
-            if "email" in payload:
-                return {
-                    "google_id": payload.get("sub", f"google-{uuid.uuid4().hex[:8]}"),
-                    "email": payload.get("email"),
-                    "name": payload.get("name", payload.get("email", "").split("@")[0]),
-                    "picture": payload.get("picture", ""),
-                    "email_verified": payload.get("email_verified", True),
-                }
-    except Exception as e:
-        logger.warning(f"Base64 JWT decode failed: {e}")
+        logger.warning(f"Google ID token cryptographic verification note: {e}")
 
     return None
 

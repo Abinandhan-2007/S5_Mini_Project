@@ -24,10 +24,20 @@ import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { DoctorLayout } from '../portals/doctor/DoctorLayout';
 import { AdminLayout } from '../portals/admin/AdminLayout';
 import { AdminLogin } from '../portals/admin/AdminLogin';
+import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
 
+// Detect if current domain is the Netlify staff portal deployment
+const isStaffDomain = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname.toLowerCase();
+  return (
+    hostname.includes('carepulse-s5.netlify.app') ||
+    hostname.includes('staff.')
+  );
+};
 
 export const AppRoutes: React.FC = () => {
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
@@ -36,7 +46,22 @@ export const AppRoutes: React.FC = () => {
     <>
       <SystemNavigationHandler />
       <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      {/* Root Route: Directly opens Staff Portal on Netlify deployment */}
+      <Route
+        path="/"
+        element={
+          <Navigate
+            to={
+              isStaffDomain()
+                ? '/staff/login'
+                : isAuthenticated
+                ? '/home'
+                : '/login'
+            }
+            replace
+          />
+        }
+      />
       <Route
         path="/login"
         element={
@@ -292,11 +317,47 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Default Catch-all */}
+      {/* Unified Staff Portal Routes */}
+      <Route
+        path="/staff"
+        element={
+          <PageTransition>
+            <StaffPortalLogin />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/staff/login"
+        element={
+          <PageTransition>
+            <StaffPortalLogin />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/staff-login"
+        element={
+          <PageTransition>
+            <StaffPortalLogin />
+          </PageTransition>
+        }
+      />
 
+      {/* Default Catch-all */}
       <Route
         path="*"
-        element={<Navigate to={isAuthenticated ? '/home' : '/login'} replace />}
+        element={
+          <Navigate
+            to={
+              isStaffDomain()
+                ? '/staff/login'
+                : isAuthenticated
+                ? '/home'
+                : '/login'
+            }
+            replace
+          />
+        }
       />
     </Routes>
     </>
