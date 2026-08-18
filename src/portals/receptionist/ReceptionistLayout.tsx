@@ -36,12 +36,12 @@ export const ReceptionistLayout: React.FC = () => {
 
   // Role-based auth guard
   if (!currentStaff || currentStaff.role !== 'receptionist') {
-    return <Navigate to="/receptionist/login" replace />;
+    return <Navigate to="/staff/login" replace />;
   }
 
   const handleLogout = () => {
     logoutStaff();
-    navigate('/receptionist/login');
+    navigate('/staff/login');
   };
 
   const navItems: { id: NavTab; label: string }[] = [

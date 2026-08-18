@@ -47,7 +47,7 @@ export const DoctorDashboard: React.FC = () => {
 
   const handleLogout = () => {
     logoutStaff();
-    navigate('/doctor/login');
+    navigate('/staff/login');
   };
 
   return (

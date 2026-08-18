@@ -76,7 +76,7 @@ export const AdminLayout: React.FC = () => {
 
   const handleLogout = () => {
     logoutStaff();
-    navigate('/admin/login');
+    navigate('/staff/login');
   };
 
   // Close dropdowns on outside click
@@ -107,7 +107,7 @@ export const AdminLayout: React.FC = () => {
 
   // Auth Guard
   if (!currentStaff || currentStaff.role !== 'admin') {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/staff/login" replace />;
   }
 
   return (

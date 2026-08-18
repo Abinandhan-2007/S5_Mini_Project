@@ -40,7 +40,7 @@ export const ReceptionistProfile: React.FC = () => {
 
   const handleLogout = () => {
     logoutStaff();
-    navigate('/receptionist/login');
+    navigate('/staff/login');
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {

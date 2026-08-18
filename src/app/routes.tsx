@@ -19,11 +19,8 @@ import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
 import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
-import { ReceptionistLogin } from '../portals/receptionist/ReceptionistLogin';
-import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { DoctorLayout } from '../portals/doctor/DoctorLayout';
 import { AdminLayout } from '../portals/admin/AdminLayout';
-import { AdminLogin } from '../portals/admin/AdminLogin';
 import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
@@ -274,11 +271,7 @@ export const AppRoutes: React.FC = () => {
       />
       <Route
         path="/receptionist/login"
-        element={
-          <PageTransition>
-            <ReceptionistLogin />
-          </PageTransition>
-        }
+        element={<Navigate to="/staff/login" replace />}
       />
 
       {/* Doctor Portal Routes */}
@@ -292,11 +285,7 @@ export const AppRoutes: React.FC = () => {
       />
       <Route
         path="/doctor/login"
-        element={
-          <PageTransition>
-            <DoctorLogin />
-          </PageTransition>
-        }
+        element={<Navigate to="/staff/login" replace />}
       />
 
       {/* Admin Portal Routes */}
@@ -310,11 +299,7 @@ export const AppRoutes: React.FC = () => {
       />
       <Route
         path="/admin/login"
-        element={
-          <PageTransition>
-            <AdminLogin />
-          </PageTransition>
-        }
+        element={<Navigate to="/staff/login" replace />}
       />
 
       {/* Unified Staff Portal Routes */}

@@ -26,38 +26,15 @@ interface StaffPortalLoginProps {
 
 const STAFF_LIST: StaffRecord[] = (dbRaw as { staff?: StaffRecord[] }).staff ?? [];
 
-export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ defaultRole = 'receptionist' }) => {
-  const [activeRoleTab, setActiveRoleTab] = useState<'admin' | 'receptionist' | 'doctor'>(defaultRole);
-  const [email, setEmail] = useState(() => {
-    if (defaultRole === 'admin') return 'admin@carepulse.com';
-    if (defaultRole === 'doctor') return 'doctor@carepulse.com';
-    return 'receptionist@carepulse.com';
-  });
-  const [password, setPassword] = useState(() => {
-    if (defaultRole === 'admin') return 'admin123';
-    return 'password123';
-  });
+export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const setStaffAuth = useStaffStore((s) => s.setStaffAuth);
   const navigate = useNavigate();
-
-  const handleSelectRole = (role: 'admin' | 'receptionist' | 'doctor') => {
-    setActiveRoleTab(role);
-    setError(null);
-    if (role === 'admin') {
-      setEmail('admin@carepulse.com');
-      setPassword('admin123');
-    } else if (role === 'doctor') {
-      setEmail('doctor@carepulse.com');
-      setPassword('password123');
-    } else {
-      setEmail('receptionist@carepulse.com');
-      setPassword('password123');
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,49 +264,6 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ defaultRole 
               <p className="text-xs text-slate-400 mt-1 font-medium">
                 Enter your work credentials to access your portal.
               </p>
-            </div>
-
-            {/* Role Switcher / Demo Presets */}
-            <div className="p-3 mb-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Quick Demo Login:</span>
-                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200 capitalize">{activeRoleTab}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleSelectRole('receptionist')}
-                  className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center ${
-                    activeRoleTab === 'receptionist'
-                      ? 'bg-[#0B5A54] text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Receptionist
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectRole('doctor')}
-                  className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center ${
-                    activeRoleTab === 'doctor'
-                      ? 'bg-[#0B5A54] text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Doctor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectRole('admin')}
-                  className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-center ${
-                    activeRoleTab === 'admin'
-                      ? 'bg-[#0B5A54] text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Admin
-                </button>
-              </div>
             </div>
 
             {/* Form */}

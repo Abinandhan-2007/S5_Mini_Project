@@ -11,7 +11,7 @@ export const DoctorLayout: React.FC = () => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
 
   if (!currentStaff || currentStaff.role !== 'doctor') {
-    return <Navigate to="/doctor/login" replace />;
+    return <Navigate to="/staff/login" replace />;
   }
 
   return <DoctorDashboard />;

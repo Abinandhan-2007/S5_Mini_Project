@@ -64,6 +64,9 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   login: (_phone: string) => {
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(INITIAL_USER));
+    try {
+      sessionStorage.setItem('carepulse_app_unlocked', 'true');
+    } catch {}
     Preferences.set({ key: 'carepulse_user', value: JSON.stringify(INITIAL_USER) });
     set({
       user: INITIAL_USER,
@@ -74,6 +77,9 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
 
   setUserAuth: async (user: User, token?: string) => {
     // 1. Immediately update Zustand reactive state so routes pass instantly on first click
+    try {
+      sessionStorage.setItem('carepulse_app_unlocked', 'true');
+    } catch {}
     set({
       user,
       isAuthenticated: true,

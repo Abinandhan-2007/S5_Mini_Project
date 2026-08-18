@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus, ScanFace } from 'lucide-react';
+import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
-import { authenticateDeviceBiometrics } from '../../lib/biometricAuthService';
 import {
   authenticateWithBackend,
   GOOGLE_CLIENT_ID,
@@ -19,12 +18,10 @@ import { apiPost } from '../../lib/apiFetch';
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
   const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
-  const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
   const { signIn: googleSignIn, isLoading: isGoogleLoading, error: googleError, setError: setGoogleError } = useGoogleAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
@@ -153,49 +150,6 @@ export const LoginScreen: React.FC = () => {
       await setUserAuth(user, token);
       navigate('/home');
     });
-  };
-
-  const handleBiometricLogin = async () => {
-    setErrorMessage(null);
-    setResetSuccessMessage(null);
-    setIsBiometricLoading(true);
-
-    try {
-      const isVerified = await authenticateDeviceBiometrics({
-        title: 'CarePulse Quick Unlock',
-        subtitle: 'Scan Face or touch Fingerprint sensor',
-      });
-      if (!isVerified) {
-        setErrorMessage('Face / Fingerprint authentication failed or was cancelled.');
-        setIsBiometricLoading(false);
-        return;
-      }
-
-      // Check stored user session
-      let existingUser = useCarePulseStore.getState().user;
-      if (!existingUser) {
-        const storedStr = localStorage.getItem('carepulse_user');
-        if (storedStr) {
-          try {
-            existingUser = JSON.parse(storedStr);
-          } catch {
-            existingUser = null;
-          }
-        }
-      }
-
-      if (existingUser) {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('carepulse_token') || undefined;
-        await setUserAuth(existingUser, token);
-        navigate('/home');
-      } else {
-        setResetSuccessMessage('Fingerprint verified! Please enter your login credentials to sync your profile.');
-      }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Biometric authentication error.');
-    } finally {
-      setIsBiometricLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -442,22 +396,6 @@ export const LoginScreen: React.FC = () => {
               >
                 Continue with Google
               </Button>
-
-              {isBiometricEnabled && (
-                <div className="w-full mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    isLoading={isBiometricLoading}
-                    onClick={handleBiometricLogin}
-                    leftIcon={<ScanFace className="w-4 h-4 text-[#0B5A54] shrink-0" />}
-                    className="font-bold text-xs text-[#0B5A54] bg-[#E3F3F1]/70 border border-[#0B5A54]/30 shadow-2xs py-2.5 rounded-xl hover:bg-[#E3F3F1] cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    {isBiometricLoading ? 'Scanning Face / Fingerprint...' : 'Unlock with Face / Fingerprint'}
-                  </Button>
-                </div>
-              )}
             </div>
           </form>
         </Card>
