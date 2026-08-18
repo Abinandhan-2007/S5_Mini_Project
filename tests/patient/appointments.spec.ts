@@ -96,8 +96,11 @@ test.describe('Patient Appointments Flow', () => {
     });
     await page.goto('/history');
 
-    // Verify search bar and filter chips
-    await expect(page.getByPlaceholder('Search doctor, prescription, diagnosis...')).toBeVisible();
+    // Wait for screen to render after any splash transition
+    await expect(page.getByRole('heading', { name: 'Medical History' })).toBeVisible({ timeout: 10000 });
+
+    // Verify search bar and filter chips using actual placeholder in MedicalHistoryScreen.tsx
+    await expect(page.getByPlaceholder('Search doctor, diagnosis, medication...')).toBeVisible();
     await expect(page.getByText('All', { exact: true })).toBeVisible();
   });
 });

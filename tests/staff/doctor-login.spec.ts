@@ -1,7 +1,7 @@
 /**
  * Test Suite: Staff Doctor Portal Login Flow
- * Covers: Doctor portal authentication, auth guard redirect for /doctor,
- * entering doctor credentials, and verifying navigation to the Doctor Workspace.
+ * Covers: Doctor portal authentication, unauthenticated redirection,
+ * entering doctor credentials, and verifying navigation to the Doctor Dashboard.
  */
 import { test, expect } from '@playwright/test';
 
@@ -15,11 +15,11 @@ test.describe('Staff Doctor Portal Login', () => {
     await page.reload();
   });
 
-  test('should render staff login page with work email and password inputs', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Sign In', exact: true })).toBeVisible();
-    await expect(page.locator('#staff-email')).toBeVisible();
+  test('should render staff login page with work username and password inputs', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Staff Sign In', exact: true })).toBeVisible();
+    await expect(page.locator('#staff-identifier')).toBeVisible();
     await expect(page.locator('#staff-password')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign In to Portal' })).toBeVisible();
   });
 
   test('should redirect unauthenticated access on /doctor to /staff/login', async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Staff Doctor Portal Login', () => {
     await expect(page).toHaveURL(/\/staff\/login/);
   });
 
-  test('should successfully log in as Doctor and navigate to Doctor Workspace', async ({ page }) => {
+  test('should successfully log in as Doctor and navigate to Doctor Dashboard', async ({ page }) => {
     // Intercept staff login endpoint
     await page.route('**/api/staff/login', async (route) => {
       await route.fulfill({
@@ -47,12 +47,13 @@ test.describe('Staff Doctor Portal Login', () => {
       });
     });
 
-    await page.locator('#staff-email').fill('doctor@carepulse.com');
-    await page.locator('#staff-password').fill('password123');
-    await page.getByRole('button', { name: 'Sign In' }).click();
+    await page.locator('#staff-identifier').fill('olivia.w');
+    await page.locator('#staff-password').fill('doc123');
+    await page.getByRole('button', { name: 'Sign In to Portal' }).click();
 
-    // Verify navigation into the Doctor Portal
+    // Verify navigation into the Doctor Portal and assert actual rendered header/content
     await expect(page).toHaveURL(/\/doctor/);
-    await expect(page.getByText('Doctor Workspace')).toBeVisible();
+    await expect(page.getByText('Doctor Portal')).toBeVisible();
+    await expect(page.getByText("Today's Schedule")).toBeVisible();
   });
 });

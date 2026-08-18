@@ -1,7 +1,7 @@
 /**
  * Test Suite: Staff Receptionist Portal Login Flow
- * Covers: Receptionist portal authentication, auth guard redirect for /receptionist,
- * entering receptionist credentials, and verifying navigation to the Receptionist Desk.
+ * Covers: Receptionist portal authentication, unauthenticated redirection,
+ * entering receptionist credentials, and verifying navigation to the Receptionist Portal.
  */
 import { test, expect } from '@playwright/test';
 
@@ -15,11 +15,11 @@ test.describe('Staff Receptionist Portal Login', () => {
     await page.reload();
   });
 
-  test('should render staff login page with work email and password inputs', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Sign In', exact: true })).toBeVisible();
-    await expect(page.locator('#staff-email')).toBeVisible();
+  test('should render staff login page with work username and password inputs', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Staff Sign In', exact: true })).toBeVisible();
+    await expect(page.locator('#staff-identifier')).toBeVisible();
     await expect(page.locator('#staff-password')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign In to Portal' })).toBeVisible();
   });
 
   test('should redirect unauthenticated access on /receptionist to /staff/login', async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Staff Receptionist Portal Login', () => {
     await expect(page).toHaveURL(/\/staff\/login/);
   });
 
-  test('should successfully log in as Receptionist and navigate to Receptionist Desk', async ({ page }) => {
+  test('should successfully log in as Receptionist and navigate to Receptionist Portal', async ({ page }) => {
     // Intercept staff login endpoint
     await page.route('**/api/staff/login', async (route) => {
       await route.fulfill({
@@ -47,12 +47,12 @@ test.describe('Staff Receptionist Portal Login', () => {
       });
     });
 
-    await page.locator('#staff-email').fill('receptionist@carepulse.com');
-    await page.locator('#staff-password').fill('password123');
-    await page.getByRole('button', { name: 'Sign In' }).click();
+    await page.locator('#staff-identifier').fill('emma.davis');
+    await page.locator('#staff-password').fill('Password@123');
+    await page.getByRole('button', { name: 'Sign In to Portal' }).click();
 
     // Verify navigation into the Receptionist Portal
     await expect(page).toHaveURL(/\/receptionist/);
-    await expect(page.getByText('Receptionist Desk')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Token Queue' }).first()).toBeVisible();
   });
 });
