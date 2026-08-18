@@ -159,26 +159,36 @@ export const TokenManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Buttons: Arrived (In Consultation) & Mark Completed */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-          {!isConsulting ? (
-            <button
-              onClick={() => updateTokenStatus(token.id, 'In Consultation')}
-              className="px-4 py-2 bg-gradient-to-r from-[#0B5A54] to-teal-700 hover:from-[#084540] hover:to-[#0B5A54] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-teal-200" />
-              <span>Arrived (Send to Doctor)</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <button
-              onClick={() => updateTokenStatus(token.id, 'Completed')}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-              <span>Mark Completed (Remove Details)</span>
-            </button>
-          )}
+        {/* Action Buttons: Cancel, Call Patient, Mark Completed */}
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <button
+            onClick={() => updateTokenStatus(token.id, 'Cancelled')}
+            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors cursor-pointer"
+            title="Cancel Appointment"
+          >
+            Cancel
+          </button>
+
+          <div className="flex items-center gap-2">
+            {!isConsulting ? (
+              <button
+                onClick={() => updateTokenStatus(token.id, 'In Consultation')}
+                className="px-4 py-2 bg-gradient-to-r from-[#0B5A54] to-teal-700 hover:from-[#084540] hover:to-[#0B5A54] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-teal-200" />
+                <span>Call Patient</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => updateTokenStatus(token.id, 'Completed')}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>Mark Completed</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

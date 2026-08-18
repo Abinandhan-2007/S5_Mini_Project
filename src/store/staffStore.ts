@@ -1,6 +1,14 @@
 // src/store/staffStore.ts
 import { create } from 'zustand';
-import type { Staff, AdminProfile, ReceptionistRecord, HospitalSettings, HospitalBranch } from '../types/staff';
+import type {
+  Staff,
+  AdminProfile,
+  ReceptionistRecord,
+  HospitalSettings,
+  HospitalBranch,
+  DepartmentRecord,
+  AnnouncementRecord,
+} from '../types/staff';
 import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile, TimeSlotCapacity } from '../types/receptionist';
 import { receptionistService } from '../services/receptionistService';
 
@@ -53,6 +61,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
     photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
     phone: '+91 98765 11001',
     email: 'olivia.w@carepulse.com',
+    username: 'olivia.w',
+    password: 'doc123',
     roomNumber: 'Cabin 102 - 1st Floor',
     isAvailable: true,
     availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -68,6 +78,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
     photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
     phone: '+91 98765 11002',
     email: 'marcus.v@carepulse.com',
+    username: 'marcus.v',
+    password: 'doc123',
     roomNumber: 'Cabin 204 - 2nd Floor',
     isAvailable: true,
     availableDays: ['Mon', 'Wed', 'Fri', 'Sat'],
@@ -83,6 +95,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
     photo: 'https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80',
     phone: '+91 98765 11003',
     email: 'sophia.p@carepulse.com',
+    username: 'sophia.p',
+    password: 'doc123',
     roomNumber: 'Cabin 108 - 1st Floor',
     isAvailable: false,
     availableDays: ['Tue', 'Thu', 'Sat'],
@@ -98,6 +112,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
     photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
     phone: '+91 98765 11004',
     email: 'ethan.r@carepulse.com',
+    username: 'ethan.r',
+    password: 'doc123',
     roomNumber: 'Cabin 301 - 3rd Floor',
     isAvailable: true,
     availableDays: ['Mon', 'Tue', 'Wed', 'Thu'],
@@ -186,13 +202,14 @@ const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
 
 const DEFAULT_ADMIN_PROFILE: AdminProfile = {
   id: 'admin-1',
-  name: 'Dr. Arthur Vance',
+  name: 'Admin',
   email: 'admin@carepulse.com',
+  password: 'admin123',
   phone: '+1 (555) 735-4600',
   role: 'admin',
-  department: 'Chief Medical Administration',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-  hospitalName: 'CarePulse Central Hospital',
+  department: 'Platform Super Administration',
+  avatarUrl: '',
+  hospitalName: 'CarePulse Global Network',
 };
 
 const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
@@ -309,6 +326,120 @@ const DEFAULT_HOSPITALS: HospitalBranch[] = [
   },
 ];
 
+const DEFAULT_DEPARTMENTS: DepartmentRecord[] = [
+  {
+    id: 'dept-1',
+    name: 'Cardiology',
+    iconName: 'HeartPulse',
+    color: '#0B5A54',
+    headDoctor: 'Dr. Olivia Wilson',
+    operatingHours: '08:00 AM - 08:00 PM',
+    description: 'Comprehensive cardiovascular diagnostics, echocardiography, ECG, and emergency heart care.',
+    doctorIds: ['doc-1'],
+    totalBeds: 24,
+    emergencyCoverage: true,
+  },
+  {
+    id: 'dept-2',
+    name: 'Dermatology',
+    iconName: 'Sparkles',
+    color: '#0284C7',
+    headDoctor: 'Dr. Marcus Vance',
+    operatingHours: '09:00 AM - 06:00 PM',
+    description: 'Advanced clinical dermatology, laser diagnostics, skin allergy treatment, and cosmetology.',
+    doctorIds: ['doc-2'],
+    totalBeds: 12,
+    emergencyCoverage: false,
+  },
+  {
+    id: 'dept-3',
+    name: 'Pediatrics & Neonatal',
+    iconName: 'Baby',
+    color: '#F59E0B',
+    headDoctor: 'Dr. Sophia Patel',
+    operatingHours: '24/7 Emergency & Day OPD',
+    description: 'Specialized child health, developmental tracking, pediatric emergency care, and immunizations.',
+    doctorIds: ['doc-3'],
+    totalBeds: 36,
+    emergencyCoverage: true,
+  },
+  {
+    id: 'dept-4',
+    name: 'Neurology',
+    iconName: 'Brain',
+    color: '#7C3AED',
+    headDoctor: 'Dr. Ethan Reynolds',
+    operatingHours: '08:30 AM - 05:30 PM',
+    description: 'Neuro-consultations, stroke protocols, EEG diagnostics, and nervous system therapeutics.',
+    doctorIds: ['doc-4'],
+    totalBeds: 18,
+    emergencyCoverage: true,
+  },
+  {
+    id: 'dept-5',
+    name: 'Orthopedics & Joint Care',
+    iconName: 'Activity',
+    color: '#10B981',
+    headDoctor: 'Dr. Alexander King',
+    operatingHours: '08:00 AM - 07:00 PM',
+    description: 'Musculoskeletal trauma, arthroscopy, joint replacement, sports injuries, and rehabilitation.',
+    doctorIds: [],
+    totalBeds: 30,
+    emergencyCoverage: true,
+  },
+  {
+    id: 'dept-6',
+    name: 'General Medicine & OPD',
+    iconName: 'Stethoscope',
+    color: '#EC4899',
+    headDoctor: 'Admin',
+    operatingHours: '24/7 Round the Clock',
+    description: 'Primary clinical consultations, internal medicine, triage, and multi-system diagnostics.',
+    doctorIds: ['doc-1', 'doc-2'],
+    totalBeds: 50,
+    emergencyCoverage: true,
+  },
+];
+
+const DEFAULT_ANNOUNCEMENTS: AnnouncementRecord[] = [
+  {
+    id: 'ann-1',
+    title: 'Hospital Cardiology Wing Upgraded with Digital Cath Lab',
+    message: 'New high-resolution cardiac catheterization equipment is now active in Wing B. All OPD slots operate under upgraded protocols.',
+    audience: 'All Staff',
+    priority: 'High',
+    scheduledFor: '2026-08-18 09:00 AM',
+    sentAt: 'Today, 09:00 AM',
+    deliveredCount: 48,
+    readCount: 42,
+    status: 'Sent',
+  },
+  {
+    id: 'ann-2',
+    title: 'Digital Token Queue System Live Notification for Patients',
+    message: 'CarePulse app live token tracker is now synchronized across all OPD reception desks. Patients receive instant SMS alerts 15 minutes prior to slot call.',
+    audience: 'All Patients',
+    priority: 'Normal',
+    scheduledFor: '2026-08-17 10:30 AM',
+    sentAt: 'Yesterday, 10:30 AM',
+    deliveredCount: 312,
+    readCount: 289,
+    status: 'Sent',
+  },
+  {
+    id: 'ann-3',
+    title: 'Sunday General Medical Camp & Vaccination Drive',
+    message: 'Special immunization and health screening camp scheduled for this Sunday in the Greenfield Pavilion. Front desk to issue physical yellow slips.',
+    audience: 'All Patients',
+    priority: 'Normal',
+    scheduledFor: '2026-08-23 08:00 AM',
+    sentAt: 'Pending Dispatch',
+    deliveredCount: 0,
+    readCount: 0,
+    status: 'Scheduled',
+  },
+];
+
 export interface StaffState {
   currentStaff: Staff | null;
   receptionistProfile: ReceptionistProfile;
@@ -316,6 +447,8 @@ export interface StaffState {
   hospitalSettings: HospitalSettings;
   receptionists: ReceptionistRecord[];
   hospitals: HospitalBranch[];
+  departments: DepartmentRecord[];
+  announcements: AnnouncementRecord[];
   doctors: DoctorRecord[];
   tokens: TokenQueueItem[];
   isLoading: boolean;
@@ -324,6 +457,15 @@ export interface StaffState {
   // Auth Actions
   setStaffAuth: (staff: Staff, token?: string) => void;
   logoutStaff: () => void;
+
+  // Department Actions
+  addDepartment: (deptData: Partial<DepartmentRecord>) => Promise<void>;
+  updateDepartment: (id: string, updates: Partial<DepartmentRecord>) => Promise<void>;
+  deleteDepartment: (id: string) => Promise<void>;
+
+  // Announcement Actions
+  addAnnouncement: (annData: Partial<AnnouncementRecord>) => Promise<void>;
+  deleteAnnouncement: (id: string) => Promise<void>;
 
   // Hospital Branch Actions
   addHospital: (hospData: Partial<HospitalBranch>) => Promise<void>;
@@ -375,16 +517,17 @@ export interface StaffState {
 export const useStaffStore = create<StaffState>((set, get) => ({
   currentStaff: {
     id: 'admin-1',
-    name: 'Dr. Arthur Vance',
+    name: 'Admin',
     role: 'admin',
     email: 'admin@carepulse.com',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   },
   receptionistProfile: DEFAULT_RECEPTIONIST_PROFILE,
   adminProfile: DEFAULT_ADMIN_PROFILE,
   hospitalSettings: DEFAULT_HOSPITAL_SETTINGS,
   receptionists: DEFAULT_RECEPTIONISTS,
   hospitals: DEFAULT_HOSPITALS,
+  departments: DEFAULT_DEPARTMENTS,
+  announcements: DEFAULT_ANNOUNCEMENTS,
   doctors: MOCK_INITIAL_DOCTORS,
   tokens: MOCK_INITIAL_TOKENS,
   isLoading: false,
@@ -753,6 +896,61 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   deleteHospital: async (id: string) => {
     set((state) => ({
       hospitals: state.hospitals.filter((h) => h.id !== id),
+    }));
+  },
+
+  addDepartment: async (deptData: Partial<DepartmentRecord>) => {
+    const newDept: DepartmentRecord = {
+      id: `dept-${Date.now()}`,
+      name: deptData.name || 'New Department',
+      iconName: deptData.iconName || 'Stethoscope',
+      color: deptData.color || '#0B5A54',
+      headDoctor: deptData.headDoctor || 'Admin',
+      operatingHours: deptData.operatingHours || '08:00 AM - 08:00 PM',
+      description: deptData.description || 'Specialized clinical care department.',
+      doctorIds: deptData.doctorIds || [],
+      totalBeds: deptData.totalBeds || 20,
+      emergencyCoverage: deptData.emergencyCoverage ?? true,
+    };
+    set((state) => ({
+      departments: [newDept, ...state.departments],
+    }));
+  },
+
+  updateDepartment: async (id: string, updates: Partial<DepartmentRecord>) => {
+    set((state) => ({
+      departments: state.departments.map((d) => (d.id === id ? { ...d, ...updates } : d)),
+    }));
+  },
+
+  deleteDepartment: async (id: string) => {
+    set((state) => ({
+      departments: state.departments.filter((d) => d.id !== id),
+    }));
+  },
+
+  addAnnouncement: async (annData: Partial<AnnouncementRecord>) => {
+    const newAnn: AnnouncementRecord = {
+      id: `ann-${Date.now()}`,
+      title: annData.title || 'New Hospital Notice',
+      message: annData.message || '',
+      audience: annData.audience || 'All Staff',
+      department: annData.department,
+      priority: annData.priority || 'Normal',
+      scheduledFor: annData.scheduledFor || new Date().toLocaleString(),
+      sentAt: annData.status === 'Scheduled' ? 'Pending Dispatch' : 'Just now',
+      deliveredCount: annData.status === 'Scheduled' ? 0 : 54,
+      readCount: annData.status === 'Scheduled' ? 0 : 12,
+      status: annData.status || 'Sent',
+    };
+    set((state) => ({
+      announcements: [newAnn, ...state.announcements],
+    }));
+  },
+
+  deleteAnnouncement: async (id: string) => {
+    set((state) => ({
+      announcements: state.announcements.filter((a) => a.id !== id),
     }));
   },
 }));

@@ -25,6 +25,8 @@ export interface DoctorRecord {
   photo: string;
   phone: string;
   email: string;
+  username?: string;
+  password?: string;
   roomNumber: string;
   about?: string;
   isAvailable: boolean; // Available or Not Available toggle
