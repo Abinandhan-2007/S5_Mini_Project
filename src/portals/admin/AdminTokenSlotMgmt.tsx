@@ -194,9 +194,8 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
               </div>
 
               <div className="flex items-center gap-2 text-xs font-bold">
-                <span className={`px-2.5 py-0.5 rounded-full ${
-                  doc.isAvailable ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
-                }`}>
+                <span className={`px-2.5 py-0.5 rounded-full ${doc.isAvailable ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}>
                   {doc.isAvailable ? '● Consultation Active' : '● Off-Duty'}
                 </span>
               </div>
@@ -213,17 +212,19 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
                 const heatCardStyle = !slot.isAvailable
                   ? 'bg-slate-50 border-slate-200 opacity-60'
                   : isHighDemand
-                  ? 'bg-rose-50/80 border-rose-300 shadow-2xs'
-                  : isModerate
-                  ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
-                  : 'bg-teal-50/40 border-teal-200/80 hover:shadow-xs';
+                    ? 'bg-rose-50/80 border-rose-300 shadow-2xs'
+                    : isModerate
+                      ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
+                      : 'bg-teal-50/40 border-teal-200/80 hover:shadow-xs';
 
                 const heatBarColor = isHighDemand ? 'bg-rose-500' : isModerate ? 'bg-amber-500' : 'bg-[#0B5A54]';
 
                 return (
                   <div
                     key={slot.id}
-                    className={`rounded-2xl p-3.5 border transition-all flex flex-col justify-between space-y-2.5 ${heatCardStyle}`}
+                    onClick={() => handleOpenOverride(doc, slot)}
+                    className={`rounded-2xl p-3.5 border transition-all flex flex-col justify-between space-y-2.5 cursor-pointer hover:shadow-md active:scale-98 ${heatCardStyle}`}
+                    title="Click slot to configure capacity"
                   >
                     <div>
                       <div className="flex items-center justify-between">
@@ -265,14 +266,6 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
                         />
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => handleOpenOverride(doc, slot)}
-                      className="w-full py-1.5 bg-white hover:bg-[#0B5A54] hover:text-white text-slate-700 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer border border-slate-200 shadow-2xs"
-                    >
-                      <Sliders className="w-3 h-3" />
-                      <span>Adjust Capacity</span>
-                    </button>
                   </div>
                 );
               })}
@@ -332,22 +325,20 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
                   <button
                     type="button"
                     onClick={() => setNewIsAvailable(true)}
-                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      newIsAvailable
+                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${newIsAvailable
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}
+                      }`}
                   >
                     Open / Active
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewIsAvailable(false)}
-                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      !newIsAvailable
+                    className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${!newIsAvailable
                         ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-2xs'
                         : 'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}
+                      }`}
                   >
                     Blocked / Closed
                   </button>

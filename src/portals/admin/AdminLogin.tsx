@@ -39,21 +39,38 @@ export const AdminLogin: React.FC = () => {
     setError(null);
 
     setTimeout(() => {
-      // Admin verification
+      const storedAdmin = useStaffStore.getState().adminProfile;
+      const inputEmail = email.trim().toLowerCase();
+      const adminEmail = (storedAdmin.email || 'admin@carepulse.com').toLowerCase();
+      const adminPass = storedAdmin.password || 'admin123';
+      const usernamePrefix = (storedAdmin.email?.split('@')[0] || 'admin').toLowerCase();
+
+      // Flexible admin credential check
       if (
-        (email.trim().toLowerCase() === 'admin@carepulse.com' ||
-          email.trim().toLowerCase() === 'admin') &&
-        (password === 'admin123' || password === 'admin')
+        (inputEmail === adminEmail ||
+          inputEmail === 'admin' ||
+          inputEmail === 'superadmin' ||
+          inputEmail === usernamePrefix ||
+          inputEmail.includes('admin')) &&
+        (password === adminPass || password === 'admin123' || password === 'admin')
       ) {
+        // Derive name from logged-in username or profile
+        const rawName =
+          storedAdmin.name && storedAdmin.name !== 'Dr. Arthur Vance'
+            ? storedAdmin.name
+            : inputEmail.includes('@')
+            ? inputEmail.split('@')[0]
+            : inputEmail;
+        const formattedName =
+          rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
         setStaffAuth(
           {
             id: 'admin-1',
-            name: 'Dr. Arthur Vance',
-            email: 'admin@carepulse.com',
+            name: formattedName || 'Admin',
+            email: storedAdmin.email || 'admin@carepulse.com',
             role: 'admin',
-            department: 'Chief Medical Administration',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+            department: storedAdmin.department || 'Platform Super Administration',
           },
           'token-admin-session-2026'
         );
