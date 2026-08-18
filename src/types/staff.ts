@@ -17,6 +17,7 @@ export interface AdminProfile {
   id: string;
   name: string;
   email: string;
+  username?: string;
   password?: string;
   phone: string;
   role: 'admin';
@@ -29,6 +30,8 @@ export interface ReceptionistRecord {
   id: string;
   name: string;
   email: string;
+  username?: string;
+  staffId?: string;
   phone: string;
   password?: string;
   hospitalName?: string;
