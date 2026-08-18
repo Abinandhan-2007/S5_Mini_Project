@@ -5,6 +5,10 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import database
 from database import read_json_db, write_json_db, get_pg_connection
+try:
+    from core.security import hash_password
+except ImportError:
+    from backend.core.security import hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Portal"])
 
@@ -109,11 +113,17 @@ def create_receptionist(payload: ReceptionistCreate):
         "joinDate": "2026-08-17"
     }
 
+    raw_pass = payload.password or "password123"
+    if len(raw_pass.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Password cannot exceed 72 bytes.")
+    hashed_pass = hash_password(raw_pass)
+
     new_staff_entry = {
         "id": new_id,
         "name": payload.name,
         "email": payload.email,
-        "password": payload.password or "password123",
+        "password": hashed_pass,
+        "password_hash": hashed_pass,
         "role": "receptionist",
         "department": payload.department,
         "avatar": new_rec["avatarUrl"]

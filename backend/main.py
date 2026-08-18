@@ -57,8 +57,10 @@ from schemas import (
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
+from core.security import hash_password, verify_password, needs_rehash
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
+from routes.staff_auth import router as staff_auth_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -130,7 +132,17 @@ def register_patient(request: RegisterRequest):
     email = request.email.strip() if request.email else ""
     phone = request.phone.strip() if request.phone else ""
     name = request.fullName.strip()
-    password = request.password or ""
+    raw_password = (request.password or "").strip()
+    hashed_password_to_store = None
+    if raw_password:
+        pwd_bytes = raw_password.encode("utf-8")
+        if len(pwd_bytes) > 72:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password exceeds maximum allowable length of 72 bytes."
+            )
+        hashed_password_to_store = hash_password(raw_password)
+
     avatar = request.avatarUrl or "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80"
     address = (request.address or "").strip()
     dob = (request.dob or "").strip()
@@ -195,7 +207,7 @@ def register_patient(request: RegisterRequest):
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'local')
                         RETURNING *
                         """,
-                        (name, email, phone, address, dob, gender, blood_group, avatar, password)
+                        (name, email, phone, address, dob, gender, blood_group, avatar, hashed_password_to_store)
                     )
                 except Exception:
                     # Fallback if address column is not present in existing table instance
@@ -206,7 +218,7 @@ def register_patient(request: RegisterRequest):
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'local')
                         RETURNING *
                         """,
-                        (name, email, phone, dob, gender, blood_group, avatar, password)
+                        (name, email, phone, dob, gender, blood_group, avatar, hashed_password_to_store)
                     )
                 row = cur.fetchone()
                 conn.commit()
@@ -264,7 +276,7 @@ def register_patient(request: RegisterRequest):
             "gender": gender,
             "blood_group": blood_group,
             "avatar_url": avatar,
-            "password_hash": password,
+            "password_hash": hashed_password_to_store,
             "auth_provider": "local"
         }
         patients.append(new_patient)
@@ -332,13 +344,23 @@ def standard_login(request: LoginRequest):
                         detail="No account found with this username, email, or phone number. Please sign up to create an account."
                     )
 
-                # Validate password
+                # Validate password with bcrypt and graceful OAuth/None handling
                 stored_pass = row.get("password_hash")
-                if stored_pass and password and stored_pass != password:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Incorrect password. Please verify your password and try again."
-                    )
+                if stored_pass:
+                    if not verify_password(password, stored_pass):
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Incorrect password. Please verify your password and try again."
+                        )
+                    # Transparently upgrade legacy plaintext password to bcrypt hash
+                    if needs_rehash(stored_pass):
+                        try:
+                            upgraded_hash = hash_password(password)
+                            cur.execute("UPDATE patients SET password_hash = %s WHERE id = %s", (upgraded_hash, row["id"]))
+                            conn.commit()
+                            logger.info(f"Upgraded legacy password to bcrypt for patient ID {row['id']}")
+                        except Exception as up_err:
+                            logger.warning(f"Could not auto-upgrade patient password: {up_err}")
 
                 dob_str = str(row.get("dob") or "")
                 token_str = generate_patient_jwt(str(row["id"]), row["email"])
@@ -394,11 +416,21 @@ def standard_login(request: LoginRequest):
 
     # Check password if stored
     stored_pass = found.get("password_hash") or found.get("password")
-    if stored_pass and password and stored_pass != password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect password. Please verify your password and try again."
-        )
+    if stored_pass:
+        if not verify_password(password, stored_pass):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password. Please verify your password and try again."
+            )
+        if needs_rehash(stored_pass):
+            try:
+                upgraded_hash = hash_password(password)
+                found["password_hash"] = upgraded_hash
+                found["password"] = upgraded_hash
+                write_json_db(db)
+                logger.info(f"Upgraded legacy password to bcrypt for JSON patient ID {found.get('id')}")
+            except Exception as up_err:
+                logger.warning(f"Could not auto-upgrade JSON patient password: {up_err}")
 
     token_str = generate_patient_jwt(found["id"], found["email"])
     return AuthResponse(
@@ -777,6 +809,13 @@ def reset_forgot_password(request: ForgotPasswordResetRequest):
             detail="New password must be at least 6 characters long."
         )
 
+    if len(new_pass.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password exceeds maximum allowable length of 72 bytes."
+        )
+    hashed_new_pass = hash_password(new_pass)
+
     uid = None
 
     # Option A: Reset via verified JWT reset_token
@@ -838,7 +877,7 @@ def reset_forgot_password(request: ForgotPasswordResetRequest):
                        OR (email != '' AND LOWER(TRIM(email)) = LOWER(%s))
                     RETURNING id, full_name, email
                     """,
-                    (new_pass, uid, uid, uid, uid)
+                    (hashed_new_pass, uid, uid, uid, uid)
                 )
                 row = cur.fetchone()
                 if row:
@@ -855,8 +894,8 @@ def reset_forgot_password(request: ForgotPasswordResetRequest):
         uid_lower = uid.lower()
 
         if p_id == uid or p_name == uid_lower or p_email == uid_lower:
-            p["password_hash"] = new_pass
-            p["password"] = new_pass
+            p["password_hash"] = hashed_new_pass
+            p["password"] = hashed_new_pass
             updated = True
             break
     if updated:
@@ -1521,6 +1560,7 @@ def get_doctor_by_id(doctor_id: str):
 
 app.include_router(receptionist_router)
 app.include_router(admin_router)
+app.include_router(staff_auth_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=config.PORT, reload=True)
