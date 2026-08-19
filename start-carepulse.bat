@@ -129,7 +129,7 @@ ping 127.0.0.1 -n 3 >nul
 :: -------------------------------------------------------------------
 echo.
 echo [4/4] Starting frontend (npm run dev -- --host on port 5173)...
-start "CarePulse - Vite Frontend (Port 5173)" cmd /k "cd /d %PROJECT_DIR% && echo ======================================== && echo  CAREPULSE VITE REACT FRONTEND && echo ======================================== && npm run dev -- --host"
+start "CarePulse - Vite Frontend (Port 5173)" cmd /k "cd /d %PROJECT_DIR%\frontend && echo ======================================== && echo  CAREPULSE VITE REACT FRONTEND && echo ======================================== && npm run dev -- --host"
 
 :: -------------------------------------------------------------------
 :: STEP 5: Summary Banner with Window Titles and URLs
