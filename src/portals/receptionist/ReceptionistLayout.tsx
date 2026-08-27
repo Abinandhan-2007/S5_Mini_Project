@@ -57,7 +57,7 @@ export const ReceptionistLayout: React.FC = () => {
       {/* Floating Encapsulated Capsule Header Bar */}
       <header className="sticky top-0 z-40 bg-gradient-to-r from-slate-200/90 via-slate-100/90 to-teal-100/30 backdrop-blur-md border-b border-slate-300/60 py-5 sm:py-6 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 flex items-center justify-between gap-6">
-          
+
           {/* Left Outlined Pill Brand Badge */}
           <div
             className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/95 shadow-sm border border-slate-200/80 cursor-pointer select-none group hover:border-[#0B5A54]/40 transition-all"
@@ -77,11 +77,10 @@ export const ReceptionistLayout: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`transition-all duration-200 text-sm whitespace-nowrap ${
-                    isActive
+                  className={`transition-all duration-200 text-sm whitespace-nowrap ${isActive
                       ? 'bg-[#0B5A54] text-white font-extrabold rounded-full px-6 py-2.5 shadow-sm scale-[1.02]'
                       : 'text-slate-600 font-bold hover:text-[#0B5A54] hover:bg-slate-100/70 px-5 py-2.5 rounded-full'
-                  }`}
+                    }`}
                 >
                   {item.label}
                 </button>
@@ -140,9 +139,8 @@ export const ReceptionistLayout: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all ${
-                  isActive ? 'bg-[#0B5A54] text-white shadow-xs' : 'text-slate-600'
-                }`}
+                className={`px-4 py-2 rounded-full font-bold text-xs whitespace-nowrap transition-all ${isActive ? 'bg-[#0B5A54] text-white shadow-xs' : 'text-slate-600'
+                  }`}
               >
                 {item.label}
               </button>

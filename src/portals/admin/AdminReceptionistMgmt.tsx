@@ -24,7 +24,6 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
   autoOpenAdd,
 }) => {
   const receptionists = useStaffStore((s) => s.receptionists);
-  const departments = useStaffStore((s) => s.departments);
   const createReceptionist = useStaffStore((s) => s.createReceptionist);
   const updateReceptionist = useStaffStore((s) => s.updateReceptionist);
   const deleteReceptionist = useStaffStore((s) => s.deleteReceptionist);
@@ -279,7 +278,6 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                         <span className="font-mono text-xs font-black text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200">
                           18 Tokens
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium">Shift: {rec.shift || 'Morning'}</span>
                       </div>
                     </td>
 
@@ -435,10 +433,6 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase block">Contact Phone</span>
                   <span className="text-slate-900">{selectedRec.phone}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase block">Shift Schedule</span>
-                  <span className="text-slate-900">{selectedRec.shift || 'Morning Shift'}</span>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase block">Station Status</span>
@@ -602,18 +596,14 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Assigned Department Wing</label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer"
-                  >
-                    <option value="Main Reception">Main Reception & Triage</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.name}>
-                        {d.name} Reception
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="e.g. Main Reception & Triage"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                  />
                 </div>
                 <div>
                   <label className="block mb-1">Desk Identifier</label>
@@ -628,29 +618,14 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1">Contact Phone</label>
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Operating Shift</label>
-                  <select
-                    value={formData.shift}
-                    onChange={(e) => setFormData({ ...formData, shift: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer"
-                  >
-                    <option value="Morning">Morning Shift (07:00 AM - 03:00 PM)</option>
-                    <option value="Evening">Evening Shift (03:00 PM - 11:00 PM)</option>
-                    <option value="Night">Night Shift (11:00 PM - 07:00 AM)</option>
-                    <option value="Full Day">Full Day Coverage</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block mb-1">Contact Phone</label>
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                />
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">

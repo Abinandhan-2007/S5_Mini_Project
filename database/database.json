@@ -36,6 +36,19 @@
       "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocLjbVs3uo4L92uNGJ9Tp6grAXyfZTAemlu8cdNP0QTvGKJ-dGPL=s96-c",
       "google_id": "110145146189776698078",
       "auth_provider": "google"
+    },
+    {
+      "id": "625ace2c-d76d-430a-92e3-12f12dcabc53",
+      "full_name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "1234567890",
+      "address": "123 Main St, Springfield",
+      "dob": "1990-01-01",
+      "gender": "Male",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$gwztTutA2g66tCxi./SQbu4uULNMOkS.1eaIM70/CuATxm9mO0oQG",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -60,6 +73,21 @@
     }
   ],
   "appointments": [
+    {
+      "id": "app-3b0f9537fa",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "patient_name": "SIVANAGU E",
+      "ticket_number": "TK-485",
+      "doctor_id": "doc-johan",
+      "doctor_name": "Dr. Johan Janson",
+      "doctor_specialty": "Endocrinologist",
+      "doctor_photo": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-08-27",
+      "time_slot": "02:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
     {
       "id": "app-d1e35bbfd7",
       "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
@@ -366,10 +394,11 @@
       "id": "rec-101",
       "name": "Emily Watson",
       "email": "receptionist@carepulse.com",
-      "password": "password123",
+      "password": "$2b$12$eindd9xnoKa6C0i0Od9RPOm5iU0K3Rs8ejzFXOyqMVc0UDp8JZLs6",
       "role": "receptionist",
       "department": "Front Desk",
-      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80"
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$eindd9xnoKa6C0i0Od9RPOm5iU0K3Rs8ejzFXOyqMVc0UDp8JZLs6"
     },
     {
       "id": "rec-102",

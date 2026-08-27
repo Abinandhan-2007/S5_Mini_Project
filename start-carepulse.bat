@@ -12,8 +12,9 @@ setlocal EnableDelayedExpansion
 
 title CarePulse Launcher
 
-:: Define hardcoded project directory and ngrok URL
-set "PROJECT_DIR=E:\S5_Mini_Project"
+:: Dynamically resolve current directory (no hardcoded drive path)
+set "PROJECT_DIR=%~dp0"
+if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 set "NGROK_URL=https://straggler-boss-unselect.ngrok-free.dev"
 
 echo ===================================================================

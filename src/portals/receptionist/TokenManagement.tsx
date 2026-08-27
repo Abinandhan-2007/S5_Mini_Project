@@ -248,7 +248,7 @@ export const TokenManagement: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           {/* Search Bar */}
           <div className="relative flex-1">
-            <Search className="w-4.5 h-4.5 text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+            <Search className="w-5 h-5 text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
             <input
               type="text"
               placeholder="Search by Token # (#TOK-001), Patient Name, Phone, or Ticket..."
