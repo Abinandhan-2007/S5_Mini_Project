@@ -24,6 +24,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev -- --host',
+    cwd: './frontend',
     url: 'http://localhost:5173',
     reuseExistingServer: true,
     timeout: 30000,

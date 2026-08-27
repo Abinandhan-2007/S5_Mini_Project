@@ -1,6 +1,3 @@
--- Enable the pgvector extension for AI RAG embeddings
-CREATE EXTENSION IF NOT EXISTS vector;
-
 -- Patients Table
 CREATE TABLE IF NOT EXISTS patients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -111,7 +108,7 @@ CREATE TABLE IF NOT EXISTS appointments (
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
 
--- Consultations Table with JSONB and pgvector
+-- Consultations Table with JSONB
 CREATE TABLE IF NOT EXISTS consultations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
@@ -122,14 +119,80 @@ CREATE TABLE IF NOT EXISTS consultations (
     -- JSONB column containing structured SOAP clinical logs
     soap_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     
-    -- pgvector column for embeddings of the SOAP notes
-    soap_embedding vector(1536), 
-    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes for optimal performance
 CREATE INDEX IF NOT EXISTS idx_consultations_soap_data ON consultations USING gin (soap_data);
+
+-- Staff Table
+CREATE TABLE IF NOT EXISTS staff (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    google_id VARCHAR(255) UNIQUE,
+    auth_provider VARCHAR(50) DEFAULT 'local',
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'receptionist', 'doctor')),
+    specialization VARCHAR(255),
+    phone VARCHAR(50) DEFAULT '',
+    avatar_url TEXT DEFAULT '',
+    hospital_id VARCHAR(100) REFERENCES hospitals(id) ON DELETE SET NULL,
+    doctor_id VARCHAR(100) REFERENCES doctors(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES staff(id),
+    is_active BOOLEAN DEFAULT true,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_staff_email ON staff(email);
+CREATE INDEX IF NOT EXISTS idx_staff_role ON staff(role);
+
+-- Emergency Contacts Table
+CREATE TABLE IF NOT EXISTS emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
+    relationship VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Prescriptions Table
+CREATE TABLE IF NOT EXISTS prescriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    drug_name VARCHAR(255) NOT NULL,
+    dosage VARCHAR(100),
+    frequency VARCHAR(100),
+    prescriber VARCHAR(255),
+    icon_type VARCHAR(20) DEFAULT 'pill',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_id ON prescriptions(patient_id);
+
+-- Receptionist Desks Table
+CREATE TABLE IF NOT EXISTS receptionist_desks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    hospital_id VARCHAR(100) NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+    desk_number VARCHAR(50) NOT NULL,
+    assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_desks_hospital_desknum ON receptionist_desks(hospital_id, desk_number);
+
+-- Operations Log Table
+CREATE TABLE IF NOT EXISTS operations_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
+    staff_name VARCHAR(255),
+    operation VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    entity_type VARCHAR(100),
+    entity_id UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_operations_log_created_at ON operations_log(created_at DESC);
 
 -- Insert Mock Data
 INSERT INTO hospitals (id, name, address, phone, rating, reviews_count, emergency_available, image_url, specialties, facility_type, distance_miles)
@@ -202,4 +265,3 @@ CREATE TABLE IF NOT EXISTS password_reset_otps (
     used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
-

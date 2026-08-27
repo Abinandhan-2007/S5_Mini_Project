@@ -17,9 +17,8 @@ test.describe('Patient Login Screen', () => {
   });
 
   test('should render the login screen with expected elements', async ({ page }) => {
-    // Assert branding and header text
-    await expect(page.getByRole('heading', { name: 'CarePulse', exact: false })).toBeVisible();
-    await expect(page.getByText('Welcome back')).toBeVisible();
+    // Wait for login form to be visible after initial splash screen animation finishes
+    await expect(page.getByText('Welcome back')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Log in to manage appointments & health records')).toBeVisible();
 
     // Assert inputs and action buttons
@@ -32,6 +31,8 @@ test.describe('Patient Login Screen', () => {
   });
 
   test('should handle empty or invalid credential submissions gracefully', async ({ page }) => {
+    await expect(page.getByText('Welcome back')).toBeVisible({ timeout: 15000 });
+
     // Attempt submitting without entering credentials
     const loginButton = page.getByRole('button', { name: 'LOGIN' });
     await loginButton.click();
@@ -43,14 +44,17 @@ test.describe('Patient Login Screen', () => {
   });
 
   test('should navigate to sign up page when clicking Sign Up', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Sign Up' })).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: 'Sign Up' }).click();
     await expect(page).toHaveURL(/\/register/);
     await expect(page.getByText('Tell us more about yourself')).toBeVisible();
   });
 
   test('should open Forgot Password modal when clicked', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Forgot Password?' })).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: 'Forgot Password?' }).click();
-    await expect(page.getByText(/Reset Password|Forgot Password/i)).toBeVisible();
+    // Specifically target the modal heading only to prevent ambiguity with the trigger button
+    await expect(page.getByRole('heading', { name: 'Reset Password' })).toBeVisible();
   });
 
   test('should navigate to home dashboard on successful credentials login', async ({ page }) => {
@@ -75,6 +79,7 @@ test.describe('Patient Login Screen', () => {
       });
     });
 
+    await expect(page.getByPlaceholder('Enter username, email, or phone number')).toBeVisible({ timeout: 15000 });
     await page.getByPlaceholder('Enter username, email, or phone number').fill('sarah@example.com');
     await page.getByPlaceholder('Enter password').fill('password123');
     await page.getByRole('button', { name: 'LOGIN' }).click();

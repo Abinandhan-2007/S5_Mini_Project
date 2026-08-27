@@ -42,9 +42,9 @@ test.describe('Patient Registration Screen', () => {
 
     await page.getByRole('button', { name: 'Next Step →' }).click();
 
-    // Verify Step 2 header
+    // Verify Step 2 header and specific input selectors
     await expect(page.getByText('Contact & Emergency')).toBeVisible();
-    await expect(page.getByPlaceholder('Enter phone number')).toBeVisible();
+    await expect(page.locator('#phone-number')).toBeVisible();
     await expect(page.getByPlaceholder('Enter email address')).toBeVisible();
     await expect(page.getByPlaceholder('Enter complete address')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create Profile →' })).toBeVisible();
@@ -80,9 +80,9 @@ test.describe('Patient Registration Screen', () => {
     await page.locator('input[type="date"]').fill('1996-03-20');
     await page.getByRole('button', { name: 'Next Step →' }).click();
 
-    // Step 2: Fill Contact & Address
+    // Step 2: Fill Contact & Address using precise #phone-number and #contact-phone IDs
     await expect(page.getByText('Contact & Emergency')).toBeVisible();
-    await page.getByPlaceholder('Enter phone number').fill('+91 91234 56780');
+    await page.locator('#phone-number').fill('+91 91234 56780');
     await page.getByPlaceholder('Enter email address').fill('janesmith@carepulse.test');
     await page.getByPlaceholder('Enter complete address').fill('123 Health Ave, Metro City');
 
