@@ -8,6 +8,7 @@
  */
 
 import { Capacitor } from '@capacitor/core';
+import { useCarePulseStore } from './store';
 
 const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
 
@@ -97,6 +98,8 @@ export async function apiFetch(
         throw new Error('Received HTML instead of JSON API response');
       }
 
+      // Automatically clear offline fallback mode on any successful backend call
+      useCarePulseStore.getState().setIsOfflineMode(false);
       return res; // Return on first real API response
     } catch (err) {
       lastError = err;
@@ -104,6 +107,8 @@ export async function apiFetch(
     }
   }
 
+  // All endpoints unreachable — activate offline warning banner
+  useCarePulseStore.getState().setIsOfflineMode(true);
   throw lastError ?? new Error('All API endpoints unreachable');
 }
 

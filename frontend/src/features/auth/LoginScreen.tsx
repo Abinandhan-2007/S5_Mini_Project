@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -17,6 +17,7 @@ import { apiPost } from '../../lib/apiFetch';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
 
   const [phone, setPhone] = useState('');
@@ -30,6 +31,13 @@ export const LoginScreen: React.FC = () => {
   // Sign up modal prompt state
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
+
+  // Handle redirect messages (e.g. "Please log in to continue")
+  useEffect(() => {
+    if (location.state && (location.state as any).message) {
+      setErrorMessage((location.state as any).message);
+    }
+  }, [location.state]);
 
   // Sync google auth error to local error message
   useEffect(() => {

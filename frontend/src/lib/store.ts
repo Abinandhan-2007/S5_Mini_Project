@@ -19,6 +19,12 @@ interface CarePulseState {
   updateUser: (updatedFields: Partial<User>) => void;
   registerUser: (userData: Partial<User>) => void;
 
+  // Offline / Mock Data Fallback State
+  isOfflineMode: boolean;
+  isOfflineDismissed: boolean;
+  setIsOfflineMode: (offline: boolean) => void;
+  dismissOfflineBanner: () => void;
+
   // Appointments
   appointments: Appointment[];
   activeAppointment: Appointment | null;
@@ -60,6 +66,17 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   isAuthenticated: hasLoggedIn,
   isInitializing: !hasLoggedIn,
   isBiometricEnabled: storedBio === 'true',
+
+  // Offline banner states
+  isOfflineMode: false,
+  isOfflineDismissed: false,
+  setIsOfflineMode: (offline: boolean) =>
+    set((state) => ({
+      isOfflineMode: offline,
+      // If returning online, reset dismissal so next offline event warns again
+      isOfflineDismissed: offline ? state.isOfflineDismissed : false,
+    })),
+  dismissOfflineBanner: () => set({ isOfflineDismissed: true }),
 
   login: (_phone: string) => {
     localStorage.setItem('has_logged_in', 'true');
@@ -132,11 +149,6 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
           } catch {
             cachedUser = null;
           }
-        }
-
-        // Fallback: If has_logged_in is true but JSON parsing failed, use INITIAL_USER
-        if (!cachedUser && localStorage.getItem('has_logged_in') === 'true') {
-          cachedUser = INITIAL_USER;
         }
       }
 
@@ -267,7 +279,9 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   },
 
   updateUser: (updatedFields) => {
-    const updated = { ...(get().user || INITIAL_USER), ...updatedFields };
+    const currentUser = get().user;
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...updatedFields };
     localStorage.setItem('carepulse_user', JSON.stringify(updated));
     set({ user: updated });
   },
@@ -346,7 +360,8 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
 
   syncAppointments: async (patientId?: string) => {
     try {
-      const pid = patientId || get().user?.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+      const pid = patientId || get().user?.id;
+      if (!pid) return;
       let res: Response | null = null;
       try {
         res = await apiFetch(`/appointments/patient/${pid}`, { method: 'GET' });

@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './app/routes';
 import { useCarePulseStore } from './lib/store';
 import { SplashScreen } from './components/ui/SplashScreen';
+import { OfflineBanner } from './components/ui/OfflineBanner';
 
 // Helper to determine if current URL is a staff portal
 const isStaffLanding = (): boolean => {
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
 
   return (
     <BrowserRouter>
+      <OfflineBanner />
       <div className="min-h-screen bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col overflow-x-hidden">
         <AppRoutes />
       </div>

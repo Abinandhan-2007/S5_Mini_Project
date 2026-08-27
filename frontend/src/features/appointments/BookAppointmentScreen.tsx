@@ -51,14 +51,25 @@ export const BookAppointmentScreen: React.FC = () => {
 
   const user = useCarePulseStore((s) => s.user);
 
+  useEffect(() => {
+    if (!user || !user.id) {
+      navigate('/login', { state: { message: 'Please log in to continue booking your appointment.' } });
+    }
+  }, [user, navigate]);
+
   const handleConfirmBooking = async () => {
+    if (!user || !user.id) {
+      navigate('/login', { state: { message: 'Please log in to continue booking your appointment.' } });
+      return;
+    }
+
     const nextNum = 482 + appointments.length;
     const newTicketNum = `TK-${nextNum}`;
     setBookedTicket(newTicketNum);
 
     const payload = {
-      patientId: user?.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-      patientName: user?.fullName || 'Sarah Jenkins',
+      patientId: user.id,
+      patientName: user.fullName || 'CarePulse Patient',
       doctorId: doctor.id,
       doctorName: doctor.name,
       doctorSpecialty: doctor.specialty,
@@ -83,8 +94,8 @@ export const BookAppointmentScreen: React.FC = () => {
         addAppointment({
           id: `app-${Date.now()}`,
           ticketNumber: newTicketNum,
-          patientId: user?.id || 'usr-101',
-          patientName: user?.fullName || 'Sarah Jenkins',
+          patientId: user.id,
+          patientName: user.fullName || 'CarePulse Patient',
           doctorId: doctor.id,
           doctorName: doctor.name,
           doctorSpecialty: doctor.specialty,
@@ -101,8 +112,8 @@ export const BookAppointmentScreen: React.FC = () => {
       addAppointment({
         id: `app-${Date.now()}`,
         ticketNumber: newTicketNum,
-        patientId: user?.id || 'usr-101',
-        patientName: user?.fullName || 'Sarah Jenkins',
+        patientId: user.id,
+        patientName: user.fullName || 'CarePulse Patient',
         doctorId: doctor.id,
         doctorName: doctor.name,
         doctorSpecialty: doctor.specialty,
