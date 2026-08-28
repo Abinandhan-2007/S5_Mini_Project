@@ -5,13 +5,16 @@ import { useCarePulseStore } from './lib/store';
 import { SplashScreen } from './components/ui/SplashScreen';
 import { OfflineBanner } from './components/ui/OfflineBanner';
 
+import { Capacitor } from '@capacitor/core';
+
 // Helper to determine if current URL is a staff portal
 const isStaffLanding = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const hostname = window.location.hostname.toLowerCase();
+  // On web browsers (Vercel, Netlify, desktop browsers), bypass patient mobile splash
+  if (!Capacitor.isNativePlatform()) return true;
+
   const path = window.location.pathname.toLowerCase();
   return (
-    hostname.includes('carepulse-s5.netlify.app') ||
     path.startsWith('/receptionist') ||
     path.startsWith('/doctor') ||
     path.startsWith('/admin') ||

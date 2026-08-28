@@ -26,14 +26,16 @@ import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
 
-// Detect if current domain is the Netlify staff portal deployment
+import { Capacitor } from '@capacitor/core';
+
+// Detect if current environment should default to Staff Portal (Doctor, Admin, Receptionist)
 const isStaffDomain = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const hostname = window.location.hostname.toLowerCase();
-  return (
-    hostname.includes('carepulse-s5.netlify.app') ||
-    hostname.includes('staff.')
-  );
+  // On native mobile app (Capacitor Android / iOS), default to Patient App
+  if (Capacitor.isNativePlatform()) return false;
+
+  // On Web (Vercel, Netlify, desktop browsers, localhost web), default to Staff Portal
+  return true;
 };
 
 export const AppRoutes: React.FC = () => {

@@ -431,6 +431,16 @@ export const LoginScreen: React.FC = () => {
             </button>
           </p>
 
+          <div className="pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => navigate('/staff/login')}
+              className="text-xs font-bold text-[#0B5A54] hover:text-[#084540] hover:underline flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+            >
+              <span>Staff Portal (Doctor / Admin / Receptionist) &rarr;</span>
+            </button>
+          </div>
+
           <div className="flex justify-center items-center gap-1.5 pt-1">
             <div className="w-6 h-1 rounded-full bg-[#0B5A54]" />
             <div className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF]/40" />
