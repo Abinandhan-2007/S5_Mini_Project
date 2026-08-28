@@ -9,11 +9,16 @@ android/app/build
 android/build
 android/.gradle
 android/captures
+android/app/src/main/assets/public
 
 # Environment and local files
 .env
 .env.local
 *.local
+local.properties
+**/local.properties
+test-results/
+playwright-report/
 
 # Logs
 logs
