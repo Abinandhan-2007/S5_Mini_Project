@@ -1,0 +1,28 @@
+# =====================================================================
+# CarePulse AI & Machine Learning Optional Dependencies
+# =====================================================================
+# This file contains optional ML/AI frameworks and agent orchestration tools.
+# They are kept commented out by default so the core backend remains lightweight.
+# Uncomment and install only when implementing actual model training or local inference:
+#   pip install -r requirements-ai.txt
+# =====================================================================
+
+# --- Agent Orchestration & LLM Frameworks ---
+# langchain>=0.3.0
+# langchain-core>=0.3.0
+# langgraph>=0.2.0
+# google-generativeai>=0.8.0
+# openai>=1.50.0
+# groq>=0.11.0
+# anthropic>=0.36.0
+
+# --- Classical Machine Learning & Feature Extraction ---
+# scikit-learn>=1.5.0
+# numpy>=1.26.0
+# pandas>=2.2.0
+
+# --- Deep Learning & Embeddings (Optional / Heavy) ---
+# torch>=2.4.0
+# sentence-transformers>=3.1.0
+# transformers>=4.45.0
+# onnxruntime>=1.19.0
