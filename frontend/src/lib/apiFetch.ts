@@ -3,11 +3,12 @@
  *
  * Handles:
  * - Resolving the correct backend base URL (VITE_API_URL → /api → localhost:5000)
+ * - Using native CapacitorHttp on mobile devices (Android / iOS) to bypass WebView CORS and origin limits
  * - Adding `ngrok-skip-browser-warning` header so Android WebView doesn't get
  *   the ngrok browser interstitial HTML page instead of JSON
  */
 
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { useCarePulseStore } from './store';
 
 const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
@@ -79,28 +80,75 @@ export async function apiFetch(
       : `${cleanBase}/api${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-      const res = await fetch(url, {
-        ...options,
-        signal: options.signal || controller.signal,
-        headers: {
+      if (Capacitor.isNativePlatform()) {
+        // Native mobile request via CapacitorHttp for true Android network isolation & fast timeouts
+        const method = (options.method || 'GET').toUpperCase();
+        const headers = {
           ...API_HEADERS,
           ...(options.headers as Record<string, string> | undefined),
-        },
-      });
-      clearTimeout(timeoutId);
+        };
 
-      // Verify that the response is NOT an HTML SPA fallback (e.g. index.html from WebView asset loader)
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('text/html') && !path.endsWith('.html')) {
-        throw new Error('Received HTML instead of JSON API response');
+        let requestData: any = undefined;
+        if (options.body && typeof options.body === 'string') {
+          try {
+            requestData = JSON.parse(options.body);
+          } catch {
+            requestData = options.body;
+          }
+        }
+
+        const nativeRes = await CapacitorHttp.request({
+          method,
+          url,
+          headers,
+          data: requestData,
+          connectTimeout: 2500,
+          readTimeout: 2500,
+        });
+
+        if (nativeRes.status >= 200 && nativeRes.status < 600) {
+          const jsonBody = typeof nativeRes.data === 'string' ? nativeRes.data : JSON.stringify(nativeRes.data);
+          const responseObj = new Response(jsonBody, {
+            status: nativeRes.status,
+            headers: new Headers(nativeRes.headers as Record<string, string>),
+          });
+
+          // Verify that the response is NOT an HTML SPA fallback
+          const contentType = responseObj.headers.get('content-type') || '';
+          if (contentType.includes('text/html') && !path.endsWith('.html')) {
+            throw new Error('Received HTML instead of JSON API response');
+          }
+
+          useCarePulseStore.getState().setIsOfflineMode(false);
+          return responseObj;
+        }
+
+        throw new Error(`HTTP Error ${nativeRes.status}`);
+      } else {
+        // Standard Web Browser fetch
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        const res = await fetch(url, {
+          ...options,
+          signal: options.signal || controller.signal,
+          headers: {
+            ...API_HEADERS,
+            ...(options.headers as Record<string, string> | undefined),
+          },
+        });
+        clearTimeout(timeoutId);
+
+        // Verify that the response is NOT an HTML SPA fallback
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('text/html') && !path.endsWith('.html')) {
+          throw new Error('Received HTML instead of JSON API response');
+        }
+
+        // Automatically clear offline fallback mode on any successful backend call
+        useCarePulseStore.getState().setIsOfflineMode(false);
+        return res;
       }
-
-      // Automatically clear offline fallback mode on any successful backend call
-      useCarePulseStore.getState().setIsOfflineMode(false);
-      return res; // Return on first real API response
     } catch (err) {
       lastError = err;
       // Network error or timeout — try next base URL
@@ -131,13 +179,17 @@ export function apiPost(path: string, body: unknown): Promise<Response> {
 
 /**
  * Test whether the backend server is reachable and healthy (/api/health)
+ * Strictly verifies that the response is genuine JSON with healthy status.
  */
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const res = await apiGet('/health');
-    return Boolean(res && res.ok);
+    if (!res || !res.ok) return false;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) return false;
+    const data = await res.json();
+    return Boolean(data && (data.status === 'healthy' || data.service?.toLowerCase().includes('carepulse')));
   } catch {
     return false;
   }
 }
-
