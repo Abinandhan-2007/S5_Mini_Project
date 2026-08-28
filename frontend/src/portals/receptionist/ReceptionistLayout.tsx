@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Plus, Bell, User, LogOut } from 'lucide-react';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
@@ -8,6 +8,8 @@ import { TokenManagement } from './TokenManagement';
 import { ReceptionistProfile } from './ReceptionistProfile';
 import { NewAppointmentModal } from './NewAppointmentModal';
 import { useStaffStore } from '../../store/staffStore';
+import { usePolling } from '../../lib/usePolling';
+import { LiveIndicator } from '../../components/ui/LiveIndicator';
 
 type NavTab = 'home' | 'doctors' | 'bookings' | 'tokens' | 'profile';
 
@@ -21,18 +23,19 @@ export const ReceptionistLayout: React.FC = () => {
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Initial fetch on mount
-    fetchDoctors();
-    fetchTokens();
-
-    // Live polling every 3.5 seconds to sync patient bookings in real time
-    const interval = setInterval(() => {
-      fetchTokens();
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [fetchDoctors, fetchTokens]);
+  // Automatic robust background polling for receptionist token queue & doctors
+  const { isPolling, lastUpdated, refetch } = usePolling(
+    async () => {
+      await Promise.all([
+        fetchTokens(undefined, true),
+        fetchDoctors(true),
+      ]);
+    },
+    {
+      interval: 7000,
+      enabled: !!currentStaff && currentStaff.role === 'receptionist',
+    }
+  );
 
   // Role-based auth guard
   if (!currentStaff || currentStaff.role !== 'receptionist') {
@@ -89,7 +92,15 @@ export const ReceptionistLayout: React.FC = () => {
           </nav>
 
           {/* Right Action Encapsulated Capsule & Circular Icon Buttons */}
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3">
+            {/* Live Polling Sync Indicator */}
+            <LiveIndicator
+              lastUpdated={lastUpdated}
+              isPolling={isPolling}
+              onRefresh={refetch}
+              label="Live Sync"
+            />
+
             {/* New Appointment Encapsulated Pill Button */}
             <button
               onClick={() => setIsNewAppointmentOpen(true)}

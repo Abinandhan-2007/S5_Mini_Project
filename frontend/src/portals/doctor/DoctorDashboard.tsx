@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -7,9 +7,11 @@ import {
   ClipboardList, TrendingUp, AlertCircle
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { usePolling } from '../../lib/usePolling';
+import { LiveIndicator } from '../../components/ui/LiveIndicator';
 
-// ─── Mock patient queue data for doctor dashboard ─────────────────────────────
-const TODAY_QUEUE = [
+// Initial fallback patient queue
+const INITIAL_DOCTOR_QUEUE = [
   { id: 'tok-1', tokenNumber: '#CP-001', name: 'Sarah Jenkins', age: 31, issue: 'Chest discomfort', slot: '09:00 AM', status: 'In Consultation', type: 'In-Person' },
   { id: 'tok-2', tokenNumber: '#CP-002', name: 'Robert Chen', age: 45, issue: 'Follow-up ECG', slot: '09:30 AM', status: 'Waiting', type: 'Walk-In' },
   { id: 'tok-3', tokenNumber: '#CP-003', name: 'Anita Sharma', age: 28, issue: 'Routine check-up', slot: '10:00 AM', status: 'Waiting', type: 'Online' },
@@ -23,27 +25,64 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   'Waiting':         { label: 'Waiting',          color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200',   dot: 'bg-amber-400' },
   'Pending':         { label: 'Pending',           color: 'text-slate-600',   bg: 'bg-slate-100 border-slate-200',  dot: 'bg-slate-400' },
   'Done':            { label: 'Done',              color: 'text-sky-700',     bg: 'bg-sky-50 border-sky-200',       dot: 'bg-sky-400' },
+  'Completed':       { label: 'Completed',         color: 'text-sky-700',     bg: 'bg-sky-50 border-sky-200',       dot: 'bg-sky-400' },
 };
 
 export const DoctorDashboard: React.FC = () => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const logoutStaff  = useStaffStore((s) => s.logoutStaff);
+  const rawTokens    = useStaffStore((s) => s.tokens);
+  const fetchTokens  = useStaffStore((s) => s.fetchTokens);
   const navigate     = useNavigate();
   const [activeFilter, setActiveFilter] = useState<string>('All');
+
+  // Automatic robust background polling for Doctor queue
+  const { isPolling, lastUpdated, refetch } = usePolling(
+    async () => {
+      await fetchTokens(currentStaff?.id, true);
+    },
+    {
+      interval: 7500,
+      enabled: !!currentStaff && currentStaff.role === 'doctor',
+    }
+  );
+
+  // Map live tokens from store into queue format, filtered for this doctor if matched
+  const liveQueue = useMemo(() => {
+    if (!rawTokens || rawTokens.length === 0) return INITIAL_DOCTOR_QUEUE;
+
+    // If doctor has specific tokens assigned
+    const doctorTokens = currentStaff?.id
+      ? rawTokens.filter((t) => !t.doctorId || t.doctorId === currentStaff.id || t.doctorId === 'doc-1')
+      : rawTokens;
+
+    if (doctorTokens.length === 0) return INITIAL_DOCTOR_QUEUE;
+
+    return doctorTokens.map((t, idx) => ({
+      id: t.id || `tok-${idx}`,
+      tokenNumber: t.tokenNumber || `#TOK-${idx + 1}`,
+      name: t.patientName || 'Walk-in Patient',
+      age: t.age || 32,
+      issue: t.healthIssue || `${t.doctorSpecialty || 'General'} Consultation`,
+      slot: t.timeSlot || '10:00 AM',
+      status: t.status === 'Completed' ? 'Done' : t.status,
+      type: t.type || 'In-Person',
+    }));
+  }, [rawTokens, currentStaff?.id]);
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const stats = [
-    { label: 'Total Today', value: TODAY_QUEUE.length, icon: <Users className="w-5 h-5" />, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200' },
-    { label: 'In Progress',  value: TODAY_QUEUE.filter(p => p.status === 'In Consultation').length, icon: <Activity className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-    { label: 'Waiting',      value: TODAY_QUEUE.filter(p => p.status === 'Waiting').length,         icon: <Clock className="w-5 h-5" />,    color: 'text-amber-600',  bg: 'bg-amber-50 border-amber-200' },
-    { label: 'Completed',    value: TODAY_QUEUE.filter(p => p.status === 'Done').length,            icon: <CheckCircle2 className="w-5 h-5" />, color: 'text-sky-600', bg: 'bg-sky-50 border-sky-200' },
+    { label: 'Total Today', value: liveQueue.length, icon: <Users className="w-5 h-5" />, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200' },
+    { label: 'In Progress',  value: liveQueue.filter(p => p.status === 'In Consultation').length, icon: <Activity className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+    { label: 'Waiting',      value: liveQueue.filter(p => p.status === 'Waiting').length,         icon: <Clock className="w-5 h-5" />,    color: 'text-amber-600',  bg: 'bg-amber-50 border-amber-200' },
+    { label: 'Completed',    value: liveQueue.filter(p => p.status === 'Done' || p.status === 'Completed').length, icon: <CheckCircle2 className="w-5 h-5" />, color: 'text-sky-600', bg: 'bg-sky-50 border-sky-200' },
   ];
 
   const filters = ['All', 'In Consultation', 'Waiting', 'Pending', 'Done'];
   const filteredQueue = activeFilter === 'All'
-    ? TODAY_QUEUE
-    : TODAY_QUEUE.filter(p => p.status === activeFilter);
+    ? liveQueue
+    : liveQueue.filter(p => p.status === activeFilter);
 
   const handleLogout = () => {
     logoutStaff();
@@ -70,6 +109,14 @@ export const DoctorDashboard: React.FC = () => {
 
           {/* Right actions */}
           <div className="flex items-center gap-2.5">
+            {/* Live Indicator */}
+            <LiveIndicator
+              lastUpdated={lastUpdated}
+              isPolling={isPolling}
+              onRefresh={refetch}
+              label="Live Queue"
+            />
+
             <button className="relative w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all">
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-400 rounded-full border-2 border-white" />
@@ -105,7 +152,7 @@ export const DoctorDashboard: React.FC = () => {
           <div>
             <p className="text-teal-200/80 text-xs font-semibold uppercase tracking-wider">{today}</p>
             <h1 className="text-xl font-black mt-0.5">Good Morning, {currentStaff?.name?.split(' ').slice(0, 2).join(' ')} 👋</h1>
-            <p className="text-teal-100/70 text-sm mt-0.5">You have <span className="font-bold text-white">{TODAY_QUEUE.filter(p => p.status !== 'Done').length} patients</span> remaining today.</p>
+            <p className="text-teal-100/70 text-sm mt-0.5">You have <span className="font-bold text-white">{liveQueue.filter(p => p.status !== 'Done' && p.status !== 'Completed').length} patients</span> remaining today.</p>
           </div>
           <div className="flex items-center gap-2 bg-white/15 px-4 py-2.5 rounded-xl border border-white/20 self-start sm:self-center">
             <Calendar className="w-4 h-4 text-teal-200" />
@@ -218,7 +265,7 @@ export const DoctorDashboard: React.FC = () => {
         <div className="flex items-center gap-2 p-4 rounded-2xl bg-teal-50 border border-teal-100 text-xs text-teal-700 font-semibold">
           <TrendingUp className="w-4 h-4 text-teal-500" />
           <span>
-            You've seen <strong>{TODAY_QUEUE.filter(p => p.status === 'Done').length}</strong> patient(s) today.
+            You've seen <strong>{liveQueue.filter(p => p.status === 'Done' || p.status === 'Completed').length}</strong> patient(s) today.
             <span className="text-teal-400 font-normal ml-1">Keep up the great work!</span>
           </span>
         </div>

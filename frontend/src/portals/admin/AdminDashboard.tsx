@@ -29,7 +29,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
   const totalDoctorsCount = doctors.length;
   const totalReceptionistsCount = receptionists.length;
   const totalBookingsToday = tokens.length > 0 ? tokens.length : 24;
-  const totalPatientsCount = 1240;
+  const totalPatientsCount = 1240 + tokens.length;
 
   // Chart Data: Weekly & Monthly
   const weeklyData = [
@@ -53,54 +53,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
 
   const currentChart = timeRange === 'week' ? weeklyData : monthlyData;
 
-  // Recent Operations Activities
-  const recentActivities = [
-    {
-      id: 'act-1',
-      title: 'Online Appointment Booked',
-      desc: 'Sarah Jenkins scheduled consultation with Dr. Olivia Wilson',
-      time: '12m ago',
-      type: 'booking',
-      icon: CalendarCheck,
-      color: 'bg-teal-50 text-[#0B5A54] border-teal-200',
-    },
-    {
-      id: 'act-2',
-      title: 'Walk-In Patient Check-In',
-      desc: 'Receptionist Emily Watson issued physical token #TOK-004',
-      time: '34m ago',
-      type: 'token',
-      icon: UserCheck,
-      color: 'bg-sky-50 text-sky-700 border-sky-200',
-    },
-    {
-      id: 'act-3',
-      title: 'Physician Duty Shift Online',
-      desc: 'Dr. Marcus Vance toggled availability status to Active Duty',
-      time: '1h ago',
-      type: 'doctor',
-      icon: Stethoscope,
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    },
-    {
-      id: 'act-4',
-      title: 'Pediatrics Cabin Consultation',
-      desc: 'Dr. Sophia Patel completed 6 child health checkup slots',
-      time: '2h ago',
-      type: 'consultation',
-      icon: Clock,
-      color: 'bg-amber-50 text-amber-900 border-amber-200',
-    },
-    {
-      id: 'act-5',
-      title: 'Department Slot Expansion',
-      desc: 'Cardiology wing afternoon token limits adjusted by Admin',
-      time: '3h ago',
-      type: 'admin',
-      icon: Building2,
-      color: 'bg-purple-50 text-purple-700 border-purple-200',
-    },
-  ];
+  // Live Dynamic Recent Operations Activities
+  const recentActivities = React.useMemo(() => {
+    if (tokens && tokens.length > 0) {
+      return tokens.slice(0, 5).map((tok, i) => ({
+        id: tok.id || `act-${i}`,
+        title: tok.type === 'Walk-In' ? 'Walk-In Patient Check-In' : 'Online Appointment Booked',
+        desc: `${tok.patientName} scheduled consultation with ${tok.doctorName} (${tok.timeSlot})`,
+        time: tok.arrivalTime ? `${tok.arrivalTime}` : 'Just now',
+        type: tok.type === 'Walk-In' ? 'token' : 'booking',
+        icon: tok.type === 'Walk-In' ? UserCheck : CalendarCheck,
+        color:
+          tok.type === 'Walk-In'
+            ? 'bg-sky-50 text-sky-700 border-sky-200'
+            : 'bg-teal-50 text-[#0B5A54] border-teal-200',
+      }));
+    }
+    return [
+      {
+        id: 'act-1',
+        title: 'Online Appointment Booked',
+        desc: 'Sarah Jenkins scheduled consultation with Dr. Olivia Wilson',
+        time: '12m ago',
+        type: 'booking',
+        icon: CalendarCheck,
+        color: 'bg-teal-50 text-[#0B5A54] border-teal-200',
+      },
+      {
+        id: 'act-2',
+        title: 'Walk-In Patient Check-In',
+        desc: 'Receptionist Emily Watson issued physical token #TOK-004',
+        time: '34m ago',
+        type: 'token',
+        icon: UserCheck,
+        color: 'bg-sky-50 text-sky-700 border-sky-200',
+      },
+      {
+        id: 'act-3',
+        title: 'Physician Duty Shift Online',
+        desc: 'Dr. Marcus Vance toggled availability status to Active Duty',
+        time: '1h ago',
+        type: 'doctor',
+        icon: Stethoscope,
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      },
+      {
+        id: 'act-4',
+        title: 'Pediatrics Cabin Consultation',
+        desc: 'Dr. Sophia Patel completed 6 child health checkup slots',
+        time: '2h ago',
+        type: 'consultation',
+        icon: Clock,
+        color: 'bg-amber-50 text-amber-900 border-amber-200',
+      },
+      {
+        id: 'act-5',
+        title: 'Department Slot Expansion',
+        desc: 'Cardiology wing afternoon token limits adjusted by Admin',
+        time: '3h ago',
+        type: 'admin',
+        icon: Building2,
+        color: 'bg-purple-50 text-purple-700 border-purple-200',
+      },
+    ];
+  }, [tokens]);
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-300 w-full">

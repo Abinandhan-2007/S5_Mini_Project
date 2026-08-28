@@ -21,6 +21,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { usePolling } from '../../lib/usePolling';
+import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminDoctorManagement } from './AdminDoctorManagement';
 import { AdminReceptionistMgmt } from './AdminReceptionistMgmt';
@@ -72,8 +74,26 @@ export const AdminLayout: React.FC = () => {
   const departments = useStaffStore((s) => s.departments);
   const tokens = useStaffStore((s) => s.tokens);
   const announcements = useStaffStore((s) => s.announcements);
+  const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
+  const fetchTokens = useStaffStore((s) => s.fetchTokens);
+  const fetchReceptionists = useStaffStore((s) => s.fetchReceptionists);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
+
+  // Automatic robust background polling for Admin metrics and operations
+  const { isPolling, lastUpdated, refetch } = usePolling(
+    async () => {
+      await Promise.all([
+        fetchTokens(undefined, true),
+        fetchDoctors(true),
+        fetchReceptionists(),
+      ]);
+    },
+    {
+      interval: 8000,
+      enabled: !!currentStaff && currentStaff.role === 'admin',
+    }
+  );
 
   const adminDisplayName =
     currentStaff?.name ||
@@ -443,6 +463,14 @@ export const AdminLayout: React.FC = () => {
                 ⌘K
               </kbd>
             </div>
+
+            {/* Live Metrics Polling Indicator */}
+            <LiveIndicator
+              lastUpdated={lastUpdated}
+              isPolling={isPolling}
+              onRefresh={refetch}
+              label="Live Metrics"
+            />
 
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>

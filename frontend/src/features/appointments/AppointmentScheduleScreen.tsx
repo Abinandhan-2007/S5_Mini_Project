@@ -6,9 +6,30 @@ import {
 } from 'lucide-react';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
+import { LiveIndicator } from '../../components/ui/LiveIndicator';
+import { usePolling } from '../../lib/usePolling';
+import { useCarePulseStore } from '../../lib/store';
 
 export const AppointmentScheduleScreen: React.FC = () => {
   const navigate = useNavigate();
+  const user = useCarePulseStore((s) => s.user);
+  const syncAppointments = useCarePulseStore((s) => s.syncAppointments);
+  const appointments = useCarePulseStore((s) => s.appointments);
+
+  // Automatic background polling for Patient schedule
+  const { isPolling, lastUpdated, refetch } = usePolling(
+    async () => {
+      if (user?.id) {
+        await syncAppointments(user.id);
+      }
+    },
+    {
+      interval: 8000,
+      enabled: !!user?.id,
+    }
+  );
+
+  const totalSlotsCount = appointments && appointments.length > 0 ? appointments.length : 4;
 
   return (
     <div className="min-h-screen bg-white pb-28 w-full relative">
@@ -20,8 +41,14 @@ export const AppointmentScheduleScreen: React.FC = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-base font-extrabold font-heading text-[#111827]">Appointments Schedule</h1>
             <div className="flex items-center gap-2">
+              <LiveIndicator
+                lastUpdated={lastUpdated}
+                isPolling={isPolling}
+                onRefresh={refetch}
+                label="Live Schedule"
+              />
               <Badge variant="tint" size="sm">
-                4 Slots Booked
+                {totalSlotsCount} Slots Booked
               </Badge>
               <button
                 onClick={() => navigate('/notifications')}

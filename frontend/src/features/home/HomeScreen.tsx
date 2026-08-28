@@ -27,7 +27,9 @@ import { TopBar } from '../../components/ui/TopBar';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Avatar } from '../../components/ui/Avatar';
 import { AppLockModal } from '../../components/ui/AppLockModal';
+import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { requestNativeLocation } from '../../lib/locationService';
+import { usePolling } from '../../lib/usePolling';
 
 import { useCarePulseStore } from '../../lib/store';
 import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
@@ -36,9 +38,24 @@ import { hospitalService } from '../../services/hospitalService';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
+  const user = useCarePulseStore((s) => s.user);
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
+  const syncAppointments = useCarePulseStore((s) => s.syncAppointments);
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
   const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
+
+  // Automatic background polling for Patient appointments & queue updates
+  const { isPolling, lastUpdated, refetch } = usePolling(
+    async () => {
+      if (user?.id) {
+        await syncAppointments(user.id);
+      }
+    },
+    {
+      interval: 8000,
+      enabled: !!user?.id,
+    }
+  );
 
   const [isUnlockedThisSession, setIsUnlockedThisSession] = useState(() => {
     return sessionStorage.getItem('carepulse_app_unlocked') === 'true';
@@ -204,9 +221,18 @@ export const HomeScreen: React.FC = () => {
                   <Ticket className="w-4 h-4 text-[#14B8A6]" />
                   <span>APPOINTMENT TICKET</span>
                 </div>
-                <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-pill font-bold">
-                  {activeAppointment.ticketNumber}
-                </span>
+                <div className="flex items-center gap-2">
+                  <LiveIndicator
+                    lastUpdated={lastUpdated}
+                    isPolling={isPolling}
+                    variant="badge"
+                    label="Live"
+                    onRefresh={refetch}
+                  />
+                  <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-pill font-bold">
+                    {activeAppointment.ticketNumber}
+                  </span>
+                </div>
               </div>
 
               {/* Ticket Body */}
@@ -539,10 +565,13 @@ export const HomeScreen: React.FC = () => {
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                   OPD LIVE CONSULTATION TIMELINE
                 </span>
-                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Sync
-                </span>
+                <LiveIndicator
+                  lastUpdated={lastUpdated}
+                  isPolling={isPolling}
+                  variant="badge"
+                  label="Live Sync"
+                  onRefresh={refetch}
+                />
               </div>
 
               <div className="relative pl-1 space-y-2.5">

@@ -489,14 +489,14 @@ export interface StaffState {
   deleteDoctor: (id: string) => Promise<void>;
 
   // Doctor & Token Actions
-  fetchDoctors: () => Promise<void>;
+  fetchDoctors: (silent?: boolean) => Promise<void>;
   toggleDoctorAvailability: (doctorId: string) => Promise<void>;
   updateDoctorSlotCapacity: (doctorId: string, timeSlot: string, availableSeats: number) => Promise<void>;
   updateSlotCapacity: (doctorId: string, timeSlot: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
   addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => void;
   removeTimeSlot: (doctorId: string, slotId: string) => void;
   createDoctor: (doctorData: Partial<DoctorRecord>) => Promise<void>;
-  fetchTokens: (doctorId?: string) => Promise<void>;
+  fetchTokens: (doctorId?: string, silent?: boolean) => Promise<void>;
   callNextToken: (doctorId?: string) => Promise<void>;
   updateTokenStatus: (tokenId: string, status: TokenStatus) => Promise<void>;
   bookWalkInAppointment: (appointmentData: {
@@ -554,17 +554,17 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     }));
   },
 
-  fetchDoctors: async () => {
-    set({ isLoading: true });
+  fetchDoctors: async (silent?: boolean) => {
+    if (!silent) set({ isLoading: true });
     try {
       const doctors = await receptionistService.getDoctors();
       if (doctors && doctors.length > 0) {
         set({ doctors, isLoading: false });
       } else {
-        set({ isLoading: false });
+        if (!silent) set({ isLoading: false });
       }
     } catch {
-      set({ isLoading: false });
+      if (!silent) set({ isLoading: false });
     }
   },
 
@@ -678,17 +678,17 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     await receptionistService.createDoctor(newDoc);
   },
 
-  fetchTokens: async (doctorId?: string) => {
-    set({ isLoading: true });
+  fetchTokens: async (doctorId?: string, silent?: boolean) => {
+    if (!silent) set({ isLoading: true });
     try {
       const tokens = await receptionistService.getTokenQueue(doctorId);
       if (tokens && tokens.length > 0) {
         set({ tokens, isLoading: false });
       } else {
-        set({ isLoading: false });
+        if (!silent) set({ isLoading: false });
       }
     } catch {
-      set({ isLoading: false });
+      if (!silent) set({ isLoading: false });
     }
   },
 
