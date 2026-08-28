@@ -133,13 +133,12 @@ export const ReceptionistDashboard: React.FC = () => {
                   </div>
 
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      item.status === 'Completed'
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'Completed'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : item.status === 'In Consultation'
-                        ? 'bg-teal-50 text-[#0B5A54] border border-teal-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}
+                          ? 'bg-teal-50 text-[#0B5A54] border border-teal-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}
                   >
                     {item.status}
                   </span>
@@ -180,11 +179,10 @@ export const ReceptionistDashboard: React.FC = () => {
 
                   <button
                     onClick={() => setDoctorToToggle(doctor)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95 ${
-                      doctor.isAvailable
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95 ${doctor.isAvailable
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                         : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-                    }`}
+                      }`}
                   >
                     {doctor.isAvailable ? (
                       <>
@@ -250,11 +248,10 @@ export const ReceptionistDashboard: React.FC = () => {
               </button>
               <button
                 onClick={handleConfirmToggleAvailability}
-                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${
-                  doctorToToggle.isAvailable
+                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${doctorToToggle.isAvailable
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-[#0B5A54] hover:bg-[#084540]'
-                }`}
+                  }`}
               >
                 Confirm {doctorToToggle.isAvailable ? 'Unavailable' : 'Available'}
               </button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { clsx } from 'clsx';
+import { motion } from 'framer-motion';
 
 export interface CalendarPickerProps {
   selectedDate: string; // "YYYY-MM-DD"
@@ -54,23 +55,26 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
   };
 
   return (
-    <div className="bg-white border border-[#E4E7EC] rounded-2xl p-4 shadow-xs space-y-3">
+    <div className="bg-white rounded-3xl p-4 sm:p-5 space-y-4 select-none">
       {/* Month & Year Navigation Bar */}
-      <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54]">
-            <CalendarIcon className="w-4 h-4 text-[#0B5A54]" />
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shadow-2xs">
+            <CalendarIcon className="w-4.5 h-4.5 text-[#0B5A54]" />
           </div>
-          <span className="text-sm font-extrabold font-heading text-[#111827]">
-            {monthNames[currentMonth]} {currentYear}
-          </span>
+          <div>
+            <span className="text-sm font-black font-heading text-slate-900 block leading-tight">
+              {monthNames[currentMonth]} {currentYear}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">Select consultation date</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/50">
           <button
             type="button"
             onClick={handlePrevMonth}
-            className="p-1.5 rounded-full hover:bg-gray-100 text-[#0B5A54] transition-colors"
+            className="w-7 h-7 rounded-xl hover:bg-white text-slate-700 hover:text-[#0B5A54] transition-all flex items-center justify-center cursor-pointer shadow-2xs"
             title="Previous Month"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -78,7 +82,7 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
           <button
             type="button"
             onClick={handleNextMonth}
-            className="p-1.5 rounded-full hover:bg-gray-100 text-[#0B5A54] transition-colors"
+            className="w-7 h-7 rounded-xl hover:bg-white text-slate-700 hover:text-[#0B5A54] transition-all flex items-center justify-center cursor-pointer shadow-2xs"
             title="Next Month"
           >
             <ChevronRight className="w-4 h-4" />
@@ -89,17 +93,17 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
       {/* Weekday Labels Header */}
       <div className="grid grid-cols-7 text-center">
         {daysOfWeek.map((day) => (
-          <span key={day} className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider py-1">
+          <span key={day} className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider py-1">
             {day}
           </span>
         ))}
       </div>
 
       {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-1 text-center">
+      <div className="grid grid-cols-7 gap-1.5 text-center">
         {/* Empty padding slots before 1st of month */}
         {Array.from({ length: firstDayOfMonth }).map((_, idx) => (
-          <div key={`empty-${idx}`} className="h-9" />
+          <div key={`empty-${idx}`} className="h-9 sm:h-10" />
         ))}
 
         {/* Days of the Month */}
@@ -114,23 +118,24 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
           const isToday = cellDate.getTime() === today.getTime();
 
           return (
-            <button
+            <motion.button
               key={dateStr}
               type="button"
               disabled={isPast}
+              whileTap={{ scale: isPast ? 1 : 0.92 }}
               onClick={() => onSelectDate(dateStr)}
               className={clsx(
-                'h-9 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center relative active:scale-95 focus:outline-none',
-                isPast && 'text-gray-300 cursor-not-allowed pointer-events-none',
-                !isPast && !isSelected && 'text-slate-800 hover:bg-[#E3F3F1] hover:text-[#0B5A54]',
-                isSelected && 'bg-[#0B5A54] text-white shadow-md font-extrabold scale-105'
+                'h-9 sm:h-10 rounded-2xl text-xs font-bold transition-all flex flex-col items-center justify-center relative focus:outline-none cursor-pointer',
+                isPast && 'text-slate-300 cursor-not-allowed pointer-events-none',
+                !isPast && !isSelected && 'text-slate-700 hover:bg-[#E3F3F1] hover:text-[#0B5A54]',
+                isSelected && 'bg-gradient-to-br from-[#0B5A54] to-[#08423D] text-white shadow-md shadow-teal-900/20 font-black scale-105 ring-2 ring-[#14B8A6]/50'
               )}
             >
               <span>{dayNum}</span>
               {isToday && !isSelected && (
-                <span className="w-1 h-1 rounded-full bg-[#0B5A54] absolute bottom-1" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0B5A54] absolute bottom-1" />
               )}
-            </button>
+            </motion.button>
           );
         })}
       </div>

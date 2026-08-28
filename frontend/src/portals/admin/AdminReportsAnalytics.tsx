@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Download,
   FileSpreadsheet,
@@ -16,6 +16,8 @@ import {
   Filter,
   TrendingUp,
   MoreHorizontal,
+  Calendar,
+  X,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 
@@ -23,13 +25,50 @@ interface AdminReportsAnalyticsProps {
   onShowToast: (msg: string) => void;
 }
 
-type DateRangeOption = '7d' | '30d' | 'quarter' | 'year';
+type DateRangeOption = '7d' | '30d' | 'quarter' | 'custom';
 type SeriesOption = 'all' | 'completed' | 'cancelled';
+
+// KPI data keyed by date range
+const kpiData: Record<DateRangeOption, { consultations: string; consultChange: string; completionRate: string; completedSlots: string; waitTime: string; waitChange: string; cancellationRate: string; cancelSlots: string }> = {
+  '7d':     { consultations: '341',   consultChange: '+8.4%',  completionRate: '95.2%', completedSlots: '325 slots fulfilled',    waitTime: '11.8m', waitChange: '-1.2m', cancellationRate: '1.6%', cancelSlots: '6 slots reallocated' },
+  '30d':    { consultations: '1,482', consultChange: '+14.2%', completionRate: '94.6%', completedSlots: '1,402 slots fulfilled',  waitTime: '12.4m', waitChange: '-2.1m', cancellationRate: '2.2%', cancelSlots: '32 slots reallocated' },
+  'quarter':{ consultations: '4,210', consultChange: '+11.8%', completionRate: '93.9%', completedSlots: '3,953 slots fulfilled',  waitTime: '13.1m', waitChange: '-3.0m', cancellationRate: '2.8%', cancelSlots: '118 slots reallocated' },
+  'custom': { consultations: '—',     consultChange: 'Custom', completionRate: '—',     completedSlots: 'Custom date range',      waitTime: '—',     waitChange: 'Custom', cancellationRate: '—',    cancelSlots: 'Custom date range' },
+};
+
+// Chart trend data keyed by date range
+const trendDataByRange: Record<DateRangeOption, { all: { date: string; value: number; sub: string }[]; completed: { date: string; value: number; sub: string }[]; cancelled: { date: string; value: number; sub: string }[] }> = {
+  '7d': {
+    all:       [ { date: 'Mon', value: 38, sub: '36 Completed • 2 Cancelled' }, { date: 'Tue', value: 52, sub: '49 Completed • 3 Cancelled' }, { date: 'Wed', value: 61, sub: '58 Completed • 2 Cancelled' }, { date: 'Thu', value: 45, sub: '43 Completed • 2 Cancelled' }, { date: 'Fri', value: 58, sub: '55 Completed • 3 Cancelled' }, { date: 'Sat', value: 34, sub: '33 Completed • 1 Cancelled' }, { date: 'Sun', value: 21, sub: '20 Completed • 1 Cancelled' } ],
+    completed: [ { date: 'Mon', value: 36, sub: '94.7% Fulfillment' }, { date: 'Tue', value: 49, sub: '94.2% Fulfillment' }, { date: 'Wed', value: 58, sub: '95.1% Fulfillment' }, { date: 'Thu', value: 43, sub: '95.6% Fulfillment' }, { date: 'Fri', value: 55, sub: '94.8% Fulfillment' }, { date: 'Sat', value: 33, sub: '97.1% Fulfillment' }, { date: 'Sun', value: 20, sub: '95.2% Fulfillment' } ],
+    cancelled: [ { date: 'Mon', value: 2, sub: 'Reallocated' }, { date: 'Tue', value: 3, sub: 'Rescheduled' }, { date: 'Wed', value: 2, sub: 'Walk-in assigned' }, { date: 'Thu', value: 2, sub: 'Slot re-booked' }, { date: 'Fri', value: 3, sub: 'Patient conflict' }, { date: 'Sat', value: 1, sub: 'Slot re-booked' }, { date: 'Sun', value: 1, sub: 'Reallocated' } ],
+  },
+  '30d': {
+    all:       [ { date: 'Aug 01', value: 42, sub: '38 Completed • 2 Cancelled' }, { date: 'Aug 05', value: 58, sub: '54 Completed • 3 Cancelled' }, { date: 'Aug 10', value: 65, sub: '61 Completed • 2 Cancelled' }, { date: 'Aug 15', value: 84, sub: '80 Completed • 3 Cancelled' }, { date: 'Aug 20', value: 76, sub: '73 Completed • 1 Cancelled' }, { date: 'Aug 25', value: 92, sub: '88 Completed • 2 Cancelled' }, { date: 'Aug 30', value: 104, sub: '99 Completed • 3 Cancelled' } ],
+    completed: [ { date: 'Aug 01', value: 38, sub: '90.5% Fulfillment' }, { date: 'Aug 05', value: 54, sub: '93.1% Fulfillment' }, { date: 'Aug 10', value: 61, sub: '93.8% Fulfillment' }, { date: 'Aug 15', value: 80, sub: '95.2% Fulfillment' }, { date: 'Aug 20', value: 73, sub: '96.0% Fulfillment' }, { date: 'Aug 25', value: 88, sub: '95.6% Fulfillment' }, { date: 'Aug 30', value: 99, sub: '95.2% Fulfillment' } ],
+    cancelled: [ { date: 'Aug 01', value: 2, sub: 'Reallocated' }, { date: 'Aug 05', value: 3, sub: 'Rescheduled' }, { date: 'Aug 10', value: 2, sub: 'Walk-in assigned' }, { date: 'Aug 15', value: 3, sub: 'Doctor delay' }, { date: 'Aug 20', value: 1, sub: 'Patient conflict' }, { date: 'Aug 25', value: 2, sub: 'Slot re-booked' }, { date: 'Aug 30', value: 3, sub: 'Reallocated' } ],
+  },
+  'quarter': {
+    all:       [ { date: 'Jun W1', value: 280, sub: '268 Completed • 9 Cancelled' }, { date: 'Jun W3', value: 320, sub: '306 Completed • 11 Cancelled' }, { date: 'Jul W1', value: 370, sub: '352 Completed • 13 Cancelled' }, { date: 'Jul W3', value: 410, sub: '392 Completed • 14 Cancelled' }, { date: 'Aug W1', value: 440, sub: '420 Completed • 15 Cancelled' }, { date: 'Aug W3', value: 480, sub: '458 Completed • 16 Cancelled' }, { date: 'Sep W1', value: 520, sub: '498 Completed • 16 Cancelled' } ],
+    completed: [ { date: 'Jun W1', value: 268, sub: '95.7% Fulfillment' }, { date: 'Jun W3', value: 306, sub: '95.6% Fulfillment' }, { date: 'Jul W1', value: 352, sub: '95.1% Fulfillment' }, { date: 'Jul W3', value: 392, sub: '95.6% Fulfillment' }, { date: 'Aug W1', value: 420, sub: '95.5% Fulfillment' }, { date: 'Aug W3', value: 458, sub: '95.4% Fulfillment' }, { date: 'Sep W1', value: 498, sub: '95.8% Fulfillment' } ],
+    cancelled: [ { date: 'Jun W1', value: 9, sub: 'Reallocated' }, { date: 'Jun W3', value: 11, sub: 'Rescheduled' }, { date: 'Jul W1', value: 13, sub: 'Walk-in assigned' }, { date: 'Jul W3', value: 14, sub: 'Doctor delay' }, { date: 'Aug W1', value: 15, sub: 'Patient conflict' }, { date: 'Aug W3', value: 16, sub: 'Slot re-booked' }, { date: 'Sep W1', value: 16, sub: 'Reallocated' } ],
+  },
+  'custom': {
+    all:       [ { date: 'Day 1', value: 40, sub: '38 Completed • 2 Cancelled' }, { date: 'Day 2', value: 55, sub: '52 Completed • 3 Cancelled' }, { date: 'Day 3', value: 70, sub: '67 Completed • 2 Cancelled' }, { date: 'Day 4', value: 60, sub: '57 Completed • 2 Cancelled' }, { date: 'Day 5', value: 80, sub: '76 Completed • 3 Cancelled' } ],
+    completed: [ { date: 'Day 1', value: 38, sub: '95.0% Fulfillment' }, { date: 'Day 2', value: 52, sub: '94.5% Fulfillment' }, { date: 'Day 3', value: 67, sub: '95.7% Fulfillment' }, { date: 'Day 4', value: 57, sub: '95.0% Fulfillment' }, { date: 'Day 5', value: 76, sub: '95.0% Fulfillment' } ],
+    cancelled: [ { date: 'Day 1', value: 2, sub: 'Reallocated' }, { date: 'Day 2', value: 3, sub: 'Rescheduled' }, { date: 'Day 3', value: 2, sub: 'Walk-in assigned' }, { date: 'Day 4', value: 2, sub: 'Slot re-booked' }, { date: 'Day 5', value: 3, sub: 'Patient conflict' } ],
+  },
+};
 
 export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ onShowToast }) => {
   const departments = useStaffStore((s) => s.departments);
 
   const [dateRange, setDateRange] = useState<DateRangeOption>('30d');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const calendarRef = useRef<HTMLDivElement>(null);
+
   const [activeSeries, setActiveSeries] = useState<SeriesOption>('all');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('all');
   const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
@@ -37,36 +76,24 @@ export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ on
   const [doctorSearchQuery, setDoctorSearchQuery] = useState('');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // ── Hero Appointment Volume Dataset ──
-  const trendDataMap: Record<SeriesOption, { date: string; value: number; sub: string }[]> = {
-    all: [
-      { date: 'Aug 01', value: 42, sub: '38 Completed • 2 Cancelled' },
-      { date: 'Aug 05', value: 58, sub: '54 Completed • 3 Cancelled' },
-      { date: 'Aug 10', value: 65, sub: '61 Completed • 2 Cancelled' },
-      { date: 'Aug 15', value: 84, sub: '80 Completed • 3 Cancelled' },
-      { date: 'Aug 20', value: 76, sub: '73 Completed • 1 Cancelled' },
-      { date: 'Aug 25', value: 92, sub: '88 Completed • 2 Cancelled' },
-      { date: 'Aug 30', value: 104, sub: '99 Completed • 3 Cancelled' },
-    ],
-    completed: [
-      { date: 'Aug 01', value: 38, sub: '90.5% Fulfillment Rate' },
-      { date: 'Aug 05', value: 54, sub: '93.1% Fulfillment Rate' },
-      { date: 'Aug 10', value: 61, sub: '93.8% Fulfillment Rate' },
-      { date: 'Aug 15', value: 80, sub: '95.2% Fulfillment Rate' },
-      { date: 'Aug 20', value: 73, sub: '96.0% Fulfillment Rate' },
-      { date: 'Aug 25', value: 88, sub: '95.6% Fulfillment Rate' },
-      { date: 'Aug 30', value: 99, sub: '95.2% Fulfillment Rate' },
-    ],
-    cancelled: [
-      { date: 'Aug 01', value: 2, sub: 'Reallocated to queue' },
-      { date: 'Aug 05', value: 3, sub: 'Rescheduled early' },
-      { date: 'Aug 10', value: 2, sub: 'Emergency walk-in assigned' },
-      { date: 'Aug 15', value: 3, sub: 'Doctor emergency delay' },
-      { date: 'Aug 20', value: 1, sub: 'Patient conflict' },
-      { date: 'Aug 25', value: 2, sub: 'Slot re-booked' },
-      { date: 'Aug 30', value: 3, sub: 'Reallocated to queue' },
-    ],
+  const activeKpi = kpiData[dateRange];
+
+  const handleRangeClick = (range: DateRangeOption) => {
+    setDateRange(range);
+    if (range === 'custom') {
+      setIsCalendarOpen(true);
+    } else {
+      setIsCalendarOpen(false);
+    }
   };
+
+  const handleApplyCustom = () => {
+    setIsCalendarOpen(false);
+    onShowToast(`Custom range applied: ${customFrom || 'Start'} → ${customTo || 'End'}`);
+  };
+
+  // ── Hero Appointment Volume Dataset (driven by dateRange) ──
+  const trendDataMap = trendDataByRange[dateRange];
 
   const currentPoints = trendDataMap[activeSeries];
   const maxVal = Math.max(...currentPoints.map((p) => p.value));
@@ -281,19 +308,92 @@ export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ on
 
         <div className="flex items-center gap-3 flex-wrap">
           {/* Segmented Date Range Selector */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/60 shadow-2xs">
-            {(['7d', '30d', 'quarter', 'year'] as const).map((range) => (
+          <div className="relative flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/60 shadow-2xs">
+            {(['7d', '30d', 'quarter'] as const).map((range) => (
               <button
                 key={range}
-                onClick={() => setDateRange(range)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${dateRange === range
+                onClick={() => handleRangeClick(range)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  dateRange === range
                     ? 'bg-white text-[#0B5A54] shadow-xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                }`}
               >
-                {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : range === 'quarter' ? 'Quarter' : 'Year-to-Date'}
+                {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : 'Quarter'}
               </button>
             ))}
+
+            {/* Custom Date button */}
+            <button
+              onClick={() => handleRangeClick('custom')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                dateRange === 'custom'
+                  ? 'bg-white text-[#0B5A54] shadow-xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Calendar className="w-3 h-3" />
+              {dateRange === 'custom' && customFrom && customTo
+                ? `${customFrom} → ${customTo}`
+                : 'Custom Date'}
+            </button>
+
+            {/* Inline Calendar Picker Dropdown */}
+            {isCalendarOpen && (
+              <div
+                ref={calendarRef}
+                className="absolute top-full right-0 mt-2 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl p-5 w-72 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-black text-slate-900">Custom Date Range</p>
+                  <button
+                    onClick={() => { setIsCalendarOpen(false); if (!customFrom || !customTo) setDateRange('30d'); }}
+                    className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1">From</label>
+                    <input
+                      type="date"
+                      value={customFrom}
+                      max={customTo || undefined}
+                      onChange={(e) => setCustomFrom(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/30 bg-slate-50 cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1">To</label>
+                    <input
+                      type="date"
+                      value={customTo}
+                      min={customFrom || undefined}
+                      onChange={(e) => setCustomTo(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/30 bg-slate-50 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => { setCustomFrom(''); setCustomTo(''); }}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={handleApplyCustom}
+                    disabled={!customFrom || !customTo}
+                    className="flex-1 py-2 rounded-xl text-xs font-black text-white bg-[#0B5A54] hover:bg-[#084540] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    Apply Range
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Export Report Action */}
@@ -319,13 +419,13 @@ export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ on
             </div>
             <span className="inline-flex items-center gap-0.5 text-[11px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+14.2%</span>
+              <span>{activeKpi.consultChange}</span>
             </span>
           </div>
           <div className="mt-4">
             <p className="text-xs font-bold text-slate-400">Total Consultations</p>
             <h3 className="text-3xl font-black text-slate-900 font-heading tracking-tight mt-0.5">
-              1,482
+              {activeKpi.consultations}
             </h3>
             <p className="text-[11px] text-slate-400 font-medium mt-1">Across all 6 clinical departments</p>
           </div>
@@ -344,9 +444,9 @@ export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ on
           <div className="mt-4">
             <p className="text-xs font-bold text-slate-400">Completion Success Rate</p>
             <h3 className="text-3xl font-black text-slate-900 font-heading tracking-tight mt-0.5">
-              94.6%
+              {activeKpi.completionRate}
             </h3>
-            <p className="text-[11px] text-emerald-600 font-bold mt-1">1,402 slots fulfilled</p>
+            <p className="text-[11px] text-emerald-600 font-bold mt-1">{activeKpi.completedSlots}</p>
           </div>
         </div>
 
@@ -358,13 +458,13 @@ export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ on
             </div>
             <span className="inline-flex items-center gap-0.5 text-[11px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               <ArrowDownRight className="w-3.5 h-3.5" />
-              <span>-2.1m</span>
+              <span>{activeKpi.waitChange}</span>
             </span>
           </div>
           <div className="mt-4">
             <p className="text-xs font-bold text-slate-400">Avg. Patient Wait Time</p>
             <h3 className="text-3xl font-black text-slate-900 font-heading tracking-tight mt-0.5">
-              12.4m
+              {activeKpi.waitTime}
             </h3>
             <p className="text-[11px] text-slate-400 font-medium mt-1">Target benchmark: &lt;15 mins</p>
           </div>
@@ -383,9 +483,9 @@ export const AdminReportsAnalytics: React.FC<AdminReportsAnalyticsProps> = ({ on
           <div className="mt-4">
             <p className="text-xs font-bold text-slate-400">Cancellation Slot Rate</p>
             <h3 className="text-3xl font-black text-slate-900 font-heading tracking-tight mt-0.5">
-              2.2%
+              {activeKpi.cancellationRate}
             </h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-1">32 slots reallocated to queue</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">{activeKpi.cancelSlots}</p>
           </div>
         </div>
       </div>

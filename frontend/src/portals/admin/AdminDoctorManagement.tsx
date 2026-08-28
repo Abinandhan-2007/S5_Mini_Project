@@ -372,10 +372,9 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
                         {/* Department & Specialty */}
                         <td className="py-4 px-4">
-                          <span className="inline-block bg-teal-50 text-[#0B5A54] text-[10px] font-black px-2 py-0.5 rounded border border-teal-200 mb-0.5">
-                            {doc.department}
+                          <span className="inline-flex items-center gap-1 bg-gradient-to-r from-teal-600 to-[#0B5A54] text-white text-[11px] font-black px-3 py-1 rounded-full shadow-sm tracking-wide">
+                            {doc.specialty}
                           </span>
-                          <p className="text-[11px] text-slate-600 font-semibold">{doc.specialty}</p>
                         </td>
 
                         {/* Room / Cabin */}

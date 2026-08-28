@@ -132,7 +132,7 @@ export const PatientBookings: React.FC = () => {
               onClick={() => setIsBookModalOpen(true)}
               className="px-6 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
             >
-              <UserPlus className="w-4.5 h-4.5 stroke-[2.5]" />
+              <UserPlus className="w-5 h-5 stroke-[2.5]" />
               <span>Add Offline Patient (Walk-In)</span>
             </button>
           </div>
@@ -186,7 +186,7 @@ export const PatientBookings: React.FC = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-1">
           {/* Search Input Bar */}
           <div className="relative flex-1">
-            <Search className="w-4.5 h-4.5 text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+            <Search className="w-5 h-5 text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
             <input
               type="text"
               placeholder="Search patient name, phone number, or token # (#TOK-001)..."
