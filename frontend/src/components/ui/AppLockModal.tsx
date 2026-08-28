@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Fingerprint, ScanFace, KeyRound, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Lock, Fingerprint, ScanFace, KeyRound, CheckCircle2, AlertCircle, X, Smartphone } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { useCarePulseStore } from '../../lib/store';
-import { authenticateDeviceBiometrics } from '../../lib/biometricAuthService';
+import { authenticateDeviceBiometrics, authenticateDevicePasswordOrPin } from '../../lib/biometricAuthService';
 import { apiPost } from '../../lib/apiFetch';
 
 interface AppLockModalProps {
@@ -134,6 +135,37 @@ export const AppLockModal: React.FC<AppLockModalProps> = ({ onUnlock }) => {
       stopFaceCamera();
     };
   }, [triggerFingerprintScan]);
+
+  // Handle manual Phone Password / PIN or Account Password unlock
+  const handleUsePhonePasswordClick = async () => {
+    // 1. On native Android / iOS devices, trigger the phone's native lock screen PIN / Pattern / Password prompt
+    if (Capacitor.isNativePlatform()) {
+      setIsScanning(true);
+      setStatusMessage('Enter phone lock password or PIN...');
+      try {
+        const isPhoneUnlocked = await authenticateDevicePasswordOrPin({
+          title: 'CarePulse Phone Security',
+          subtitle: 'Enter Phone Lock PIN or Password',
+          description: 'Confirm your phone screen lock password or PIN to unlock CarePulse',
+        });
+
+        if (isPhoneUnlocked) {
+          setStatusMessage('Phone lock verified!');
+          setTimeout(() => {
+            onUnlock();
+          }, 300);
+          return;
+        }
+      } catch (err) {
+        console.warn('Native phone credential prompt notice:', err);
+      } finally {
+        setIsScanning(false);
+      }
+    }
+
+    // 2. Fallback to Account Password modal (for web preview or if native prompt is skipped)
+    setShowPasswordModal(true);
+  };
 
   // Handle manual Password unlock
   const handlePasswordUnlock = async (e: React.FormEvent) => {
@@ -344,15 +376,15 @@ export const AppLockModal: React.FC<AppLockModalProps> = ({ onUnlock }) => {
           </div>
         )}
 
-        {/* Fallback Action: Use Password / PIN */}
+        {/* Fallback Action: Use Phone Password / PIN */}
         <div className="pt-5 border-t border-white/[0.08] mt-4 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setShowPasswordModal(true)}
+            onClick={handleUsePhonePasswordClick}
             className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <KeyRound className="w-3.5 h-3.5" />
-            <span>Use Password</span>
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Use Phone PIN / Password</span>
           </button>
 
           <span className="text-[10px] font-mono text-slate-500 tracking-wider">Secured by Knox</span>

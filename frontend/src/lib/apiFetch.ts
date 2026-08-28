@@ -128,3 +128,16 @@ export function apiPost(path: string, body: unknown): Promise<Response> {
     body: JSON.stringify(body),
   });
 }
+
+/**
+ * Test whether the backend server is reachable and healthy (/api/health)
+ */
+export async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const res = await apiGet('/health');
+    return Boolean(res && res.ok);
+  } catch {
+    return false;
+  }
+}
+

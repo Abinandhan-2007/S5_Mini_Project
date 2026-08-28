@@ -2,8 +2,8 @@ import { NativeBiometric, BiometryType } from '@capgo/capacitor-native-biometric
 import { Capacitor } from '@capacitor/core';
 
 /**
- * CarePulse Native Mobile Hardware Biometric & Face Authentication Service
- * Supports Registered Fingerprint, Face ID / Face Recognition, and Device Lock PIN on Android / iOS.
+ * CarePulse Native Mobile Hardware Biometric & Phone Lock Security Service
+ * Supports Registered Fingerprint, Face ID / Face Recognition, and Phone Lock PIN / Password / Pattern on Android & iOS.
  */
 
 export interface BiometricCheckResult {
@@ -25,21 +25,21 @@ export function getBiometricLabel(type?: BiometryType): string {
     case BiometryType.FINGERPRINT:
       return 'Fingerprint';
     case BiometryType.MULTIPLE:
-      return 'Face & Fingerprint';
+      return 'Face, Fingerprint & Phone PIN';
     case BiometryType.DEVICE_CREDENTIAL:
-      return 'Device PIN / Pattern';
+      return 'Phone Password / PIN';
     default:
-      return 'Face / Fingerprint';
+      return 'Biometric / Phone PIN';
   }
 }
 
 /**
- * Checks if the device has enrolled biometrics (Face Recognition / Fingerprint) or device security PIN available.
+ * Checks if the device has enrolled biometrics (Face Recognition / Fingerprint) or device lock PIN / password available.
  */
 export async function checkDeviceBiometricSupport(): Promise<BiometricCheckResult> {
   if (!Capacitor.isNativePlatform()) {
     // Web / Browser environment fallback
-    return { isAvailable: true, biometryType: BiometryType.MULTIPLE, biometryLabel: 'Face / Fingerprint' };
+    return { isAvailable: true, biometryType: BiometryType.MULTIPLE, biometryLabel: 'Biometric / Phone PIN' };
   }
 
   try {
@@ -57,8 +57,8 @@ export async function checkDeviceBiometricSupport(): Promise<BiometricCheckResul
 }
 
 /**
- * Prompts native biometric (Face Recognition / Fingerprint) verification to register / enable biometrics.
- * Returns true ONLY if the face or fingerprint was verified by the hardware.
+ * Prompts native biometric (Face Recognition / Fingerprint / Phone Lock PIN) verification to register / enable app lock.
+ * Returns true ONLY if verified by the phone's native security hardware.
  */
 export async function registerDeviceBiometrics(_userEmail?: string): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) {
@@ -73,19 +73,21 @@ export async function registerDeviceBiometrics(_userEmail?: string): Promise<boo
       return false;
     }
 
-    // Strictly trigger Native Biometric Verification Prompt (Face & Fingerprint)
+    // Trigger Native Biometric Verification Prompt with Phone Password / PIN fallback
     await NativeBiometric.verifyIdentity({
-      reason: 'Scan your Face or touch Fingerprint sensor to enable 1-touch biometric login for CarePulse',
-      title: 'CarePulse Face & Fingerprint Security',
-      subtitle: 'Scan Face or touch Fingerprint sensor',
-      description: 'Confirm your biometric identity to enable instant 1-touch access',
+      reason: 'Scan your Face, touch Fingerprint, or enter Phone PIN/Password to enable 1-touch app lock for CarePulse',
+      title: 'CarePulse Security Verification',
+      subtitle: 'Scan Face, Fingerprint, or enter Phone PIN',
+      description: 'Confirm your biometric identity or phone lock password to enable instant secure access',
       negativeButtonText: 'Cancel',
       maxAttempts: 5,
+      useFallback: true,
       allowedBiometryTypes: [
         BiometryType.FACE_AUTHENTICATION,
         BiometryType.FACE_ID,
         BiometryType.FINGERPRINT,
         BiometryType.TOUCH_ID,
+        BiometryType.DEVICE_CREDENTIAL,
         BiometryType.MULTIPLE,
       ],
     } as any);
@@ -93,13 +95,13 @@ export async function registerDeviceBiometrics(_userEmail?: string): Promise<boo
     return true;
   } catch (err: any) {
     console.warn('Native biometric registration cancelled or rejected:', err);
-    return false; // Strictly return false when user fails or cancels scan
+    return false;
   }
 }
 
 /**
- * Prompts native biometric (Face Recognition / Fingerprint) scan to authenticate and unlock the app.
- * Returns true ONLY if the face or fingerprint was successfully verified.
+ * Prompts native biometric (Face / Fingerprint) scan or Phone Lock PIN/Password to authenticate and unlock the app.
+ * Returns true ONLY if successfully verified by the phone's security hardware.
  */
 export async function authenticateDeviceBiometrics(options?: {
   title?: string;
@@ -118,19 +120,21 @@ export async function authenticateDeviceBiometrics(options?: {
       return false;
     }
 
-    // Prompt native Face / Fingerprint unlock dialog
+    // Prompt native Face / Fingerprint unlock dialog with Phone Password / PIN fallback
     await NativeBiometric.verifyIdentity({
-      reason: 'Scan registered Face or Fingerprint to unlock CarePulse',
-      title: options?.title || 'CarePulse Biometric Unlock',
-      subtitle: options?.subtitle || 'Scan Face or touch Fingerprint sensor',
-      description: options?.description || 'Confirm your Face or Fingerprint to securely access your health records',
+      reason: 'Scan registered Face, touch Fingerprint, or enter Phone PIN/Password to unlock CarePulse',
+      title: options?.title || 'CarePulse Security Unlock',
+      subtitle: options?.subtitle || 'Scan Face, Fingerprint, or enter Phone PIN',
+      description: options?.description || 'Confirm your identity to securely access your CarePulse medical records',
       negativeButtonText: 'Use Password',
       maxAttempts: 5,
+      useFallback: true,
       allowedBiometryTypes: [
         BiometryType.FACE_AUTHENTICATION,
         BiometryType.FACE_ID,
         BiometryType.FINGERPRINT,
         BiometryType.TOUCH_ID,
+        BiometryType.DEVICE_CREDENTIAL,
         BiometryType.MULTIPLE,
       ],
     } as any);
@@ -142,3 +146,41 @@ export async function authenticateDeviceBiometrics(options?: {
   }
 }
 
+/**
+ * Prompts the phone's native Lock Screen Password / PIN / Pattern prompt directly.
+ * Returns true if the user enters the correct phone lock screen credential.
+ */
+export async function authenticateDevicePasswordOrPin(options?: {
+  title?: string;
+  subtitle?: string;
+  description?: string;
+}): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) {
+    return false;
+  }
+
+  try {
+    await NativeBiometric.verifyIdentity({
+      reason: 'Enter your Phone Lock Password, PIN, or Pattern to unlock CarePulse',
+      title: options?.title || 'CarePulse Phone Security',
+      subtitle: options?.subtitle || 'Enter Phone Lock Password / PIN',
+      description: options?.description || 'Confirm your phone screen lock credential to securely access CarePulse',
+      negativeButtonText: 'Cancel',
+      maxAttempts: 5,
+      useFallback: true,
+      allowedBiometryTypes: [
+        BiometryType.DEVICE_CREDENTIAL,
+        BiometryType.FINGERPRINT,
+        BiometryType.FACE_AUTHENTICATION,
+        BiometryType.TOUCH_ID,
+        BiometryType.FACE_ID,
+        BiometryType.MULTIPLE,
+      ],
+    } as any);
+
+    return true;
+  } catch (err: any) {
+    console.warn('Device PIN/Password verification cancelled or failed:', err);
+    return false;
+  }
+}

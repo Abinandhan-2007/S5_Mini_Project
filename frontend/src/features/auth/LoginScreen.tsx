@@ -164,10 +164,21 @@ export const LoginScreen: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
     setResetSuccessMessage(null);
-    setIsLoading(true);
 
     const inputVal = phone.trim();
     const passVal = password.trim();
+
+    if (!inputVal) {
+      setErrorMessage('Please enter your username, email address, or phone number.');
+      return;
+    }
+
+    if (!passVal) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
+
+    setIsLoading(true);
 
     const payload = {
       username: inputVal,
@@ -229,8 +240,8 @@ export const LoginScreen: React.FC = () => {
       });
 
       if (localMatched) {
-        if (localMatched.password && localMatched.password !== passVal) {
-          setErrorMessage('Incorrect password. Please verify your password.');
+        if (!localMatched.password || localMatched.password !== passVal) {
+          setErrorMessage('Incorrect password. Please verify your password and try again.');
           setIsLoading(false);
           return;
         }

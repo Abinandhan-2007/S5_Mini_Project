@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, RotateCw, WifiOff } from 'lucide-react';
+import { CheckCircle2, RotateCw, WifiOff, AlertTriangle } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
+import { checkBackendHealth } from '../../lib/apiFetch';
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 export type SplashState = 'loading' | 'success' | 'error';
+export type ErrorType = 'network' | 'server';
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const isOnlineInitially = typeof navigator !== 'undefined' ? navigator.onLine : true;
   const [splashState, setSplashState] = useState<SplashState>(() => (isOnlineInitially ? 'loading' : 'error'));
+  const [errorType, setErrorType] = useState<ErrorType>(() => (isOnlineInitially ? 'server' : 'network'));
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState(
     () => (isOnlineInitially ? 'Checking connection...' : 'Internet is turned off. Please turn on Wi-Fi or Mobile Data.')
@@ -21,84 +24,86 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   const isCancelledRef = useRef(false);
 
-  // Linear Loading Animation (0% to 100% strictly linear over 2200ms)
-  const startLinearLoading = useCallback(() => {
-    // 1. Immediately verify network status
+  // Real Health-Checked Loading Flow
+  const startLinearLoading = useCallback(async () => {
+    // 1. Check local network connectivity first
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setSplashState('error');
+      setErrorType('network');
       setStatusText('Internet is turned off. Please turn on Wi-Fi or Mobile Data.');
-      return () => {};
+      return;
     }
 
     isCancelledRef.current = false;
-    setProgress(0);
+    setProgress(15);
     setSplashState('loading');
-    setStatusText('Checking connection...');
+    setStatusText('Connecting to CarePulse server...');
 
-    // Trigger backend session check in parallel
-    checkAuthSession().catch(() => null);
+    // 2. Perform real backend health check against /api/health
+    const isHealthy = await checkBackendHealth();
 
-    const totalDuration = 2200; // 2.2 seconds total duration
-    const intervalTime = 16; // ~60fps smooth linear updates
-    const increment = 100 / (totalDuration / intervalTime);
+    if (isCancelledRef.current) return;
 
-    const timer = setInterval(() => {
-      if (isCancelledRef.current) {
-        clearInterval(timer);
-        return;
-      }
+    if (!isHealthy) {
+      // Backend is NOT running or unreachable -> BLOCK app opening
+      setSplashState('error');
+      setErrorType('server');
+      setStatusText('Cannot connect to CarePulse server. Please make sure the backend is running.');
+      return;
+    }
 
-      // Check if network dropped mid-loading
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        clearInterval(timer);
-        setSplashState('error');
-        setStatusText('Internet connection lost. Please reconnect to continue.');
-        return;
-      }
+    // 3. Backend verified online -> Smoothly sync session & finish loading
+    setProgress(45);
+    setStatusText('Connecting to server...');
 
-      setProgress((prev) => {
-        const next = prev + increment;
+    try {
+      await checkAuthSession();
+    } catch {
+      // Non-fatal if session sync fails
+    }
 
-        // Linear status text milestones
-        if (next >= 0 && next < 30) {
-          setStatusText('Checking connection...');
-        } else if (next >= 30 && next < 70) {
-          setStatusText('Connecting to server...');
-        } else if (next >= 70 && next < 95) {
-          setStatusText('Fetching your data...');
-        } else if (next >= 95 && next < 100) {
-          setStatusText('Almost ready...');
-        }
+    if (isCancelledRef.current) return;
 
-        if (next >= 100) {
-          clearInterval(timer);
-          setSplashState('success');
-          setStatusText('Ready');
-          return 100;
-        }
-        return next;
-      });
-    }, intervalTime);
+    setProgress(75);
+    setStatusText('Fetching your data...');
 
-    return () => clearInterval(timer);
+    const timer1 = setTimeout(() => {
+      if (isCancelledRef.current) return;
+      setProgress(95);
+      setStatusText('Almost ready...');
+
+      const timer2 = setTimeout(() => {
+        if (isCancelledRef.current) return;
+        setProgress(100);
+        setSplashState('success');
+        setStatusText('Ready');
+      }, 300);
+
+      return () => clearTimeout(timer2);
+    }, 400);
+
+    return () => clearTimeout(timer1);
   }, [checkAuthSession]);
 
   // Initial startup
   useEffect(() => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setSplashState('error');
+      setErrorType('network');
       setStatusText('Internet is turned off. Please turn on Wi-Fi or Mobile Data.');
       return;
     }
 
-    const cleanup = startLinearLoading();
+    const cleanupPromise = startLinearLoading();
     return () => {
       isCancelledRef.current = true;
-      if (cleanup) cleanup();
+      cleanupPromise.then((cleanup) => {
+        if (cleanup) cleanup();
+      });
     };
   }, [startLinearLoading]);
 
-  // Navigate to App once linear progress hits 100%
+  // Navigate to App ONLY once verified healthy and progress reaches 100%
   useEffect(() => {
     if (splashState === 'success') {
       const timer = setTimeout(() => {
@@ -119,6 +124,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     const handleOffline = () => {
       isCancelledRef.current = true;
       setSplashState('error');
+      setErrorType('network');
       setStatusText('Internet is turned off. Please turn on Wi-Fi or Mobile Data.');
     };
 
@@ -131,20 +137,31 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     };
   }, [startLinearLoading]);
 
-  // Manual Retry
-  const handleRetry = useCallback(() => {
+  // Manual Retry Handler
+  const handleRetry = useCallback(async () => {
     setIsRetrying(true);
     setStatusText('Testing connection...');
 
-    setTimeout(() => {
-      setIsRetrying(false);
-      if (typeof navigator !== 'undefined' && navigator.onLine) {
-        startLinearLoading();
-      } else {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setTimeout(() => {
+        setIsRetrying(false);
         setSplashState('error');
+        setErrorType('network');
         setStatusText('Internet is still off. Please connect to the internet and tap Retry.');
-      }
-    }, 600);
+      }, 400);
+      return;
+    }
+
+    const isHealthy = await checkBackendHealth();
+    setIsRetrying(false);
+
+    if (isHealthy) {
+      startLinearLoading();
+    } else {
+      setSplashState('error');
+      setErrorType('server');
+      setStatusText('Server is still unreachable. Please ensure the backend is started on port 5000 and tap Retry.');
+    }
   }, [startLinearLoading]);
 
   return (
@@ -164,13 +181,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{
             scale: splashState === 'error' ? 0.95 : 1,
-            opacity: splashState === 'error' ? 0.6 : 1
+            opacity: splashState === 'error' ? 0.7 : 1
           }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="relative mb-8"
         >
           {/* Outer Breathing Halo Ring */}
-          <div className={`absolute -inset-4 rounded-full blur-xl transition-all duration-700 ${splashState === 'error' ? 'bg-rose-500/15' : 'bg-teal-400/20 animate-pulse'
+          <div className={`absolute -inset-4 rounded-full blur-xl transition-all duration-700 ${splashState === 'error' ? 'bg-rose-500/20' : 'bg-teal-400/20 animate-pulse'
             }`} />
 
           {/* Glassmorphic ECG Monitor Disc */}
@@ -186,13 +203,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
               }}
             >
-              {/*
-                TRUE SEAMLESS CSS LOOP:
-                - One tile = 180px wide containing exactly 3 heartbeat cycles
-                - We render 2 tiles side by side = 360px total
-                - CSS keyframes scrolls translateX(0) → translateX(-180px) = exactly 1 tile width
-                - At -180px the visual is identical to 0px → zero visible jump, ever
-              */}
               <div
                 style={{
                   display: 'flex',
@@ -218,7 +228,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 >
                   <path d="M0 24 H18 C21 18 27 18 30 24 H36 L40 32 L46 4 L52 44 L56 24 H60 C64 16 72 16 76 24 H90 C94 18 100 18 103 24 H109 L113 32 L119 4 L125 44 L129 24 H133 C137 16 145 16 149 24 H162 C165 18 171 18 174 24 H180" />
                 </svg>
-                {/* Tile B (identical copy — when A scrolls out, B is already in place) */}
+                {/* Tile B */}
                 <svg
                   viewBox="0 0 180 48"
                   width="180"
@@ -266,7 +276,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 {/* Thin Sleek Linear Progress Track */}
                 <div className="w-full h-1.5 rounded-full bg-white/[0.08] backdrop-blur-sm overflow-hidden p-[1px] border border-white/[0.06]">
                   <div
-                    className={`h-full rounded-full transition-all duration-75 ease-linear shadow-[0_0_12px_rgba(45,212,191,0.8)] ${progress >= 90
+                    className={`h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_12px_rgba(45,212,191,0.8)] ${progress >= 90
                         ? 'bg-gradient-to-r from-teal-400 via-emerald-400 to-green-300'
                         : 'bg-gradient-to-r from-teal-400 via-teal-300 to-emerald-300'
                       }`}
@@ -303,10 +313,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               >
                 <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-400/30 backdrop-blur-md flex items-center gap-3 text-rose-200 text-xs">
                   <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0">
-                    <WifiOff className="w-4 h-4 text-rose-400" />
+                    {errorType === 'network' ? (
+                      <WifiOff className="w-4 h-4 text-rose-400" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-rose-400" />
+                    )}
                   </div>
                   <div className="text-left space-y-0.5">
-                    <h4 className="font-bold text-white text-xs">Internet is Off</h4>
+                    <h4 className="font-bold text-white text-xs">
+                      {errorType === 'network' ? 'Internet is Off' : 'Server Offline'}
+                    </h4>
                     <p className="text-[11px] text-rose-200/90 font-medium leading-tight">{statusText}</p>
                   </div>
                 </div>
@@ -318,7 +334,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   className="w-full py-2.5 px-4 rounded-full bg-teal-400 hover:bg-teal-300 text-[#041614] active:scale-95 text-xs font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(45,212,191,0.25)] transition-all cursor-pointer disabled:opacity-60"
                 >
                   <RotateCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
-                  <span>{isRetrying ? 'Checking Connection...' : 'Retry Connection'}</span>
+                  <span>{isRetrying ? 'Testing Connection...' : 'Retry Connection'}</span>
                 </button>
               </motion.div>
             )}
@@ -340,3 +356,5 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     </div>
   );
 };
+
+export default SplashScreen;

@@ -217,9 +217,9 @@ VALUES
     ('doc-4', 'Dr. Ethan Reynolds', 'Neurologist', 'Neurology', 'hosp-2', 'Metropolitan General Hospital', 16, 1200.0, '+91 98765 11010', 'ethan.r@carepulse.com', 'Cabin 301 - 3rd Floor', TRUE, 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80', 4.8, 160, 'Specialist in stroke recovery, cognitive disorders, migraines, and neuro-rehabilitation.')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO patients (id, full_name, email, phone, dob, gender, blood_group)
-VALUES ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Sarah Jenkins', 'sarah.j@carepulse.com', '+91 98765 43210', '1995-07-24', 'Female', 'O+')
-ON CONFLICT (email) DO NOTHING;
+INSERT INTO patients (id, full_name, email, phone, dob, gender, blood_group, password_hash, auth_provider)
+VALUES ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Sarah Jenkins', 'sarah.j@carepulse.com', '+91 98765 43210', '1995-07-24', 'Female', 'O+', '$2b$12$esrWvIV/CIXCyzBPt8quiuvqA5d5twZbBPDh.vZy97GpkTz.OFmQS', 'local')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash WHERE patients.password_hash IS NULL;
 
 INSERT INTO consultations (patient_id, doctor_id, doctor_name, date, soap_data)
 VALUES (
