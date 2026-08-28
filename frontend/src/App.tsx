@@ -10,16 +10,26 @@ import { Capacitor } from '@capacitor/core';
 // Helper to determine if current URL is a staff portal
 const isStaffLanding = (): boolean => {
   if (typeof window === 'undefined') return false;
-  // On web browsers (Vercel, Netlify, desktop browsers), bypass patient mobile splash
-  if (!Capacitor.isNativePlatform()) return true;
 
   const path = window.location.pathname.toLowerCase();
-  return (
+  const isStaffPath =
     path.startsWith('/receptionist') ||
     path.startsWith('/doctor') ||
     path.startsWith('/admin') ||
-    path.startsWith('/staff')
-  );
+    path.startsWith('/staff');
+
+  if (isStaffPath) return true;
+
+  if (!Capacitor.isNativePlatform()) {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+    const isMobileBrowser =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+      (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
+
+    if (!isMobileBrowser && path === '/') return true;
+  }
+
+  return false;
 };
 
 export const App: React.FC = () => {

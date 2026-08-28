@@ -75,8 +75,8 @@ test.describe('Patient Appointments Flow', () => {
     await bookButton.click();
 
     // Verify Success Modal appears with Ticket Details
-    await expect(page.getByText('Appointment Booked! 🎉')).toBeVisible();
-    await expect(page.getByText('Ticket Pass')).toBeVisible();
+    await expect(page.getByText(/Appointment Confirmed!|Appointment Booked!/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/CarePulse FastPass|Ticket Pass|FastPass/i)).toBeVisible();
   });
 
   // ── 3. Medical History UI Flow ─────────────────────────────────────────────

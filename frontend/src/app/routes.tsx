@@ -28,13 +28,31 @@ import { useCarePulseStore } from '../lib/store';
 
 import { Capacitor } from '@capacitor/core';
 
+import { ProtectedPatientLayout } from '../components/ui/ProtectedPatientLayout';
+
 // Detect if current environment should default to Staff Portal (Doctor, Admin, Receptionist)
-const isStaffDomain = (): boolean => {
+export const isStaffDomain = (): boolean => {
   if (typeof window === 'undefined') return false;
-  // On native mobile app (Capacitor Android / iOS), default to Patient App
+  // 1. On native mobile app (Capacitor Android / iOS), always Patient App
   if (Capacitor.isNativePlatform()) return false;
 
-  // On Web (Vercel, Netlify, desktop browsers, localhost web), default to Staff Portal
+  // 2. Explicit subdomain checks
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname.startsWith('staff.') || hostname.startsWith('admin.') || hostname.startsWith('doctor.')) {
+    return true;
+  }
+
+  // 3. Detect mobile browsers (Android, iPhone, iPad, small viewport mobile web)
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  const isMobileBrowser =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+    (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
+
+  if (isMobileBrowser) {
+    return false; // Default mobile web users to Patient App
+  }
+
+  // 4. On desktop web, default to Staff Portal
   return true;
 };
 
@@ -45,7 +63,7 @@ export const AppRoutes: React.FC = () => {
     <>
       <SystemNavigationHandler />
       <Routes>
-      {/* Root Route: Directly opens Staff Portal on Netlify deployment */}
+      {/* Root Route */}
       <Route
         path="/"
         element={
@@ -78,189 +96,129 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Authenticated Routes with Smooth Page Transitions */}
-      <Route
-        path="/home"
-        element={
-          isAuthenticated ? (
+      {/* Centralized Protected Authenticated Patient Routes (Guarded with Biometrics & PIN) */}
+      <Route element={<ProtectedPatientLayout />}>
+        <Route
+          path="/home"
+          element={
             <PageTransition>
               <HomeScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/health-ai"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/health-ai"
+          element={
             <PageTransition>
               <HealthAIChatScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/escalation"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/escalation"
+          element={
             <PageTransition>
               <EscalationNoticeScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/assessment-confirm"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/assessment-confirm"
+          element={
             <PageTransition>
               <AssessmentConfirmScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/schedule"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/schedule"
+          element={
             <PageTransition>
               <AppointmentScheduleScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/hospitals"
-
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/hospitals"
+          element={
             <PageTransition>
               <FindHospitalsScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/hospitals/:id"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/hospitals/:id"
+          element={
             <PageTransition>
               <HospitalDetailScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/appointments/book/:doctorId"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/appointments/book/:doctorId"
+          element={
             <PageTransition>
               <BookAppointmentScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/appointment-detail"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/appointment-detail"
+          element={
             <PageTransition>
               <AppointmentDetailScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/appointment-detail/:id"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/appointment-detail/:id"
+          element={
             <PageTransition>
               <AppointmentDetailScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-
-      <Route
-        path="/history"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/history"
+          element={
             <PageTransition>
               <MedicalHistoryScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/reminders"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/reminders"
+          element={
             <PageTransition>
               <RemindersScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/profile"
+          element={
             <PageTransition>
               <ProfileScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/notifications"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
             <PageTransition>
               <NotificationsScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/prescriptions"
-        element={
-          isAuthenticated ? (
+          }
+        />
+        <Route
+          path="/prescriptions"
+          element={
             <PageTransition>
               <PrescriptionsScreen />
             </PageTransition>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+          }
+        />
+      </Route>
 
       {/* Receptionist Portal Routes */}
       <Route

@@ -54,8 +54,8 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
     appointments.find((a) => a.id === selectedAppId) || activeAppointment || {
       id: 'app-1',
       ticketNumber: 'TK-482',
-      patientId: user?.id || 'usr-1',
-      patientName: user?.fullName || 'Sarah Jenkins',
+      patientId: user?.id || '',
+      patientName: user?.fullName || 'CarePulse Patient',
       doctorId: 'doc-2',
       doctorName: 'Dr. Elena Rostova',
       doctorPhoto: 'https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80',
