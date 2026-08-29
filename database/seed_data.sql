@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     doctor_name VARCHAR(255) NOT NULL,
     doctor_specialty VARCHAR(255) DEFAULT 'General Medicine',
     doctor_photo TEXT DEFAULT '',
+    hospital_id VARCHAR(100) REFERENCES hospitals(id),
     hospital_name VARCHAR(255) DEFAULT 'St. Jude Heart & Medical Center',
     date DATE NOT NULL,
     time_slot VARCHAR(50) NOT NULL,
@@ -144,12 +145,21 @@ CREATE TABLE IF NOT EXISTS appointments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_name, date, time_slot, type, status)
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS hospital_id VARCHAR(100) REFERENCES hospitals(id);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS hospital_name VARCHAR(255) DEFAULT 'St. Jude Heart & Medical Center';
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_specialty VARCHAR(255) DEFAULT 'General Medicine';
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_photo TEXT DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
+CREATE INDEX IF NOT EXISTS idx_appointments_hospital_id ON appointments (hospital_id);
+
+INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_id, hospital_name, date, time_slot, type, status)
 VALUES
-    ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', '#CP-4821', 'doc-1', 'Dr. Olivia Wilson', 'Cardiologist', 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80', 'St. Jude Heart & Medical Center', CURRENT_DATE + INTERVAL '1 day', '10:00 AM - 11:00 AM', 'In-Person', 'Upcoming'),
-    ('b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e', '#CP-4822', 'doc-1', 'Dr. Olivia Wilson', 'Cardiologist', 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80', 'St. Jude Heart & Medical Center', CURRENT_DATE, '10:00 AM - 11:00 AM', 'In-Person', 'Upcoming'),
-    ('c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f', '#CP-4823', 'doc-2', 'Dr. Marcus Vance', 'Dermatologist', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80', 'Cedar Skin & Wellness Clinic', CURRENT_DATE + INTERVAL '2 day', '11:00 AM - 12:00 PM', 'In-Person', 'Upcoming'),
-    ('d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a', '#CP-4824', 'doc-4', 'Dr. Ethan Reynolds', 'Neurologist', 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80', 'Metropolitan General Hospital', CURRENT_DATE + INTERVAL '3 day', '02:00 PM - 03:00 PM', 'In-Person', 'Upcoming')
+    ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', '#CP-4821', 'doc-1', 'Dr. Olivia Wilson', 'Cardiologist', 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80', 'hosp-1', 'St. Jude Heart & Medical Center', CURRENT_DATE + INTERVAL '1 day', '10:00 AM - 11:00 AM', 'In-Person', 'Upcoming'),
+    ('b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e', '#CP-4822', 'doc-1', 'Dr. Olivia Wilson', 'Cardiologist', 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80', 'hosp-1', 'St. Jude Heart & Medical Center', CURRENT_DATE, '10:00 AM - 11:00 AM', 'In-Person', 'Upcoming'),
+    ('c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f', '#CP-4823', 'doc-2', 'Dr. Marcus Vance', 'Dermatologist', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80', 'hosp-3', 'Cedar Skin & Wellness Clinic', CURRENT_DATE + INTERVAL '2 day', '11:00 AM - 12:00 PM', 'In-Person', 'Upcoming'),
+    ('d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a', '#CP-4824', 'doc-4', 'Dr. Ethan Reynolds', 'Neurologist', 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80', 'hosp-2', 'Metropolitan General Hospital', CURRENT_DATE + INTERVAL '3 day', '02:00 PM - 03:00 PM', 'In-Person', 'Upcoming')
 ON CONFLICT DO NOTHING;
 
 
@@ -159,18 +169,25 @@ CREATE TABLE IF NOT EXISTS consultations (
     patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
     doctor_id VARCHAR(100) NOT NULL,
     doctor_name VARCHAR(255) NOT NULL,
+    hospital_id VARCHAR(100) REFERENCES hospitals(id),
     date DATE NOT NULL,
     soap_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     soap_embedding vector(1536), 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO consultations (patient_id, doctor_id, doctor_name, date, soap_data)
+ALTER TABLE consultations ADD COLUMN IF NOT EXISTS hospital_id VARCHAR(100) REFERENCES hospitals(id);
+
+CREATE INDEX IF NOT EXISTS idx_consultations_soap_data ON consultations USING gin (soap_data);
+CREATE INDEX IF NOT EXISTS idx_consultations_hospital_id ON consultations (hospital_id);
+
+INSERT INTO consultations (patient_id, doctor_id, doctor_name, hospital_id, date, soap_data)
 VALUES
     (
         'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
         'doc-1',
         'Dr. Olivia Wilson',
+        'hosp-1',
         CURRENT_DATE - INTERVAL '14 days',
         '{
             "subjective": "Patient reports mild seasonal allergy symptoms including sneezing, nasal congestion, and mild itchy eyes.",
@@ -184,6 +201,7 @@ VALUES
         'b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e',
         'doc-2',
         'Dr. Marcus Vance',
+        'hosp-3',
         CURRENT_DATE - INTERVAL '7 days',
         '{
             "subjective": "Patient notes dry, itchy red patches on both inner elbows exacerbated by humid weather.",

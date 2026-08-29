@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     doctor_name VARCHAR(255) NOT NULL,
     doctor_specialty VARCHAR(255) DEFAULT 'General Medicine',
     doctor_photo TEXT DEFAULT '',
+    hospital_id VARCHAR(100) REFERENCES hospitals(id),
     hospital_name VARCHAR(255) DEFAULT 'CarePulse Central Hospital',
     date DATE NOT NULL,
     time_slot VARCHAR(50) NOT NULL,
@@ -104,9 +105,15 @@ CREATE TABLE IF NOT EXISTS appointments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS hospital_id VARCHAR(100) REFERENCES hospitals(id);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS hospital_name VARCHAR(255) DEFAULT 'CarePulse Central Hospital';
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_specialty VARCHAR(255) DEFAULT 'General Medicine';
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_photo TEXT DEFAULT '';
+
 -- Indexes for appointments
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
+CREATE INDEX IF NOT EXISTS idx_appointments_hospital_id ON appointments (hospital_id);
 
 -- Consultations Table with JSONB
 CREATE TABLE IF NOT EXISTS consultations (
@@ -114,6 +121,7 @@ CREATE TABLE IF NOT EXISTS consultations (
     patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
     doctor_id VARCHAR(100) NOT NULL,
     doctor_name VARCHAR(255) NOT NULL,
+    hospital_id VARCHAR(100) REFERENCES hospitals(id),
     date DATE NOT NULL,
     
     -- JSONB column containing structured SOAP clinical logs
@@ -122,8 +130,11 @@ CREATE TABLE IF NOT EXISTS consultations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE consultations ADD COLUMN IF NOT EXISTS hospital_id VARCHAR(100) REFERENCES hospitals(id);
+
 -- Indexes for optimal performance
 CREATE INDEX IF NOT EXISTS idx_consultations_soap_data ON consultations USING gin (soap_data);
+CREATE INDEX IF NOT EXISTS idx_consultations_hospital_id ON consultations (hospital_id);
 
 -- Staff Table
 CREATE TABLE IF NOT EXISTS staff (
@@ -221,11 +232,12 @@ INSERT INTO patients (id, full_name, email, phone, dob, gender, blood_group, pas
 VALUES ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Sarah Jenkins', 'sarah.j@carepulse.com', '+91 98765 43210', '1995-07-24', 'Female', 'O+', '$2b$12$esrWvIV/CIXCyzBPt8quiuvqA5d5twZbBPDh.vZy97GpkTz.OFmQS', 'local')
 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash WHERE patients.password_hash IS NULL;
 
-INSERT INTO consultations (patient_id, doctor_id, doctor_name, date, soap_data)
+INSERT INTO consultations (patient_id, doctor_id, doctor_name, hospital_id, date, soap_data)
 VALUES (
     'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
     'doc-1',
     'Dr. Olivia Wilson',
+    'hosp-1',
     '2026-07-24',
     '{
         "subjective": "Patient reports mild seasonal allergy symptoms including sneezing and congestion.",
@@ -240,7 +252,7 @@ VALUES (
     }'::json
 ) ON CONFLICT DO NOTHING;
 
-INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_name, date, time_slot, type, status)
+INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_id, hospital_name, date, time_slot, type, status)
 VALUES (
     'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
     '#CP-4821',
@@ -248,6 +260,7 @@ VALUES (
     'Dr. Olivia Wilson',
     'Cardiologist',
     'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+    'hosp-1',
     'St. Jude Heart & Medical Center',
     CURRENT_DATE + INTERVAL '1 day',
     '10:30 AM',

@@ -1,7 +1,7 @@
 # backend/routes/admin_routes.py
 import uuid
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Header, status
 from pydantic import BaseModel
 import database
 from database import read_json_db, write_json_db, get_pg_connection
@@ -9,6 +9,7 @@ try:
     from core.security import hash_password
 except ImportError:
     from backend.core.security import hash_password
+from routes.staff_auth import get_current_staff
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Portal"])
 
@@ -23,6 +24,7 @@ class ReceptionistCreate(BaseModel):
     shift: Optional[str] = "Morning"
     avatarUrl: Optional[str] = None
     assignedDoctorsCount: Optional[int] = 2
+    hospital_id: Optional[str] = None
 
 
 class ReceptionistUpdate(BaseModel):
@@ -34,6 +36,7 @@ class ReceptionistUpdate(BaseModel):
     isActive: Optional[bool] = None
     avatarUrl: Optional[str] = None
     assignedDoctorsCount: Optional[int] = None
+    hospital_id: Optional[str] = None
 
 
 class HospitalSettingsUpdate(BaseModel):
@@ -52,13 +55,26 @@ class HospitalSettingsUpdate(BaseModel):
 
 
 @router.get("/overview")
-def get_admin_overview():
-    """Retrieve hospital high-level executive KPIs."""
+def get_admin_overview(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Retrieve hospital high-level executive KPIs. Global if super-admin, or scoped to hospital_id."""
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    effective_hosp_id = hospital_id
+    if staff_ctx and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+
     db = read_json_db()
     doctors = db.get("doctors", [])
     patients = db.get("patients", [])
     receptionists = db.get("receptionists", [])
     staff = db.get("staff", [])
+
+    if effective_hosp_id:
+        doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
+        receptionists = [r for r in receptionists if r.get("hospital_id") == effective_hosp_id or r.get("hospitalId") == effective_hosp_id]
+        staff = [s for s in staff if s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id]
 
     total_doctors = len(doctors)
     total_receptionists = len(receptionists) if receptionists else len([s for s in staff if s.get("role") == "receptionist"])
@@ -80,10 +96,20 @@ def get_admin_overview():
 
 
 @router.get("/receptionists")
-def list_receptionists():
-    """List all receptionist staff accounts."""
+def list_receptionists(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """List receptionist staff accounts."""
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    effective_hosp_id = hospital_id
+    if staff_ctx and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+
     db = read_json_db()
     receptionists = db.get("receptionists", [])
+    if effective_hosp_id:
+        receptionists = [r for r in receptionists if r.get("hospital_id") == effective_hosp_id or r.get("hospitalId") == effective_hosp_id]
     return receptionists
 
 

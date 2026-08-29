@@ -1,9 +1,10 @@
 # backend/routes/receptionist_routes.py
 import uuid
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Header, status
 from schemas import (
     DoctorCreateRequest,
     DoctorAvailabilityUpdate,
@@ -12,6 +13,8 @@ from schemas import (
     WalkInAppointmentCreate
 )
 import database
+
+logger = logging.getLogger("carepulse.receptionist")
 
 router = APIRouter(prefix="/api/receptionist", tags=["Receptionist Portal"])
 
@@ -38,7 +41,9 @@ MOCK_TOKEN_QUEUE = [
         "status": "In Consultation",
         "arrivalTime": "09:45 AM",
         "issueTime": "09:50 AM",
-        "type": "In-Person"
+        "type": "In-Person",
+        "hospitalId": "hosp-1",
+        "hospital_id": "hosp-1"
     },
     {
         "id": "tok-2",
@@ -53,7 +58,9 @@ MOCK_TOKEN_QUEUE = [
         "status": "Waiting",
         "arrivalTime": "10:05 AM",
         "issueTime": "10:08 AM",
-        "type": "Walk-In"
+        "type": "Walk-In",
+        "hospitalId": "hosp-1",
+        "hospital_id": "hosp-1"
     },
     {
         "id": "tok-3",
@@ -68,7 +75,9 @@ MOCK_TOKEN_QUEUE = [
         "status": "Waiting",
         "arrivalTime": "10:15 AM",
         "issueTime": "10:20 AM",
-        "type": "In-Person"
+        "type": "In-Person",
+        "hospitalId": "hosp-3",
+        "hospital_id": "hosp-3"
     },
     {
         "id": "tok-4",
@@ -83,7 +92,9 @@ MOCK_TOKEN_QUEUE = [
         "status": "Waiting",
         "arrivalTime": "10:25 AM",
         "issueTime": "10:28 AM",
-        "type": "Walk-In"
+        "type": "Walk-In",
+        "hospitalId": "hosp-2",
+        "hospital_id": "hosp-2"
     }
 ]
 
@@ -109,12 +120,18 @@ def format_receptionist_doctor(d: dict) -> dict:
     room = d.get("room_number") or d.get("roomNumber") or f"Cabin {d.get('id', '101')}"
     fee = float(d.get("consultation_fee") or d.get("consultationFee") or 500.0)
     exp = int(d.get("experience_years") or d.get("experienceYears") or 5)
+    hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-1"
+    hosp_name = d.get("hospital_name") or d.get("hospitalName") or "St. Jude Heart & Medical Center"
 
     return {
         "id": str(d["id"]),
         "name": d["name"],
         "specialty": d["specialty"],
         "department": d.get("department", "General Medicine"),
+        "hospitalId": hosp_id,
+        "hospital_id": hosp_id,
+        "hospitalName": hosp_name,
+        "hospital_name": hosp_name,
         "experienceYears": exp,
         "consultationFee": fee,
         "photo": photo,
@@ -127,35 +144,74 @@ def format_receptionist_doctor(d: dict) -> dict:
     }
 
 @router.get("/doctors")
-def get_doctors():
-    """List doctor records with live availability status and time slot capacity from database."""
+def get_doctors(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    List doctor records scoped to the receptionist's or doctor's own hospital.
+    Fails safely with empty results if a staff member has hospital_id=NULL.
+    """
+    effective_hosp_id = hospital_id
+
+    # Check staff auth header
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx:
+            role = staff_ctx.get("role")
+            if role in ["receptionist", "doctor"]:
+                staff_hosp = staff_ctx.get("hospital_id")
+                if not staff_hosp:
+                    logger.warning(f"Data integrity issue: Staff account {staff_ctx.get('staff_id')} ({role}) has hospital_id=NULL. Failing safely with empty result set.")
+                    return {"success": True, "doctors": []}
+                effective_hosp_id = staff_hosp
+            elif role == "admin" and staff_ctx.get("hospital_id"):
+                effective_hosp_id = staff_ctx.get("hospital_id")
+
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM doctors ORDER BY id")
+                    if effective_hosp_id:
+                        cur.execute("SELECT * FROM doctors WHERE hospital_id = %s ORDER BY id", (effective_hosp_id,))
+                    else:
+                        cur.execute("SELECT * FROM doctors ORDER BY id")
                     rows = cur.fetchall()
-                    if rows and len(rows) > 0:
+                    if rows is not None:
                         return {"success": True, "doctors": [format_receptionist_doctor(dict(r)) for r in rows]}
         except Exception as e:
-            print("DB get doctors note:", e)
+            logger.warning(f"DB get doctors note: {e}")
 
     db = database.read_json_db()
     doctors = db.get("doctors", [])
+    if effective_hosp_id:
+        doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
     return {"success": True, "doctors": [format_receptionist_doctor(d) for d in doctors]}
 
 @router.post("/doctors")
-def create_doctor(payload: DoctorCreateRequest):
+def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = Header(None)):
     """Create a new doctor record in database."""
     new_id = f"doc-{uuid.uuid4().hex[:6]}"
     slots = payload.slotCapacities if payload.slotCapacities else [dict(s) for s in DEFAULT_SLOTS]
     slots_json = [s if isinstance(s, dict) else s.dict() for s in slots]
+
+    # Derive hospital_id from staff context if available
+    hosp_id = "hosp-1"
+    hosp_name = "St. Jude Heart & Medical Center"
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("hospital_id"):
+            hosp_id = staff_ctx["hospital_id"]
 
     doctor_obj = {
         "id": new_id,
         "name": payload.name,
         "specialty": payload.specialty,
         "department": payload.department,
+        "hospital_id": hosp_id,
+        "hospital_name": hosp_name,
         "experienceYears": payload.experienceYears,
         "consultationFee": payload.consultationFee,
         "photo": payload.photo or "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
@@ -172,13 +228,15 @@ def create_doctor(payload: DoctorCreateRequest):
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO doctors (id, name, specialty, department, experience_years, consultation_fee, photo, phone, email, room_number, is_available, available_days, slot_capacities)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO doctors (id, name, specialty, department, hospital_id, hospital_name, experience_years, consultation_fee, photo, phone, email, room_number, is_available, available_days, slot_capacities)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         new_id,
                         payload.name,
                         payload.specialty,
                         payload.department,
+                        hosp_id,
+                        hosp_name,
                         payload.experienceYears,
                         payload.consultationFee,
                         doctor_obj["photo"],
@@ -192,7 +250,7 @@ def create_doctor(payload: DoctorCreateRequest):
                 conn.commit()
                 return {"success": True, "doctor": doctor_obj}
         except Exception as e:
-            print("DB insert doctor note:", e)
+            logger.warning(f"DB insert doctor note: {e}")
 
     db = database.read_json_db()
     if "doctors" not in db:
@@ -303,8 +361,32 @@ def update_slot_capacity(doctor_id: str, payload: SlotCapacityUpdate):
 
     raise HTTPException(status_code=404, detail="Doctor not found")
 
-def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
-    """Fetch live appointments from PostgreSQL or JSON DB and format them as TokenQueueItem records."""
+def fetch_all_tokens_from_db(
+    doctor_id: Optional[str] = None,
+    hospital_id: Optional[str] = None,
+    staff_ctx: Optional[dict] = None
+) -> List[dict]:
+    """
+    Fetch live appointments from PostgreSQL or JSON DB and format them as TokenQueueItem records.
+    Strictly filters results to the receptionist's/doctor's own hospital.
+    Fails safely returning [] if staff has hospital_id=NULL.
+    """
+    effective_hosp_id = hospital_id
+
+    if staff_ctx:
+        role = staff_ctx.get("role")
+        if role in ["receptionist", "doctor"]:
+            staff_hosp = staff_ctx.get("hospital_id")
+            if not staff_hosp:
+                logger.warning(
+                    f"Data integrity issue: Staff account {staff_ctx.get('staff_id')} ({role}) "
+                    f"has hospital_id=NULL. Failing safely with empty result set."
+                )
+                return []
+            effective_hosp_id = staff_hosp
+        elif role == "admin" and staff_ctx.get("hospital_id"):
+            effective_hosp_id = staff_ctx.get("hospital_id")
+
     tokens = []
     seen_ids = set()
 
@@ -317,16 +399,22 @@ def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
                                p.full_name as patient_full_name, 
                                p.phone as patient_phone_db, 
                                p.blood_group as patient_blood_group,
-                               p.dob as patient_dob
+                               p.dob as patient_dob,
+                               d.hospital_id as doc_hospital_id
                         FROM appointments a
                         LEFT JOIN patients p ON a.patient_id = p.id
+                        LEFT JOIN doctors d ON a.doctor_id = d.id
+                        WHERE 1=1
                     """
                     params = []
+                    if effective_hosp_id:
+                        query += " AND (a.hospital_id = %s OR (a.hospital_id IS NULL AND d.hospital_id = %s))"
+                        params.extend([effective_hosp_id, effective_hosp_id])
                     if doctor_id:
-                        query += " WHERE a.doctor_id = %s"
+                        query += " AND a.doctor_id = %s"
                         params.append(doctor_id)
                     query += " ORDER BY a.created_at ASC"
-                    
+
                     cur.execute(query, tuple(params))
                     rows = cur.fetchall()
 
@@ -359,6 +447,8 @@ def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
                             "doctorId": str(app_dict.get("doctor_id") or "doc-1"),
                             "doctorName": app_dict.get("doctor_name") or "Dr. Olivia Wilson",
                             "doctorSpecialty": app_dict.get("doctor_specialty") or "Cardiologist",
+                            "hospitalId": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
+                            "hospital_id": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
                             "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
                             "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
                             "status": token_status,
@@ -371,20 +461,25 @@ def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
                             "healthIssue": "General Consultation"
                         })
         except Exception as e:
-            print("DB fetch tokens note:", e)
+            logger.warning(f"DB fetch tokens note: {e}")
 
-    if not tokens:
+    if not tokens and not (staff_ctx and staff_ctx.get("role") in ["receptionist", "doctor"] and not staff_ctx.get("hospital_id")):
         # Read from JSON DB
         db = database.read_json_db()
         raw_apps = db.get("appointments", [])
         raw_patients = {str(p.get("id")): p for p in db.get("patients", [])}
+        doc_hosp_map = {d.get("id"): (d.get("hospital_id") or d.get("hospitalId")) for d in db.get("doctors", [])}
 
         idx = 1
         for app_dict in reversed(raw_apps): # chronological order
             app_id = str(app_dict.get("id"))
             if app_id in seen_ids:
                 continue
-            
+
+            app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_hosp_map.get(app_dict.get("doctor_id"))
+            if effective_hosp_id and app_hosp != effective_hosp_id:
+                continue
+
             if doctor_id and app_dict.get("doctor_id") != doctor_id:
                 continue
 
@@ -406,6 +501,8 @@ def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
                 "doctorId": str(app_dict.get("doctor_id") or "doc-1"),
                 "doctorName": app_dict.get("doctor_name") or "Dr. Olivia Wilson",
                 "doctorSpecialty": app_dict.get("doctor_specialty") or "Cardiologist",
+                "hospitalId": app_hosp or "hosp-1",
+                "hospital_id": app_hosp or "hosp-1",
                 "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
                 "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
                 "status": token_status,
@@ -419,24 +516,42 @@ def fetch_all_tokens_from_db(doctor_id: Optional[str] = None) -> List[dict]:
             })
             idx += 1
 
-    # Fallback to MOCK_TOKEN_QUEUE if both DB and JSON are empty
-    if not tokens:
+    # Fallback to MOCK_TOKEN_QUEUE if both DB and JSON are empty (only for unrestricted or matching hospital)
+    if not tokens and not (staff_ctx and staff_ctx.get("role") in ["receptionist", "doctor"] and not staff_ctx.get("hospital_id")):
         for t in MOCK_TOKEN_QUEUE:
-            if not doctor_id or t.get("doctorId") == doctor_id:
-                tokens.append(dict(t))
+            if doctor_id and t.get("doctorId") != doctor_id:
+                continue
+            if effective_hosp_id and t.get("hospital_id") != effective_hosp_id:
+                continue
+            tokens.append(dict(t))
 
     return tokens
 
 @router.get("/tokens")
-def get_token_queue(doctor_id: Optional[str] = None):
-    """Get active live queue tokens from database including patient bookings."""
-    tokens = fetch_all_tokens_from_db(doctor_id)
+def get_token_queue(
+    doctor_id: Optional[str] = None,
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Get active live queue tokens from database scoped to the requesting staff member's hospital.
+    Fails safely returning [] if staff has hospital_id=NULL.
+    """
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    tokens = fetch_all_tokens_from_db(doctor_id=doctor_id, hospital_id=hospital_id, staff_ctx=staff_ctx)
     return {"success": True, "tokens": tokens}
 
 @router.post("/tokens/call-next")
-def call_next_token(doctor_id: Optional[str] = None):
-    """Advance queue token state from Waiting -> In Consultation."""
-    tokens = fetch_all_tokens_from_db(doctor_id)
+def call_next_token(
+    doctor_id: Optional[str] = None,
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Advance queue token state from Waiting -> In Consultation within the staff member's hospital."""
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    tokens = fetch_all_tokens_from_db(doctor_id=doctor_id, hospital_id=hospital_id, staff_ctx=staff_ctx)
     target_token = None
 
     for tok in tokens:
@@ -464,7 +579,7 @@ def update_token_status(token_id: str, payload: TokenStatusUpdate):
                     cur.execute("UPDATE appointments SET status = %s WHERE id::text = %s OR ticket_number = %s", (payload.status, token_id, token_id))
                 conn.commit()
         except Exception as e:
-            print("DB update status note:", e)
+            logger.warning(f"DB update status note: {e}")
 
     # 2. Update in JSON DB
     try:
@@ -475,7 +590,7 @@ def update_token_status(token_id: str, payload: TokenStatusUpdate):
                 database.write_json_db(db)
                 break
     except Exception as e:
-        print("JSON update status note:", e)
+        logger.warning(f"JSON update status note: {e}")
 
     # 3. Update in memory mock if present
     for tok in MOCK_TOKEN_QUEUE:
@@ -485,12 +600,68 @@ def update_token_status(token_id: str, payload: TokenStatusUpdate):
     return {"success": True, "tokenId": token_id, "status": payload.status}
 
 @router.post("/appointments")
-def create_walkin_appointment(payload: WalkInAppointmentCreate):
-    """Book a walk-in appointment and persist to appointments database table."""
+def create_walkin_appointment(
+    payload: WalkInAppointmentCreate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Book a walk-in appointment and persist to appointments database table.
+    Hospital ID is ALWAYS server-side derived from the authenticated staff member / treating doctor,
+    never trusted from client payload.
+    """
     ticket_num = f"#CP-{uuid.uuid4().hex[:4].upper()}"
     now_str = datetime.now().strftime("%I:%M %p")
     today_str = payload.date if payload.date else datetime.now().strftime("%Y-%m-%d")
-    app_id = f"app-{uuid.uuid4().hex[:8]}"
+    app_id = str(uuid.uuid4())
+
+    # Server-side authoritative hospital derivation (never trust client payload)
+    derived_hospital_id = None
+    derived_hospital_name = "CarePulse Central Hospital"
+
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("hospital_id"):
+            derived_hospital_id = staff_ctx["hospital_id"]
+
+    # If not from staff context, look up treating doctor's hospital
+    if not derived_hospital_id:
+        if database.use_pg:
+            try:
+                with database.get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT hospital_id, hospital_name FROM doctors WHERE id = %s LIMIT 1", (payload.doctorId,))
+                        d_row = cur.fetchone()
+                        if d_row:
+                            derived_hospital_id = d_row.get("hospital_id")
+                            if d_row.get("hospital_name"):
+                                derived_hospital_name = d_row["hospital_name"]
+            except Exception as e:
+                logger.warning(f"DB doctor lookup note: {e}")
+
+    if not derived_hospital_id:
+        db = database.read_json_db()
+        for doc in db.get("doctors", []):
+            if doc.get("id") == payload.doctorId:
+                derived_hospital_id = doc.get("hospital_id") or doc.get("hospitalId")
+                if doc.get("hospital_name") or doc.get("hospitalName"):
+                    derived_hospital_name = doc.get("hospital_name") or doc.get("hospitalName")
+                break
+
+    if not derived_hospital_id:
+        derived_hospital_id = "hosp-1"
+
+    # Query hospital_name if needed
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT name FROM hospitals WHERE id = %s LIMIT 1", (derived_hospital_id,))
+                    h_row = cur.fetchone()
+                    if h_row and h_row.get("name"):
+                        derived_hospital_name = h_row["name"]
+        except Exception as e:
+            pass
 
     token_item = {
         "id": app_id,
@@ -500,6 +671,10 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
         "doctorId": payload.doctorId,
         "doctorName": payload.doctorName,
         "doctorSpecialty": payload.doctorSpecialty or "General Physician",
+        "hospitalId": derived_hospital_id,
+        "hospital_id": derived_hospital_id,
+        "hospitalName": derived_hospital_name,
+        "hospital_name": derived_hospital_name,
         "ticketNumber": ticket_num,
         "timeSlot": payload.timeSlot,
         "status": "Waiting",
@@ -513,7 +688,7 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
         "healthIssue": payload.healthIssue or "General Checkup"
     }
 
-    # Persist walk-in appointment to Database
+    # Persist walk-in appointment to PostgreSQL
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
@@ -532,8 +707,8 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
                         )
 
                     cur.execute("""
-                        INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, hospital_name, date, time_slot, type, status)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
+                        INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, hospital_id, hospital_name, date, time_slot, type, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
                     """, (
                         app_id,
                         pat_id,
@@ -541,14 +716,15 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
                         payload.doctorId,
                         payload.doctorName,
                         payload.doctorSpecialty or "General Physician",
-                        "CarePulse Central Hospital",
+                        derived_hospital_id,
+                        derived_hospital_name,
                         today_str,
                         payload.timeSlot,
                         payload.type or "Walk-In"
                     ))
                 conn.commit()
         except Exception as e:
-            print("DB walkin appointment insert note:", e)
+            logger.warning(f"DB walkin appointment insert note: {e}")
 
     # Also persist to JSON DB
     try:
@@ -561,7 +737,9 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
             "doctor_id": payload.doctorId,
             "doctor_name": payload.doctorName,
             "doctor_specialty": payload.doctorSpecialty or "General Physician",
-            "hospital_name": "CarePulse Central Hospital",
+            "hospital_id": derived_hospital_id,
+            "hospitalId": derived_hospital_id,
+            "hospital_name": derived_hospital_name,
             "date": today_str,
             "time_slot": payload.timeSlot,
             "type": payload.type or "Walk-In",
@@ -569,7 +747,7 @@ def create_walkin_appointment(payload: WalkInAppointmentCreate):
         })
         database.write_json_db(db)
     except Exception as e:
-        print("JSON walkin insert note:", e)
+        logger.warning(f"JSON walkin insert note: {e}")
 
     return {
         "success": True,

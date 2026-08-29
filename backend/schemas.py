@@ -88,7 +88,10 @@ class AppointmentCreate(BaseModel):
     doctorName: str
     doctorSpecialty: Optional[str] = "General Physician"
     doctorPhoto: Optional[str] = ""
+    hospitalId: Optional[str] = None
+    hospital_id: Optional[str] = None
     hospitalName: Optional[str] = "CarePulse Hospital"
+    hospital_name: Optional[str] = None
     date: str
     timeSlot: str
     type: Optional[str] = "In-Person"
@@ -103,6 +106,8 @@ class AppointmentResponse(BaseModel):
     doctorName: str
     doctorSpecialty: str
     doctorPhoto: str
+    hospitalId: Optional[str] = None
+    hospital_id: Optional[str] = None
     hospitalName: str
     date: str
     timeSlot: str
@@ -126,6 +131,8 @@ class ConsultationCreate(BaseModel):
     patientId: Optional[str] = None
     doctorId: str
     doctorName: str
+    hospitalId: Optional[str] = None
+    hospital_id: Optional[str] = None
     date: Optional[str] = None
     soapData: Dict[str, Any]
     soapEmbedding: Optional[List[float]] = None
@@ -134,6 +141,9 @@ class ConsultationResponse(BaseModel):
     id: str
     doctor_id: Optional[str] = None
     doctor_name: str
+    hospital_id: Optional[str] = None
+    hospitalId: Optional[str] = None
+    hospital_name: Optional[str] = None
     date: str
     soap_data: Dict[str, Any]
     patient_name: Optional[str] = None
@@ -189,9 +199,17 @@ class WalkInAppointmentCreate(BaseModel):
     doctorId: str
     doctorName: str
     doctorSpecialty: Optional[str] = "General Physician"
+    hospitalId: Optional[str] = None
+    hospital_id: Optional[str] = None
+    hospitalName: Optional[str] = None
+    hospital_name: Optional[str] = None
     date: str
     timeSlot: str
     type: Optional[str] = "Walk-In"
+    age: Optional[int] = 30
+    bloodGroup: Optional[str] = "O+"
+    address: Optional[str] = ""
+    healthIssue: Optional[str] = "General Checkup"
 
 class HospitalResponse(BaseModel):
     id: str

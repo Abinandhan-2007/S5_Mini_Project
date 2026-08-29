@@ -53,6 +53,8 @@ export interface Appointment {
   doctorName: string;
   doctorSpecialty: string;
   doctorPhoto: string;
+  hospitalId?: string;
+  hospital_id?: string;
   hospitalName: string;
   date: string; // ISO date string e.g. "2026-08-10"
   timeSlot: string; // e.g. "10:30 AM"
@@ -82,8 +84,11 @@ export interface MedicalHistoryItem {
   id: string;
   date: string;
   time: string;
+  doctorId?: string;
   doctorName: string;
   specialty: string;
+  hospitalId?: string;
+  hospital_id?: string;
   hospitalName: string;
   diagnosis: string;
   prescriptionDetails: string;

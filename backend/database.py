@@ -99,10 +99,17 @@ def init_db():
                 if INIT_SQL_PATH.exists():
                     try:
                         sql = INIT_SQL_PATH.read_text(encoding="utf-8")
-                        cur.execute(sql)
+                        # Execute statements individually so a single non-critical warning doesn't abort other migrations
+                        statements = [s.strip() for s in sql.split(";") if s.strip()]
+                        for stmt in statements:
+                            try:
+                                cur.execute(stmt)
+                                conn.commit()
+                            except Exception as stmt_err:
+                                conn.rollback()
+                                logger.debug(f"Statement note in init.sql: {stmt_err}")
                     except Exception as sql_err:
                         logger.warning(f"Note on init.sql migration: {sql_err}")
-                conn.commit()
         use_pg = True
         logger.info("✅ PostgreSQL Database connected successfully")
     except Exception as e:

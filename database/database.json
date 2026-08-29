@@ -69,10 +69,76 @@
           "temperature": 98.4
         }
       },
-      "soap_embedding": []
+      "soap_embedding": [],
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1"
     }
   ],
   "appointments": [
+    {
+      "id": "6c7ee91d-ba47-4a20-95ec-8c384aae6977",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-17C9",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
+    {
+      "id": "deb766b3-d7cf-4e5e-bf66-c7d44e83ce8c",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-1975",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-f02972e2",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-B656",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-e52950c3",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-3B41",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
     {
       "id": "app-3b0f9537fa",
       "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
@@ -86,7 +152,9 @@
       "date": "2026-08-27",
       "time_slot": "02:00 PM",
       "type": "In-Person",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1"
     },
     {
       "id": "app-d1e35bbfd7",
@@ -101,7 +169,9 @@
       "date": "2026-08-20",
       "time_slot": "05:00 AM",
       "type": "In-Person",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "hospital_id": "hosp-3",
+      "hospitalId": "hosp-3"
     },
     {
       "id": "app-333c4bfb09",
@@ -116,7 +186,9 @@
       "date": "2026-08-15",
       "time_slot": "11:00 AM",
       "type": "In-Person",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1"
     },
     {
       "id": "app-7d879ceb56",
@@ -131,7 +203,9 @@
       "date": "2026-08-15",
       "time_slot": "11:00 AM",
       "type": "In-Person",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1"
     }
   ],
   "hospitals": [
@@ -397,6 +471,8 @@
       "password": "$2b$12$eindd9xnoKa6C0i0Od9RPOm5iU0K3Rs8ejzFXOyqMVc0UDp8JZLs6",
       "role": "receptionist",
       "department": "Front Desk",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$eindd9xnoKa6C0i0Od9RPOm5iU0K3Rs8ejzFXOyqMVc0UDp8JZLs6"
     },
@@ -407,6 +483,8 @@
       "password": "$2b$12$qRV8rIQyq6GF9X1h4JcL5OZnDAs.Ix4OmUEutLwbu9EKG194m8TFW",
       "role": "receptionist",
       "department": "Front Desk",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
       "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$qRV8rIQyq6GF9X1h4JcL5OZnDAs.Ix4OmUEutLwbu9EKG194m8TFW"
     },
@@ -414,11 +492,16 @@
       "id": "doc-olivia",
       "name": "Dr. Olivia Wilson",
       "email": "olivia.w@carepulse.com",
-      "password": "doctor123",
+      "password": "$2b$12$KoXMjvukC3rz.L3GOU/M8evkqcnPfwmtGtfVhlHuc2dm9LQvCOrP.",
       "role": "doctor",
       "specialty": "Cardiologist",
       "department": "Cardiology",
-      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80"
+      "doctor_id": "doc-1",
+      "doctorId": "doc-1",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$KoXMjvukC3rz.L3GOU/M8evkqcnPfwmtGtfVhlHuc2dm9LQvCOrP."
     },
     {
       "id": "doc-marcus",
@@ -428,6 +511,10 @@
       "role": "doctor",
       "specialty": "Dermatologist",
       "department": "Dermatology",
+      "doctor_id": "doc-2",
+      "doctorId": "doc-2",
+      "hospital_id": "hosp-3",
+      "hospitalId": "hosp-3",
       "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80"
     },
     {
@@ -438,6 +525,10 @@
       "role": "doctor",
       "specialty": "Pediatrician",
       "department": "Pediatrics",
+      "doctor_id": "doc-3",
+      "doctorId": "doc-3",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80"
     },
     {
@@ -448,6 +539,10 @@
       "role": "doctor",
       "specialty": "Neurologist",
       "department": "Neurology",
+      "doctor_id": "doc-4",
+      "doctorId": "doc-4",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
       "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80"
     },
     {
@@ -457,6 +552,8 @@
       "password": "$2b$12$xnwtR6Iakapp.lZmPb75GOWA1tf7IhMjVPpP3m9oCpBAOmCCAP28.",
       "role": "admin",
       "department": "Chief Medical Administration",
+      "hospital_id": null,
+      "hospitalId": null,
       "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$xnwtR6Iakapp.lZmPb75GOWA1tf7IhMjVPpP3m9oCpBAOmCCAP28."
     }

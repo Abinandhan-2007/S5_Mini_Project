@@ -61,6 +61,7 @@ from core.security import hash_password, verify_password, needs_rehash
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
+from routes.doctor_routes import router as doctor_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -1068,17 +1069,46 @@ def get_patient(patient_id: str):
 # ==========================================
 
 @app.get("/api/consultations", response_model=List[ConsultationResponse])
-def get_consultations():
-    """Retrieve all consultations joined with patient information."""
+def get_consultations(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve consultations joined with patient information.
+    Staff members are strictly scoped to their hospital_id.
+    """
+    effective_hosp_id = hospital_id
+
+    # Check staff auth header if present
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx:
+            role = staff_ctx.get("role")
+            if role in ["receptionist", "doctor"]:
+                staff_hosp = staff_ctx.get("hospital_id")
+                if not staff_hosp:
+                    logger.warning(f"Data integrity issue: Staff {staff_ctx.get('staff_id')} ({role}) has hospital_id=NULL. Failing safely with empty result set.")
+                    return []
+                effective_hosp_id = staff_hosp
+            elif role == "admin" and staff_ctx.get("hospital_id"):
+                effective_hosp_id = staff_ctx.get("hospital_id")
+
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT c.id, c.doctor_id, c.doctor_name, c.date, c.soap_data, p.full_name as patient_name
+                query = """
+                    SELECT c.id, c.doctor_id, c.doctor_name, c.hospital_id, c.date, c.soap_data, p.full_name as patient_name
                     FROM consultations c
                     LEFT JOIN patients p ON c.patient_id = p.id
-                    ORDER BY c.date DESC
-                """)
+                """
+                params = []
+                if effective_hosp_id:
+                    query += " WHERE c.hospital_id = %s"
+                    params.append(effective_hosp_id)
+                query += " ORDER BY c.date DESC"
+
+                cur.execute(query, tuple(params))
                 rows = cur.fetchall()
                 result = []
                 for r in rows:
@@ -1086,6 +1116,8 @@ def get_consultations():
                         id=str(r["id"]),
                         doctor_id=r.get("doctor_id"),
                         doctor_name=r["doctor_name"],
+                        hospital_id=r.get("hospital_id"),
+                        hospitalId=r.get("hospital_id"),
                         date=str(r["date"]),
                         soap_data=r["soap_data"] if isinstance(r["soap_data"], dict) else json.loads(r["soap_data"]),
                         patient_name=r.get("patient_name") or "Unknown Patient"
@@ -1097,11 +1129,15 @@ def get_consultations():
         patients = {p["id"]: p.get("full_name", "Unknown Patient") for p in db.get("patients", [])}
         result = []
         for c in reversed(consultations):
+            if effective_hosp_id and c.get("hospital_id") != effective_hosp_id:
+                continue
             p_name = patients.get(c.get("patient_id"), "Unknown Patient")
             result.append(ConsultationResponse(
                 id=c["id"],
                 doctor_id=c.get("doctor_id"),
                 doctor_name=c["doctor_name"],
+                hospital_id=c.get("hospital_id"),
+                hospitalId=c.get("hospital_id"),
                 date=c["date"],
                 soap_data=c.get("soap_data", {}),
                 patient_name=p_name
@@ -1110,33 +1146,79 @@ def get_consultations():
 
 
 @app.post("/api/consultations", status_code=status.HTTP_201_CREATED)
-def create_consultation(data: ConsultationCreate):
-    """Create a new consultation with structured JSONB SOAP clinical logs and optional pgvector embeddings."""
+def create_consultation(data: ConsultationCreate, authorization: Optional[str] = Header(None)):
+    """
+    Create a new consultation with structured JSONB SOAP clinical logs and optional pgvector embeddings.
+    Always server-side derives hospital_id from the treating doctor's authoritative record.
+    """
     patient_id = data.patientId or "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
-    date_val = data.date or "2026-07-24"
+    date_val = data.date or datetime.now().strftime("%Y-%m-%d")
+
+    # Authoritative doctor hospital lookup (never trust client-supplied hospital_id)
+    doc_hospital_id = None
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT hospital_id, hospital_name FROM doctors WHERE id = %s LIMIT 1", (data.doctorId,))
+                    d_row = cur.fetchone()
+                    if d_row:
+                        doc_hospital_id = d_row.get("hospital_id")
+        except Exception as e:
+            logger.warning(f"Error querying doctor hospital for consultation: {e}")
+
+    if not doc_hospital_id:
+        db = read_json_db()
+        for doc in db.get("doctors", []):
+            if doc.get("id") == data.doctorId:
+                doc_hospital_id = doc.get("hospital_id") or doc.get("hospitalId")
+                break
+
+    # Fallback to staff hospital if doctor not found in db
+    if not doc_hospital_id and authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("hospital_id"):
+            doc_hospital_id = staff_ctx["hospital_id"]
+
+    if not doc_hospital_id:
+        doc_hospital_id = "hosp-1"
 
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
+                # Ensure patient exists or link to first patient
+                cur.execute("SELECT id FROM patients WHERE id::text = %s", (patient_id,))
+                row_p = cur.fetchone()
+                if not row_p:
+                    cur.execute("SELECT id FROM patients LIMIT 1")
+                    first_p = cur.fetchone()
+                    if first_p:
+                        patient_id = str(first_p["id"])
+                    else:
+                        patient_id = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+
                 if data.soapEmbedding:
                     vector_str = f"[{','.join(str(x) for x in data.soapEmbedding)}]"
                     cur.execute("""
-                        INSERT INTO consultations (patient_id, doctor_id, doctor_name, date, soap_data, soap_embedding)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        RETURNING id, doctor_name, date, soap_data
-                    """, (patient_id, data.doctorId, data.doctorName, date_val, json.dumps(data.soapData), vector_str))
+                        INSERT INTO consultations (patient_id, doctor_id, doctor_name, hospital_id, date, soap_data, soap_embedding)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id, doctor_name, hospital_id, date, soap_data
+                    """, (patient_id, data.doctorId, data.doctorName, doc_hospital_id, date_val, json.dumps(data.soapData), vector_str))
                 else:
                     cur.execute("""
-                        INSERT INTO consultations (patient_id, doctor_id, doctor_name, date, soap_data)
-                        VALUES (%s, %s, %s, %s, %s)
-                        RETURNING id, doctor_name, date, soap_data
-                    """, (patient_id, data.doctorId, data.doctorName, date_val, json.dumps(data.soapData)))
+                        INSERT INTO consultations (patient_id, doctor_id, doctor_name, hospital_id, date, soap_data)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        RETURNING id, doctor_name, hospital_id, date, soap_data
+                    """, (patient_id, data.doctorId, data.doctorName, doc_hospital_id, date_val, json.dumps(data.soapData)))
 
                 row = cur.fetchone()
                 conn.commit()
                 return {
                     "id": str(row["id"]),
                     "doctor_name": row["doctor_name"],
+                    "hospital_id": row.get("hospital_id") or doc_hospital_id,
+                    "hospitalId": row.get("hospital_id") or doc_hospital_id,
                     "date": str(row["date"]),
                     "soap_data": row["soap_data"]
                 }
@@ -1147,6 +1229,8 @@ def create_consultation(data: ConsultationCreate):
             "patient_id": patient_id,
             "doctor_id": data.doctorId,
             "doctor_name": data.doctorName,
+            "hospital_id": doc_hospital_id,
+            "hospitalId": doc_hospital_id,
             "date": date_val,
             "soap_data": data.soapData,
             "soap_embedding": data.soapEmbedding or []
@@ -1156,6 +1240,8 @@ def create_consultation(data: ConsultationCreate):
         return {
             "id": new_record["id"],
             "doctor_name": new_record["doctor_name"],
+            "hospital_id": new_record["hospital_id"],
+            "hospitalId": new_record["hospital_id"],
             "date": new_record["date"],
             "soap_data": new_record["soap_data"]
         }
@@ -1167,13 +1253,49 @@ def create_consultation(data: ConsultationCreate):
 
 @app.post("/api/appointments", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 def book_appointment(data: AppointmentCreate):
-    """Book a new doctor consultation appointment and sync to PostgreSQL / JSON database."""
+    """
+    Book a new doctor consultation appointment.
+    Patient booking flow remains completely unrestricted across all hospitals.
+    Authoritative doctor hospital_id is looked up and stored on the appointment record.
+    """
     patient_id = data.patientId or "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
     ticket_no = data.ticketNumber or f"#CP-{random_ticket()}"
     specialty = data.doctorSpecialty or "General Physician"
     photo = data.doctorPhoto or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80"
-    hospital = data.hospitalName or "CarePulse Central Hospital"
     app_type = data.type or "In-Person"
+
+    # 1. Lookup doctor's authoritative hospital_id and hospital_name snapshot
+    doc_hospital_id = None
+    doc_hospital_name = data.hospitalName or "CarePulse Central Hospital"
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT hospital_id, hospital_name, specialty, photo FROM doctors WHERE id = %s LIMIT 1", (data.doctorId,))
+                    d_row = cur.fetchone()
+                    if d_row:
+                        doc_hospital_id = d_row.get("hospital_id")
+                        if d_row.get("hospital_name"):
+                            doc_hospital_name = d_row["hospital_name"]
+                        if not data.doctorSpecialty and d_row.get("specialty"):
+                            specialty = d_row["specialty"]
+                        if not data.doctorPhoto and d_row.get("photo"):
+                            photo = d_row["photo"]
+        except Exception as e:
+            logger.warning(f"Note on doctor lookup in PostgreSQL: {e}")
+
+    if not doc_hospital_id:
+        db = read_json_db()
+        for doc in db.get("doctors", []):
+            if doc.get("id") == data.doctorId:
+                doc_hospital_id = doc.get("hospital_id") or doc.get("hospitalId")
+                if doc.get("hospital_name") or doc.get("hospitalName"):
+                    doc_hospital_name = doc.get("hospital_name") or doc.get("hospitalName")
+                break
+
+    if not doc_hospital_id:
+        doc_hospital_id = "hosp-1"
 
     if database.use_pg:
         with get_pg_connection() as conn:
@@ -1193,11 +1315,11 @@ def book_appointment(data: AppointmentCreate):
 
                 cur.execute(
                     """
-                    INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_name, date, time_slot, type, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
+                    INSERT INTO appointments (patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_id, hospital_name, date, time_slot, type, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
                     RETURNING *
                     """,
-                    (patient_id, ticket_no, data.doctorId, data.doctorName, specialty, photo, hospital, data.date, data.timeSlot, app_type)
+                    (patient_id, ticket_no, data.doctorId, data.doctorName, specialty, photo, doc_hospital_id, doc_hospital_name, data.date, data.timeSlot, app_type)
                 )
                 row = cur.fetchone()
                 conn.commit()
@@ -1211,7 +1333,9 @@ def book_appointment(data: AppointmentCreate):
                     doctorName=row["doctor_name"],
                     doctorSpecialty=row.get("doctor_specialty") or specialty,
                     doctorPhoto=row.get("doctor_photo") or photo,
-                    hospitalName=row.get("hospital_name") or hospital,
+                    hospitalId=row.get("hospital_id") or doc_hospital_id,
+                    hospital_id=row.get("hospital_id") or doc_hospital_id,
+                    hospitalName=row.get("hospital_name") or doc_hospital_name,
                     date=str(row["date"]),
                     timeSlot=row["time_slot"],
                     type=row.get("type") or app_type,
@@ -1235,7 +1359,9 @@ def book_appointment(data: AppointmentCreate):
             "doctor_name": data.doctorName,
             "doctor_specialty": specialty,
             "doctor_photo": photo,
-            "hospital_name": hospital,
+            "hospital_id": doc_hospital_id,
+            "hospitalId": doc_hospital_id,
+            "hospital_name": doc_hospital_name,
             "date": data.date,
             "time_slot": data.timeSlot,
             "type": app_type,
@@ -1262,6 +1388,8 @@ def book_appointment(data: AppointmentCreate):
             doctorName=new_app["doctor_name"],
             doctorSpecialty=new_app["doctor_specialty"],
             doctorPhoto=new_app["doctor_photo"],
+            hospitalId=new_app["hospital_id"],
+            hospital_id=new_app["hospital_id"],
             hospitalName=new_app["hospital_name"],
             date=new_app["date"],
             timeSlot=new_app["time_slot"],
@@ -1273,7 +1401,10 @@ def book_appointment(data: AppointmentCreate):
 
 @app.get("/api/appointments/patient/{patient_id}", response_model=List[AppointmentResponse])
 def get_patient_appointments(patient_id: str):
-    """Retrieve all booked appointments for a given patient from PostgreSQL or local store."""
+    """
+    Retrieve all booked appointments for a given patient from PostgreSQL or local store.
+    Completely unrestricted across hospitals so patients can see all their appointments.
+    """
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
@@ -1299,6 +1430,8 @@ def get_patient_appointments(patient_id: str):
                         doctorName=r["doctor_name"],
                         doctorSpecialty=r.get("doctor_specialty") or "General Medicine",
                         doctorPhoto=r.get("doctor_photo") or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+                        hospitalId=r.get("hospital_id"),
+                        hospital_id=r.get("hospital_id"),
                         hospitalName=r.get("hospital_name") or "CarePulse Central Hospital",
                         date=str(r["date"]),
                         timeSlot=r["time_slot"],
@@ -1319,6 +1452,8 @@ def get_patient_appointments(patient_id: str):
                 doctorName=a["doctor_name"],
                 doctorSpecialty=a.get("doctor_specialty", "General Medicine"),
                 doctorPhoto=a.get("doctor_photo", ""),
+                hospitalId=a.get("hospital_id") or a.get("hospitalId"),
+                hospital_id=a.get("hospital_id") or a.get("hospitalId"),
                 hospitalName=a.get("hospital_name", "CarePulse Central Hospital"),
                 date=str(a["date"]),
                 timeSlot=a["time_slot"],
@@ -1326,6 +1461,7 @@ def get_patient_appointments(patient_id: str):
                 status=a.get("status", "Upcoming")
             )
             for a in apps
+            if a.get("patient_id") == patient_id or patient_id == "all"
         ]
 
 
@@ -1619,6 +1755,7 @@ def get_doctor_by_id(doctor_id: str):
 app.include_router(receptionist_router)
 app.include_router(admin_router)
 app.include_router(staff_auth_router)
+app.include_router(doctor_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=config.PORT, reload=True)
