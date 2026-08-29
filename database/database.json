@@ -75,6 +75,19 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$1yrJApkon6Og2PLzKphlQ.la788pEvwGzC.6n/HSt1j6L7Rtw5zgS",
       "auth_provider": "local"
+    },
+    {
+      "id": "a1a33fe4-6f9d-4af1-a2af-21574b279a64",
+      "full_name": "Test New Patient 93b90850",
+      "email": "patient_93b90850@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$NpYvY1mZlCLFZxouMlbthe1DHZPwAWPjtb4UogyfRNg3HwQT3nA5C",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -163,7 +176,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "app-d16ab55bce",
@@ -213,7 +227,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "app-a0dcca081b",
@@ -263,7 +278,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "app-2e12b461eb",
@@ -313,7 +329,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "cfffd991-4fda-453d-8217-a9a441154b0a",
@@ -329,7 +346,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "2c040c36-ae11-4e6f-8c1e-f090f27f832f",
@@ -345,7 +363,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "6c7ee91d-ba47-4a20-95ec-8c384aae6977",
@@ -361,7 +380,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "deb766b3-d7cf-4e5e-bf66-c7d44e83ce8c",
@@ -377,7 +397,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "app-f02972e2",
@@ -393,7 +414,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "app-e52950c3",
@@ -409,7 +431,8 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming"
+      "status": "Upcoming",
+      "patient_id": "test-patient-walkin-99"
     },
     {
       "id": "app-3b0f9537fa",

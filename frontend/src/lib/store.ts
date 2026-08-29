@@ -389,10 +389,13 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   syncAppointments: async (patientId?: string) => {
     try {
       const pid = patientId || get().user?.id;
-      if (!pid) return;
+      if (!pid || pid === 'undefined' || pid === 'null') {
+        set({ appointments: [], activeAppointment: null });
+        return;
+      }
       let res: Response | null = null;
       try {
-        res = await apiFetch(`/appointments/patient/${pid}`, { method: 'GET' });
+        res = await apiFetch(`/appointments/patient/${encodeURIComponent(pid)}`, { method: 'GET' });
       } catch {
         res = null;
       }
@@ -415,10 +418,13 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   syncPrescriptions: async (patientId?: string) => {
     try {
       const pid = patientId || get().user?.id;
-      if (!pid) return;
+      if (!pid || pid === 'undefined' || pid === 'null') {
+        set({ prescriptions: [] });
+        return;
+      }
       let res: Response | null = null;
       try {
-        res = await apiFetch(`/prescriptions/patient/${pid}`, { method: 'GET' });
+        res = await apiFetch(`/prescriptions/patient/${encodeURIComponent(pid)}`, { method: 'GET' });
       } catch {
         res = null;
       }
@@ -454,10 +460,13 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   syncHistory: async (patientId?: string) => {
     try {
       const pid = patientId || get().user?.id;
-      if (!pid) return;
+      if (!pid || pid === 'undefined' || pid === 'null') {
+        set({ history: [] });
+        return;
+      }
       let res: Response | null = null;
       try {
-        res = await apiFetch(`/consultations/patient/${pid}`, { method: 'GET' });
+        res = await apiFetch(`/consultations/patient/${encodeURIComponent(pid)}`, { method: 'GET' });
       } catch {
         res = null;
       }

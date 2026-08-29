@@ -1443,26 +1443,28 @@ def get_patient_appointments(patient_id: str):
     else:
         db = read_json_db()
         apps = db.get("appointments", [])
+        if not patient_id or str(patient_id).strip() in ["", "all", "None", "null", "undefined"]:
+            return []
         return [
             AppointmentResponse(
-                id=a["id"],
+                id=str(a.get("id")),
                 ticketNumber=a.get("ticket_number", "#CP-1001"),
-                patientId=a.get("patient_id", patient_id),
+                patientId=str(a.get("patient_id")),
                 patientName=a.get("patient_name", ""),
-                doctorId=a["doctor_id"],
-                doctorName=a["doctor_name"],
+                doctorId=a.get("doctor_id", "doc-1"),
+                doctorName=a.get("doctor_name", "Specialist Doctor"),
                 doctorSpecialty=a.get("doctor_specialty", "General Medicine"),
                 doctorPhoto=a.get("doctor_photo", ""),
                 hospitalId=a.get("hospital_id") or a.get("hospitalId"),
                 hospital_id=a.get("hospital_id") or a.get("hospitalId"),
                 hospitalName=a.get("hospital_name", "CarePulse Central Hospital"),
-                date=str(a["date"]),
-                timeSlot=a["time_slot"],
+                date=str(a.get("date", "")),
+                timeSlot=a.get("time_slot", ""),
                 type=a.get("type", "In-Person"),
                 status=a.get("status", "Upcoming")
             )
             for a in apps
-            if str(a.get("patient_id")) == patient_id or patient_id == "all"
+            if a.get("patient_id") and str(a.get("patient_id")).strip() == str(patient_id).strip()
         ]
 
 
@@ -1471,6 +1473,9 @@ def get_patient_prescriptions(patient_id: str):
     """
     Retrieve all active and past prescriptions for a specific patient.
     """
+    if not patient_id or str(patient_id).strip() in ["", "all", "None", "null", "undefined"]:
+        return []
+
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
@@ -1481,7 +1486,7 @@ def get_patient_prescriptions(patient_id: str):
                     WHERE patient_id::text = %s
                     ORDER BY created_at DESC
                     """,
-                    (patient_id,)
+                    (str(patient_id).strip(),)
                 )
                 rows = cur.fetchall()
                 result = []
@@ -1512,7 +1517,7 @@ def get_patient_prescriptions(patient_id: str):
                 "createdAt": str(r.get("created_at", ""))
             }
             for r in rx_list
-            if str(r.get("patient_id") or r.get("patientId")) == patient_id
+            if (r.get("patient_id") or r.get("patientId")) and str(r.get("patient_id") or r.get("patientId")).strip() == str(patient_id).strip()
         ]
 
 
@@ -1521,6 +1526,9 @@ def get_patient_consultations(patient_id: str):
     """
     Retrieve clinical consultation history for a given patient.
     """
+    if not patient_id or str(patient_id).strip() in ["", "all", "None", "null", "undefined"]:
+        return []
+
     if database.use_pg:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
@@ -1534,7 +1542,7 @@ def get_patient_consultations(patient_id: str):
                     WHERE c.patient_id::text = %s
                     ORDER BY c.date DESC
                     """,
-                    (patient_id,)
+                    (str(patient_id).strip(),)
                 )
                 rows = cur.fetchall()
                 result = []
@@ -1562,7 +1570,7 @@ def get_patient_consultations(patient_id: str):
         doc_map = {d.get("id"): d for d in db.get("doctors", [])}
         result = []
         for c in reversed(consultations):
-            if str(c.get("patient_id")) == patient_id:
+            if c.get("patient_id") and str(c.get("patient_id")).strip() == str(patient_id).strip():
                 soap = c.get("soap_data", {})
                 d_info = doc_map.get(c.get("doctor_id"), {})
                 result.append({

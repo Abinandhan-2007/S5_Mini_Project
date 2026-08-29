@@ -219,14 +219,13 @@ export const LoginScreen: React.FC = () => {
         return;
       }
 
-      // Fallback check: 1. Default Demo Patient (Sarah Jenkins)
+      // Fallback check: 1. Default Demo Patient (Sarah Jenkins) - only on explicit Sarah credentials
       const inputLower = inputVal.toLowerCase();
       const isSarah =
         inputLower === 'sarah' ||
         inputLower === 'sarah jenkins' ||
         inputLower === 'sarah.j@carepulse.com' ||
         inputLower === 'sarah.jenkins@example.com' ||
-        inputLower === 'patient' ||
         inputVal === '+91 98765 43210' ||
         inputVal.replace(/\D/g, '').slice(-10) === '9876543210';
 
