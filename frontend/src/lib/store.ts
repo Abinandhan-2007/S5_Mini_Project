@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Preferences } from '@capacitor/preferences';
-import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection } from './types';
-import { INITIAL_USER, INITIAL_APPOINTMENT, MOCK_MEDICAL_HISTORY, INITIAL_CHAT_MESSAGES } from './mockApi';
+import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection, Prescription } from './types';
+import { INITIAL_USER, INITIAL_CHAT_MESSAGES } from './mockApi';
 import { apiGet, apiFetch } from './apiFetch';
 import { signOutGoogle } from './googleAuth';
 
@@ -34,6 +34,9 @@ interface CarePulseState {
   rescheduleAppointment: (id: string, newDate: string, newSlot: string) => void;
   syncAppointments: (patientId?: string) => Promise<void>;
 
+  // Prescriptions
+  prescriptions: Prescription[];
+  syncPrescriptions: (patientId?: string) => Promise<void>;
 
   // Booking Flow Draft
   booking: BookingSelection;
@@ -44,6 +47,7 @@ interface CarePulseState {
 
   // Medical History
   history: MedicalHistoryItem[];
+  syncHistory: (patientId?: string) => Promise<void>;
 
   // Health AI Chat
   chatMessages: ChatMessage[];
@@ -89,11 +93,18 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       user: INITIAL_USER,
       isAuthenticated: true,
       isInitializing: false,
+      appointments: [],
+      activeAppointment: null,
+      history: [],
+      prescriptions: [],
     });
+    get().syncAppointments(INITIAL_USER.id);
+    get().syncPrescriptions(INITIAL_USER.id);
+    get().syncHistory(INITIAL_USER.id);
   },
 
   setUserAuth: async (user: User, token?: string) => {
-    // 1. Immediately update Zustand reactive state so routes pass instantly on first click
+    // 1. Immediately update Zustand reactive state with fresh empty arrays for the user
     try {
       sessionStorage.setItem('carepulse_app_unlocked', 'true');
     } catch {}
@@ -101,6 +112,10 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       user,
       isAuthenticated: true,
       isInitializing: false,
+      appointments: [],
+      activeAppointment: null,
+      history: [],
+      prescriptions: [],
     });
 
     // 2. Persist to localStorage synchronously
@@ -121,8 +136,10 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       console.warn('Preferences storage note:', e);
     }
 
-    // 4. Trigger live background sync of appointments from PostgreSQL
+    // 4. Trigger live background sync of appointments, prescriptions, and history from backend
     get().syncAppointments(user.id);
+    get().syncPrescriptions(user.id);
+    get().syncHistory(user.id);
   },
 
   checkAuthSession: async () => {
@@ -205,6 +222,8 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             });
 
             get().syncAppointments(userData.id);
+            get().syncPrescriptions(userData.id);
+            get().syncHistory(userData.id);
             return true;
           }
         } catch (err) {
@@ -221,6 +240,8 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
           isInitializing: false,
         });
         get().syncAppointments(cachedUser.id);
+        get().syncPrescriptions(cachedUser.id);
+        get().syncHistory(cachedUser.id);
         return true;
       }
 
@@ -264,11 +285,15 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       sessionStorage.removeItem('carepulse_app_unlocked');
     } catch {}
 
-    // 4. Synchronously update Zustand auth state
+    // 4. Synchronously update Zustand auth state and clear patient-specific records
     set({
       user: null,
       isAuthenticated: false,
       isInitializing: false,
+      appointments: [],
+      activeAppointment: null,
+      history: [],
+      prescriptions: [],
     });
   },
 
@@ -289,17 +314,17 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   registerUser: (userData) => {
     const newUser: User = {
       id: `usr-${Date.now()}`,
-      fullName: userData.fullName || 'Sarah Jenkins',
-      dob: userData.dob || '1992-05-14',
+      fullName: userData.fullName || 'Patient',
+      dob: userData.dob || '1995-01-01',
       gender: (userData.gender as any) || 'Female',
       bloodGroup: userData.bloodGroup || 'O+',
-      phone: userData.phone || '+91 98765 43210',
-      email: userData.email || 'sarah@example.com',
-      avatarUrl: userData.avatarUrl || INITIAL_USER.avatarUrl,
+      phone: userData.phone || '+91 98765 00000',
+      email: userData.email || '',
+      avatarUrl: userData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
       emergencyContact: userData.emergencyContact || {
-        name: 'Mark Jenkins',
-        phone: '+91 98765 12345',
-        relationship: 'Spouse',
+        name: 'Emergency Contact',
+        phone: '+91 98765 00000',
+        relationship: 'Primary Contact',
       },
       allergies: userData.allergies,
       preExistingConditions: userData.preExistingConditions,
@@ -312,11 +337,15 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       user: newUser,
       isAuthenticated: true,
       isInitializing: false,
+      appointments: [],
+      activeAppointment: null,
+      history: [],
+      prescriptions: [],
     });
   },
 
-  appointments: [INITIAL_APPOINTMENT],
-  activeAppointment: INITIAL_APPOINTMENT,
+  appointments: [],
+  activeAppointment: null,
   addAppointment: (appointment) => {
     set((state) => ({
       appointments: [appointment, ...state.appointments],
@@ -357,7 +386,6 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     });
   },
 
-
   syncAppointments: async (patientId?: string) => {
     try {
       const pid = patientId || get().user?.id;
@@ -370,15 +398,38 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       }
       if (res && res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
+          const upcoming = data.find((a: any) => a.status === 'Upcoming');
           set({
             appointments: data,
-            activeAppointment: data[0] || null,
+            activeAppointment: upcoming || data[0] || null,
           });
         }
       }
     } catch (e) {
       console.warn('Sync appointments notice:', e);
+    }
+  },
+
+  prescriptions: [],
+  syncPrescriptions: async (patientId?: string) => {
+    try {
+      const pid = patientId || get().user?.id;
+      if (!pid) return;
+      let res: Response | null = null;
+      try {
+        res = await apiFetch(`/prescriptions/patient/${pid}`, { method: 'GET' });
+      } catch {
+        res = null;
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          set({ prescriptions: data });
+        }
+      }
+    } catch (e) {
+      console.warn('Sync prescriptions notice:', e);
     }
   },
 
@@ -399,7 +450,42 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       },
     }),
 
-  history: MOCK_MEDICAL_HISTORY,
+  history: [],
+  syncHistory: async (patientId?: string) => {
+    try {
+      const pid = patientId || get().user?.id;
+      if (!pid) return;
+      let res: Response | null = null;
+      try {
+        res = await apiFetch(`/consultations/patient/${pid}`, { method: 'GET' });
+      } catch {
+        res = null;
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const mapped: MedicalHistoryItem[] = data.map((c: any) => ({
+            id: c.id,
+            date: c.date,
+            time: 'Consultation',
+            doctorId: c.doctorId,
+            doctorName: c.doctorName || 'Specialist Doctor',
+            specialty: c.doctorSpecialty || 'General Consultation',
+            hospitalId: c.hospitalId,
+            hospital_id: c.hospitalId,
+            hospitalName: c.hospitalName || 'CarePulse Central Hospital',
+            diagnosis: c.diagnosis || 'Clinical consultation recorded.',
+            prescriptionDetails: c.prescriptionDetails || 'Prescription notes provided.',
+            status: 'Completed',
+            specialtyIcon: 'stethoscope'
+          }));
+          set({ history: mapped });
+        }
+      }
+    } catch (e) {
+      console.warn('Sync history notice:', e);
+    }
+  },
 
   chatMessages: INITIAL_CHAT_MESSAGES,
   addChatMessage: (msg) => {

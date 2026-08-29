@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Pill,
   Building2,
   Calendar,
-  CheckCircle2,
   Search,
   Bell,
+  Plus,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
+import { useCarePulseStore } from '../../lib/store';
 
 export interface PrescribedMedicine {
   id: string;
@@ -34,97 +35,87 @@ export interface DoctorPrescriptionGroup {
   medicines: PrescribedMedicine[];
 }
 
-const PRESCRIPTION_GROUPS: DoctorPrescriptionGroup[] = [
-  {
-    id: 'grp-1',
-    doctorName: 'Dr. Alex Morgan',
-    doctorSpecialty: 'Cardiology Specialist',
-    doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'St. Jude Heart & Medical Center',
-    datePrescribed: 'Jul 24, 2026',
-    status: 'Active',
-    medicines: [
-      {
-        id: 'm-101',
-        name: 'Lisinopril Oral',
-        dosage: '10 mg',
-        instructions: '1 tablet • Daily every morning',
-        duration: '30 Days Course',
-      },
-      {
-        id: 'm-102',
-        name: 'Atorvastatin Calcium',
-        dosage: '20 mg',
-        instructions: '1 tablet • Nightly before bedtime',
-        duration: '30 Days Course',
-      },
-      {
-        id: 'm-103',
-        name: 'Aspirin Low Dose',
-        dosage: '81 mg',
-        instructions: '1 tablet • Daily after breakfast',
-        duration: '60 Days Course',
-      },
-    ],
-  },
-  {
-    id: 'grp-2',
-    doctorName: 'Dr. Elena Rostova',
-    doctorSpecialty: 'General Medicine Specialist',
-    doctorPhoto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'Metropolitan General Hospital',
-    datePrescribed: 'Jul 18, 2026',
-    status: 'Active',
-    medicines: [
-      {
-        id: 'm-201',
-        name: 'Amoxicillin Trihydrate',
-        dosage: '500 mg',
-        instructions: '1 capsule • Twice daily after meals',
-        duration: '7 Days Course',
-      },
-      {
-        id: 'm-202',
-        name: 'Paracetamol Extra Strength',
-        dosage: '650 mg',
-        instructions: '1 tablet • Every 8 hours as needed',
-        duration: '5 Days Course',
-      },
-    ],
-  },
-  {
-    id: 'grp-3',
-    doctorName: 'Dr. Sarah Jenkins',
-    doctorSpecialty: 'Pulmonology Specialist',
-    doctorPhoto: 'https://images.unsplash.com/photo-1594824813566-78a56276722d?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'Cedar Skin & Wellness Clinic',
-    datePrescribed: 'Jun 12, 2026',
-    status: 'Active',
-    medicines: [
-      {
-        id: 'm-301',
-        name: 'Salbutamol Inhaler',
-        dosage: '100 mcg',
-        instructions: '2 puffs • As needed for shortness of breath',
-        duration: 'Refillable',
-      },
-      {
-        id: 'm-302',
-        name: 'Montelukast Sodium',
-        dosage: '10 mg',
-        instructions: '1 tablet • Once daily at bedtime',
-        duration: '30 Days Course',
-      },
-    ],
-  },
-];
-
 export const PrescriptionsScreen: React.FC = () => {
   const navigate = useNavigate();
+  const user = useCarePulseStore((s) => s.user);
+  const prescriptions = useCarePulseStore((s) => s.prescriptions);
+  const history = useCarePulseStore((s) => s.history);
+  const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
+  const syncHistory = useCarePulseStore((s) => s.syncHistory);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'All' | 'Active'>('All');
 
-  const filteredGroups = PRESCRIPTION_GROUPS.filter((grp) => {
+  useEffect(() => {
+    if (user?.id) {
+      syncPrescriptions(user.id);
+      syncHistory(user.id);
+    }
+  }, [user?.id, syncPrescriptions, syncHistory]);
+
+  // Build dynamic prescription groups from store prescriptions & consultation history
+  const dynamicGroups: DoctorPrescriptionGroup[] = React.useMemo(() => {
+    const groups: DoctorPrescriptionGroup[] = [];
+
+    // 1. Group direct prescriptions by prescriber/doctor
+    if (prescriptions && prescriptions.length > 0) {
+      const byDoctor: Record<string, PrescribedMedicine[]> = {};
+      prescriptions.forEach((rx) => {
+        const prescriber = rx.prescriber || 'Treating Physician';
+        if (!byDoctor[prescriber]) byDoctor[prescriber] = [];
+        byDoctor[prescriber].push({
+          id: rx.id,
+          name: rx.drugName,
+          dosage: rx.dosage || 'As directed',
+          instructions: rx.frequency || 'Follow doctor advice',
+          duration: 'Standard Course',
+        });
+      });
+
+      Object.entries(byDoctor).forEach(([doctorName, meds], idx) => {
+        groups.push({
+          id: `rx-grp-${idx}`,
+          doctorName,
+          doctorSpecialty: 'Specialist Physician',
+          doctorPhoto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+          hospitalName: 'CarePulse Central Hospital',
+          datePrescribed: 'Recent',
+          status: 'Active',
+          medicines: meds,
+        });
+      });
+    }
+
+    // 2. From clinical consultations with prescription details
+    if (history && history.length > 0) {
+      history.forEach((h, idx) => {
+        if (h.prescriptionDetails && h.prescriptionDetails.length > 3) {
+          groups.push({
+            id: `hist-grp-${h.id || idx}`,
+            doctorName: h.doctorName,
+            doctorSpecialty: h.specialty,
+            doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+            hospitalName: h.hospitalName,
+            datePrescribed: h.date,
+            status: 'Active',
+            medicines: [
+              {
+                id: `med-${h.id || idx}`,
+                name: h.prescriptionDetails,
+                dosage: 'As prescribed',
+                instructions: 'Follow clinical instructions',
+                duration: 'Course completion',
+              },
+            ],
+          });
+        }
+      });
+    }
+
+    return groups;
+  }, [prescriptions, history]);
+
+  const filteredGroups = dynamicGroups.filter((grp) => {
     const q = searchQuery.toLowerCase().trim();
     const matchesQuery =
       !q ||
@@ -148,168 +139,194 @@ export const PrescriptionsScreen: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs"
-              title="Go Back"
+              className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
+              title="Back"
             >
-              <ArrowLeft className="w-4.5 h-4.5 text-white" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="text-left space-y-0.5">
-              <h1 className="text-lg font-black font-heading text-white tracking-tight">
-                Prescribed Medicines
-              </h1>
-              <p className="text-[11px] text-teal-100/90 font-medium">
-                Grouped doctor prescription sessions
-              </p>
+            <div>
+              <h1 className="text-base font-black tracking-tight leading-tight">My Prescriptions</h1>
+              <p className="text-[11px] text-teal-50 font-medium">Medications, dosages & refill schedule</p>
             </div>
           </div>
 
           <button
             onClick={() => navigate('/notifications')}
-            className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white flex items-center justify-center relative active:scale-95 shadow-2xs"
-            title="Notifications"
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"
+            aria-label="Notifications"
           >
-            <Bell className="w-4 h-4 text-white" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-400 ring-1 ring-white" />
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-300 ring-2 ring-[#1FA2AC]" />
           </button>
         </div>
 
-        {/* SEARCH BAR (FILTER BY DOCTOR NAME, DATE, OR MEDICINE) */}
-        <div className="pt-3.5">
-          <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3.5 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-white">
-            <Search className="w-4 h-4 text-[#6B7280] shrink-0" />
+        {/* Search Pill Input */}
+        {dynamicGroups.length > 0 && (
+          <div className="mt-4 relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Doctor Name, Date, or Medicine..."
-              className="w-full bg-transparent border-none text-xs text-[#111827] font-medium px-2 py-1 focus:outline-none placeholder:text-[#9CA3AF]"
+              placeholder="Search medication, doctor, or condition..."
+              className="w-full bg-white text-slate-800 text-xs font-semibold placeholder:text-slate-400 pl-10 pr-4 py-2.5 rounded-2xl shadow-inner focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all"
             />
           </div>
-        </div>
-
-        {/* FILTER CHIPS (CLEAN & MINIMAL) */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-3 text-left">
-          {['All', 'Active'].map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter as any)}
-              className={clsx(
-                'px-3.5 py-1 rounded-full text-[11px] font-extrabold transition-all shrink-0 active:scale-95 border backdrop-blur-md',
-                activeFilter === filter
-                  ? 'bg-white text-[#1FA2AC] border-white shadow-xs'
-                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
-              )}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
+        )}
       </div>
 
-      {/* PRESCRIPTIONS FEED CONTAINER */}
-      <main className="px-4 sm:px-6 md:px-8 py-4 max-w-5xl mx-auto space-y-4 w-full text-left">
-        {filteredGroups.length > 0 ? (
-          filteredGroups.map((group) => (
-            <div
-              key={group.id}
-              className="bg-white rounded-3xl overflow-hidden border border-[#E4E7EC] shadow-2xs hover:shadow-xs transition-all space-y-0"
+      {/* MAIN CONTENT AREA */}
+      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-5xl mx-auto w-full">
+        {/* Filter Chips Bar */}
+        {dynamicGroups.length > 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveFilter('All')}
+                className={clsx(
+                  'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                  activeFilter === 'All'
+                    ? 'bg-[#0B5A54] text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                )}
+              >
+                All Prescriptions ({dynamicGroups.length})
+              </button>
+              <button
+                onClick={() => setActiveFilter('Active')}
+                className={clsx(
+                  'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                  activeFilter === 'Active'
+                    ? 'bg-[#0B5A54] text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                )}
+              >
+                Active Courses
+              </button>
+            </div>
+
+            <Badge variant="tint" size="sm">
+              {filteredGroups.length} {filteredGroups.length === 1 ? 'Record' : 'Records'}
+            </Badge>
+          </div>
+        )}
+
+        {/* EMPTY STATE */}
+        {dynamicGroups.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E4E7EC] shadow-xs text-center space-y-5 my-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-[#E3F3F1] border border-[#14B8A6]/20 flex items-center justify-center mx-auto text-[#0B5A54] shadow-sm">
+              <Pill className="w-8 h-8 sm:w-10 sm:h-10 text-[#0B5A54]" />
+            </div>
+
+            <div className="max-w-md mx-auto space-y-2">
+              <h3 className="text-base sm:text-lg font-black text-[#111827] font-heading">
+                No Active Prescriptions
+              </h3>
+              <p className="text-xs sm:text-sm text-[#6B7280] leading-relaxed">
+                You have no active prescriptions or medication plans on file. Any prescriptions issued during your doctor visits will appear here automatically with dosing schedules and reminders.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => navigate('/hospitals')}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Book a Consultation</span>
+              </button>
+              <button
+                onClick={() => navigate('/home')}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-[#F8FAFC] hover:bg-slate-100 text-[#475467] text-xs sm:text-sm font-bold border border-[#E4E7EC] transition-all cursor-pointer"
+              >
+                Return to Home
+              </button>
+            </div>
+          </div>
+        ) : filteredGroups.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center space-y-2">
+            <p className="text-xs font-bold text-slate-700">No prescriptions match your search query.</p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-xs text-[#0B5A54] font-extrabold hover:underline"
             >
-              {/* DOCTOR & CONSULTATION SESSION HEADER */}
-              <div className="p-4 bg-[#F8FAFC] border-b border-[#E4E7EC] space-y-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar src={group.doctorPhoto} size="md" hasRing className="ring-2 ring-white shadow-2xs" />
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="text-xs sm:text-sm font-black font-heading text-[#111827]">
-                          {group.doctorName}
-                        </h3>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#0B5A54]" />
-                      </div>
-                      <p className="text-[11px] text-[#0B5A54] font-bold">
-                        {group.doctorSpecialty}
+              Clear search filter
+            </button>
+          </div>
+        ) : (
+          /* DYNAMIC PRESCRIPTION GROUPS */
+          <div className="space-y-4">
+            {filteredGroups.map((grp) => (
+              <div
+                key={grp.id}
+                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-4 text-left"
+              >
+                {/* Header Row: Doctor Info & Prescribed Date */}
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar
+                      src={grp.doctorPhoto}
+                      alt={grp.doctorName}
+                      size="md"
+                      className="ring-2 ring-[#E3F3F1] shadow-2xs shrink-0"
+                    />
+                    <div className="min-w-0 space-y-0.5">
+                      <h4 className="text-sm font-black text-[#111827] truncate font-heading">
+                        {grp.doctorName}
+                      </h4>
+                      <p className="text-xs font-bold text-[#0B5A54]">{grp.doctorSpecialty}</p>
+                      <p className="text-[10.5px] text-slate-500 font-semibold flex items-center gap-1 truncate">
+                        <Building2 className="w-3 h-3 text-[#14B8A6] shrink-0" />
+                        <span>{grp.hospitalName}</span>
                       </p>
                     </div>
                   </div>
 
-                  <Badge variant="tint" size="sm" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                    {group.status}
-                  </Badge>
+                  <div className="text-right shrink-0 space-y-1">
+                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider block">
+                      {grp.status}
+                    </span>
+                    <span className="text-[10.5px] font-bold text-slate-400 flex items-center justify-end gap-1">
+                      <Calendar className="w-3 h-3" />
+                      <span>{grp.datePrescribed}</span>
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] text-[#6B7280] font-semibold pt-1 border-t border-[#E4E7EC]/60">
-                  <span className="flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-[#14B8A6]" /> {group.hospitalName}
-                  </span>
-                  <span className="flex items-center gap-1 text-[#0B5A54] font-bold">
-                    <Calendar className="w-3 h-3 text-[#0B5A54]" /> {group.datePrescribed}
-                  </span>
-                </div>
-              </div>
-
-              {/* SINGLE BOX CONTAINING ALL MEDICINES PRESCRIBED IN THIS CONSULTATION */}
-              <div className="p-4 space-y-3 bg-white">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest flex items-center gap-1">
-                    <Pill className="w-3.5 h-3.5 text-[#0B5A54]" /> PRESCRIBED MEDICINES ({group.medicines.length})
-                  </span>
-                </div>
-
-                <div className="divide-y divide-[#E4E7EC]/80 bg-[#F8FAFC] border border-[#E4E7EC] rounded-2xl overflow-hidden">
-                  {group.medicines.map((med, index) => (
-                    <div key={med.id} className="p-3 space-y-1 hover:bg-[#E3F3F1]/20 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-[#E3F3F1] text-[#0B5A54] font-black text-[10px] flex items-center justify-center shrink-0">
-                            {index + 1}
-                          </span>
-                          <h4 className="text-xs font-black font-heading text-[#111827]">
-                            {med.name}
-                          </h4>
+                {/* Medicines List Stack */}
+                <div className="space-y-2.5">
+                  {grp.medicines.map((med) => (
+                    <div
+                      key={med.id}
+                      className="bg-[#F8FAFC] rounded-2xl p-3.5 border border-slate-100 flex items-center justify-between gap-3 hover:bg-[#F1F5F9] transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-[#0B5A54] flex items-center justify-center shrink-0 shadow-2xs">
+                          <Pill className="w-4 h-4 text-[#0B5A54]" />
                         </div>
-                        <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-2 py-0.5 rounded-full">
-                          {med.dosage}
-                        </span>
+                        <div className="min-w-0">
+                          <h5 className="text-xs font-black text-[#111827] truncate">
+                            {med.name}
+                          </h5>
+                          <p className="text-[11px] font-bold text-[#0B5A54]">
+                            {med.dosage} • {med.instructions}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="pl-7 space-y-0.5">
-                        <p className="text-[11px] text-[#4B5563] font-medium leading-relaxed">
-                          {med.instructions}
-                        </p>
-                        <p className="text-[10px] text-[#9CA3AF] font-bold">
-                          Course Duration: {med.duration}
-                        </p>
-                      </div>
+                      <span className="text-[10px] font-extrabold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-xl shrink-0">
+                        {med.duration}
+                      </span>
                     </div>
                   ))}
                 </div>
-
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="bg-white border border-[#E4E7EC] rounded-2xl p-8 text-center space-y-3 shadow-2xs">
-            <div className="w-12 h-12 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] mx-auto">
-              <Pill className="w-6 h-6 text-[#0B5A54]" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-[#111827] font-heading">
-                No Prescriptions Found
-              </h3>
-              <p className="text-xs text-[#6B7280]">
-                No matching doctor prescriptions found for your filter.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/home')}
-              className="text-xs font-bold text-white bg-[#0B5A54] px-4 py-2 rounded-full shadow-2xs active:scale-95"
-            >
-              Back to Home
-            </button>
+            ))}
           </div>
         )}
       </main>
 
+      {/* Bottom Navigation */}
       <BottomNav />
     </div>
   );

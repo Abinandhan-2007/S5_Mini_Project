@@ -31,7 +31,6 @@ import { requestNativeLocation } from '../../lib/locationService';
 import { usePolling } from '../../lib/usePolling';
 
 import { useCarePulseStore } from '../../lib/store';
-import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
 import { doctorService } from '../../services/doctorService';
 import { hospitalService } from '../../services/hospitalService';
 
@@ -39,14 +38,19 @@ export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const user = useCarePulseStore((s) => s.user);
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
+  const prescriptions = useCarePulseStore((s) => s.prescriptions);
   const syncAppointments = useCarePulseStore((s) => s.syncAppointments);
+  const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
   // Automatic background polling for Patient appointments & queue updates
   const { isPolling, lastUpdated, refetch } = usePolling(
     async () => {
       if (user?.id) {
-        await syncAppointments(user.id);
+        await Promise.all([
+          syncAppointments(user.id),
+          syncPrescriptions(user.id),
+        ]);
       }
     },
     {
@@ -58,43 +62,7 @@ export const HomeScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-
-
-
-
-
-  // Dynamic Prescription Course Day Progress & Completion state
-  const [prescriptionProgress, setPrescriptionProgress] = useState<{
-    [key: string]: { currentDay: number; totalDays: number; completed: boolean };
-  }>({
-    'rx-1': { currentDay: 4, totalDays: 7, completed: false },
-    'rx-2': { currentDay: 2, totalDays: 10, completed: false },
-  });
-
-  const [completedNotice, setCompletedNotice] = useState<string | null>(null);
-
-  const handleTakeDose = (rxId: string, drugName: string) => {
-    setPrescriptionProgress((prev) => {
-      const current = prev[rxId] || { currentDay: 1, totalDays: 7, completed: false };
-      const nextDay = current.currentDay + 1;
-      const isFinished = nextDay >= current.totalDays;
-
-      if (isFinished) {
-        setCompletedNotice(`🎉 Course Completed! ${drugName} finished.`);
-        setTimeout(() => setCompletedNotice(null), 4000);
-      }
-
-      return {
-        ...prev,
-        [rxId]: {
-          ...current,
-          currentDay: isFinished ? current.totalDays : nextDay,
-          completed: isFinished,
-        },
-      };
-    });
-  };
+  const [completedNotice] = useState<string | null>(null);
 
   const handleRefreshQueue = () => {
     setIsRefreshing(true);
@@ -190,8 +158,8 @@ export const HomeScreen: React.FC = () => {
       <main className="px-4 sm:px-6 md:px-8 max-w-7xl mx-auto pt-1 pb-4 space-y-6 w-full">
         {/* HERO SECTION GRID (TICKET & HEALTH TIP) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          {/* 1. BOARDING PASS APPOINTMENT TICKET */}
-          {activeAppointment && (
+          {/* 1. BOARDING PASS APPOINTMENT TICKET OR QUICK BOOKING CARD */}
+          {activeAppointment ? (
             <div className="relative bg-white rounded-2xl shadow-xs border border-[#E4E7EC] overflow-hidden bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:12px_12px]">
               {/* Physical Boarding Pass Left & Right Notch Cutouts */}
               <div className="absolute top-[30px] -left-2 w-4 h-4 rounded-full bg-white border-r border-[#E4E7EC] z-10" />
@@ -264,6 +232,33 @@ export const HomeScreen: React.FC = () => {
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="bg-gradient-to-br from-white via-white to-[#E3F3F1]/50 rounded-2xl p-5 border border-[#14B8A6]/30 shadow-xs space-y-3.5 text-left flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full">
+                    DOCTOR CONSULTATION
+                  </span>
+                  <span className="text-[11px] font-bold text-[#14B8A6]">Zero Waiting Time</span>
+                </div>
+                <h3 className="text-sm sm:text-base font-black text-[#111827] font-heading">
+                  Schedule Your First Appointment
+                </h3>
+                <p className="text-xs text-[#6B7280] leading-relaxed">
+                  Book verified specialists across all partner hospitals with real-time queue tracking.
+                </p>
+              </div>
+
+              <div className="pt-1 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => navigate('/hospitals')}
+                  className="bg-[#0B5A54] hover:bg-[#084540] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <span>Find Hospitals & Doctors</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           )}
 
           {/* 2. HEALTH TIP CARD */}
@@ -297,62 +292,74 @@ export const HomeScreen: React.FC = () => {
                 NEXT DOCTOR VISIT
               </h3>
               <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full border border-[#14B8A6]/20 shadow-2xs">
-                FOLLOW-UP
+                {activeAppointment ? 'SCHEDULED' : 'ROUTINE CARE'}
               </span>
             </div>
 
-            <div
-              onClick={() => navigate('/appointments/book/doc-2')}
-              className="bg-gradient-to-br from-white via-white to-[#E3F3F1]/40 rounded-3xl p-4 sm:p-5 border border-[#14B8A6]/30 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group space-y-3.5 relative overflow-hidden"
-            >
-              {/* Subtle Decorative Teal Glow Orb in background */}
-              <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#14B8A6]/10 blur-xl pointer-events-none" />
-
-              {/* Header Row: Doctor Avatar + Info | Countdown Badge */}
-              <div className="flex items-start justify-between gap-3 relative z-10">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="relative shrink-0">
+            {activeAppointment ? (
+              <div
+                onClick={() => navigate('/schedule')}
+                className="bg-gradient-to-br from-white via-white to-[#E3F3F1]/40 rounded-3xl p-4 sm:p-5 border border-[#14B8A6]/30 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group space-y-3.5 relative overflow-hidden"
+              >
+                <div className="flex items-start justify-between gap-3 relative z-10">
+                  <div className="flex items-center gap-3.5 min-w-0">
                     <Avatar
-                      src="https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80"
-                      alt="Dr. Elena Rostova"
+                      src={activeAppointment.doctorPhoto}
+                      alt={activeAppointment.doctorName}
                       size="lg"
                       className="ring-4 ring-[#E3F3F1] shadow-md group-hover:scale-105 transition-transform"
                     />
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center text-white text-[7px] font-black">
-                      ✓
-                    </span>
+                    <div className="min-w-0 space-y-0.5">
+                      <h4 className="text-sm sm:text-base font-black text-[#111827] group-hover:text-[#0B5A54] transition-colors truncate tracking-tight">
+                        {activeAppointment.doctorName}
+                      </h4>
+                      <p className="text-xs text-[#0B5A54] font-extrabold">{activeAppointment.doctorSpecialty}</p>
+                      <p className="text-[10.5px] text-slate-500 font-semibold truncate flex items-center gap-1">
+                        <Building2 className="w-3 h-3 text-[#14B8A6] shrink-0" />
+                        <span>{activeAppointment.hospitalName}</span>
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="min-w-0 space-y-0.5">
-                    <h4 className="text-sm sm:text-base font-black text-[#111827] group-hover:text-[#0B5A54] transition-colors truncate tracking-tight">
-                      Dr. Elena Rostova
-                    </h4>
-                    <p className="text-xs text-[#0B5A54] font-extrabold">General Medicine Specialist</p>
-                    <p className="text-[10.5px] text-slate-500 font-semibold truncate flex items-center gap-1">
-                      <Building2 className="w-3 h-3 text-[#14B8A6] shrink-0" />
-                      <span>St. Jude Heart & Medical Center</span>
-                    </p>
-                  </div>
+                  <span className="bg-[#0B5A54] text-white font-black text-[9.5px] px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs shrink-0 flex items-center gap-1">
+                    <span>UPCOMING</span>
+                  </span>
                 </div>
 
-                <span className="bg-[#0B5A54] text-white font-black text-[9.5px] px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs shrink-0 flex items-center gap-1">
-                  <span>IN 8 DAYS</span>
-                </span>
-              </div>
+                <div className="pt-3 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
+                  <span className="bg-white text-[#111827] border border-slate-200/90 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-2xs">
+                    <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
+                    <span>{activeAppointment.date} • {activeAppointment.timeSlot}</span>
+                  </span>
 
-              {/* Bottom Schedule Pill Strip - Premium Balanced Layout */}
-              <div className="pt-3 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
-                <span className="bg-white text-[#111827] border border-slate-200/90 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-2xs">
-                  <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
-                  <span>2026-08-12</span>
-                </span>
-
-                <span className="bg-[#E3F3F1] text-[#0B5A54] text-[10.5px] font-extrabold px-3 py-1.5 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1 shadow-2xs hover:bg-[#0B5A54] hover:text-white transition-colors">
-                  <span>Confirm Visit</span>
-                  <Check className="w-3 h-3 stroke-[3]" />
-                </span>
+                  <span className="bg-[#E3F3F1] text-[#0B5A54] text-[10.5px] font-extrabold px-3 py-1.5 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1 shadow-2xs group-hover:bg-[#0B5A54] group-hover:text-white transition-colors">
+                    <span>View Session</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                onClick={() => navigate('/hospitals')}
+                className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#E3F3F1] text-[#0B5A54] flex items-center justify-center font-bold shrink-0">
+                    <CalendarIcon className="w-5 h-5 text-[#0B5A54]" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-[#111827]">No Scheduled Follow-ups</h4>
+                    <p className="text-xs text-[#6B7280]">Browse doctors by specialty to book a consultation</p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate('/hospitals'); }}
+                  className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1"
+                >
+                  <span>Explore Specialists →</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 4. ACTIVE PRESCRIPTIONS - DYNAMIC COURSE COMPLETION & SCANNABLE CARDS */}
@@ -379,20 +386,15 @@ export const HomeScreen: React.FC = () => {
               </div>
             )}
 
-            {/* Prescription Cards Stack */}
-            <div className="space-y-4">
-              {MOCK_PRESCRIPTIONS.slice(0, 2)
-                .filter((rx) => !prescriptionProgress[rx.id]?.completed)
-                .map((rx) => {
-                  const prog = prescriptionProgress[rx.id] || { currentDay: 1, totalDays: 7, completed: false };
-                  const percent = Math.min(100, Math.round((prog.currentDay / prog.totalDays) * 100));
-
+            {/* Prescription Cards Stack or Empty State */}
+            {prescriptions && prescriptions.length > 0 ? (
+              <div className="space-y-4">
+                {prescriptions.slice(0, 2).map((rx) => {
                   return (
                     <div
                       key={rx.id}
                       className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 space-y-4 text-left relative overflow-hidden group"
                     >
-                      {/* Top Row: Icon + Medicine Name | Active Pulse Badge */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3.5 min-w-0">
                           <div className="w-11 h-11 rounded-full bg-[#E3F3F1] text-[#0B5A54] flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
@@ -406,89 +408,52 @@ export const HomeScreen: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Active Status Badge with Pulsing Green Dot */}
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-2xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                           ACTIVE
                         </span>
                       </div>
 
-                      {/* Side-by-Side Dose & Time Schedule Pill Badges */}
                       <div className="pt-2 border-t border-slate-100 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* Dose Pill */}
                           <span className="bg-[#E3F3F1] text-[#0B5A54] text-xs font-black px-2.5 py-1 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1.5 shadow-2xs">
                             <Pill className="w-3.5 h-3.5 text-[#0B5A54]" />
-                            <span>{rx.frequency.split(' • ')[0] || '1 capsule'}</span>
+                            <span>{rx.dosage || '1 dose'}</span>
                           </span>
 
-                          {/* Time Schedule Pill */}
                           <span className="bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
                             <Clock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>{rx.frequency.split(' • ')[1] || 'Daily schedule'}</span>
+                            <span>{rx.frequency || 'Daily schedule'}</span>
                           </span>
                         </div>
 
-                        {/* Prescriber Doctor Row */}
                         <div className="flex items-center gap-2 text-slate-700">
                           <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
                             <UserIcon className="w-3 h-3 text-[#0B5A54]" />
                           </div>
                           <span className="text-[11px] font-semibold text-slate-500">Prescribed by:</span>
-                          <span
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate('/hospitals');
-                            }}
-                            className="text-xs font-bold text-[#0B5A54] hover:underline cursor-pointer"
-                          >
-                            {rx.prescriber}
+                          <span className="text-xs font-bold text-[#0B5A54]">
+                            {rx.prescriber || 'Treating Physician'}
                           </span>
-                        </div>
-                      </div>
-
-                      {/* Bottom Progress Bar & Quick Action */}
-                      <div className="pt-2.5 border-t border-slate-100 space-y-2">
-                        <div className="flex items-center justify-between text-[11px] font-bold">
-                          <span className="text-[#0B5A54] font-black">
-                            Course Progress: Day {prog.currentDay} of {prog.totalDays}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTakeDose(rx.id, rx.drugName);
-                            }}
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/70 text-[10.5px] font-extrabold px-3 py-1 rounded-full transition-all active:scale-95 flex items-center gap-1 shadow-2xs cursor-pointer"
-                          >
-                            <span>Taken today</span>
-                            <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                          </button>
-                        </div>
-
-                        {/* Thin Course Progress Line */}
-                        <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-[#14B8A6] to-[#0B5A54] rounded-full transition-all duration-500"
-                            style={{ width: `${percent}%` }}
-                          />
                         </div>
                       </div>
                     </div>
                   );
                 })}
-
-              {/* All Prescriptions Completed Empty Banner */}
-              {MOCK_PRESCRIPTIONS.slice(0, 2).every((rx) => prescriptionProgress[rx.id]?.completed) && (
-                <div className="bg-emerald-50/90 border border-emerald-200 rounded-3xl p-5 text-center space-y-1.5 shadow-2xs">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                  <h4 className="text-sm font-black text-emerald-950">All Prescriptions Completed!</h4>
-                  <p className="text-xs font-semibold text-emerald-800">
-                    You have finished the full course for all active medications.
-                  </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs text-left space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#E3F3F1] text-[#0B5A54] flex items-center justify-center shrink-0">
+                    <Pill className="w-5 h-5 text-[#0B5A54]" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-[#111827]">No Active Medications</h4>
+                    <p className="text-xs text-[#6B7280]">Prescriptions from your doctor visits will appear here</p>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

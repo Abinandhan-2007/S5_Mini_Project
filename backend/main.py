@@ -1404,6 +1404,7 @@ def get_patient_appointments(patient_id: str):
     """
     Retrieve all booked appointments for a given patient from PostgreSQL or local store.
     Completely unrestricted across hospitals so patients can see all their appointments.
+    Strictly scoped to patient_id (no leaking of null or other patients' records).
     """
     if database.use_pg:
         with get_pg_connection() as conn:
@@ -1413,7 +1414,7 @@ def get_patient_appointments(patient_id: str):
                     SELECT a.*, p.full_name as p_name 
                     FROM appointments a
                     LEFT JOIN patients p ON a.patient_id = p.id
-                    WHERE a.patient_id::text = %s OR a.patient_id IS NULL
+                    WHERE a.patient_id::text = %s
                     ORDER BY a.date DESC, a.created_at DESC
                     """,
                     (patient_id,)
@@ -1461,8 +1462,124 @@ def get_patient_appointments(patient_id: str):
                 status=a.get("status", "Upcoming")
             )
             for a in apps
-            if a.get("patient_id") == patient_id or patient_id == "all"
+            if str(a.get("patient_id")) == patient_id or patient_id == "all"
         ]
+
+
+@app.get("/api/prescriptions/patient/{patient_id}")
+def get_patient_prescriptions(patient_id: str):
+    """
+    Retrieve all active and past prescriptions for a specific patient.
+    """
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, patient_id, drug_name, dosage, frequency, prescriber, icon_type, created_at
+                    FROM prescriptions
+                    WHERE patient_id::text = %s
+                    ORDER BY created_at DESC
+                    """,
+                    (patient_id,)
+                )
+                rows = cur.fetchall()
+                result = []
+                for r in rows:
+                    result.append({
+                        "id": str(r["id"]),
+                        "patientId": str(r["patient_id"]),
+                        "drugName": r["drug_name"],
+                        "dosage": r.get("dosage") or "",
+                        "frequency": r.get("frequency") or "",
+                        "prescriber": r.get("prescriber") or "Treating Physician",
+                        "iconType": r.get("icon_type") or "pill",
+                        "createdAt": str(r.get("created_at") or "")
+                    })
+                return result
+    else:
+        db = read_json_db()
+        rx_list = db.get("prescriptions", [])
+        return [
+            {
+                "id": str(r.get("id")),
+                "patientId": str(r.get("patient_id") or r.get("patientId")),
+                "drugName": r.get("drug_name") or r.get("drugName"),
+                "dosage": r.get("dosage", ""),
+                "frequency": r.get("frequency", ""),
+                "prescriber": r.get("prescriber", "Treating Physician"),
+                "iconType": r.get("icon_type") or r.get("iconType", "pill"),
+                "createdAt": str(r.get("created_at", ""))
+            }
+            for r in rx_list
+            if str(r.get("patient_id") or r.get("patientId")) == patient_id
+        ]
+
+
+@app.get("/api/consultations/patient/{patient_id}")
+def get_patient_consultations(patient_id: str):
+    """
+    Retrieve clinical consultation history for a given patient.
+    """
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT c.id, c.doctor_id, c.doctor_name, c.hospital_id, c.date, c.soap_data, 
+                           h.name as hospital_name, d.specialty as doctor_specialty, d.photo as doctor_photo
+                    FROM consultations c
+                    LEFT JOIN hospitals h ON c.hospital_id = h.id
+                    LEFT JOIN doctors d ON c.doctor_id = d.id
+                    WHERE c.patient_id::text = %s
+                    ORDER BY c.date DESC
+                    """,
+                    (patient_id,)
+                )
+                rows = cur.fetchall()
+                result = []
+                for r in rows:
+                    soap = r["soap_data"] if isinstance(r["soap_data"], dict) else (json.loads(r["soap_data"]) if r.get("soap_data") else {})
+                    result.append({
+                        "id": str(r["id"]),
+                        "doctorId": r.get("doctor_id"),
+                        "doctorName": r.get("doctor_name") or "Specialist Doctor",
+                        "doctorSpecialty": r.get("doctor_specialty") or "General Medicine",
+                        "doctorPhoto": r.get("doctor_photo") or "",
+                        "hospitalId": r.get("hospital_id"),
+                        "hospitalName": r.get("hospital_name") or "CarePulse Central Hospital",
+                        "date": str(r["date"]),
+                        "soapData": soap,
+                        "diagnosis": soap.get("assessment") or "General Consultation",
+                        "prescriptionDetails": soap.get("plan") or "Follow doctor instructions.",
+                        "status": "Completed"
+                    })
+                return result
+    else:
+        db = read_json_db()
+        consultations = db.get("consultations", [])
+        hosp_map = {h.get("id"): h.get("name") for h in db.get("hospitals", [])}
+        doc_map = {d.get("id"): d for d in db.get("doctors", [])}
+        result = []
+        for c in reversed(consultations):
+            if str(c.get("patient_id")) == patient_id:
+                soap = c.get("soap_data", {})
+                d_info = doc_map.get(c.get("doctor_id"), {})
+                result.append({
+                    "id": str(c.get("id")),
+                    "doctorId": c.get("doctor_id"),
+                    "doctorName": c.get("doctor_name", "Specialist Doctor"),
+                    "doctorSpecialty": d_info.get("specialty", "General Medicine"),
+                    "doctorPhoto": d_info.get("photo", ""),
+                    "hospitalId": c.get("hospital_id"),
+                    "hospitalName": hosp_map.get(c.get("hospital_id"), "CarePulse Central Hospital"),
+                    "date": str(c.get("date")),
+                    "soapData": soap,
+                    "diagnosis": soap.get("assessment") or "General Consultation",
+                    "prescriptionDetails": soap.get("plan") or "Follow doctor instructions.",
+                    "status": "Completed"
+                })
+        return result
 
 
 def random_ticket() -> str:

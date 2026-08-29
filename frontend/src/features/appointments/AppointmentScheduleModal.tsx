@@ -114,7 +114,7 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
       time: '14:00 PM',
       title: 'Injury Examinations',
       duration: '14:30 PM - 15:30 PM',
-      patient: user?.fullName || 'Sarah Jenkins',
+      patient: user?.fullName || 'Patient',
       doctor: currentApp.doctorName,
       colorBg: 'bg-[#E3F3F1] border-teal-200 text-[#0B5A54]',
       tagColor: 'bg-[#0B5A54] text-white',
@@ -221,7 +221,7 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
                 <Avatar src={user?.avatarUrl || currentApp.doctorPhoto} size="sm" />
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 leading-tight">
-                    {user?.fullName || 'Sarah Jenkins'}
+                    {user?.fullName || 'Patient'}
                   </h4>
                   <p className="text-[10px] text-slate-400 font-semibold">Patient Profile</p>
                 </div>
