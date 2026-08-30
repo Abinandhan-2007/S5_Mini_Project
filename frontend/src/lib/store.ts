@@ -436,6 +436,10 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         : state.activeAppointment;
       return { appointments: updatedApps, activeAppointment: active };
     });
+    apiFetch(`/appointments/${encodeURIComponent(id)}/cancel`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason: _reason || 'Cancelled by patient' }),
+    }).catch((e) => console.warn('Cancel appointment API notice:', e));
   },
   rescheduleAppointment: (id, newDate, newSlot) => {
     set((state) => {

@@ -92,8 +92,8 @@ export interface MedicalHistoryItem {
   hospitalName: string;
   diagnosis: string;
   prescriptionDetails: string;
-  status: 'Completed' | 'Follow-up Required';
-  specialtyIcon: 'heart' | 'stethoscope' | 'bandage' | 'bone' | 'eye';
+  status: 'Completed' | 'Follow-up Required' | 'Upcoming' | 'Cancelled';
+  specialtyIcon?: 'heart' | 'stethoscope' | 'bandage' | 'bone' | 'eye' | 'calendar';
 }
 
 export interface BookingSelection {

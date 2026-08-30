@@ -21,7 +21,9 @@ import { useCarePulseStore } from '../../lib/store';
 
 export interface ActivityDetailState {
   id?: string;
+  date?: string;
   timeSlot?: string;
+  status?: string;
   type?: string;
   clientName?: string;
   doctorName?: string;
@@ -43,27 +45,58 @@ export const AppointmentDetailScreen: React.FC = () => {
 
   const user = useCarePulseStore((s) => s.user);
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
+  const appointments = useCarePulseStore((s) => s.appointments);
   const rescheduleAppointment = useCarePulseStore((s) => s.rescheduleAppointment);
   const cancelAppointment = useCarePulseStore((s) => s.cancelAppointment);
 
   // Extract appointment detail from navigation state or store fallback
   const passedState = (location.state as ActivityDetailState) || {};
+  const targetApt = appointments.find((a) => a.id === id || a.id === passedState.id) || activeAppointment;
 
   const appointmentData: ActivityDetailState = {
-    id: passedState.id || id || activeAppointment?.id || 'app-1',
-    timeSlot: passedState.timeSlot || activeAppointment?.timeSlot || '10:40 AM - 12:30 PM',
-    type: passedState.type || activeAppointment?.doctorSpecialty || 'Vaccination Drive',
-    clientName: passedState.clientName || user?.fullName || 'SIVANAGU E',
-    doctorName: passedState.doctorName || activeAppointment?.doctorName || 'Dr. Marvin McKinney',
-    doctorSpecialty: passedState.doctorSpecialty || activeAppointment?.doctorSpecialty || 'Immunology Specialist',
-    doctorPhoto: passedState.doctorPhoto || activeAppointment?.doctorPhoto || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
-    facilityName: passedState.facilityName || activeAppointment?.hospitalName || 'CarePulse Central Hospital',
-    facilityAddress: passedState.facilityAddress || '4517 Washington Ave, Medical Hub',
-    facilityPhone: passedState.facilityPhone || '+1 (555) 735-4614',
+    id: passedState.id || id || targetApt?.id || '',
+    timeSlot: passedState.timeSlot || targetApt?.timeSlot || '10:00 AM - 11:00 AM',
+    type: passedState.type || targetApt?.doctorSpecialty || 'OPD Consultation',
+    clientName: passedState.clientName || targetApt?.patientName || user?.fullName || 'Patient',
+    doctorName: passedState.doctorName || targetApt?.doctorName || 'Attending Physician',
+    doctorSpecialty: passedState.doctorSpecialty || targetApt?.doctorSpecialty || 'General Medicine',
+    doctorPhoto: passedState.doctorPhoto || targetApt?.doctorPhoto || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+    facilityName: passedState.facilityName || targetApt?.hospitalName || 'CarePulse Partner Hospital',
+    facilityAddress: passedState.facilityAddress || 'Main OPD Block, Wing A',
+    facilityPhone: passedState.facilityPhone || '+91 98765 43210',
+    date: passedState.date || targetApt?.date || '',
+    status: passedState.status || targetApt?.status || 'Upcoming',
     bgColor: passedState.bgColor || 'bg-[#F0FDF4]',
     borderColor: passedState.borderColor || 'border-emerald-200',
     textColor: passedState.textColor || 'text-emerald-950',
   };
+
+  // Check if appointment is within 30 minutes of scheduled start time (or already passed)
+  const isWithin30MinCancellationWindow = React.useMemo(() => {
+    if (!appointmentData.date || !appointmentData.timeSlot) return false;
+    try {
+      const rawStart = appointmentData.timeSlot.split('-')[0].trim();
+      const match = rawStart.match(/^(\d{1,2}):(\d{2})(?:\s*([AP]M))?$/i);
+      if (!match) return false;
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const ampm = match[3]?.toUpperCase();
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+
+      const [year, month, day] = appointmentData.date.split('-').map(Number);
+      if (!year || !month || !day) return false;
+
+      const appTime = new Date(year, month - 1, day, hours, minutes, 0);
+      const now = new Date();
+      const diffMs = appTime.getTime() - now.getTime();
+      const diffMins = diffMs / (1000 * 60);
+
+      return diffMins <= 30;
+    } catch {
+      return false;
+    }
+  }, [appointmentData.date, appointmentData.timeSlot]);
 
   // Interactive Reschedule & Cancel States
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
@@ -73,6 +106,7 @@ export const AppointmentDetailScreen: React.FC = () => {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('Schedule Conflict');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const availableSlots = [
     '09:00 AM - 10:00 AM',
@@ -90,7 +124,14 @@ export const AppointmentDetailScreen: React.FC = () => {
     setTimeout(() => setActionSuccess(null), 5000);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (isWithin30MinCancellationWindow) {
+      setActionError('Appointments cannot be cancelled within 30 minutes of the scheduled time slot.');
+      setIsCancelOpen(false);
+      setTimeout(() => setActionError(null), 5000);
+      return;
+    }
+
     if (appointmentData.id) {
       cancelAppointment(appointmentData.id, cancelReason);
     }
@@ -147,6 +188,14 @@ export const AppointmentDetailScreen: React.FC = () => {
           <div className="bg-emerald-50 border border-emerald-300 text-emerald-950 p-4 rounded-2xl flex items-center gap-3 shadow-xs animate-in zoom-in-95">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-xs font-bold">{actionSuccess}</p>
+          </div>
+        )}
+
+        {/* Action Error Alert Banner */}
+        {actionError && (
+          <div className="bg-rose-50 border border-rose-300 text-rose-950 p-4 rounded-2xl flex items-center gap-3 shadow-xs animate-in zoom-in-95">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <p className="text-xs font-bold">{actionError}</p>
           </div>
         )}
 
@@ -390,15 +439,30 @@ export const AppointmentDetailScreen: React.FC = () => {
           </button>
 
           {/* Secondary Action Button: Cancel Appointment */}
-          <button
-            onClick={() => {
-              setIsCancelOpen(!isCancelOpen);
-              setIsRescheduleOpen(false);
-            }}
-            className="flex-1 py-3.5 px-4 bg-slate-50 hover:bg-rose-50/80 border border-slate-200 hover:border-rose-200 text-rose-600 hover:text-rose-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-all hover:scale-[1.01] active:scale-95 cursor-pointer text-center"
-          >
-            {isCancelOpen ? 'Close Cancel' : 'Cancel Appointment'}
-          </button>
+          {isWithin30MinCancellationWindow ? (
+            <div
+              title="Appointments cannot be cancelled within 30 minutes of scheduled start time"
+              className="flex-1 py-2.5 px-3.5 bg-slate-100/90 border border-slate-200/80 rounded-xl text-center flex flex-col items-center justify-center cursor-not-allowed opacity-80 select-none"
+            >
+              <span className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                Cancellation Closed
+              </span>
+              <span className="text-[9.5px] text-slate-400 font-semibold">
+                Within 30 mins of visit
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setIsCancelOpen(!isCancelOpen);
+                setIsRescheduleOpen(false);
+              }}
+              className="flex-1 py-3.5 px-4 bg-slate-50 hover:bg-rose-50/80 border border-slate-200 hover:border-rose-200 text-rose-600 hover:text-rose-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-all hover:scale-[1.01] active:scale-95 cursor-pointer text-center"
+            >
+              {isCancelOpen ? 'Close Cancel' : 'Cancel Appointment'}
+            </button>
+          )}
         </div>
 
       </main>

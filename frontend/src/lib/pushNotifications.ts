@@ -32,6 +32,25 @@ export async function registerPushNotifications(patientId: string): Promise<void
       return;
     }
 
+    // Create high-importance notification channel for Android 8.0+ (Oreo+)
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        await PushNotifications.createChannel({
+          id: 'carepulse_alerts',
+          name: 'CarePulse Health Alerts',
+          description: 'High-priority appointment reminders, cancellations, and medication alerts',
+          importance: 5, // High: Heads-up banner & sound
+          visibility: 1, // Public
+          sound: 'default',
+          vibration: true,
+          lights: true,
+          lightColor: '#0B5A54',
+        });
+      } catch (channelErr) {
+        console.warn('Notification channel creation note:', channelErr);
+      }
+    }
+
     // Register with FCM/APNs
     await PushNotifications.register();
 

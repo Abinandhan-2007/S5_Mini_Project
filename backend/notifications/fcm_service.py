@@ -256,6 +256,17 @@ def send_push_notification(
                         title=title,
                         body=body
                     ),
+                    android=messaging.AndroidConfig(
+                        priority="high",
+                        notification=messaging.AndroidNotification(
+                            channel_id="carepulse_alerts",
+                            sound="default",
+                            priority="high",
+                            default_sound=True,
+                            default_vibrate_timings=True,
+                            visibility="public"
+                        )
+                    ),
                     data=string_data,
                     token=token_str
                 )

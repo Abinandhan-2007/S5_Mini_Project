@@ -60,7 +60,6 @@ export const BookAppointmentScreen: React.FC = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [bookedTicket, setBookedTicket] = useState('');
 
-  const consultFee = (doctor as any).consultationFee || 1200;
   const ratingValue = doctor.rating || 4.8;
   const reviewsCount = doctor.reviewsCount || 160;
   const experienceYears = doctor.experienceYears || 16;
@@ -239,16 +238,13 @@ export const BookAppointmentScreen: React.FC = () => {
                 <span>MD, DM (Neuro)</span>
               </div>
 
-              {/* Consult Fee Pill */}
-              <div className="pt-2 flex items-baseline gap-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-[#0B5A54] font-heading tracking-tight">
-                    ${consultFee}
-                  </span>
-                  <span className="text-xs font-extrabold text-slate-400">/ consultation</span>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
-                  Instant Confirmation
+              {/* Consultation Info Pill */}
+              <div className="pt-2 flex items-center gap-2">
+                <span className="text-xs font-black text-[#0B5A54] bg-[#E3F3F1] px-3 py-1 rounded-full border border-[#14B8A6]/30">
+                  OPD Consultation
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/50">
+                  Instant Token Generation
                 </span>
               </div>
             </div>
@@ -440,30 +436,39 @@ export const BookAppointmentScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* PAYMENT SUMMARY & PROTECTION GUARANTEE */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-3">
-          <h3 className="text-sm font-black font-heading text-slate-900">Payment Breakdown</h3>
+        {/* APPOINTMENT CONFIRMATION & PROTECTION GUARANTEE */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-3.5">
+          <h3 className="text-sm font-black font-heading text-slate-900 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#0B5A54]" />
+            <span>Appointment Details & Guidelines</span>
+          </h3>
 
-          <div className="space-y-2 text-xs text-slate-600 font-medium">
-            <div className="flex justify-between items-center">
-              <span>Doctor Consultation Fee</span>
-              <span className="font-extrabold text-slate-800">${consultFee}.00</span>
+          <div className="space-y-2.5 text-xs text-slate-600 font-medium">
+            <div className="flex justify-between items-center p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <span className="font-semibold text-slate-600">Consultation Category</span>
+              <span className="font-extrabold text-[#0B5A54] bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200/60">
+                In-Person Hospital Visit
+              </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span>CarePulse Booking & Facility Charge</span>
-              <span className="font-extrabold text-emerald-600">FREE</span>
+            <div className="flex justify-between items-center p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <span className="font-semibold text-slate-600">Queue Token Type</span>
+              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200/60">
+                Live FastPass OPD Token
+              </span>
             </div>
-            <div className="border-t border-slate-100 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
-              <span>Total Payable Amount</span>
-              <span className="text-[#0B5A54] font-heading text-base">${consultFee}.00</span>
+            <div className="flex justify-between items-center p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+              <span className="font-semibold text-slate-600">Hospital Check-In</span>
+              <span className="font-bold text-slate-800">
+                Reception Desk A • Ground Floor
+              </span>
             </div>
           </div>
 
           {/* Guarantee Banner */}
           <div className="bg-emerald-50/70 border border-emerald-200/60 p-3 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-[11px] font-medium leading-tight">
-              <span className="font-black">100% Satisfaction Guarantee:</span> Free rescheduling or cancellation up to 2 hours prior.
+              <span className="font-black">Patient Care Guarantee:</span> Real-time queue sync and free rescheduling anytime prior to consultation.
             </p>
           </div>
         </div>
@@ -480,11 +485,6 @@ export const BookAppointmentScreen: React.FC = () => {
               <p className="text-xs font-black text-slate-800 font-heading">
                 {formattedSelectedDate} • <span className="text-[#0B5A54]">{selectedSlot}</span>
               </p>
-            </div>
-
-            <div className="sm:hidden text-right">
-              <span className="text-[10px] font-bold text-slate-400 block">Total</span>
-              <span className="text-base font-black text-[#0B5A54] font-heading">${consultFee}</span>
             </div>
           </div>
 
@@ -505,7 +505,7 @@ export const BookAppointmentScreen: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-teal-200" />
-                  <span>Book Appointment • ${consultFee}</span>
+                  <span>Confirm Appointment</span>
                   <ChevronRight className="w-4 h-4 text-teal-200 ml-auto sm:ml-0" />
                 </>
               )}

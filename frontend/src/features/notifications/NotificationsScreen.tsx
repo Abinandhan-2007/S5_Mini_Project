@@ -97,7 +97,7 @@ export const NotificationsScreen: React.FC = () => {
             'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
           dateTime: `${apt.date || 'Today'}${apt.timeSlot ? ` at ${apt.timeSlot}` : ''}`,
           isRead: false,
-          actionRoute: `/appointments/book/${apt.doctorId || ''}`,
+          actionRoute: `/appointment-detail/${apt.id}`,
         });
       });
 
@@ -137,7 +137,7 @@ export const NotificationsScreen: React.FC = () => {
             'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
           dateTime: `${apt.date || 'Completed'}${apt.timeSlot ? ` • ${apt.timeSlot}` : ''}`,
           isRead: true,
-          actionRoute: '/history',
+          actionRoute: `/appointment-detail/${apt.id}`,
         });
       });
 
@@ -161,25 +161,6 @@ export const NotificationsScreen: React.FC = () => {
         });
       }
     });
-
-    // 5. System Welcome Notification (For every logged in patient)
-    if (user) {
-      list.push({
-        id: `notif-welcome-${user.id}`,
-        type: 'system',
-        category: 'Completed',
-        title: 'Welcome to CarePulse Health Ecosystem',
-        badgeText: 'Account Active',
-        badgeVariant: 'completed',
-        doctorName: 'CarePulse Health AI Desk',
-        doctorSpecialty: '24/7 Virtual Triage & Care Platform',
-        doctorPhotoUrl:
-          'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&auto=format&fit=crop&q=80',
-        dateTime: 'Active',
-        isRead: true,
-        actionRoute: '/home',
-      });
-    }
 
     return list;
   }, [user, appointments, prescriptions, history]);
@@ -214,17 +195,14 @@ export const NotificationsScreen: React.FC = () => {
     } catch {}
   };
 
-  const toggleReadStatus = (id: string) => {
-    let updated: string[];
-    if (readIds.includes(id)) {
-      updated = readIds.filter((item) => item !== id);
-    } else {
-      updated = [...readIds, id];
+  const markAsRead = (id: string) => {
+    if (!readIds.includes(id)) {
+      const updated = [...readIds, id];
+      setReadIds(updated);
+      try {
+        localStorage.setItem(`carepulse_read_notifs_${user?.id || 'guest'}`, JSON.stringify(updated));
+      } catch {}
     }
-    setReadIds(updated);
-    try {
-      localStorage.setItem(`carepulse_read_notifs_${user?.id || 'guest'}`, JSON.stringify(updated));
-    } catch {}
   };
 
   const toggleSection = (sectionName: string) => {
@@ -364,7 +342,7 @@ export const NotificationsScreen: React.FC = () => {
                       <div
                         key={item.id}
                         onClick={() => {
-                          toggleReadStatus(item.id);
+                          markAsRead(item.id);
                           if (item.actionRoute) navigate(item.actionRoute);
                         }}
                         className={clsx(
