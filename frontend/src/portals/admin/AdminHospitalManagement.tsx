@@ -171,7 +171,14 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-base font-black text-slate-900 font-heading truncate">{hosp.name}</h3>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h3 className="text-base font-black text-slate-900 font-heading truncate">{hosp.name}</h3>
+                      {(hosp.hospital_code || hosp.hospitalCode) && (
+                        <span className="font-mono text-[10.5px] font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 shrink-0">
+                          {hosp.hospital_code || hosp.hospitalCode}
+                        </span>
+                      )}
+                    </div>
                     <span className="bg-emerald-50 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
                       Active Campus
                     </span>

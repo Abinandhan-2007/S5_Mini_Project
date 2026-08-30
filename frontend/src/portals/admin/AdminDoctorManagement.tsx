@@ -364,7 +364,14 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                               {doc.name.replace('Dr. ', '').charAt(0)}
                             </div>
                             <div>
-                              <p className="font-black text-slate-900">{doc.name}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-black text-slate-900">{doc.name}</p>
+                                {(doc.staff_code || doc.staffCode) && (
+                                  <span className="font-mono text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                                    {doc.staff_code || doc.staffCode}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-slate-400 font-medium">{doc.email || 'doctor@carepulse.com'}</p>
                             </div>
                           </div>
@@ -495,9 +502,16 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                       {doc.name.replace('Dr. ', '').charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-900 group-hover:text-[#0B5A54] transition-colors">
-                        {doc.name}
-                      </h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-sm font-black text-slate-900 group-hover:text-[#0B5A54] transition-colors">
+                          {doc.name}
+                        </h3>
+                        {(doc.staff_code || doc.staffCode) && (
+                          <span className="font-mono text-[9.5px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                            {doc.staff_code || doc.staffCode}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 font-medium">{doc.specialty}</p>
                     </div>
                   </div>

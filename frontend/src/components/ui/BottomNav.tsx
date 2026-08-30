@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import doctorAvatar from '../../assets/doctor_avatar.png';
-import { Home, Building2, Activity, User, Calendar } from 'lucide-react';
+import { Home, Building2, Activity, User } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
@@ -38,7 +38,6 @@ export const BottomNav: React.FC = () => {
     { path: '/home', label: 'Home', icon: Home },
     { path: '/history', label: 'History', icon: Activity },
     { path: '/hospitals', label: 'Hospitals', icon: Building2 },
-    { path: '/schedule', label: 'Schedule', icon: Calendar },
     { path: '/profile', label: 'Profile', icon: User },
   ];
 

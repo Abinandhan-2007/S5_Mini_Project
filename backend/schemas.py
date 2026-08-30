@@ -231,6 +231,8 @@ class WalkInAppointmentCreate(BaseModel):
 
 class HospitalResponse(BaseModel):
     id: str
+    hospital_code: Optional[str] = None
+    hospitalCode: Optional[str] = None
     name: str
     address: str
     phone: Optional[str] = ""
@@ -249,6 +251,8 @@ class HospitalResponse(BaseModel):
 
 class DoctorResponse(BaseModel):
     id: str
+    staff_code: Optional[str] = None
+    staffCode: Optional[str] = None
     name: str
     specialty: str
     department: Optional[str] = "General Medicine"

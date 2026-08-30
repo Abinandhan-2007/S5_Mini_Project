@@ -326,7 +326,7 @@ export const HomeScreen: React.FC = () => {
 
             {activeAppointment ? (
               <div
-                onClick={() => navigate('/schedule')}
+                onClick={() => navigate('/history')}
                 className="bg-gradient-to-br from-white via-white to-[#E3F3F1]/40 rounded-3xl p-4 sm:p-5 border border-[#14B8A6]/30 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group space-y-3.5 relative overflow-hidden"
               >
                 <div className="flex items-start justify-between gap-3 relative z-10">

@@ -394,7 +394,10 @@ export const AdminLayout: React.FC = () => {
                 </p>
                 <p className="text-[10px] text-slate-400 font-bold truncate flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-[#0B5A54]" />
-                  Super Admin
+                  <span>Admin ID:</span>
+                  <span className="font-mono text-[#0B5A54] font-black">
+                    {currentStaff?.staff_code || currentStaff?.staffCode || 'A001101'}
+                  </span>
                 </p>
               </div>
             </div>
@@ -520,6 +523,9 @@ export const AdminLayout: React.FC = () => {
                     <p className="font-black text-slate-900 font-heading">{adminDisplayName}</p>
                     <p className="text-[10px] text-slate-400 font-medium truncate">
                       {currentStaff?.email || 'admin@carepulse.com'}
+                    </p>
+                    <p className="text-[10px] font-mono font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded mt-1 inline-block border border-teal-100">
+                      Admin ID: {currentStaff?.staff_code || currentStaff?.staffCode || 'A001101'}
                     </p>
                   </div>
                   <button

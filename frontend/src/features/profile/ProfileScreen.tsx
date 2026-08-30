@@ -251,6 +251,11 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const patientDisplayCode =
+    user.patient_code ||
+    user.patientCode ||
+    (user.id?.startsWith('PAT-') ? user.id : user.id ? `PAT-${user.id.slice(0, 6).toUpperCase()}` : 'PAT-000001');
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans text-slate-800 antialiased">
       {/* HEADER SECTION WITH HERO GRADIENT */}
@@ -306,7 +311,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* NAME & CONTACT INFO */}
-          <div className="space-y-1">
+          <div className="space-y-1.5 flex flex-col items-center">
             <div className="flex items-center justify-center gap-1.5">
               <h2 className="text-lg font-black font-heading text-slate-900 tracking-tight">
                 {user.fullName}
@@ -317,7 +322,15 @@ export const ProfileScreen: React.FC = () => {
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500">
+
+            {/* PROMINENT EASY-TO-READ PATIENT DISPLAY CODE */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/90 text-[#0B5A54] text-xs font-black shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">Patient ID:</span>
+              <span className="font-mono font-black tracking-wider text-xs">{patientDisplayCode}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500 pt-0.5">
               <span>{user.email}</span>
               <span className="w-1 h-1 rounded-full bg-slate-300" />
               <span className="text-[#0B5A54] font-bold">{user.phone || 'No phone set'}</span>
@@ -350,6 +363,41 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
+            {/* OFFICIAL CAREPULSE PATIENT ID CARD */}
+            <Card padding="sm" className="col-span-2 space-y-1.5 border border-teal-200/90 bg-gradient-to-r from-teal-50/80 via-white to-teal-50/80 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
+                  <div className="w-5.5 h-5.5 rounded-lg bg-[#0B5A54] text-white flex items-center justify-center">
+                    <ShieldCheck className="w-3 h-3 text-white" />
+                  </div>
+                  <span>OFFICIAL CAREPULSE PATIENT ID</span>
+                </div>
+                <span className="text-[10px] font-bold text-[#0B5A54] bg-white px-2 py-0.5 rounded-md border border-teal-200 shadow-2xs">
+                  Active
+                </span>
+              </div>
+              <div className="flex items-center justify-between pl-0.5 pt-0.5">
+                <div>
+                  <p className="text-sm sm:text-base font-black font-mono tracking-wider text-[#0B5A54]">
+                    {patientDisplayCode}
+                  </p>
+                  <p className="text-[10.5px] text-slate-500 font-medium">
+                    Show or read this ID at reception, doctor consultation, and emergency check-in
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(patientDisplayCode);
+                    alert(`Patient ID ${patientDisplayCode} copied to clipboard!`);
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold bg-white hover:bg-teal-50 text-[#0B5A54] border border-teal-200 rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+                  title="Copy Patient ID"
+                >
+                  Copy
+                </button>
+              </div>
+            </Card>
             <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
                 <div className="w-5.5 h-5.5 rounded-lg bg-teal-50 flex items-center justify-center">
@@ -787,10 +835,12 @@ export const ProfileScreen: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-0.5 text-center">
+            <div className="space-y-1 text-center">
               <p className="text-xs font-bold text-slate-900">{user.fullName}</p>
-              <p className="text-[10px] text-slate-500 font-medium">Patient ID: #{user.id.slice(0, 8).toUpperCase()}</p>
-              <p className="text-[10px] text-[#0B5A54] font-bold">CarePulse Emergency Check-in</p>
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[#0B5A54] text-xs font-black font-mono">
+                <span>Patient ID: {patientDisplayCode}</span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium pt-0.5">CarePulse Quick Desk & OPD Check-in</p>
             </div>
 
             <Button

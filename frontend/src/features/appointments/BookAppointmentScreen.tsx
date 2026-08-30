@@ -224,10 +224,17 @@ export const BookAppointmentScreen: React.FC = () => {
                 <span>Verified Physician</span>
               </div>
 
-              {/* Doctor Name */}
-              <h2 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight truncate">
-                {doctor.name}
-              </h2>
+              {/* Doctor Name & Code */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight truncate">
+                  {doctor.name}
+                </h2>
+                {(doctor.staff_code || doctor.staffCode) && (
+                  <span className="font-mono text-xs font-bold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full border border-[#14B8A6]/30 shadow-2xs">
+                    {doctor.staff_code || doctor.staffCode}
+                  </span>
+                )}
+              </div>
 
               {/* Specialty & Degree */}
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500">

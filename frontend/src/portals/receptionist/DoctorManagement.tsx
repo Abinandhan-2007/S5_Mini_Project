@@ -156,9 +156,16 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                       className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-100 shadow-xs shrink-0"
                     />
                     <div className="min-w-0">
-                      <h3 className="text-base font-black text-slate-900 font-heading truncate">
-                        {doctor.name}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-black text-slate-900 font-heading truncate">
+                          {doctor.name}
+                        </h3>
+                        {(doctor.staff_code || doctor.staffCode) && (
+                          <span className="font-mono text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200 shadow-2xs">
+                            {doctor.staff_code || doctor.staffCode}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs font-extrabold text-[#0B5A54] truncate">
                         {doctor.specialty} • {doctor.department}
                       </p>

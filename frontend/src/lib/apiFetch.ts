@@ -102,8 +102,8 @@ export async function apiFetch(
           url,
           headers,
           data: requestData,
-          connectTimeout: 2500,
-          readTimeout: 2500,
+          connectTimeout: 8000,
+          readTimeout: 8000,
         });
 
         if (nativeRes.status >= 200 && nativeRes.status < 600) {

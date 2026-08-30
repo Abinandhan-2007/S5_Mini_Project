@@ -32,16 +32,17 @@ ALTER TABLE patients ALTER COLUMN dob DROP NOT NULL;
 
 -- Sequences for Auto-Numbering Display Codes
 CREATE SEQUENCE IF NOT EXISTS patient_code_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS hospital_code_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS admin_code_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS receptionist_code_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS doctor_code_seq START 1;
 
--- Trigger Function for Auto-Generating Patient Display Codes (PAT-000042)
+-- Trigger Function for Auto-Generating Patient Display Codes (P000001, P000042)
 CREATE OR REPLACE FUNCTION generate_patient_code()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.patient_code IS NULL OR NEW.patient_code = '' THEN
-        NEW.patient_code := 'PAT-' || LPAD(nextval('patient_code_seq')::text, 6, '0');
+        NEW.patient_code := 'P' || LPAD(nextval('patient_code_seq')::text, 6, '0');
     END IF;
     RETURN NEW;
 END;
@@ -56,6 +57,7 @@ EXECUTE FUNCTION generate_patient_code();
 -- Hospitals Table
 CREATE TABLE IF NOT EXISTS hospitals (
     id VARCHAR(100) PRIMARY KEY,
+    hospital_code VARCHAR(20) UNIQUE,
     name VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
     phone VARCHAR(50),
@@ -69,6 +71,7 @@ CREATE TABLE IF NOT EXISTS hospitals (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS hospital_code VARCHAR(20) UNIQUE;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS rating DECIMAL(3, 1) DEFAULT 4.8;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS reviews_count INT DEFAULT 1500;
@@ -77,6 +80,23 @@ ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS specialties JSONB DEFAULT '["General", "Emergency Care"]'::jsonb;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS facility_type VARCHAR(100) DEFAULT 'General';
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS distance_miles DECIMAL(4, 1) DEFAULT 1.0;
+
+-- Trigger Function for Auto-Generating Hospital Display Codes (H001, H002, H003...)
+CREATE OR REPLACE FUNCTION generate_hospital_code()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.hospital_code IS NULL OR NEW.hospital_code = '' THEN
+        NEW.hospital_code := 'H' || LPAD(nextval('hospital_code_seq')::text, 3, '0');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_generate_hospital_code ON hospitals;
+CREATE TRIGGER trigger_generate_hospital_code
+BEFORE INSERT ON hospitals
+FOR EACH ROW
+EXECUTE FUNCTION generate_hospital_code();
 
 -- Doctors Table
 CREATE TABLE IF NOT EXISTS doctors (
@@ -186,20 +206,62 @@ ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_code VARCHAR(20) UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_staff_email ON staff(email);
 CREATE INDEX IF NOT EXISTS idx_staff_role ON staff(role);
 
--- Trigger Function for Auto-Generating Staff Display Codes (ADM-0001, REC-0001, DOC-0001)
+-- Business Rule: Exactly ONE active administrator per hospital
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_admin_per_hospital ON staff (hospital_id) WHERE role = 'admin' AND is_active = true;
+
+-- Trigger Function for Auto-Generating Hierarchical Staff Display Codes (<RoleLetter><HospitalNumber><Seq101+>, e.g. A001101, D001101, R001101)
 CREATE OR REPLACE FUNCTION generate_staff_code()
 RETURNS TRIGGER AS $$
+DECLARE
+    h_code VARCHAR(20);
+    h_num VARCHAR(10);
+    role_letter CHAR(1);
+    staff_count INT;
+    seq_num INT;
 BEGIN
     IF NEW.staff_code IS NULL OR NEW.staff_code = '' THEN
+        -- 1. Determine Role Letter
         IF NEW.role = 'admin' THEN
-            NEW.staff_code := 'ADM-' || LPAD(nextval('admin_code_seq')::text, 4, '0');
-        ELSIF NEW.role = 'receptionist' THEN
-            NEW.staff_code := 'REC-' || LPAD(nextval('receptionist_code_seq')::text, 4, '0');
+            role_letter := 'A';
         ELSIF NEW.role = 'doctor' THEN
-            NEW.staff_code := 'DOC-' || LPAD(nextval('doctor_code_seq')::text, 4, '0');
+            role_letter := 'D';
+        ELSIF NEW.role = 'receptionist' THEN
+            role_letter := 'R';
         ELSE
-            NEW.staff_code := 'STF-' || LPAD(nextval('admin_code_seq')::text, 4, '0');
+            role_letter := 'S';
         END IF;
+
+        -- 2. Lookup Hospital 3-digit number from hospital_code (or hospital_id fallback)
+        h_num := '001';
+        IF NEW.hospital_id IS NOT NULL THEN
+            SELECT hospital_code INTO h_code FROM hospitals WHERE id = NEW.hospital_id;
+            IF h_code IS NOT NULL AND h_code <> '' THEN
+                h_num := LPAD(REGEXP_REPLACE(h_code, '[^0-9]', '', 'g'), 3, '0');
+            ELSE
+                h_num := LPAD(REGEXP_REPLACE(NEW.hospital_id, '[^0-9]', '', 'g'), 3, '0');
+            END IF;
+        END IF;
+        IF h_num IS NULL OR h_num = '' THEN
+            h_num := '001';
+        END IF;
+
+        -- 3. Calculate sequence number within hospital for this role (STARTING AT 101)
+        IF NEW.hospital_id IS NOT NULL THEN
+            SELECT COUNT(*) INTO staff_count 
+            FROM staff 
+            WHERE hospital_id = NEW.hospital_id 
+              AND role = NEW.role 
+              AND (NEW.id IS NULL OR id <> NEW.id);
+        ELSE
+            SELECT COUNT(*) INTO staff_count 
+            FROM staff 
+            WHERE hospital_id IS NULL 
+              AND role = NEW.role 
+              AND (NEW.id IS NULL OR id <> NEW.id);
+        END IF;
+
+        seq_num := 101 + staff_count;
+        NEW.staff_code := role_letter || h_num || LPAD(seq_num::text, 3, '0');
     END IF;
     RETURN NEW;
 END;

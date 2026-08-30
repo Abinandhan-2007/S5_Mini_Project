@@ -7,8 +7,10 @@ android {
         applicationId "com.carepulse.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // 🚨 CRITICAL: MUST be incremented every time a new APK is built and distributed via the in-app updater.
+        // This is what App.getInfo() reads on the device. Keep this in sync with backend/app_version.json.
+        versionCode 3
+        versionName "1.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

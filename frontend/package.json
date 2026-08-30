@@ -14,9 +14,12 @@
     "android:build": "npm run build && npx cap sync android && cd android && powershell -Command \"$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew assembleDebug\""
   },
   "dependencies": {
+    "@capacitor-community/file-opener": "^8.0.1",
     "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/filesystem": "^8.1.3",
     "@capacitor/geolocation": "^8.2.0",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.2",

@@ -53,6 +53,8 @@ const DEFAULT_SLOTS: TimeSlotCapacity[] = [
 const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
   {
     id: 'doc-1',
+    staff_code: 'D001101',
+    staffCode: 'D001101',
     name: 'Dr. Olivia Wilson',
     specialty: 'Cardiologist',
     department: 'Cardiology',
@@ -70,6 +72,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
   },
   {
     id: 'doc-2',
+    staff_code: 'D003101',
+    staffCode: 'D003101',
     name: 'Dr. Marcus Vance',
     specialty: 'Dermatologist',
     department: 'Dermatology',
@@ -85,6 +89,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
   },
   {
     id: 'doc-3',
+    staff_code: 'D004101',
+    staffCode: 'D004101',
     name: 'Dr. Sophia Patel',
     specialty: 'Pediatrician',
     department: 'Pediatrics',
@@ -100,6 +106,8 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
   },
   {
     id: 'doc-4',
+    staff_code: 'D002101',
+    staffCode: 'D002101',
     name: 'Dr. Ethan Reynolds',
     specialty: 'Neurologist',
     department: 'Neurology',
@@ -184,11 +192,13 @@ const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
 
 const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
   id: 'rec-101',
+  staff_code: 'R001101',
+  staffCode: 'R001101',
   name: 'Emily Watson',
   username: 'rec',
   email: 'rec@carepulse.com',
   phone: '+91 98765 99887',
-  employeeId: 'REC-4092',
+  employeeId: 'R001101',
   clinicName: 'CarePulse Central Hospital',
   deskName: 'Main Reception & OPD Queue Desk 01',
   department: 'Main Reception & OPD Queue',
@@ -198,6 +208,8 @@ const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
 
 const DEFAULT_ADMIN_PROFILE: AdminProfile = {
   id: 'admin-1',
+  staff_code: 'A001101',
+  staffCode: 'A001101',
   name: 'Admin',
   email: 'admin@carepulse.com',
   password: 'admin123',
@@ -226,6 +238,8 @@ const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
 const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [
   {
     id: 'rec-101',
+    staff_code: 'R001101',
+    staffCode: 'R001101',
     name: 'Emily Watson',
     username: 'rec',
     email: 'rec',
@@ -242,6 +256,8 @@ const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [
   },
   {
     id: 'rec-102',
+    staff_code: 'R001102',
+    staffCode: 'R001102',
     name: 'Anna Mathews',
     email: 'anna.m@carepulse.com',
     hospitalName: 'CarePulse Central Hospital',
@@ -256,6 +272,8 @@ const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [
   },
   {
     id: 'rec-103',
+    staff_code: 'R001103',
+    staffCode: 'R001103',
     name: 'David Miller',
     email: 'david.m@carepulse.com',
     hospitalName: 'CarePulse Central Hospital',
@@ -273,6 +291,8 @@ const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [
 const DEFAULT_HOSPITALS: HospitalBranch[] = [
   {
     id: 'hosp-1',
+    hospital_code: 'H001',
+    hospitalCode: 'H001',
     name: 'CarePulse Metro Central Hospital',
     address: '4517 Washington Ave, Medical Hub, Metro District',
     city: 'Metro City',
@@ -285,6 +305,8 @@ const DEFAULT_HOSPITALS: HospitalBranch[] = [
   },
   {
     id: 'hosp-2',
+    hospital_code: 'H002',
+    hospitalCode: 'H002',
     name: 'CarePulse West Wing Specialty Clinic',
     address: '8902 Health Boulevard, Westside District',
     city: 'West Haven',
@@ -297,6 +319,8 @@ const DEFAULT_HOSPITALS: HospitalBranch[] = [
   },
   {
     id: 'hosp-3',
+    hospital_code: 'H003',
+    hospitalCode: 'H003',
     name: 'CarePulse Downtown Urgent Care',
     address: '1240 Innovation Way, Financial District',
     city: 'Downtown Core',
@@ -309,6 +333,8 @@ const DEFAULT_HOSPITALS: HospitalBranch[] = [
   },
   {
     id: 'hosp-4',
+    hospital_code: 'H004',
+    hospitalCode: 'H004',
     name: 'CarePulse Greenfield Pediatric Center',
     address: '67 Greenfield Park, North Suburb',
     city: 'Greenfield',

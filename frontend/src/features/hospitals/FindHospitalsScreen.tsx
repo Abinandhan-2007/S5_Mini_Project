@@ -226,9 +226,16 @@ export const FindHospitalsScreen: React.FC = () => {
 
                   {/* Title & Location Overlay */}
                   <div className="absolute bottom-3.5 left-4 right-4 text-white space-y-1">
-                    <h3 className="text-lg font-black font-heading text-white line-clamp-1 tracking-tight drop-shadow-xs">
-                      {hosp.name}
-                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg font-black font-heading text-white line-clamp-1 tracking-tight drop-shadow-xs">
+                        {hosp.name}
+                      </h3>
+                      {(hosp.hospital_code || hosp.hospitalCode) && (
+                        <span className="bg-white/25 backdrop-blur-md text-teal-100 font-mono text-[10.5px] font-black px-2 py-0.5 rounded-md border border-white/30 shadow-xs">
+                          {hosp.hospital_code || hosp.hospitalCode}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-slate-200 font-medium">
                       <div className="flex items-center gap-1 truncate">
                         <MapPin className="w-3.5 h-3.5 text-teal-300 shrink-0" />

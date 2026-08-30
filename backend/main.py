@@ -24,7 +24,7 @@ def normalize_text_key(val: str) -> str:
         return ""
     return re.sub(r"[^a-zA-Z0-9]", "", val).lower()
 
-from fastapi import FastAPI, HTTPException, status, Header
+from fastapi import FastAPI, HTTPException, status, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -57,6 +57,7 @@ from schemas import (
     DoctorResponse,
     DeviceTokenRequest,
     AppointmentCancelRequest,
+    TokenStatusUpdate,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
@@ -97,10 +98,30 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health_check():
+    db_status = "connected"
+    ping_latency_ms = None
+    if database.use_pg:
+        try:
+            start_time = time.perf_counter()
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+            ping_latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        except Exception as e:
+            db_status = f"unreachable ({e})"
+    else:
+        db_status = "mock_json_store"
+
+    is_healthy = (database.use_pg and db_status == "connected") or database.ALLOW_JSON_FALLBACK
+
     return {
-        "status": "healthy",
+        "status": "healthy" if is_healthy else "degraded",
         "service": "CarePulse FastAPI Backend",
-        "database": "PostgreSQL (pgvector)" if database.use_pg else "JSON File Fallback"
+        "storage_mode": "postgresql" if database.use_pg else "json_fallback",
+        "database": "PostgreSQL (pgvector)" if database.use_pg else "JSON File Fallback",
+        "db_connected": database.use_pg and db_status == "connected",
+        "db_latency_ms": ping_latency_ms,
+        "allow_json_fallback": database.ALLOW_JSON_FALLBACK
     }
 
 # ==========================================
@@ -280,11 +301,11 @@ def register_patient(request: RegisterRequest):
         max_pat = 0
         for pt in patients:
             code_val = pt.get("patient_code") or pt.get("patientCode")
-            if code_val and code_val.startswith("PAT-"):
+            if code_val:
                 m = re.search(r"\d+", code_val)
                 if m:
                     max_pat = max(max_pat, int(m.group(0)))
-        new_code = f"PAT-{max_pat + 1:06d}"
+        new_code = f"P{max_pat + 1:06d}"
 
         new_patient = {
             "id": new_id,
@@ -1558,49 +1579,49 @@ def book_appointment(data: AppointmentCreate):
                 conn.commit()
                 if row:
                     created_app_id = str(row["id"])
+    else:
+        # Fallback JSON DB store (only active when ALLOW_JSON_FALLBACK=true)
+        try:
+            db = read_json_db()
+            json_app = {
+                "id": created_app_id,
+                "patient_id": patient_id,
+                "patientId": patient_id,
+                "patient_name": p_name,
+                "patientName": p_name,
+                "ticket_number": ticket_no,
+                "ticketNumber": ticket_no,
+                "doctor_id": data.doctorId,
+                "doctorId": data.doctorId,
+                "doctor_name": data.doctorName,
+                "doctorName": data.doctorName,
+                "doctor_specialty": specialty,
+                "doctorSpecialty": specialty,
+                "doctor_photo": photo,
+                "doctorPhoto": photo,
+                "hospital_id": doc_hospital_id,
+                "hospitalId": doc_hospital_id,
+                "hospital_name": doc_hospital_name,
+                "hospitalName": doc_hospital_name,
+                "date": data.date,
+                "time_slot": data.timeSlot,
+                "timeSlot": data.timeSlot,
+                "type": app_type,
+                "status": "Upcoming"
+            }
+            db.setdefault("appointments", []).insert(0, json_app)
 
-    # Always persist in JSON DB as well
-    try:
-        db = read_json_db()
-        json_app = {
-            "id": created_app_id,
-            "patient_id": patient_id,
-            "patientId": patient_id,
-            "patient_name": p_name,
-            "patientName": p_name,
-            "ticket_number": ticket_no,
-            "ticketNumber": ticket_no,
-            "doctor_id": data.doctorId,
-            "doctorId": data.doctorId,
-            "doctor_name": data.doctorName,
-            "doctorName": data.doctorName,
-            "doctor_specialty": specialty,
-            "doctorSpecialty": specialty,
-            "doctor_photo": photo,
-            "doctorPhoto": photo,
-            "hospital_id": doc_hospital_id,
-            "hospitalId": doc_hospital_id,
-            "hospital_name": doc_hospital_name,
-            "hospitalName": doc_hospital_name,
-            "date": data.date,
-            "time_slot": data.timeSlot,
-            "timeSlot": data.timeSlot,
-            "type": app_type,
-            "status": "Upcoming"
-        }
-        db.setdefault("appointments", []).insert(0, json_app)
+            # Update doctor slot capacity bookedSeats in JSON DB
+            for doc in db.get("doctors", []):
+                if doc.get("id") == data.doctorId:
+                    for slot in doc.get("slotCapacities", []) or doc.get("slot_capacities", []):
+                        if slot.get("timeSlot") == data.timeSlot:
+                            slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
+                            slot["availableSeats"] = max(0, slot.get("maxSeats", 5) - slot["bookedSeats"])
 
-        # Update doctor slot capacity bookedSeats in JSON DB
-        for doc in db.get("doctors", []):
-            if doc.get("id") == data.doctorId:
-                for slot in doc.get("slotCapacities", []) or doc.get("slot_capacities", []):
-                    if slot.get("timeSlot") == data.timeSlot:
-                        slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
-                        slot["availableSeats"] = max(0, slot.get("maxSeats", 5) - slot["bookedSeats"])
-
-        write_json_db(db)
-    except Exception as e:
-        logger.warning(f"Error persisting appointment to JSON DB: {e}")
+            write_json_db(db)
+        except Exception as e:
+            logger.warning(f"Error persisting appointment to JSON DB: {e}")
 
     return AppointmentResponse(
         id=created_app_id,
@@ -1778,6 +1799,7 @@ def cancel_appointment(appointment_id: str, cancel_req: Optional[AppointmentCanc
     push_body = f"Your appointment with {doc_name} on {app_date} has been cancelled."
     push_data = {
         "type": "appointment_cancelled",
+        "screen": "/history",
         "appointment_id": app_id,
         "patient_id": p_id,
         "reason": reason
@@ -1837,7 +1859,7 @@ def update_appointment_status(appointment_id: str, status_data: TokenStatusUpdat
             p_id,
             "Appointment Cancelled",
             f"Your appointment with {doc_name} on {app_date} has been cancelled.",
-            {"type": "appointment_cancelled", "appointment_id": app_id, "patient_id": p_id}
+            {"type": "appointment_cancelled", "screen": "/history", "appointment_id": app_id, "patient_id": p_id}
         )
 
     return {"success": True, "appointment": updated_app}
@@ -2043,9 +2065,12 @@ def format_hospital(h: dict) -> HospitalResponse:
     dist = float(h.get("distance_miles") or h.get("distanceMiles") or 1.0)
     image = h.get("image_url") or h.get("imageUrl") or "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80"
     fac_type = h.get("facility_type") or h.get("facilityType") or "General"
+    h_code = h.get("hospital_code") or h.get("hospitalCode")
 
     return HospitalResponse(
         id=str(h["id"]),
+        hospital_code=h_code,
+        hospitalCode=h_code,
         name=h["name"],
         address=h["address"],
         phone=h.get("phone") or "",
@@ -2088,9 +2113,12 @@ def format_doctor(d: dict) -> DoctorResponse:
     fee = float(d.get("consultation_fee") or d.get("consultationFee") or 500.0)
     dept = d.get("department") or "General Medicine"
     room = d.get("room_number") or d.get("roomNumber") or ""
+    stf_code = d.get("staff_code") or d.get("staffCode")
 
     return DoctorResponse(
         id=str(d["id"]),
+        staff_code=stf_code,
+        staffCode=stf_code,
         name=d["name"],
         specialty=d["specialty"],
         department=dept,
@@ -2257,7 +2285,81 @@ app.include_router(admin_router)
 app.include_router(staff_auth_router)
 app.include_router(doctor_router)
 
+# Mount static APK downloads folder for self-hosted updates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+downloads_dir = Path(__file__).resolve().parent / "static_downloads"
+downloads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/downloads", StaticFiles(directory=str(downloads_dir)), name="downloads")
+
+
+@app.get("/api/app/version")
+def get_app_version(request: Request):
+    """
+    Returns the latest published app version, release notes, and full APK download URL.
+    Works seamlessly across localhost, local Wi-Fi, and public ngrok tunnels.
+    """
+    version_file = Path(__file__).resolve().parent / "app_version.json"
+    if not version_file.exists():
+        return {
+            "version": "1.0.0",
+            "download_url": "",
+            "release_notes": "Initial Release",
+            "released_at": "2026-08-30",
+        }
+
+    try:
+        with open(version_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error(f"Error reading app_version.json: {e}")
+        data = {
+            "version": "1.0.0",
+            "apk_filename": "CarePulse_App.apk",
+            "release_notes": "Initial Release",
+            "released_at": "2026-08-30",
+        }
+
+    # Resolve base URL (respecting ngrok / proxy headers)
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if forwarded_proto and forwarded_host:
+        base_url = f"{forwarded_proto}://{forwarded_host}"
+    else:
+        base_url = str(request.base_url).rstrip("/")
+
+    apk_filename = data.get("apk_filename", "CarePulse_App.apk")
+    download_url = f"{base_url}/downloads/{apk_filename}"
+
+    return {
+        "version": data.get("version", "1.0.0"),
+        "download_url": download_url,
+        "release_notes": data.get("release_notes", ""),
+        "released_at": data.get("released_at", ""),
+    }
+
+
+# Mount and serve built React Frontend (frontend/dist) for seamless over-the-air ngrok distribution
+frontend_dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist_dir.exists():
+    assets_dir = frontend_dist_dir / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa_frontend(full_path: str):
+        # Allow API, docs, downloads, and OpenAPI routes to pass through to FastAPI handlers
+        if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi.json") or full_path.startswith("redoc") or full_path.startswith("downloads"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        
+        target_file = frontend_dist_dir / full_path
+        if full_path and target_file.is_file():
+            return FileResponse(target_file)
+        return FileResponse(frontend_dist_dir / "index.html")
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=config.PORT, reload=True)
+
 
 

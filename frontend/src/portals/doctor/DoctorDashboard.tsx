@@ -128,7 +128,9 @@ export const DoctorDashboard: React.FC = () => {
               </div>
               <div className="hidden sm:block">
                 <p className="text-[11px] font-extrabold text-slate-800 leading-none">{currentStaff?.name}</p>
-                <p className="text-[10px] text-slate-400 font-medium leading-tight">Doctor</p>
+                <p className="text-[10px] text-teal-700 font-mono font-bold leading-tight">
+                  Doctor ID: {currentStaff?.staff_code || currentStaff?.staffCode || 'D001101'}
+                </p>
               </div>
             </div>
             <button
@@ -152,7 +154,12 @@ export const DoctorDashboard: React.FC = () => {
         >
           <div>
             <p className="text-teal-200/80 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">{today}</p>
-            <h1 className="text-lg sm:text-xl font-black mt-0.5 leading-tight">Good Morning, {currentStaff?.name?.split(' ').slice(0, 2).join(' ')} 👋</h1>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <h1 className="text-lg sm:text-xl font-black leading-tight">Good Morning, {currentStaff?.name?.split(' ').slice(0, 2).join(' ')} 👋</h1>
+              <span className="font-mono text-[11px] bg-white/20 text-white font-bold px-2.5 py-0.5 rounded-full border border-white/30 shadow-xs">
+                Doctor ID: {currentStaff?.staff_code || currentStaff?.staffCode || 'D001101'}
+              </span>
+            </div>
             <p className="text-teal-100/70 text-xs sm:text-sm mt-0.5">You have <span className="font-bold text-white">{liveQueue.filter(p => p.status !== 'Done' && p.status !== 'Completed').length} patients</span> remaining today.</p>
           </div>
           <div className="flex items-center gap-2 bg-white/15 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 self-start sm:self-center text-xs sm:text-sm font-bold">

@@ -86,7 +86,31 @@ export async function registerPushNotifications(patientId: string): Promise<void
 
       // Notification action / tap performed
       await PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
-        console.log('Push notification action performed:', action);
+        console.log('🔔 Push notification action performed:', action);
+        const data = action?.notification?.data || {};
+        
+        let targetScreen = '/history';
+        if (data.screen) {
+          targetScreen = data.screen;
+        } else if (data.url && typeof data.url === 'string' && data.url.startsWith('/')) {
+          targetScreen = data.url;
+        } else if (data.type === 'appointment_cancelled' || data.type === 'appointment_reminder' || data.type === 'medication_reminder') {
+          targetScreen = '/history';
+        }
+
+        // Cache route for cold starts or splash transition
+        try {
+          sessionStorage.setItem('pending_notification_route', targetScreen);
+        } catch (_) {}
+
+        // Dispatch immediate in-app navigation event
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('carepulse:notification_navigate', {
+              detail: { screen: targetScreen, data }
+            })
+          );
+        }
       });
     }
   } catch (error) {

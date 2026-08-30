@@ -156,6 +156,7 @@ async def check_upcoming_appointment_reminders():
             body = f"Your appointment with {doc_name} is in 30 minutes at {slot}."
             data = {
                 "type": "appointment_reminder",
+                "screen": "/history",
                 "appointment_id": app_id,
                 "patient_id": p_id,
                 "time_slot": slot
@@ -228,6 +229,7 @@ async def check_medication_reminders():
                     body = f"Time to take your {drug_name} ({dosage})" if dosage else f"Time to take your {drug_name}"
                     data = {
                         "type": "medication_reminder",
+                        "screen": "/history",
                         "prescription_id": rx_id,
                         "patient_id": p_id,
                         "drug_name": drug_name

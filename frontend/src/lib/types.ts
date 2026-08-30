@@ -1,5 +1,7 @@
 export interface User {
   id: string;
+  patient_code?: string;
+  patientCode?: string;
   fullName: string;
   email: string;
   phone: string;
@@ -21,6 +23,8 @@ export interface User {
 
 export interface Doctor {
   id: string;
+  staff_code?: string;
+  staffCode?: string;
   name: string;
   specialty: string;
   hospitalId: string;
@@ -34,6 +38,8 @@ export interface Doctor {
 
 export interface Hospital {
   id: string;
+  hospital_code?: string;
+  hospitalCode?: string;
   name: string;
   address: string;
   distanceMiles: number;

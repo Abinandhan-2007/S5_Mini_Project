@@ -123,8 +123,12 @@ def format_receptionist_doctor(d: dict) -> dict:
     hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-1"
     hosp_name = d.get("hospital_name") or d.get("hospitalName") or "St. Jude Heart & Medical Center"
 
+    stf_code = d.get("staff_code") or d.get("staffCode")
+
     return {
         "id": str(d["id"]),
+        "staff_code": stf_code,
+        "staffCode": stf_code,
         "name": d["name"],
         "specialty": d["specialty"],
         "department": d.get("department", "General Medicine"),

@@ -21,6 +21,7 @@ import {
   SlidersHorizontal,
   CalendarCheck,
   ArrowUpRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { DoctorRecord } from '../../types/receptionist';
@@ -107,6 +108,16 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   const receptionistProfile = useStaffStore((s) => s.receptionistProfile);
 
   const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
+  const [currentTime, setCurrentTime] = useState<string>(() =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Physician Cabin Status Filter States
   const [cabinStatusFilter, setCabinStatusFilter] = useState<'all' | 'active' | 'offline'>('all');
@@ -196,7 +207,77 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   return (
     <div className="space-y-6 pb-12 text-left">
       {/* ══════════════════════════════════════════════════════════════════
-          1. EXECUTIVE 6-CARD KPI METRICS MATRIX
+          1. EXECUTIVE HERO BANNER & LIVE COMMAND CONTROLS
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0B5A54] via-teal-900 to-[#06332F] rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
+        {/* Ambient Glows */}
+        <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-teal-400/15 blur-3xl pointer-events-none" />
+        <div className="absolute right-1/3 -bottom-16 w-60 h-60 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+          <div className="space-y-2 sm:space-y-2.5 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-teal-200">
+                <Sparkles className="w-3.5 h-3.5 text-teal-300" />
+                Live OPD Command Center
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] sm:text-[10.5px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                Live Desk Active
+              </span>
+            </div>
+
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black font-heading tracking-tight text-white leading-tight">
+              Welcome back, {receptionistProfile.name || 'Front Desk'}
+            </h1>
+            <p className="text-xs sm:text-sm text-teal-100/90 font-medium leading-relaxed">
+              Monitoring active consultation rooms, patient intake flow, token queue broadcasts, and doctor availability in real time.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1 text-xs text-teal-200 font-semibold font-mono">
+              <span className="flex items-center gap-1.5 bg-black/20 px-2.5 sm:px-3 py-1 rounded-xl border border-white/10 text-[11px] sm:text-xs">
+                <Clock className="w-3.5 h-3.5 text-teal-300" />
+                {currentTime || '08:00 AM'}
+              </span>
+              <span className="flex items-center gap-1.5 bg-black/20 px-2.5 sm:px-3 py-1 rounded-xl border border-white/10 text-[11px] sm:text-xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />
+                <span>Receptionist ID: {receptionistProfile.staff_code || receptionistProfile.staffCode || 'R001101'}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Action Triggers */}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+            <button
+              onClick={() => handleCallNext()}
+              disabled={waitingTokens.length === 0}
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Volume2 className="w-4 h-4 text-slate-900 stroke-[2.5]" />
+              <span>Call Next</span>
+            </button>
+
+            <button
+              onClick={onOpenNewAppointment}
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-3 sm:py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
+            >
+              <Plus className="w-4 h-4 text-[#0B5A54] stroke-[3]" />
+              <span>+ Walk-In</span>
+            </button>
+
+            <button
+              onClick={handlePrintRoster}
+              className="p-3 sm:p-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl border border-white/20 transition-all cursor-pointer"
+              title="Print Today's OPD Roster"
+            >
+              <Printer className="w-4 h-4 text-teal-200" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          2. EXECUTIVE 6-CARD KPI METRICS MATRIX
       ══════════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 w-full">
         {/* Waiting in Queue */}

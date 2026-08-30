@@ -1,19 +1,19 @@
 # backend/seed/backfill_display_codes.py
 """
-Backfill script to assign human-readable display codes (patient_code / staff_code)
-to all existing records missing them in both PostgreSQL and local database.json.
-
-Format rules:
-- patients: 'PAT-' + zero-padded 6-digit number (e.g. PAT-000001)
-- staff role='admin': 'ADM-' + zero-padded 4-digit number (e.g. ADM-0001)
-- staff role='receptionist': 'REC-' + zero-padded 4-digit number (e.g. REC-0001)
-- staff role='doctor': 'DOC-' + zero-padded 4-digit number (e.g. DOC-0001)
+Backfill script to assign and regenerate human-readable display codes across CarePulse:
+1. Patients: 'P' + zero-padded 6-digit sequence (e.g. P000001, P000002)
+2. Hospitals: 'H' + zero-padded 3-digit sequence (e.g. H001, H002)
+3. Staff: '<RoleLetter><3-digit HospitalNumber><3-digit Seq starting at 101>'
+   - Admin:        A001101
+   - Doctors:      D001101, D001102, D001103...
+   - Receptionists: R001101, R001102...
 """
 
 import sys
 import json
 import re
 from pathlib import Path
+from typing import Dict, Any, List, Tuple
 
 # Ensure backend root is on sys.path
 backend_dir = Path(__file__).resolve().parent.parent
@@ -23,198 +23,280 @@ if str(backend_dir) not in sys.path:
 import database
 from database import get_pg_connection, read_json_db, write_json_db, JSON_DB_PATH
 
-def extract_numeric_code(code_str: str) -> int:
-    """Extract numeric integer from strings like 'PAT-000042' -> 42."""
-    if not code_str:
-        return 0
-    match = re.search(r"\d+", code_str)
-    return int(match.group(0)) if match else 0
+def extract_numeric_digits(text: str) -> str:
+    """Extract numeric digits from a string, e.g. 'hosp-2' -> '2', 'H003' -> '003'."""
+    if not text:
+        return ""
+    digits = re.sub(r"[^0-9]", "", text)
+    return digits
 
-def backfill_postgres():
-    """Backfill missing patient_code and staff_code values in PostgreSQL."""
+def backfill_postgres() -> Dict[str, Any]:
+    """Regenerate and backfill all display codes in PostgreSQL."""
     if not database.use_pg:
         print("⚠️ PostgreSQL not reachable, skipping PostgreSQL backfill.")
-        return {"patients": 0, "admin": 0, "receptionist": 0, "doctor": 0, "other_staff": 0}
+        return {"hospitals": [], "staff": [], "patients": []}
 
-    counts = {"patients": 0, "admin": 0, "receptionist": 0, "doctor": 0, "other_staff": 0}
+    audit_log = {
+        "hospitals": [],
+        "staff": [],
+        "patients": []
+    }
 
     with get_pg_connection() as conn:
         with conn.cursor() as cur:
-            # 1. Backfill Patients
+            # -------------------------------------------------------------
+            # 1. Backfill Hospitals (H001, H002, H003...)
+            # -------------------------------------------------------------
             cur.execute("""
-                SELECT id, patient_code, created_at 
+                SELECT id, name, hospital_code, created_at 
+                FROM hospitals 
+                ORDER BY created_at ASC NULLS LAST, id ASC
+            """)
+            hospitals = cur.fetchall()
+
+            hosp_num_map = {}
+            for idx, h in enumerate(hospitals, start=1):
+                old_code = h.get("hospital_code") or "(none)"
+                new_code = f"H{idx:03d}"
+                h_id = str(h["id"])
+                hosp_num_map[h_id] = f"{idx:03d}"
+
+                cur.execute(
+                    "UPDATE hospitals SET hospital_code = %s WHERE id = %s",
+                    (new_code, h_id)
+                )
+                audit_log["hospitals"].append({
+                    "id": h_id,
+                    "name": h["name"],
+                    "before": old_code,
+                    "after": new_code
+                })
+
+            cur.execute("SELECT setval('hospital_code_seq', %s, true)", (max(len(hospitals), 1),))
+
+            # -------------------------------------------------------------
+            # 2. Backfill Patients (P000001, P000002...)
+            # -------------------------------------------------------------
+            cur.execute("""
+                SELECT id, full_name, email, patient_code, created_at 
                 FROM patients 
                 ORDER BY created_at ASC NULLS LAST, id ASC
             """)
             patients = cur.fetchall()
 
-            # Determine starting patient sequence index
-            max_pat_num = 0
-            for p in patients:
-                p_code = p.get("patient_code")
-                if p_code and p_code.startswith("PAT-"):
-                    max_pat_num = max(max_pat_num, extract_numeric_code(p_code))
+            for idx, p in enumerate(patients, start=1):
+                old_code = p.get("patient_code") or "(none)"
+                new_code = f"P{idx:06d}"
+                p_id = p["id"]
 
-            current_pat_seq = max_pat_num
-            for p in patients:
-                if not p.get("patient_code"):
-                    current_pat_seq += 1
-                    new_code = f"PAT-{current_pat_seq:06d}"
-                    cur.execute(
-                        "UPDATE patients SET patient_code = %s WHERE id = %s",
-                        (new_code, p["id"])
-                    )
-                    counts["patients"] += 1
+                cur.execute(
+                    "UPDATE patients SET patient_code = %s WHERE id = %s",
+                    (new_code, p_id)
+                )
+                audit_log["patients"].append({
+                    "id": str(p_id),
+                    "name": p["full_name"],
+                    "email": p["email"],
+                    "before": old_code,
+                    "after": new_code
+                })
 
-            # Sync sequence
-            cur.execute("SELECT setval('patient_code_seq', %s, true)", (max(current_pat_seq, 1),))
+            cur.execute("SELECT setval('patient_code_seq', %s, true)", (max(len(patients), 1),))
 
-            # 2. Backfill Staff by Role
+            # -------------------------------------------------------------
+            # 3. Backfill Staff (<RoleLetter><HospNum><101+>)
+            # -------------------------------------------------------------
             cur.execute("""
-                SELECT id, role, staff_code, created_at 
+                SELECT id, full_name, email, role, hospital_id, staff_code, created_at 
                 FROM staff 
-                ORDER BY created_at ASC NULLS LAST, id ASC
+                ORDER BY hospital_id ASC NULLS LAST, role ASC, created_at ASC NULLS LAST, id ASC
             """)
             staff_rows = cur.fetchall()
 
-            role_max = {"admin": 0, "receptionist": 0, "doctor": 0, "other": 0}
-            role_prefixes = {"admin": "ADM", "receptionist": "REC", "doctor": "DOC", "other": "STF"}
-            role_seqs = {"admin": "admin_code_seq", "receptionist": "receptionist_code_seq", "doctor": "doctor_code_seq"}
+            # Group by hospital_id and role
+            role_counters: Dict[Tuple[str, str], int] = {}
+            role_letters = {"admin": "A", "doctor": "D", "receptionist": "R"}
 
             for s in staff_rows:
-                s_role = (s.get("role") or "").lower()
-                s_code = s.get("staff_code")
-                if s_code:
-                    key = s_role if s_role in role_max else "other"
-                    role_max[key] = max(role_max[key], extract_numeric_code(s_code))
+                s_id = s["id"]
+                s_role = (s.get("role") or "staff").lower()
+                s_hosp_id = s.get("hospital_id") or "hosp-1"
+                old_code = s.get("staff_code") or "(none)"
 
-            for s in staff_rows:
-                if not s.get("staff_code"):
-                    s_role = (s.get("role") or "other").lower()
-                    key = s_role if s_role in role_max else "other"
-                    role_max[key] += 1
-                    prefix = role_prefixes.get(key, "STF")
-                    new_code = f"{prefix}-{role_max[key]:04d}"
-                    cur.execute(
-                        "UPDATE staff SET staff_code = %s WHERE id = %s",
-                        (new_code, s["id"])
-                    )
-                    if key in counts:
-                        counts[key] += 1
-                    else:
-                        counts["other_staff"] += 1
+                hosp_digits = hosp_num_map.get(str(s_hosp_id))
+                if not hosp_digits:
+                    raw_digits = extract_numeric_digits(str(s_hosp_id))
+                    hosp_digits = f"{int(raw_digits):03d}" if raw_digits else "001"
 
-            # Sync staff sequences
-            for r_key, seq_name in role_seqs.items():
-                cur.execute(f"SELECT setval('{seq_name}', %s, true)", (max(role_max[r_key], 1),))
+                group_key = (str(s_hosp_id), s_role)
+                current_seq = role_counters.get(group_key, 101)
+                role_counters[group_key] = current_seq + 1
+
+                prefix = role_letters.get(s_role, "S")
+                new_code = f"{prefix}{hosp_digits}{current_seq:03d}"
+
+                cur.execute(
+                    "UPDATE staff SET staff_code = %s WHERE id = %s",
+                    (new_code, s_id)
+                )
+
+                audit_log["staff"].append({
+                    "id": str(s_id),
+                    "name": s["full_name"],
+                    "email": s["email"],
+                    "role": s_role,
+                    "hospital_id": str(s_hosp_id),
+                    "before": old_code,
+                    "after": new_code
+                })
 
             conn.commit()
 
-    return counts
+    return audit_log
 
-def backfill_json():
-    """Backfill missing patient_code and staff_code values in database.json."""
+def backfill_json() -> Dict[str, Any]:
+    """Regenerate and backfill all display codes in database.json."""
     if not JSON_DB_PATH.exists():
-        print("⚠️ database.json does not exist, skipping JSON backfill.")
-        return {"patients": 0, "admin": 0, "receptionist": 0, "doctor": 0}
+        return {"hospitals": [], "staff": [], "patients": []}
 
     db = read_json_db()
-    counts = {"patients": 0, "admin": 0, "receptionist": 0, "doctor": 0}
+    audit_log = {"hospitals": [], "staff": [], "patients": []}
 
-    # 1. Patients
+    # 1. Hospitals
+    hospitals = db.get("hospitals", [])
+    hosp_num_map = {}
+    for idx, h in enumerate(hospitals, start=1):
+        old_code = h.get("hospital_code") or h.get("hospitalCode") or "(none)"
+        new_code = f"H{idx:03d}"
+        h["hospital_code"] = new_code
+        h["hospitalCode"] = new_code
+        h_id = str(h["id"])
+        hosp_num_map[h_id] = f"{idx:03d}"
+        audit_log["hospitals"].append({
+            "id": h_id,
+            "name": h.get("name"),
+            "before": old_code,
+            "after": new_code
+        })
+
+    # 2. Patients
     patients = db.get("patients", [])
-    max_pat = 0
-    for p in patients:
-        code = p.get("patient_code") or p.get("patientCode")
-        if code and code.startswith("PAT-"):
-            max_pat = max(max_pat, extract_numeric_code(code))
+    for idx, p in enumerate(patients, start=1):
+        old_code = p.get("patient_code") or p.get("patientCode") or "(none)"
+        new_code = f"P{idx:06d}"
+        p["patient_code"] = new_code
+        p["patientCode"] = new_code
+        audit_log["patients"].append({
+            "id": str(p["id"]),
+            "name": p.get("full_name") or p.get("fullName"),
+            "before": old_code,
+            "after": new_code
+        })
 
-    for p in patients:
-        if not (p.get("patient_code") or p.get("patientCode")):
-            max_pat += 1
-            assigned = f"PAT-{max_pat:06d}"
-            p["patient_code"] = assigned
-            p["patientCode"] = assigned
-            counts["patients"] += 1
-        elif not p.get("patient_code") and p.get("patientCode"):
-            p["patient_code"] = p["patientCode"]
-        elif not p.get("patientCode") and p.get("patient_code"):
-            p["patientCode"] = p["patient_code"]
-
-    # 2. Staff
+    # 3. Staff
     staff = db.get("staff", [])
-    role_max = {"admin": 0, "receptionist": 0, "doctor": 0, "other": 0}
-    role_prefixes = {"admin": "ADM", "receptionist": "REC", "doctor": "DOC", "other": "STF"}
+    role_counters: Dict[Tuple[str, str], int] = {}
+    role_letters = {"admin": "A", "doctor": "D", "receptionist": "R"}
 
     for s in staff:
-        role = (s.get("role") or "other").lower()
-        key = role if role in role_max else "other"
-        code = s.get("staff_code") or s.get("staffCode")
-        if code:
-            role_max[key] = max(role_max[key], extract_numeric_code(code))
+        s_id = str(s.get("id"))
+        s_role = (s.get("role") or "staff").lower()
+        s_hosp_id = s.get("hospital_id") or s.get("hospitalId") or "hosp-1"
+        old_code = s.get("staff_code") or s.get("staffCode") or "(none)"
 
-    for s in staff:
-        role = (s.get("role") or "other").lower()
-        key = role if role in role_max else "other"
-        if not (s.get("staff_code") or s.get("staffCode")):
-            role_max[key] += 1
-            assigned = f"{role_prefixes.get(key, 'STF')}-{role_max[key]:04d}"
-            s["staff_code"] = assigned
-            s["staffCode"] = assigned
-            if key in counts:
-                counts[key] += 1
-        elif not s.get("staff_code") and s.get("staffCode"):
-            s["staff_code"] = s["staffCode"]
-        elif not s.get("staffCode") and s.get("staff_code"):
-            s["staffCode"] = s["staff_code"]
+        hosp_digits = hosp_num_map.get(str(s_hosp_id))
+        if not hosp_digits:
+            raw_digits = extract_numeric_digits(str(s_hosp_id))
+            hosp_digits = f"{int(raw_digits):03d}" if raw_digits else "001"
 
-    # 3. Receptionists list (if tracked as separate array)
+        group_key = (str(s_hosp_id), s_role)
+        current_seq = role_counters.get(group_key, 101)
+        role_counters[group_key] = current_seq + 1
+
+        prefix = role_letters.get(s_role, "S")
+        new_code = f"{prefix}{hosp_digits}{current_seq:03d}"
+
+        s["staff_code"] = new_code
+        s["staffCode"] = new_code
+
+        audit_log["staff"].append({
+            "id": s_id,
+            "name": s.get("name") or s.get("full_name"),
+            "email": s.get("email"),
+            "role": s_role,
+            "hospital_id": str(s_hosp_id),
+            "before": old_code,
+            "after": new_code
+        })
+
+    # Sync receptionists array if present
     recs = db.get("receptionists", [])
     for r in recs:
-        # Match with staff if possible
-        matching_staff = next((s for s in staff if s.get("id") == r.get("id") or s.get("email") == r.get("email")), None)
-        if matching_staff and matching_staff.get("staff_code"):
-            r["staff_code"] = matching_staff["staff_code"]
-            r["staffCode"] = matching_staff["staff_code"]
-        elif not (r.get("staff_code") or r.get("staffCode")):
-            role_max["receptionist"] += 1
-            assigned = f"REC-{role_max['receptionist']:04d}"
-            r["staff_code"] = assigned
-            r["staffCode"] = assigned
+        matching = next((s for s in staff if s.get("id") == r.get("id") or s.get("email") == r.get("email")), None)
+        if matching and matching.get("staff_code"):
+            r["staff_code"] = matching["staff_code"]
+            r["staffCode"] = matching["staff_code"]
 
+    db["hospitals"] = hospitals
     db["patients"] = patients
     db["staff"] = staff
     db["receptionists"] = recs
     write_json_db(db)
 
-    return counts
+    return audit_log
+
+def print_audit_table(title: str, records: List[Dict[str, Any]], fields: List[Tuple[str, str]]):
+    """Print formatted ASCII table of before/after records."""
+    print(f"\n=== {title} ({len(records)} records) ===")
+    if not records:
+        print("  (No records found)")
+        return
+
+    col_widths = {label: max(len(label), max(len(str(r.get(key, ''))) for r in records)) for key, label in fields}
+    header_str = " | ".join(f"{label:<{col_widths[label]}}" for _, label in fields)
+    divider_str = "-+-".join("-" * col_widths[label] for _, label in fields)
+
+    print(header_str)
+    print(divider_str)
+    for r in records:
+        row_str = " | ".join(f"{str(r.get(key, '')):<{col_widths[label]}}" for key, label in fields)
+        print(row_str)
 
 def run_backfill():
-    print("==================================================")
-    print("[CarePulse] Running Display Codes Backfill Engine")
-    print("==================================================")
+    print("====================================================================")
+    print("CarePulse Hierarchical Display Codes Backfill Engine")
+    print("====================================================================")
 
     database.init_db()
 
-    print("\n--- 1. PostgreSQL Backfill ---")
-    pg_results = backfill_postgres()
-    print(f"[OK] PostgreSQL Backfilled:")
-    print(f"   * Patients:      {pg_results['patients']}")
-    print(f"   * Admin Staff:   {pg_results['admin']}")
-    print(f"   * Receptionists: {pg_results['receptionist']}")
-    print(f"   * Doctors:       {pg_results['doctor']}")
+    print("\n>>> Executing PostgreSQL Backfill Migration...")
+    pg_audit = backfill_postgres()
 
-    print("\n--- 2. JSON Database Backfill ---")
-    json_results = backfill_json()
-    print(f"[OK] database.json Backfilled:")
-    print(f"   * Patients:      {json_results['patients']}")
-    print(f"   * Admin Staff:   {json_results['admin']}")
-    print(f"   * Receptionists: {json_results['receptionist']}")
-    print(f"   * Doctors:       {json_results['doctor']}")
+    print_audit_table(
+        "HOSPITALS BACKFILLED (Format: H001, H002...)",
+        pg_audit["hospitals"],
+        [("id", "Hospital ID"), ("name", "Hospital Name"), ("before", "Before Code"), ("after", "New Hospital Code")]
+    )
 
-    print("\n==================================================")
-    print("[SUCCESS] Display code backfill completed successfully!")
-    print("==================================================")
+    print_audit_table(
+        "STAFF BACKFILLED (Format: <Role><Hosp><101+>, e.g. A001101, D001101, R001101)",
+        pg_audit["staff"],
+        [("role", "Role"), ("name", "Staff Name"), ("hospital_id", "Hospital ID"), ("before", "Before Code"), ("after", "New Staff Code")]
+    )
+
+    print_audit_table(
+        "PATIENTS BACKFILLED (Format: P000001, P000002...)",
+        pg_audit["patients"],
+        [("id", "Patient ID"), ("name", "Patient Name"), ("email", "Email"), ("before", "Before Code"), ("after", "New Patient Code")]
+    )
+
+    print("\n>>> Synchronizing Local database.json Fallback...")
+    json_audit = backfill_json()
+    print(f"[OK] database.json synced: {len(json_audit['hospitals'])} hospitals, {len(json_audit['staff'])} staff, {len(json_audit['patients'])} patients.")
+
+    print("\n====================================================================")
+    print("Display Code Migration & Backfill Completed Successfully!")
+    print("====================================================================")
 
 if __name__ == "__main__":
     run_backfill()

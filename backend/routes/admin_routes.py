@@ -30,6 +30,31 @@ class ReceptionistCreate(BaseModel):
     hospital_id: Optional[str] = None
 
 
+class StaffCreateRequest(BaseModel):
+    full_name: str
+    email: str
+    role: str  # 'admin', 'doctor', 'receptionist'
+    password: Optional[str] = "password123"
+    phone: Optional[str] = ""
+    specialization: Optional[str] = "General"
+    avatar_url: Optional[str] = None
+    hospital_id: Optional[str] = None
+
+
+class HospitalCreate(BaseModel):
+    id: Optional[str] = None
+    name: str
+    address: str
+    phone: Optional[str] = "+91 80 2345 6789"
+    rating: Optional[float] = 4.8
+    reviews_count: Optional[int] = 1000
+    emergency_available: Optional[bool] = True
+    image_url: Optional[str] = "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80"
+    specialties: Optional[List[str]] = ["General", "Emergency Care"]
+    facility_type: Optional[str] = "General"
+    distance_miles: Optional[float] = 1.0
+
+
 class ReceptionistUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -213,6 +238,231 @@ def create_receptionist(payload: ReceptionistCreate):
     write_json_db(db)
 
     return {"message": "Receptionist created successfully", "receptionist": new_rec}
+
+
+@router.post("/staff", status_code=status.HTTP_201_CREATED)
+def create_staff_account(payload: StaffCreateRequest):
+    """
+    Create a new staff member account (admin, doctor, receptionist).
+    Enforces business rule: Exactly ONE active administrator per hospital.
+    Auto-generates hierarchical staff_code (<RoleLetter><HospitalNumber><Seq101+>).
+    """
+    role = (payload.role or "").strip().lower()
+    if role not in ["admin", "doctor", "receptionist"]:
+        raise HTTPException(status_code=400, detail=f"Invalid staff role '{payload.role}'. Must be admin, doctor, or receptionist.")
+
+    email_clean = payload.email.strip().lower()
+    hosp_id = payload.hospital_id or "hosp-1"
+
+    # Business Rule Check: One Active Admin per Hospital
+    if role == "admin":
+        if database.use_pg:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT id, full_name FROM staff WHERE hospital_id = %s AND role = 'admin' AND is_active = true LIMIT 1",
+                        (hosp_id,)
+                    )
+                    existing_admin = cur.fetchone()
+                    if existing_admin:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Hospital already has an active administrator. Only one admin is permitted per hospital."
+                        )
+        else:
+            db = read_json_db()
+            for s in db.get("staff", []):
+                if s.get("role") == "admin" and (s.get("hospital_id") == hosp_id or s.get("hospitalId") == hosp_id) and s.get("is_active", True):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Hospital already has an active administrator. Only one admin is permitted per hospital."
+                    )
+
+    # Check email uniqueness
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM staff WHERE LOWER(email) = %s LIMIT 1", (email_clean,))
+                if cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Staff member with this email already exists.")
+    else:
+        db = read_json_db()
+        if any(s.get("email", "").lower() == email_clean for s in db.get("staff", [])):
+            raise HTTPException(status_code=400, detail="Staff member with this email already exists.")
+
+    new_id = str(uuid.uuid4())
+    raw_pass = payload.password or "password123"
+    hashed_pass = hash_password(raw_pass)
+
+    staff_code = None
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO staff (id, full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id, staff_code, full_name, email, role, hospital_id
+                        """,
+                        (
+                            new_id,
+                            payload.full_name,
+                            email_clean,
+                            hashed_pass,
+                            role,
+                            payload.specialization,
+                            payload.phone or "",
+                            payload.avatar_url or "",
+                            hosp_id
+                        )
+                    )
+                    inserted = cur.fetchone()
+                    if inserted:
+                        new_id = str(inserted["id"])
+                        staff_code = inserted.get("staff_code")
+                    conn.commit()
+        except Exception as e:
+            err_str = str(e).lower()
+            if "idx_one_active_admin_per_hospital" in err_str or ("unique" in err_str and "admin" in err_str):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Hospital already has an active administrator. Only one admin is permitted per hospital."
+                )
+            database.logger.warning(f"Could not insert staff in Postgres: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+
+    if not staff_code:
+        # Fallback generator for JSON DB
+        role_prefix = {"admin": "A", "doctor": "D", "receptionist": "R"}.get(role, "S")
+        hosp_num = "001"
+        db = read_json_db()
+        if hosp_id:
+            matched_hosp = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
+            if matched_hosp:
+                hc = matched_hosp.get("hospital_code") or matched_hosp.get("hospitalCode") or ""
+                m = re.search(r"\d+", hc)
+                if m:
+                    hosp_num = f"{int(m.group(0)):03d}"
+            else:
+                m = re.search(r"\d+", hosp_id)
+                if m:
+                    hosp_num = f"{int(m.group(0)):03d}"
+        
+        staff_list = db.get("staff", [])
+        same_role_count = sum(1 for s in staff_list if s.get("role") == role and (s.get("hospital_id") == hosp_id or s.get("hospitalId") == hosp_id))
+        seq_num = 101 + same_role_count
+        staff_code = f"{role_prefix}{hosp_num}{seq_num:03d}"
+
+    new_staff_record = {
+        "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
+        "full_name": payload.full_name,
+        "name": payload.full_name,
+        "email": email_clean,
+        "role": role,
+        "specialization": payload.specialization,
+        "department": payload.specialization,
+        "phone": payload.phone or "",
+        "avatar_url": payload.avatar_url or "",
+        "avatarUrl": payload.avatar_url or "",
+        "hospital_id": hosp_id,
+        "hospitalId": hosp_id,
+        "is_active": True,
+        "isActive": True
+    }
+
+    db = read_json_db()
+    staff_list = db.get("staff", [])
+    staff_list.append(new_staff_record)
+    db["staff"] = staff_list
+    write_json_db(db)
+
+    return {
+        "success": True,
+        "message": f"Staff member created successfully with code {staff_code}",
+        "staff": new_staff_record
+    }
+
+
+@router.post("/hospitals", status_code=status.HTTP_201_CREATED)
+def create_hospital_record(payload: HospitalCreate):
+    """Create a new hospital branch. Auto-generates hospital_code (H001, H002...)."""
+    h_id = payload.id or f"hosp-{uuid.uuid4().hex[:6]}"
+    h_code = None
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO hospitals (id, name, address, phone, rating, reviews_count, emergency_available, image_url, specialties, facility_type, distance_miles)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id, hospital_code, name, address
+                        """,
+                        (
+                            h_id,
+                            payload.name,
+                            payload.address,
+                            payload.phone,
+                            payload.rating,
+                            payload.reviews_count,
+                            payload.emergency_available,
+                            payload.image_url,
+                            payload.specialties or ["General", "Emergency Care"],
+                            payload.facility_type,
+                            payload.distance_miles
+                        )
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        h_id = str(row["id"])
+                        h_code = row.get("hospital_code")
+                    conn.commit()
+        except Exception as e:
+            database.logger.warning(f"Could not insert hospital in Postgres: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+
+    if not h_code:
+        db = read_json_db()
+        hosp_list = db.get("hospitals", [])
+        h_code = f"H{len(hosp_list) + 1:03d}"
+
+    new_hosp = {
+        "id": h_id,
+        "hospital_code": h_code,
+        "hospitalCode": h_code,
+        "name": payload.name,
+        "address": payload.address,
+        "phone": payload.phone,
+        "rating": payload.rating,
+        "reviewsCount": payload.reviews_count,
+        "reviews_count": payload.reviews_count,
+        "emergencyAvailable": payload.emergency_available,
+        "emergency_available": payload.emergency_available,
+        "imageUrl": payload.image_url,
+        "image_url": payload.image_url,
+        "specialties": payload.specialties,
+        "facilityType": payload.facility_type,
+        "facility_type": payload.facility_type,
+        "distanceMiles": payload.distance_miles,
+        "distance_miles": payload.distance_miles
+    }
+
+    db = read_json_db()
+    hosp_list = db.get("hospitals", [])
+    hosp_list.append(new_hosp)
+    db["hospitals"] = hosp_list
+    write_json_db(db)
+
+    return {
+        "success": True,
+        "message": f"Hospital created successfully with code {h_code}",
+        "hospital": new_hosp
+    }
 
 
 @router.put("/receptionists/{rec_id}")

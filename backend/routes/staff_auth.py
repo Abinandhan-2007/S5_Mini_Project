@@ -269,11 +269,11 @@ def staff_login(request: StaffLoginRequest):
 
     stf_code = found_staff.get("staff_code") or found_staff.get("staffCode")
     if not stf_code and role == "admin":
-        stf_code = "ADM-0001"
+        stf_code = "A001101"
     elif not stf_code and role == "receptionist":
-        stf_code = "REC-0001"
+        stf_code = "R001101"
     elif not stf_code and role == "doctor":
-        stf_code = "DOC-0001"
+        stf_code = "D001101"
 
     staff_profile = {
         "id": str(found_staff.get("id")),

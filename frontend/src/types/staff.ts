@@ -4,6 +4,8 @@ export type StaffRole = 'admin' | 'receptionist' | 'doctor';
 
 export interface Staff {
   id: string;
+  staff_code?: string;
+  staffCode?: string;
   name?: string;
   fullName?: string;
   email: string;
@@ -11,10 +13,14 @@ export interface Staff {
   isActive?: boolean;
   department?: string;
   avatarUrl?: string;
+  hospital_id?: string;
+  hospitalId?: string;
 }
 
 export interface AdminProfile {
   id: string;
+  staff_code?: string;
+  staffCode?: string;
   name: string;
   email: string;
   username?: string;
@@ -24,10 +30,14 @@ export interface AdminProfile {
   department: string;
   avatarUrl?: string;
   hospitalName?: string;
+  hospitalId?: string;
+  hospital_id?: string;
 }
 
 export interface ReceptionistRecord {
   id: string;
+  staff_code?: string;
+  staffCode?: string;
   name: string;
   email: string;
   username?: string;
@@ -61,6 +71,8 @@ export interface HospitalSettings {
 
 export interface HospitalBranch {
   id: string;
+  hospital_code?: string;
+  hospitalCode?: string;
   name: string;
   address: string;
   city: string;

@@ -17,6 +17,8 @@ export interface TimeSlotCapacity {
 
 export interface DoctorRecord {
   id: string;
+  staff_code?: string;
+  staffCode?: string;
   name: string;
   specialty: string;
   department: string;
@@ -64,6 +66,8 @@ export interface TokenQueueItem {
 
 export interface ReceptionistProfile {
   id: string;
+  staff_code?: string;
+  staffCode?: string;
   name: string;
   username?: string;
   email: string;
