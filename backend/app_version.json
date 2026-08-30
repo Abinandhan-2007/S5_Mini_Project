@@ -1,0 +1,7 @@
+{
+  "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
+  "version": "1.2.0",
+  "apk_filename": "CarePulse_App.apk",
+  "release_notes": "• Android 15 & API 35 compatibility update\n• In-App direct APK download with progress bar\n• Native Android package installation with one-tap confirmation\n• History Record & Live Sync enhancements",
+  "released_at": "2026-08-31"
+}
