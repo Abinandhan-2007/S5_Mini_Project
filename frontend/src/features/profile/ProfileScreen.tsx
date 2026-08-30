@@ -19,18 +19,20 @@ import {
   ScanFace,
   MapPin,
   AlertCircle,
+  Phone,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
 import { registerDeviceBiometrics, checkDeviceBiometricSupport } from '../../lib/biometricAuthService';
 import { calculateAge, getTodayDateString } from '../../lib/dateUtils';
+import { apiPost } from '../../lib/apiFetch';
 
 export const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -43,8 +45,10 @@ export const ProfileScreen: React.FC = () => {
   const [biometricNotice, setBiometricNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isEditVitalsModalOpen, setIsEditVitalsModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,25 +63,54 @@ export const ProfileScreen: React.FC = () => {
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
           updateUser({ avatarUrl: reader.result });
+          if (user?.id) {
+            apiPost(`/patients/${encodeURIComponent(user.id)}/update`, { avatarUrl: reader.result }).catch(() => {});
+          }
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
+  // Unified Edit Form State
   const [editName, setEditName] = useState(user?.fullName || '');
   const [editEmail, setEditEmail] = useState(user?.email || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
   const [editAddress, setEditAddress] = useState(user?.address || '');
-
-  const [editDob, setEditDob] = useState(user?.dob || '');
+  const [editDob, setEditDob] = useState(user?.dob || '2000-01-15');
   const [editGender, setEditGender] = useState(user?.gender || 'Female');
   const [editBloodGroup, setEditBloodGroup] = useState(user?.bloodGroup || 'O+');
   const [editEmergencyName, setEditEmergencyName] = useState(user?.emergencyContact?.name || '');
   const [editEmergencyPhone, setEditEmergencyPhone] = useState(user?.emergencyContact?.phone || '');
-  const [editEmergencyRel, setEditEmergencyRel] = useState(user?.emergencyContact?.relationship || 'Spouse');
+  const [editEmergencyRel, setEditEmergencyRel] = useState(user?.emergencyContact?.relationship || 'Parent');
   const [editAllergies, setEditAllergies] = useState(user?.allergies || '');
   const [editConditions, setEditConditions] = useState(user?.preExistingConditions || '');
+
+  const openEditModal = () => {
+    if (user) {
+      setEditName(user.fullName || '');
+      setEditEmail(user.email || '');
+      setEditPhone(user.phone && user.phone !== '+91 98765 00000' && user.phone !== '+91 98765 43210' ? user.phone : '');
+      setEditAddress(user.address || '');
+      setEditDob(user.dob && user.dob !== getTodayDateString() ? user.dob : '2000-01-15');
+      setEditGender(user.gender && user.gender !== 'Not specified' ? user.gender : 'Female');
+      setEditBloodGroup(user.bloodGroup || 'O+');
+      setEditEmergencyName(user.emergencyContact?.name || '');
+      setEditEmergencyPhone(
+        user.emergencyContact?.phone &&
+        user.emergencyContact.phone !== '+91 98765 00000' &&
+        user.emergencyContact.phone !== '+91 98765 43210'
+          ? user.emergencyContact.phone
+          : ''
+      );
+      setEditEmergencyRel(user.emergencyContact?.relationship || 'Parent');
+      setEditAllergies(user.allergies || '');
+      setEditConditions(user.preExistingConditions || '');
+    }
+    setSaveError(null);
+    setSaveSuccess(null);
+    setIsEditModalOpen(true);
+  };
 
   const userAge = calculateAge(user?.dob);
   const editDobAge = calculateAge(editDob);
@@ -93,32 +126,84 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveAllProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser({
-      fullName: editName,
-      email: editEmail,
-      phone: editPhone,
-      address: editAddress,
-    });
-    setIsEditModalOpen(false);
-  };
+    setSaveError(null);
 
-  const handleSaveVitals = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateUser({
-      dob: editDob,
+    const cleanName = editName.trim();
+    const cleanPhone = editPhone.trim();
+    const cleanDob = editDob.trim();
+    const cleanAddress = editAddress.trim();
+    const cleanEmergName = editEmergencyName.trim();
+    const cleanEmergPhone = editEmergencyPhone.trim();
+
+    if (!cleanName) {
+      setSaveError('Please enter your full legal name.');
+      return;
+    }
+
+    const primaryDigits = cleanPhone.replace(/\D/g, '');
+    if (!cleanPhone || primaryDigits.length < 10) {
+      setSaveError('Please enter a valid 10-digit primary contact phone number.');
+      return;
+    }
+
+    if (!cleanDob || cleanDob > getTodayDateString()) {
+      setSaveError('Please select a valid date of birth (cannot be in the future).');
+      return;
+    }
+
+    if (cleanEmergPhone) {
+      const emergDigits = cleanEmergPhone.replace(/\D/g, '');
+      if (emergDigits.length >= 10 && primaryDigits.slice(-10) === emergDigits.slice(-10)) {
+        setSaveError('Emergency contact phone must be different from your primary phone number.');
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    const updatedPayload = {
+      fullName: cleanName,
+      email: editEmail.trim(),
+      phone: cleanPhone,
+      address: cleanAddress,
+      dob: cleanDob,
       gender: editGender,
       bloodGroup: editBloodGroup,
-      allergies: editAllergies,
-      preExistingConditions: editConditions,
+      allergies: editAllergies.trim() || undefined,
+      preExistingConditions: editConditions.trim() || undefined,
       emergencyContact: {
-        name: editEmergencyName,
-        phone: editEmergencyPhone,
+        name: cleanEmergName || 'Primary Contact',
+        phone: cleanEmergPhone || cleanPhone,
         relationship: editEmergencyRel,
       },
-    });
-    setIsEditVitalsModalOpen(false);
+    };
+
+    try {
+      updateUser(updatedPayload);
+
+      if (user?.id) {
+        try {
+          await apiPost(`/patients/${encodeURIComponent(user.id)}/update`, updatedPayload);
+        } catch (backendErr) {
+          console.warn('Backend update note:', backendErr);
+        }
+        try {
+          localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
+        } catch {}
+      }
+
+      setSaveSuccess('Profile and medical stats saved successfully!');
+      setTimeout(() => {
+        setIsSaving(false);
+        setIsEditModalOpen(false);
+        setSaveSuccess(null);
+      }, 600);
+    } catch (err: any) {
+      setIsSaving(false);
+      setSaveError(err.message || 'Failed to save changes.');
+    }
   };
 
   const handleSignOut = async () => {
@@ -130,11 +215,10 @@ export const ProfileScreen: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  // Removed 'Personal & Contact Information' and 'Insurance & Coverage' as per previous request
   const settingsRows = [
     { label: 'Medical History & Reports', icon: FileCheck, subtext: 'Consultation logs & prescriptions', action: () => navigate('/history') },
     { label: 'Notification Settings', icon: Bell, subtext: 'Appointment alerts & reminders', action: () => navigate('/notifications') },
-    { label: 'Security & Biometrics', icon: Lock, subtext: 'Password, FaceID & 2FA Auth', action: () => alert('Security & Biometrics settings opened') },
+    { label: 'Security & Biometrics', icon: Lock, subtext: 'Password, FaceID & 2FA Auth', action: () => alert('Security & Biometrics settings active.') },
     { label: 'Help Center & 24/7 Support', icon: HelpCircle, subtext: 'Contact empathetic care team', action: () => alert('CarePulse Support Hotline: 1-800-CAREPULSE') },
   ];
 
@@ -143,232 +227,246 @@ export const ProfileScreen: React.FC = () => {
     const nextState = !isBiometricEnabled;
 
     if (nextState) {
-      // 1. Verify hardware support and enrolled biometrics first
       const support = await checkDeviceBiometricSupport();
       if (!support.isAvailable) {
         setBiometricNotice({
           type: 'error',
-          text: support.message || 'No enrolled Face ID / Fingerprint found. Please enroll biometric security in phone settings.',
+          text: support.message || 'Biometric hardware unavailable on this device.',
         });
         return;
       }
 
-      // 2. Trigger native Face / Fingerprint prompt to confirm user identity
-      const isVerified = await registerDeviceBiometrics(user.email);
-      if (!isVerified) {
+      const registered = await registerDeviceBiometrics(user.id);
+      if (registered) {
+        toggleBiometric(true);
+        setBiometricNotice({
+          type: 'success',
+          text: 'Biometric Face / Fingerprint Login successfully activated.',
+        });
+      } else {
         setBiometricNotice({
           type: 'error',
-          text: 'Biometric verification cancelled or not recognized. Face / Fingerprint login was not enabled.',
+          text: 'Biometric enrollment failed. Please try again.',
         });
-        return;
       }
-
-      toggleBiometric(true);
-      setBiometricNotice({
-        type: 'success',
-        text: 'Face & Fingerprint authentication successfully verified and enabled for CarePulse!',
-      });
-      setTimeout(() => setBiometricNotice(null), 4000);
     } else {
       toggleBiometric(false);
       setBiometricNotice({
         type: 'success',
-        text: 'Biometric login disabled. Password authentication will be required.',
+        text: 'Biometric Login disabled. Password will be required on login.',
       });
-      setTimeout(() => setBiometricNotice(null), 3000);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      <main className="px-4 sm:px-6 md:px-8 pt-6 pb-4 space-y-6 max-w-5xl mx-auto w-full">
-        {/* ULTRA-PREMIUM EXECUTIVE PATIENT HERO COVER CARD */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-xs border border-[#E4E7EC] relative mt-1 text-center">
-          {/* VIBRANT CYAN HERO COVER BANNER */}
-          <div className="h-28 bg-gradient-to-r from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] relative p-4 flex justify-between items-start shadow-inner">
-            <span className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border border-white/30 text-[9.5px] px-2.5 py-1 rounded-full flex items-center gap-1 font-black shadow-2xs tracking-wider uppercase">
-              <CheckCircle2 className="w-3 h-3 text-emerald-300" /> VERIFIED PATIENT
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => navigate('/notifications')}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-md border border-white/30 shadow-2xs flex items-center justify-center relative active:scale-95"
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <Bell className="w-3.5 h-3.5 text-white" />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-400 ring-1 ring-white" />
-              </button>
-              <button
-                onClick={() => setIsQrModalOpen(true)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-md border border-white/30 shadow-2xs flex items-center justify-center active:scale-95"
-                title="Show Medical Health ID QR"
-              >
-                <QrCode className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-          </div>
-
-          {/* PATIENT DETAILS & AVATAR BLOCK */}
-          <div className="px-5 pb-5 pt-0 relative flex flex-col items-center -mt-10 space-y-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-
-            {/* AVATAR WITH CAMERA BADGE */}
-            <div className="relative cursor-pointer group" onClick={handleAvatarClick}>
-              <Avatar
-                src={user.avatarUrl}
-                alt={user.fullName}
-                size="lg"
-                hasRing
-                className="ring-4 ring-white shadow-xl transition-transform group-hover:scale-105"
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAvatarClick();
-                }}
-                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#0B5A54] text-white flex items-center justify-center border-2 border-white shadow-md hover:bg-[#08423D] transition-transform active:scale-90"
-                title="Upload Profile Photo"
-              >
-                <Camera className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-
-            {/* NAME & CONTACT INFO */}
-            <div className="space-y-1">
-              <h1 className="text-lg sm:text-xl font-black font-heading text-[#111827] tracking-tight">
-                {user.fullName}
-              </h1>
-              <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-[#6B7280]">
-                <span>{user.email}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                <span className="text-[#0B5A54] font-bold">{user.phone}</span>
-              </div>
-              {user.address && (
-                <div className="flex items-center justify-center gap-1 text-[11px] text-[#6B7280] font-medium max-w-xs mx-auto">
-                  <MapPin className="w-3 h-3 text-[#0B5A54] shrink-0" />
-                  <span className="truncate">{user.address}</span>
-                </div>
-              )}
-            </div>
-
-            {/* EDIT PROFILE PILL BUTTON */}
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans text-slate-800 antialiased">
+      {/* HEADER SECTION WITH HERO GRADIENT */}
+      <header className="bg-gradient-to-br from-[#0B5A54] via-[#0D6E67] to-[#14B8A6] pt-7 pb-16 px-5 text-white shadow-lg relative overflow-hidden">
+        <div className="flex justify-between items-center max-w-lg mx-auto">
+          <h1 className="text-base sm:text-lg font-black font-heading tracking-tight">
+            Patient Profile & Vitals
+          </h1>
+          <div className="flex items-center gap-2">
             <button
-              type="button"
-              onClick={() => setIsEditModalOpen(true)}
-              className="w-full max-w-[180px] bg-[#0B5A54] hover:bg-[#08423D] text-white font-extrabold py-2 px-4 rounded-full text-xs transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+              onClick={() => setIsQrModalOpen(true)}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-md border border-white/30 shadow-2xs flex items-center justify-center active:scale-95 cursor-pointer"
+              title="Show Medical Health ID QR"
             >
-              <Edit3 className="w-3.5 h-3.5 text-white" />
-              <span>Edit Profile</span>
+              <QrCode className="w-4 h-4 text-white" />
             </button>
           </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTENT WRAPPER */}
+      <main className="max-w-lg mx-auto px-4 -mt-10 space-y-4">
+        {/* PATIENT CARD OVERLAP */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80 text-center relative flex flex-col items-center space-y-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {/* AVATAR WITH CAMERA BADGE */}
+          <div className="relative cursor-pointer group -mt-12" onClick={handleAvatarClick}>
+            <Avatar
+              src={user.avatarUrl}
+              alt={user.fullName}
+              size="lg"
+              hasRing
+              className="ring-4 ring-white shadow-xl transition-transform group-hover:scale-105"
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAvatarClick();
+              }}
+              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#0B5A54] text-white flex items-center justify-center border-2 border-white shadow-md hover:bg-[#08423D] transition-transform active:scale-90 cursor-pointer"
+              title="Upload Profile Photo"
+            >
+              <Camera className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
+
+          {/* NAME & CONTACT INFO */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-center gap-1.5">
+              <h2 className="text-lg font-black font-heading text-slate-900 tracking-tight">
+                {user.fullName}
+              </h2>
+              {user.authProvider === 'google' && (
+                <span className="bg-teal-50 text-[#0B5A54] text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-teal-200 shrink-0">
+                  Google
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500">
+              <span>{user.email}</span>
+              <span className="w-1 h-1 rounded-full bg-slate-300" />
+              <span className="text-[#0B5A54] font-bold">{user.phone || 'No phone set'}</span>
+            </div>
+            {user.address && (
+              <div className="flex items-center justify-center gap-1 text-[11px] text-slate-500 font-medium max-w-xs mx-auto">
+                <MapPin className="w-3 h-3 text-[#0B5A54] shrink-0" />
+                <span className="truncate">{user.address}</span>
+              </div>
+            )}
+          </div>
+
+          {/* EDIT PROFILE BUTTON */}
+          <button
+            type="button"
+            onClick={openEditModal}
+            className="w-full max-w-[200px] bg-gradient-to-r from-[#0B5A54] to-teal-700 hover:from-[#08423D] hover:to-[#0B5A54] text-white font-extrabold py-2.5 px-5 rounded-full text-xs transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-white" />
+            <span>Edit Profile & Vitals</span>
+          </button>
         </div>
 
         {/* VITAL INFORMATION COMPACT GRID */}
         <div className="space-y-2">
           <div className="flex justify-between items-center px-1">
-            <h2 className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
               VITAL MEDICAL STATS
-            </h2>
+            </h3>
             <button
               type="button"
-              onClick={() => setIsEditVitalsModalOpen(true)}
-              className="text-[11px] font-extrabold text-[#0B5A54] hover:underline flex items-center gap-1 bg-[#E3F3F1] hover:bg-[#0B5A54] hover:text-white px-2.5 py-0.5 rounded-full transition-colors active:scale-95"
+              onClick={openEditModal}
+              className="text-[11px] font-extrabold text-[#0B5A54] hover:underline flex items-center gap-1 bg-teal-50 hover:bg-[#0B5A54] hover:text-white px-2.5 py-0.5 rounded-full transition-colors active:scale-95 cursor-pointer"
             >
-              <Edit3 className="w-3 h-3" /> Edit
+              <Edit3 className="w-3 h-3" /> Edit All
             </button>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            <Card padding="sm" className="space-y-1 border border-[#E4E7EC] bg-white shadow-2xs hover:shadow-xs transition-all">
+            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
-                <div className="w-5.5 h-5.5 rounded-lg bg-[#E3F3F1] flex items-center justify-center">
+                <div className="w-5.5 h-5.5 rounded-lg bg-teal-50 flex items-center justify-center">
                   <Calendar className="w-3 h-3 text-[#0B5A54]" />
                 </div>
                 <span>DATE OF BIRTH</span>
               </div>
               <div className="flex items-center gap-1.5 pl-0.5">
-                <p className="text-xs font-extrabold font-heading text-[#111827]">{user.dob || 'Not set'}</p>
+                <p className="text-xs font-extrabold font-heading text-slate-900">{user.dob || 'Not set'}</p>
                 {userAge !== null && (
-                  <span className="text-[10px] font-bold text-[#0B5A54] bg-[#E3F3F1] px-1.5 py-0.5 rounded-md">
+                  <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded-md">
                     {userAge} yrs
                   </span>
                 )}
               </div>
             </Card>
 
-            <Card padding="sm" className="space-y-1 border border-[#E4E7EC] bg-white shadow-2xs hover:shadow-xs transition-all">
+            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
-                <div className="w-5.5 h-5.5 rounded-lg bg-[#E3F3F1] flex items-center justify-center">
+                <div className="w-5.5 h-5.5 rounded-lg bg-teal-50 flex items-center justify-center">
                   <UserIcon className="w-3 h-3 text-[#0B5A54]" />
                 </div>
                 <span>GENDER</span>
               </div>
-              <p className="text-xs font-extrabold font-heading text-[#111827] pl-0.5">{user.gender}</p>
+              <p className="text-xs font-extrabold font-heading text-slate-900 pl-0.5">{user.gender || 'Not set'}</p>
             </Card>
 
-            <Card padding="sm" className="space-y-1 border border-[#E4E7EC] bg-white shadow-2xs hover:shadow-xs transition-all">
+            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-rose-600 uppercase tracking-wider">
                 <div className="w-5.5 h-5.5 rounded-lg bg-rose-50 flex items-center justify-center">
                   <Droplet className="w-3 h-3 text-rose-500" />
                 </div>
                 <span>BLOOD GROUP</span>
               </div>
-              <p className="text-xs font-extrabold font-heading text-[#111827] pl-0.5">{user.bloodGroup}</p>
+              <p className="text-xs font-extrabold font-heading text-slate-900 pl-0.5">{user.bloodGroup || 'O+'}</p>
             </Card>
 
-            <Card padding="sm" className="space-y-1 border border-[#E4E7EC] bg-white shadow-2xs hover:shadow-xs transition-all">
+            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-amber-600 uppercase tracking-wider">
                 <div className="w-5.5 h-5.5 rounded-lg bg-amber-50 flex items-center justify-center">
                   <PhoneCall className="w-3 h-3 text-amber-500" />
                 </div>
                 <span>EMERGENCY</span>
               </div>
-              <p className="text-[11px] font-extrabold font-heading text-[#111827] truncate pl-0.5">
-                {user.emergencyContact?.name} ({user.emergencyContact?.relationship})
+              <p className="text-[11px] font-extrabold font-heading text-slate-900 truncate pl-0.5">
+                {user.emergencyContact?.name || 'Contact set'} ({user.emergencyContact?.relationship || 'Primary'})
               </p>
             </Card>
           </div>
         </div>
 
+        {/* CLINICAL ALLERGIES & CONDITIONS (IF SET) */}
+        {(user.allergies || user.preExistingConditions) && (
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-2 shadow-2xs">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
+              CLINICAL HEALTH NOTES
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {user.allergies && (
+                <div className="p-2.5 bg-rose-50/50 rounded-xl border border-rose-100">
+                  <span className="text-[10px] font-black text-rose-700 uppercase block">Known Allergies</span>
+                  <span className="font-bold text-slate-800">{user.allergies}</span>
+                </div>
+              )}
+              {user.preExistingConditions && (
+                <div className="p-2.5 bg-teal-50/50 rounded-xl border border-teal-100">
+                  <span className="text-[10px] font-black text-teal-700 uppercase block">Pre-Existing Conditions</span>
+                  <span className="font-bold text-slate-800">{user.preExistingConditions}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* BIOMETRIC SECURITY TOGGLE CARD */}
         <div className="space-y-2 pt-1">
-          <h2 className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest px-1">
-            BIOMETRIC & FACE SECURITY
-          </h2>
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 font-heading">
+            BIOMETRIC & DEVICE SECURITY
+          </h3>
 
-          <div className="bg-white border border-[#E4E7EC] shadow-2xs rounded-2xl p-3.5 flex items-center justify-between">
+          <div className="bg-white border border-slate-200 shadow-2xs rounded-2xl p-3.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center text-[#0B5A54] shrink-0">
                 <ScanFace className="w-5 h-5 text-[#0B5A54]" />
               </div>
               <div className="text-left space-y-0.5">
-                <h4 className="text-xs font-black font-heading text-[#111827]">
+                <h4 className="text-xs font-black font-heading text-slate-900">
                   Biometric Login (Face & Fingerprint)
                 </h4>
-                <p className="text-[10px] text-[#6B7280] font-medium">
+                <p className="text-[10px] text-slate-500 font-medium">
                   {isBiometricEnabled
                     ? 'Active — 1-touch Face ID / Fingerprint unlock'
-                    : 'Disabled — Password required to log in'}
+                    : 'Disabled — Password required on launch'}
                 </p>
               </div>
             </div>
 
-            {/* INTERACTIVE TOGGLE SWITCH BUTTON */}
             <button
               type="button"
               onClick={handleToggleBiometric}
               className={clsx(
                 'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
-                isBiometricEnabled ? 'bg-[#0B5A54]' : 'bg-gray-300'
+                isBiometricEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
               )}
               title={isBiometricEnabled ? 'Disable Biometric Login' : 'Enable Biometric Login'}
             >
@@ -384,7 +482,7 @@ export const ProfileScreen: React.FC = () => {
           {biometricNotice && (
             <div
               className={clsx(
-                'p-2.5 rounded-xl text-xs font-semibold flex items-start gap-2 animate-fade-in text-left',
+                'p-2.5 rounded-xl text-xs font-semibold flex items-start gap-2 animate-in fade-in text-left',
                 biometricNotice.type === 'error'
                   ? 'bg-rose-50 text-rose-800 border border-rose-200'
                   : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -402,40 +500,41 @@ export const ProfileScreen: React.FC = () => {
 
         {/* ACCOUNT PREFERENCES LIST */}
         <div className="space-y-2 pt-1">
-          <h2 className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest px-1">
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 font-heading">
             ACCOUNT PREFERENCES
-          </h2>
+          </h3>
 
-          <Card padding="none" className="divide-y divide-[#E4E7EC]/60 overflow-hidden shadow-2xs bg-white rounded-2xl border border-[#E4E7EC]">
+          <Card padding="none" className="divide-y divide-slate-100 overflow-hidden shadow-2xs bg-white rounded-2xl border border-slate-200">
             {settingsRows.map((row, idx) => {
               const Icon = row.icon;
               return (
                 <button
                   key={idx}
                   onClick={row.action}
-                  className="w-full p-3 flex items-center justify-between text-left hover:bg-[#E3F3F1]/40 transition-colors active:bg-[#E3F3F1]/60 group"
+                  className="w-full p-3 flex items-center justify-between text-left hover:bg-teal-50/50 transition-colors active:bg-teal-100/50 group cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0 group-hover:bg-[#0B5A54] group-hover:text-white transition-colors">
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center text-[#0B5A54] shrink-0 group-hover:bg-[#0B5A54] group-hover:text-white transition-colors">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-[#111827] font-heading">{row.label}</h4>
-                      <p className="text-[10px] text-[#6B7280] font-medium">{row.subtext}</p>
+                      <h4 className="text-xs font-bold text-slate-900 font-heading">{row.label}</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">{row.subtext}</p>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-[#9CA3AF] group-hover:text-[#0B5A54] transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#0B5A54] transition-colors" />
                 </button>
               );
             })}
           </Card>
         </div>
 
+        {/* SIGN OUT */}
         <div className="pt-3 flex justify-center">
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full max-w-[200px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-full py-3 px-5 text-xs font-black transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer font-heading"
+            className="w-full max-w-[200px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full py-3 px-5 text-xs font-black transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer font-heading"
           >
             <LogOut className="w-4 h-4 text-rose-600" />
             <span>Sign Out</span>
@@ -443,145 +542,308 @@ export const ProfileScreen: React.FC = () => {
         </div>
       </main>
 
+      {/* UNIFIED COMPREHENSIVE PROFILE EDIT MODAL */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in zoom-in-95 border border-slate-100">
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-              <h3 className="text-base font-extrabold font-heading text-[#111827]">Edit Profile Info</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
-                <X className="w-4 h-4 text-slate-500" />
+        <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-3.5 animate-in fade-in select-none">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#0B5A54] to-teal-700 text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black font-heading tracking-tight">
+                    Edit Complete Medical Profile
+                  </h3>
+                  <p className="text-[10px] text-teal-100">
+                    Update personal information, contact info, emergency contacts & health vitals.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-3 text-left">
-              <Input
-                label="FULL NAME"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                required
-              />
-              <Input
-                label="EMAIL ADDRESS"
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-                required
-              />
-              <Input
-                label="PHONE NUMBER"
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                required
-              />
-              <Input
-                label="RESIDENTIAL ADDRESS"
-                value={editAddress}
-                onChange={(e) => setEditAddress(e.target.value)}
-                placeholder="Enter complete address"
-              />
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSaveAllProfile} className="p-5 sm:p-6 overflow-y-auto space-y-4.5 flex-1 text-left">
+              {saveError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold p-3.5 rounded-2xl flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{saveError}</span>
+                </div>
+              )}
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditModalOpen(false)}>
+              {saveSuccess && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold p-3.5 rounded-2xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{saveSuccess}</span>
+                </div>
+              )}
+
+              {/* SECTION 1: PERSONAL & CONTACT */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                  <UserIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
+                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-wider font-heading">
+                    1. Personal Identification & Contact
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Full Legal Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Email Address <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Primary Contact Phone <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="tel"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Residential Address / City
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        placeholder="e.g. 123 Main St, Bangalore"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: VITALS & DEMOGRAPHICS */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#0B5A54]" />
+                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-wider font-heading">
+                    2. Demographics & Vitals
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-600">
+                        Date of Birth <span className="text-rose-500">*</span>
+                      </label>
+                      {editDobAge !== null && (
+                        <span className="text-[10px] font-black text-[#0B5A54] bg-teal-50 px-1.5 py-0.2 rounded-md">
+                          {editDobAge} yrs
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      value={editDob}
+                      max={getTodayDateString()}
+                      onChange={(e) => setEditDob(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Gender <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={editGender}
+                      onChange={(e) => setEditGender(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all cursor-pointer"
+                    >
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Blood Group <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={editBloodGroup}
+                      onChange={(e) => setEditBloodGroup(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all cursor-pointer"
+                    >
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: EMERGENCY CONTACT */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-wider font-heading">
+                    3. Emergency Contact
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editEmergencyName}
+                      onChange={(e) => setEditEmergencyName(e.target.value)}
+                      placeholder="e.g. Mark Jenkins"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Emergency Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={editEmergencyPhone}
+                      onChange={(e) => setEditEmergencyPhone(e.target.value)}
+                      placeholder="+91 98765 12345"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Relationship
+                    </label>
+                    <select
+                      value={editEmergencyRel}
+                      onChange={(e) => setEditEmergencyRel(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all cursor-pointer"
+                    >
+                      <option value="Parent">Parent</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Sibling">Sibling</option>
+                      <option value="Child">Child</option>
+                      <option value="Guardian">Guardian</option>
+                      <option value="Friend">Friend / Relative</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: CLINICAL NOTES */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-wider font-heading">
+                    4. Clinical Notes (Optional)
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Known Allergies
+                    </label>
+                    <input
+                      type="text"
+                      value={editAllergies}
+                      onChange={(e) => setEditAllergies(e.target.value)}
+                      placeholder="e.g. Penicillin, Peanuts, None"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Pre-Existing Conditions
+                    </label>
+                    <input
+                      type="text"
+                      value={editConditions}
+                      onChange={(e) => setEditConditions(e.target.value)}
+                      placeholder="e.g. Asthma, Hypertension, None"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all cursor-pointer"
+                >
                   Cancel
-                </Button>
-                <Button variant="primary" size="sm" type="submit">
-                  Save Changes
-                </Button>
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-6 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs font-black shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                >
+                  {isSaving ? 'Saving Changes...' : 'Save All Changes'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {isEditVitalsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 border border-slate-100">
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-              <h3 className="text-base font-extrabold font-heading text-[#111827]">Edit Vital Medical Stats</h3>
-              <button onClick={() => setIsEditVitalsModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
-                <X className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveVitals} className="space-y-3 text-left">
-              <Input
-                label={editDobAge !== null ? `DATE OF BIRTH (${editDobAge} YEARS OLD)` : 'DATE OF BIRTH'}
-                type="date"
-                max={getTodayDateString()}
-                value={editDob}
-                onChange={(e) => setEditDob(e.target.value)}
-              />
-
-              <Select
-                label="GENDER"
-                value={editGender}
-                onChange={(e) => setEditGender(e.target.value)}
-                options={[
-                  { label: 'Female', value: 'Female' },
-                  { label: 'Male', value: 'Male' },
-                  { label: 'Other', value: 'Other' },
-                ]}
-              />
-
-              <Select
-                label="BLOOD GROUP"
-                value={editBloodGroup}
-                onChange={(e) => setEditBloodGroup(e.target.value)}
-                options={[
-                  { label: 'A+', value: 'A+' },
-                  { label: 'A-', value: 'A-' },
-                  { label: 'B+', value: 'B+' },
-                  { label: 'B-', value: 'B-' },
-                  { label: 'O+', value: 'O+' },
-                  { label: 'O-', value: 'O-' },
-                  { label: 'AB+', value: 'AB+' },
-                  { label: 'AB-', value: 'AB-' },
-                ]}
-              />
-
-              <Input
-                label="EMERGENCY CONTACT NAME"
-                value={editEmergencyName}
-                onChange={(e) => setEditEmergencyName(e.target.value)}
-              />
-
-              <Input
-                label="EMERGENCY CONTACT PHONE"
-                value={editEmergencyPhone}
-                onChange={(e) => setEditEmergencyPhone(e.target.value)}
-              />
-
-              <Input
-                label="RELATIONSHIP"
-                value={editEmergencyRel}
-                onChange={(e) => setEditEmergencyRel(e.target.value)}
-              />
-
-              <Input
-                label="ALLERGIES (SEPARATED BY COMMAS)"
-                value={editAllergies}
-                onChange={(e) => setEditAllergies(e.target.value)}
-              />
-
-              <Input
-                label="PRE-EXISTING CONDITIONS"
-                value={editConditions}
-                onChange={(e) => setEditConditions(e.target.value)}
-              />
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditVitalsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" size="sm" type="submit">
-                  Save Vitals
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
+      {/* MEDICAL HEALTH ID QR MODAL */}
       {isQrModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
           <div className="bg-white w-full max-w-xs rounded-3xl p-5 space-y-4 text-center shadow-2xl animate-in zoom-in-95 border border-slate-100">
@@ -601,8 +863,8 @@ export const ProfileScreen: React.FC = () => {
             </div>
 
             <div className="space-y-0.5 text-center">
-              <p className="text-xs font-bold text-[#111827]">{user.fullName}</p>
-              <p className="text-[10px] text-slate-500 font-medium">Patient ID: #CP-94827</p>
+              <p className="text-xs font-bold text-slate-900">{user.fullName}</p>
+              <p className="text-[10px] text-slate-500 font-medium">Patient ID: #{user.id.slice(0, 8).toUpperCase()}</p>
               <p className="text-[10px] text-[#0B5A54] font-bold">CarePulse Emergency Check-in</p>
             </div>
 
@@ -623,3 +885,5 @@ export const ProfileScreen: React.FC = () => {
     </div>
   );
 };
+
+export default ProfileScreen;

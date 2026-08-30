@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginScreen } from '../features/auth/LoginScreen';
 import { RegisterScreen } from '../features/auth/RegisterScreen';
+import { CompleteProfileScreen, isUserProfileIncomplete } from '../features/auth/CompleteProfileScreen';
 import { HomeScreen } from '../features/home/HomeScreen';
 import { HealthAIChatScreen } from '../features/health-ai/HealthAIChatScreen';
 import { EscalationNoticeScreen } from '../features/health-ai/EscalationNoticeScreen';
@@ -58,6 +59,7 @@ export const isStaffDomain = (): boolean => {
 
 export const AppRoutes: React.FC = () => {
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
+  const user = useCarePulseStore((s) => s.user);
 
   return (
     <>
@@ -72,7 +74,9 @@ export const AppRoutes: React.FC = () => {
               isStaffDomain()
                 ? '/staff/login'
                 : isAuthenticated
-                ? '/home'
+                ? isUserProfileIncomplete(user)
+                  ? '/complete-profile'
+                  : '/home'
                 : '/login'
             }
             replace
@@ -98,6 +102,14 @@ export const AppRoutes: React.FC = () => {
 
       {/* Centralized Protected Authenticated Patient Routes (Guarded with Biometrics & PIN) */}
       <Route element={<ProtectedPatientLayout />}>
+        <Route
+          path="/complete-profile"
+          element={
+            <PageTransition>
+              <CompleteProfileScreen />
+            </PageTransition>
+          }
+        />
         <Route
           path="/home"
           element={

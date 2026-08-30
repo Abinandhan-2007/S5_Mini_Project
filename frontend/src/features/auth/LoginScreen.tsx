@@ -14,6 +14,7 @@ import {
 } from '../../lib/googleAuth';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { apiPost } from '../../lib/apiFetch';
+import { isUserProfileIncomplete } from './CompleteProfileScreen';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -34,8 +35,8 @@ export const LoginScreen: React.FC = () => {
 
   // Handle redirect messages (e.g. "Please log in to continue")
   useEffect(() => {
-    if (location.state && (location.state as any).message) {
-      setErrorMessage((location.state as any).message);
+    if (location.state?.message) {
+      setErrorMessage(location.state.message);
     }
   }, [location.state]);
 
@@ -46,21 +47,74 @@ export const LoginScreen: React.FC = () => {
     }
   }, [googleError]);
 
-  // Sign up modal prompt & OAuth Redirect check
+  // Handle OAuth Token / Session detection
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Check if returning from Google OAuth Redirect (#access_token=...)
+    // 1. Check for token in URL query (standard OAuth redirect callback)
     const checkRedirectToken = async () => {
-      const hash = window.location.hash;
-      if (hash && hash.includes('access_token=')) {
-        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
-        const accessToken = hashParams.get('access_token');
-        if (accessToken) {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      const accessToken = params.get('access_token');
+
+      if (urlToken) {
+        try {
+          const authResult = await authenticateWithBackend({ credential: urlToken });
+          if (authResult?.user) {
+            await setUserAuth(authResult.user, authResult.token);
+            window.history.replaceState(null, '', window.location.pathname);
+            if (isUserProfileIncomplete(authResult.user)) {
+              navigate('/complete-profile', { replace: true });
+            } else {
+              navigate('/home', { replace: true });
+            }
+            return;
+          }
+        } catch (err: any) {
+          console.error('URL token error:', err);
+        }
+      }
+
+      if (accessToken) {
+        try {
+          const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const profile = await res.json();
+          if (profile?.email) {
+            const authResult = await authenticateWithBackend({
+              profile: {
+                email: profile.email,
+                name: profile.name || profile.email.split('@')[0],
+                picture: profile.picture || '',
+                googleId: profile.sub,
+              },
+            });
+            if (authResult?.user) {
+              await setUserAuth(authResult.user, authResult.token);
+              window.history.replaceState(null, '', window.location.pathname);
+              if (isUserProfileIncomplete(authResult.user)) {
+                navigate('/complete-profile', { replace: true });
+              } else {
+                navigate('/home', { replace: true });
+              }
+              return;
+            }
+          }
+        } catch (err: any) {
+          console.error('Access token error:', err);
+        }
+      }
+
+      // Check URL hash for access_token (Google Implicit flow fallback on mobile web)
+      if (window.location.hash && window.location.hash.includes('access_token=')) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashAccessToken = hashParams.get('access_token');
+        if (hashAccessToken) {
           setErrorMessage(null);
           try {
             const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${accessToken}` },
+              headers: { Authorization: `Bearer ${hashAccessToken}` },
             });
             const gProfile = await userRes.json();
             if (gProfile?.email) {
@@ -75,7 +129,11 @@ export const LoginScreen: React.FC = () => {
               if (authResult?.user) {
                 await setUserAuth(authResult.user, authResult.token);
                 window.history.replaceState(null, '', window.location.pathname);
-                navigate('/home');
+                if (isUserProfileIncomplete(authResult.user)) {
+                  navigate('/complete-profile', { replace: true });
+                } else {
+                  navigate('/home', { replace: true });
+                }
                 return;
               }
             }
@@ -106,28 +164,34 @@ export const LoginScreen: React.FC = () => {
                   const authResult = await authenticateWithBackend({ credential: response.credential });
                   if (authResult?.user) {
                     await setUserAuth(authResult.user, authResult.token);
-                    navigate('/home');
+                    if (isUserProfileIncomplete(authResult.user)) {
+                      navigate('/complete-profile', { replace: true });
+                    } else {
+                      navigate('/home', { replace: true });
+                    }
                   }
                 } catch (err: any) {
                   console.error('Backend Google Auth error:', err);
                   const decoded = parseJwt(response.credential);
                   if (decoded?.email) {
-                    await setUserAuth(
-                      {
-                        id: decoded.sub || `usr-${Date.now()}`,
-                        fullName: decoded.name || decoded.email.split('@')[0],
-                        email: decoded.email,
-                        phone: '',
-                        dob: '1995-07-24',
-                        gender: 'Not specified',
-                        bloodGroup: 'O+',
-                        emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
-                        avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
-                        authProvider: 'google',
-                      },
-                      response.credential
-                    );
-                    navigate('/home');
+                    const fallbackUser = {
+                      id: decoded.sub || `usr-${Date.now()}`,
+                      fullName: decoded.name || decoded.email.split('@')[0],
+                      email: decoded.email,
+                      phone: '',
+                      dob: '1995-07-24',
+                      gender: 'Not specified',
+                      bloodGroup: 'O+',
+                      emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
+                      avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+                      authProvider: 'google',
+                    };
+                    await setUserAuth(fallbackUser, response.credential);
+                    if (isUserProfileIncomplete(fallbackUser)) {
+                      navigate('/complete-profile', { replace: true });
+                    } else {
+                      navigate('/home', { replace: true });
+                    }
                   } else {
                     setErrorMessage(err.message || 'Failed to authenticate with Google.');
                   }
@@ -159,7 +223,11 @@ export const LoginScreen: React.FC = () => {
     setGoogleError(null);
     googleSignIn(async (user, token) => {
       await setUserAuth(user, token);
-      navigate('/home');
+      if (isUserProfileIncomplete(user)) {
+        navigate('/complete-profile', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
     });
   };
 

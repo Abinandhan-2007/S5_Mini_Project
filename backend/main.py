@@ -40,6 +40,7 @@ from schemas import (
     AuthResponse,
     LoginRequest,
     RegisterRequest,
+    UpdatePatientRequest,
     PatientResponse,
     ForgotPasswordRequestOtp,
     ForgotPasswordOtpResponse,
@@ -1035,34 +1036,201 @@ def get_patient(patient_id: str):
                 cur.execute("SELECT * FROM patients WHERE id = %s", (patient_id,))
                 row = cur.fetchone()
                 if row:
+                    emerg = row.get("emergency_contact")
+                    if isinstance(emerg, str):
+                        try:
+                            emerg = json.loads(emerg)
+                        except Exception:
+                            emerg = None
                     return PatientResponse(
                         id=str(row["id"]),
                         fullName=row["full_name"],
                         email=row["email"],
                         phone=row.get("phone") or "",
+                        address=row.get("address") or "",
                         dob=str(row.get("dob") or ""),
                         gender=row.get("gender") or "Not specified",
                         bloodGroup=row.get("blood_group") or "O+",
                         avatarUrl=row.get("avatar_url") or "",
-                        authProvider=row.get("auth_provider") or "local"
+                        authProvider=row.get("auth_provider") or "local",
+                        allergies=row.get("allergies") or "",
+                        preExistingConditions=row.get("pre_existing_conditions") or "",
+                        emergencyContact=emerg
                     )
         raise HTTPException(status_code=404, detail="Patient not found")
     else:
         db = read_json_db()
         for p in db.get("patients", []):
-            if p.get("id") == patient_id:
+            if str(p.get("id")) == str(patient_id):
                 return PatientResponse(
-                    id=p["id"],
+                    id=str(p["id"]),
                     fullName=p["full_name"],
                     email=p["email"],
                     phone=p.get("phone", ""),
-                    dob=p.get("dob", ""),
+                    address=p.get("address", ""),
+                    dob=str(p.get("dob", "")),
                     gender=p.get("gender", "Female"),
                     bloodGroup=p.get("blood_group", "O+"),
                     avatarUrl=p.get("avatar_url", ""),
-                    authProvider=p.get("auth_provider", "local")
+                    authProvider=p.get("auth_provider", "local"),
+                    allergies=p.get("allergies", ""),
+                    preExistingConditions=p.get("pre_existing_conditions", ""),
+                    emergencyContact=p.get("emergency_contact")
                 )
         raise HTTPException(status_code=404, detail="Patient not found")
+
+
+@app.put("/api/patients/{patient_id}", response_model=PatientResponse)
+@app.post("/api/patients/{patient_id}/update", response_model=PatientResponse)
+def update_patient_profile(patient_id: str, request: UpdatePatientRequest):
+    """Update patient personal, contact, and medical details."""
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM patients WHERE id::text = %s", (str(patient_id).strip(),))
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Patient not found")
+
+                new_name = request.fullName if request.fullName is not None else row["full_name"]
+                new_phone = request.phone if request.phone is not None else (row.get("phone") or "")
+                new_email = request.email if request.email is not None else row["email"]
+                new_address = request.address if request.address is not None else (row.get("address") or "")
+                new_dob = request.dob if request.dob is not None else row.get("dob")
+                new_gender = request.gender if request.gender is not None else (row.get("gender") or "Not specified")
+                new_blood = request.bloodGroup if request.bloodGroup is not None else (row.get("blood_group") or "O+")
+                new_avatar = request.avatarUrl if request.avatarUrl is not None else (row.get("avatar_url") or "")
+                new_allergies = request.allergies if request.allergies is not None else (row.get("allergies") or "")
+                new_conditions = request.preExistingConditions if request.preExistingConditions is not None else (row.get("pre_existing_conditions") or "")
+                
+                emerg_data = request.emergencyContact if request.emergencyContact is not None else row.get("emergency_contact")
+                emerg_json = json.dumps(emerg_data) if isinstance(emerg_data, dict) else (emerg_data or "{}")
+
+                cur.execute(
+                    """
+                    UPDATE patients
+                    SET full_name = %s,
+                        phone = %s,
+                        email = %s,
+                        address = %s,
+                        dob = NULLIF(%s, '')::DATE,
+                        gender = %s,
+                        blood_group = %s,
+                        avatar_url = %s,
+                        allergies = %s,
+                        pre_existing_conditions = %s
+                    WHERE id::text = %s
+                    RETURNING *
+                    """,
+                    (
+                        new_name,
+                        new_phone,
+                        new_email,
+                        new_address,
+                        str(new_dob) if new_dob else None,
+                        new_gender,
+                        new_blood,
+                        new_avatar,
+                        new_allergies,
+                        new_conditions,
+                        str(patient_id).strip()
+                    )
+                )
+                updated_row = cur.fetchone()
+                conn.commit()
+
+                return PatientResponse(
+                    id=str(updated_row["id"]),
+                    fullName=updated_row["full_name"],
+                    email=updated_row["email"],
+                    phone=updated_row.get("phone") or "",
+                    address=updated_row.get("address") or "",
+                    dob=str(updated_row.get("dob") or ""),
+                    gender=updated_row.get("gender") or "Not specified",
+                    bloodGroup=updated_row.get("blood_group") or "O+",
+                    avatarUrl=updated_row.get("avatar_url") or "",
+                    authProvider=updated_row.get("auth_provider") or "local",
+                    allergies=updated_row.get("allergies") or "",
+                    preExistingConditions=updated_row.get("pre_existing_conditions") or "",
+                    emergencyContact=emerg_data if isinstance(emerg_data, dict) else None
+                )
+    else:
+        db = read_json_db()
+        patients = db.get("patients", [])
+        found_idx = None
+        for i, p in enumerate(patients):
+            if str(p.get("id")) == str(patient_id):
+                found_idx = i
+                break
+
+        if found_idx is None:
+            # Create/update entry in fallback
+            p_entry = {
+                "id": str(patient_id),
+                "full_name": request.fullName or "Patient",
+                "email": request.email or "",
+                "phone": request.phone or "",
+                "address": request.address or "",
+                "dob": request.dob or "",
+                "gender": request.gender or "Other",
+                "blood_group": request.bloodGroup or "O+",
+                "avatar_url": request.avatarUrl or "",
+                "auth_provider": "google",
+                "allergies": request.allergies or "",
+                "pre_existing_conditions": request.preExistingConditions or "",
+                "emergency_contact": request.emergencyContact or {}
+            }
+            patients.append(p_entry)
+            db["patients"] = patients
+            write_json_db(db)
+            return PatientResponse(
+                id=p_entry["id"],
+                fullName=p_entry["full_name"],
+                email=p_entry["email"],
+                phone=p_entry.get("phone", ""),
+                address=p_entry.get("address", ""),
+                dob=str(p_entry.get("dob", "")),
+                gender=p_entry.get("gender", "Female"),
+                bloodGroup=p_entry.get("blood_group", "O+"),
+                avatarUrl=p_entry.get("avatar_url", ""),
+                authProvider=p_entry.get("auth_provider", "local"),
+                allergies=p_entry.get("allergies", ""),
+                preExistingConditions=p_entry.get("pre_existing_conditions", ""),
+                emergencyContact=p_entry.get("emergency_contact")
+            )
+
+        p = patients[found_idx]
+        if request.fullName is not None: p["full_name"] = request.fullName
+        if request.phone is not None: p["phone"] = request.phone
+        if request.email is not None: p["email"] = request.email
+        if request.address is not None: p["address"] = request.address
+        if request.dob is not None: p["dob"] = request.dob
+        if request.gender is not None: p["gender"] = request.gender
+        if request.bloodGroup is not None: p["blood_group"] = request.bloodGroup
+        if request.avatarUrl is not None: p["avatar_url"] = request.avatarUrl
+        if request.allergies is not None: p["allergies"] = request.allergies
+        if request.preExistingConditions is not None: p["pre_existing_conditions"] = request.preExistingConditions
+        if request.emergencyContact is not None: p["emergency_contact"] = request.emergencyContact
+
+        patients[found_idx] = p
+        db["patients"] = patients
+        write_json_db(db)
+
+        return PatientResponse(
+            id=p["id"],
+            fullName=p["full_name"],
+            email=p["email"],
+            phone=p.get("phone", ""),
+            address=p.get("address", ""),
+            dob=str(p.get("dob", "")),
+            gender=p.get("gender", "Female"),
+            bloodGroup=p.get("blood_group", "O+"),
+            avatarUrl=p.get("avatar_url", ""),
+            authProvider=p.get("auth_provider", "local"),
+            allergies=p.get("allergies", ""),
+            preExistingConditions=p.get("pre_existing_conditions", ""),
+            emergencyContact=p.get("emergency_contact")
+        )
 
 # ==========================================
 # 2. CONSULTATION & SOAP DATA ENDPOINTS

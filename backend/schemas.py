@@ -42,6 +42,22 @@ class PatientResponse(BaseModel):
     bloodGroup: Optional[str] = "O+"
     avatarUrl: Optional[str] = ""
     authProvider: Optional[str] = "local"
+    allergies: Optional[str] = ""
+    preExistingConditions: Optional[str] = ""
+    emergencyContact: Optional[Dict[str, Any]] = None
+
+class UpdatePatientRequest(BaseModel):
+    fullName: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = None
+    bloodGroup: Optional[str] = None
+    avatarUrl: Optional[str] = None
+    allergies: Optional[str] = None
+    preExistingConditions: Optional[str] = None
+    emergencyContact: Optional[Dict[str, Any]] = None
 
 class AuthResponse(BaseModel):
     success: bool

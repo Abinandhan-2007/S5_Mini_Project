@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useCarePulseStore } from '../../lib/store';
 import { AppLockModal } from './AppLockModal';
+import { CompleteProfileModal } from './CompleteProfileModal';
 
 interface ProtectedPatientLayoutProps {
   children?: React.ReactNode;
@@ -11,9 +12,8 @@ interface ProtectedPatientLayoutProps {
  * Centralized security guard and layout wrapper for all authenticated Patient App routes.
  * Ensures:
  * 1. Unauthenticated users are redirected to /login.
- * 2. If biometric lock is enabled, intercepts the entire screen with AppLockModal
- *    regardless of which deep link or route (/profile, /history, /prescriptions, etc.)
- *    the user navigated to.
+ * 2. If biometric lock is enabled, intercepts the entire screen with AppLockModal.
+ * 3. Onboards new users / Google sign-in accounts by prompting for personal & emergency details.
  */
 export const ProtectedPatientLayout: React.FC<ProtectedPatientLayoutProps> = ({ children }) => {
   const location = useLocation();
@@ -60,7 +60,12 @@ export const ProtectedPatientLayout: React.FC<ProtectedPatientLayoutProps> = ({ 
     );
   }
 
-  return <>{children || <Outlet />}</>;
+  return (
+    <>
+      <CompleteProfileModal />
+      {children || <Outlet />}
+    </>
+  );
 };
 
 export default ProtectedPatientLayout;

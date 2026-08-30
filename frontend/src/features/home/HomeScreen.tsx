@@ -33,6 +33,7 @@ import { usePolling } from '../../lib/usePolling';
 import { useCarePulseStore } from '../../lib/store';
 import { doctorService } from '../../services/doctorService';
 import { hospitalService } from '../../services/hospitalService';
+import { isUserProfileIncomplete } from '../auth/CompleteProfileScreen';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -156,6 +157,33 @@ export const HomeScreen: React.FC = () => {
 
       {/* MAIN BODY CONTENT - FULL SCREEN RESOLUTION ADAPTIVE */}
       <main className="px-4 sm:px-6 md:px-8 max-w-7xl mx-auto pt-1 pb-4 space-y-6 w-full">
+        {/* INCOMPLETE PROFILE REMINDER BANNER */}
+        {isUserProfileIncomplete(user) && (
+          <div className="bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 border border-teal-200/90 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-[#0B5A54] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <UserIcon className="w-5 h-5 text-teal-200" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs font-black text-slate-900 font-heading tracking-tight">
+                  Complete Your Medical Profile
+                </h3>
+                <p className="text-[11px] text-slate-600 font-medium">
+                  Please add your phone number, date of birth & emergency contact to unlock clinical bookings.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/complete-profile')}
+              className="px-4 py-2 bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              Complete Now →
+            </button>
+          </div>
+        )}
+
         {/* HERO SECTION GRID (TICKET & HEALTH TIP) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           {/* 1. BOARDING PASS APPOINTMENT TICKET OR QUICK BOOKING CARD */}
