@@ -94,10 +94,17 @@ class TestHospitalScopingAndIsolation(unittest.TestCase):
 
     def test_03_receptionist_query_isolation(self):
         """Test that receptionist at hosp-1 only sees hosp-1 doctors and queue tokens."""
-        # Staff login for receptionist at hosp-1
-        login_res = client.post("/api/staff/login", json={
+        # Verify old credentials rejected
+        old_login = client.post("/api/staff/login", json={
             "email": "receptionist@carepulse.com",
             "password": "password123"
+        })
+        self.assertEqual(old_login.status_code, 401)
+
+        # Staff login for receptionist at hosp-1 with rec / rec123
+        login_res = client.post("/api/staff/login", json={
+            "email": "rec",
+            "password": "rec123"
         })
         self.assertEqual(login_res.status_code, 200)
         token_hosp1 = login_res.json()["token"]
@@ -120,10 +127,17 @@ class TestHospitalScopingAndIsolation(unittest.TestCase):
 
     def test_04_doctor_authoritative_hospital_resolution(self):
         """Test Additional Requirement 1: Doctor hospital scoping derives authoritatively from doctors table."""
-        # Login doctor Olivia Wilson (linked to doc-1 at hosp-1)
-        login_res = client.post("/api/staff/login", json={
+        # Verify old doctor credentials rejected
+        old_login = client.post("/api/staff/login", json={
             "email": "olivia.w@carepulse.com",
             "password": "doctor123"
+        })
+        self.assertEqual(old_login.status_code, 401)
+
+        # Login doctor Olivia Wilson (doc / doc123 linked to doc-1 at hosp-1)
+        login_res = client.post("/api/staff/login", json={
+            "email": "doc",
+            "password": "doc123"
         })
         self.assertEqual(login_res.status_code, 200)
         data = login_res.json()
@@ -184,10 +198,10 @@ class TestHospitalScopingAndIsolation(unittest.TestCase):
 
     def test_06_server_side_write_derivation_tamper_protection(self):
         """Test Additional Requirement 3: Client cannot tamper hospital_id on walk-ins and consultations."""
-        # Login receptionist at hosp-1
+        # Login receptionist at hosp-1 with rec / rec123
         login_res = client.post("/api/staff/login", json={
-            "email": "receptionist@carepulse.com",
-            "password": "password123"
+            "email": "rec",
+            "password": "rec123"
         })
         token_hosp1 = login_res.json()["token"]
         headers_hosp1 = {"Authorization": f"Bearer {token_hosp1}"}
@@ -211,10 +225,10 @@ class TestHospitalScopingAndIsolation(unittest.TestCase):
         self.assertEqual(token_data["hospital_id"], "hosp-1")
         self.assertEqual(token_data["hospitalId"], "hosp-1")
 
-        # Doctor creates consultation attempting to tag hosp-4
+        # Doctor creates consultation with doc / doc123 attempting to tag hosp-4
         doc_login_res = client.post("/api/staff/login", json={
-            "email": "olivia.w@carepulse.com",
-            "password": "doctor123"
+            "email": "doc",
+            "password": "doc123"
         })
         token_doc = doc_login_res.json()["token"]
         headers_doc = {"Authorization": f"Bearer {token_doc}"}

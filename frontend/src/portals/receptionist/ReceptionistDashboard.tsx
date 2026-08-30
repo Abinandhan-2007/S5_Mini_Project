@@ -486,11 +486,10 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
                       <button
                         onClick={() => setDoctorToToggle(doctor)}
-                        className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
-                          doctor.isAvailable
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer shrink-0 ${doctor.isAvailable
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
+                          }`}
                       >
                         {doctor.isAvailable ? (
                           <>
@@ -605,11 +604,10 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               </button>
               <button
                 onClick={handleConfirmToggleAvailability}
-                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${
-                  doctorToToggle.isAvailable
+                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${doctorToToggle.isAvailable
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-[#0B5A54] hover:bg-[#084540]'
-                }`}
+                  }`}
               >
                 Confirm {doctorToToggle.isAvailable ? 'Off-Duty' : 'Available'}
               </button>

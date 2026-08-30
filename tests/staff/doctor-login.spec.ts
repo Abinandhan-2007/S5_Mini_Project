@@ -47,7 +47,7 @@ test.describe('Staff Doctor Portal Login', () => {
       });
     });
 
-    await page.locator('#staff-identifier').fill('olivia.w');
+    await page.locator('#staff-identifier').fill('doc');
     await page.locator('#staff-password').fill('doc123');
     await page.getByRole('button', { name: 'Sign In to Portal' }).click();
 

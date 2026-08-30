@@ -82,41 +82,37 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     return (
       <div
         key={token.id}
-        className={`p-4 sm:p-5 rounded-3xl border transition-all duration-200 shadow-2xs space-y-3.5 relative ${
-          isConsulting
+        className={`p-4 sm:p-5 rounded-3xl border transition-all duration-200 shadow-2xs space-y-3.5 relative ${isConsulting
             ? 'bg-gradient-to-br from-teal-50/90 via-white to-teal-50/50 border-teal-300 ring-2 ring-teal-500/20 shadow-md'
             : 'bg-white hover:bg-slate-50/70 border-slate-200/90 hover:border-teal-300/80 hover:shadow-xs'
-        }`}
+          }`}
       >
         {/* Top Card Bar */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <span
-              className={`px-3 py-1 rounded-xl font-mono text-xs font-black shadow-2xs ${
-                isOnline
+              className={`px-3 py-1 rounded-xl font-mono text-xs font-black shadow-2xs ${isOnline
                   ? 'bg-teal-50 text-[#0B5A54] border border-teal-200'
                   : 'bg-amber-50 text-amber-900 border border-amber-200'
-              }`}
+                }`}
             >
               {token.tokenNumber}
             </span>
             <span
-              className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                isOnline
+              className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${isOnline
                   ? 'bg-purple-50 text-purple-700 border-purple-200'
                   : 'bg-sky-50 text-sky-700 border-sky-200'
-              }`}
+                }`}
             >
               {isOnline ? 'Mobile App' : 'Walk-In'}
             </span>
           </div>
 
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
-              isConsulting
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border ${isConsulting
                 ? 'bg-teal-100 text-[#0B5A54] border-teal-300 animate-pulse'
                 : 'bg-amber-50 text-amber-800 border-amber-200'
-            }`}
+              }`}
           >
             {isConsulting ? (
               <>
@@ -316,11 +312,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
             </span>
             <button
               onClick={() => setSelectedDoctorFilter('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                selectedDoctorFilter === 'ALL'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${selectedDoctorFilter === 'ALL'
                   ? 'bg-[#0B5A54] text-white shadow-2xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+                }`}
             >
               All Physicians ({doctors.length})
             </button>
@@ -329,11 +324,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               <button
                 key={doc.id}
                 onClick={() => setSelectedDoctorFilter(doc.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  selectedDoctorFilter === doc.id
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${selectedDoctorFilter === doc.id
                     ? 'bg-[#0B5A54] text-white shadow-2xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 {doc.name.replace('Dr. ', '')}
               </button>

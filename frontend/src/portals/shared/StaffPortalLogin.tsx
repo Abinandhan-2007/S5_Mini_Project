@@ -109,91 +109,48 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       return;
     }
 
-    // 3. Check Doctor Credentials
-    const matchedDoctor = doctors.find(
-      (d) =>
-        d.username?.toLowerCase() === cleanId ||
-        d.email.toLowerCase() === cleanId ||
-        (cleanId === 'doctor' && d.id === 'doc-1') ||
-        (cleanId === 'olivia.w' && d.id === 'doc-1') ||
-        (cleanId === 'doctor@carepulse.com' && d.id === 'doc-1')
-    );
-
-    if (
-      matchedDoctor &&
-      (cleanPassword === matchedDoctor.password ||
-        cleanPassword === 'doc123' ||
-        cleanPassword === 'password123' ||
-        cleanPassword === 'Doctor@123' ||
-        cleanPassword === 'doctor')
-    ) {
+    // 3. Check Doctor Credentials (Strictly doc / doc123)
+    if (cleanId === 'doc' && cleanPassword === 'doc123') {
+      const doc = doctors.find((d) => d.id === 'doc-1') || doctors[0] || {
+        id: 'doc-1',
+        name: 'Dr. Olivia Wilson',
+        email: 'doc',
+        department: 'Cardiology',
+        photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+      };
       setStaffAuth(
         {
-          id: matchedDoctor.id,
-          name: matchedDoctor.name,
-          email: matchedDoctor.email,
+          id: doc.id,
+          name: doc.name,
+          email: doc.email,
           role: 'doctor',
-          department: matchedDoctor.department,
-          avatarUrl: matchedDoctor.photo,
+          department: doc.department,
+          avatarUrl: doc.photo,
         },
-        `token-doctor-${matchedDoctor.id}`
+        `token-doctor-${doc.id}`
       );
       setIsLoading(false);
       navigate('/doctor');
       return;
     }
 
-    // 4. Check Receptionist Credentials
-    const matchedReceptionist = receptionists.find(
-      (r) =>
-        r.username?.toLowerCase() === cleanId ||
-        r.email.toLowerCase() === cleanId ||
-        r.staffId?.toLowerCase() === cleanId ||
-        (cleanId === 'receptionist' && r.id === 'rec-1') ||
-        (cleanId === 'emma.davis' && r.id === 'rec-1') ||
-        (cleanId === 'receptionist@carepulse.com' && r.id === 'rec-101')
-    );
-
-    if (
-      matchedReceptionist &&
-      (cleanPassword === matchedReceptionist.password ||
-        cleanPassword === 'Password@123' ||
-        cleanPassword === 'password123' ||
-        cleanPassword === 'receptionist' ||
-        cleanPassword === 'rec123')
-    ) {
+    // 4. Check Receptionist Credentials (Strictly rec / rec123)
+    if (cleanId === 'rec' && cleanPassword === 'rec123') {
+      const rec = receptionists.find((r) => r.id === 'rec-101') || receptionists[0] || {
+        id: 'rec-101',
+        name: 'Emily Watson',
+        email: 'rec',
+        department: 'Main Reception',
+      };
       setStaffAuth(
         {
-          id: matchedReceptionist.id,
-          name: matchedReceptionist.name,
-          email: matchedReceptionist.email,
+          id: rec.id,
+          name: rec.name,
+          email: rec.email,
           role: 'receptionist',
           department: 'Front Desk Registration',
         },
-        `token-receptionist-${matchedReceptionist.id}`
-      );
-      setIsLoading(false);
-      navigate('/receptionist');
-      return;
-    }
-
-    // 5. Generic fallback for quick demo matching
-    if (cleanId === 'doctor@carepulse.com' && (cleanPassword === 'password123' || cleanPassword === 'doc123')) {
-      const doc = doctors[0] || { id: 'doc-1', name: 'Dr. Olivia Wilson', email: 'olivia.w@carepulse.com', department: 'Cardiology' };
-      setStaffAuth(
-        { id: doc.id, name: doc.name, email: doc.email, role: 'doctor', department: doc.department },
-        'token-doctor-session'
-      );
-      setIsLoading(false);
-      navigate('/doctor');
-      return;
-    }
-
-    if (cleanId === 'receptionist@carepulse.com' && (cleanPassword === 'password123' || cleanPassword === 'Password@123')) {
-      const rec = receptionists[0] || { id: 'rec-1', name: 'Emily Watson', email: 'receptionist@carepulse.com' };
-      setStaffAuth(
-        { id: rec.id, name: rec.name, email: rec.email, role: 'receptionist', department: 'Front Desk' },
-        'token-receptionist-session'
+        `token-receptionist-${rec.id}`
       );
       setIsLoading(false);
       navigate('/receptionist');
@@ -385,7 +342,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                       setIdentifier(e.target.value);
                       setError(null);
                     }}
-                    placeholder="e.g. admin, emma.davis, olivia.w"
+                    placeholder="e.g. admin, rec, doc"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] focus:bg-white transition-all shadow-2xs"
                   />
                 </div>

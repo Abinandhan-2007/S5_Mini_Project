@@ -47,8 +47,8 @@ test.describe('Staff Receptionist Portal Login', () => {
       });
     });
 
-    await page.locator('#staff-identifier').fill('emma.davis');
-    await page.locator('#staff-password').fill('Password@123');
+    await page.locator('#staff-identifier').fill('rec');
+    await page.locator('#staff-password').fill('rec123');
     await page.getByRole('button', { name: 'Sign In to Portal' }).click();
 
     // Verify navigation into the Receptionist Portal

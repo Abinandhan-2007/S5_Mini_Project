@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Ticket,
   CalendarCheck,
-  Stethoscope,
   UserCheck,
+  Stethoscope,
+  Ticket,
   Settings,
   LogOut,
   Bell,
@@ -22,10 +22,10 @@ import {
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
-import { TokenManagement } from './TokenManagement';
 import { PatientBookings } from './PatientBookings';
-import { DoctorManagement } from './DoctorManagement';
 import { PatientCheckIn } from './PatientCheckIn';
+import { DoctorManagement } from './DoctorManagement';
+import { TokenManagement } from './TokenManagement';
 import { ReceptionistProfile } from './ReceptionistProfile';
 import { NewAppointmentModal } from './NewAppointmentModal';
 import { usePolling } from '../../lib/usePolling';
@@ -33,10 +33,11 @@ import { LiveIndicator } from '../../components/ui/LiveIndicator';
 
 export type ReceptionistTab =
   | 'dashboard'
-  | 'queue'
   | 'bookings'
   | 'checkin'
   | 'doctors'
+  | 'tokens'
+  | 'queue'
   | 'profile';
 
 interface NavSection {
@@ -98,7 +99,11 @@ export const ReceptionistLayout: React.FC = () => {
   };
 
   const handleNavigateTab = (tab: string) => {
-    setActiveTab(tab as ReceptionistTab);
+    if (tab === 'queue') {
+      setActiveTab('tokens');
+    } else {
+      setActiveTab(tab as ReceptionistTab);
+    }
     setIsMobileSidebarOpen(false);
   };
 
@@ -136,19 +141,12 @@ export const ReceptionistLayout: React.FC = () => {
   const waitingCount = tokens.filter((t) => t.status === 'Waiting').length;
   const activeDoctorsCount = doctors.filter((d) => d.isAvailable).length;
 
-  // Categorized Navigation Sections
+  // Categorized Navigation Sections (Token Management positioned directly below Doctors & Slot Capacity)
   const navSections: NavSection[] = [
     {
       groupTitle: 'FRONT DESK & QUEUE',
       items: [
         { id: 'dashboard', label: 'OPD Command Center', icon: LayoutDashboard },
-        {
-          id: 'queue',
-          label: 'Live Token Queue',
-          icon: Ticket,
-          badge: waitingCount > 0 ? `${waitingCount}` : undefined,
-          badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
-        },
         {
           id: 'bookings',
           label: 'Patient Bookings',
@@ -173,6 +171,13 @@ export const ReceptionistLayout: React.FC = () => {
           badge: activeDoctorsCount > 0 ? `${activeDoctorsCount} On-Duty` : undefined,
           badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         },
+        {
+          id: 'tokens',
+          label: 'Token Management',
+          icon: Ticket,
+          badge: waitingCount > 0 ? `${waitingCount} Waiting` : undefined,
+          badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+        },
       ],
     },
     {
@@ -191,11 +196,6 @@ export const ReceptionistLayout: React.FC = () => {
           title: 'OPD Command Dashboard',
           breadcrumb: 'Front Desk / Live Overview',
         };
-      case 'queue':
-        return {
-          title: 'Live Token Queue Desk',
-          breadcrumb: 'Front Desk / Token Calling & Queue Stream',
-        };
       case 'bookings':
         return {
           title: 'Patient Bookings & Roster',
@@ -210,6 +210,12 @@ export const ReceptionistLayout: React.FC = () => {
         return {
           title: 'Doctor Directory & Slot Capacities',
           breadcrumb: 'Front Desk / Physicians & Cabin Seats',
+        };
+      case 'tokens':
+      case 'queue':
+        return {
+          title: 'Token & Slot Management Desk',
+          breadcrumb: 'Front Desk / Time Slots & Live Token Queue',
         };
       case 'profile':
         return {
@@ -311,7 +317,7 @@ export const ReceptionistLayout: React.FC = () => {
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = activeTab === item.id;
+                    const isActive = activeTab === item.id || (item.id === 'tokens' && activeTab === 'queue');
 
                     return (
                       <button
@@ -583,13 +589,6 @@ export const ReceptionistLayout: React.FC = () => {
             />
           )}
 
-          {activeTab === 'queue' && (
-            <TokenManagement
-              onShowToast={showToast}
-              onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
-            />
-          )}
-
           {activeTab === 'bookings' && (
             <PatientBookings
               onShowToast={showToast}
@@ -608,6 +607,12 @@ export const ReceptionistLayout: React.FC = () => {
             <DoctorManagement onShowToast={showToast} />
           )}
 
+          {(activeTab === 'tokens' || activeTab === 'queue') && (
+            <TokenManagement
+              onShowToast={showToast}
+              onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
+            />
+          )}
           {activeTab === 'profile' && (
             <ReceptionistProfile onShowToast={showToast} />
           )}
