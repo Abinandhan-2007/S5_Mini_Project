@@ -431,7 +431,12 @@ export const BookAppointmentScreen: React.FC = () => {
             <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5">
               <span>Available Time Slots (30 min)</span>
             </div>
-            <TimeSlotGrid selectedSlot={selectedSlot} onSelectSlot={(slot) => setSelectedSlot(slot)} />
+            <TimeSlotGrid
+              selectedSlot={selectedSlot}
+              onSelectSlot={(slot) => setSelectedSlot(slot)}
+              doctor={doctor}
+              slotCapacities={(doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities}
+            />
           </div>
         </div>
 

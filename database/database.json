@@ -195,6 +195,22 @@
   ],
   "appointments": [
     {
+      "id": "d5181cd7-fb23-4525-b751-40920f114411",
+      "patient_name": "wrwf",
+      "patient_phone": "28451515",
+      "ticket_number": "#CP-DEF5",
+      "doctor_id": "doc-johan",
+      "doctor_name": "Dr. Johan Janson",
+      "doctor_specialty": "Endocrinologist",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-08-30",
+      "time_slot": "10:00 AM - 11:00 AM",
+      "type": "Walk-In",
+      "status": "Cancelled"
+    },
+    {
       "id": "98d6c082-b1c9-4e4a-a68c-92eee7292346",
       "patient_name": "Tamper Test Patient",
       "patient_phone": "+91 91111 22222",
@@ -614,7 +630,7 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming",
+      "status": "Completed",
       "patient_id": "test-patient-walkin-99"
     },
     {
@@ -800,7 +816,7 @@
           "maxSeats": 6,
           "bookedSeats": 2,
           "availableSeats": 4,
-          "isAvailable": true
+          "isAvailable": false
         },
         {
           "id": "slot-2",
@@ -850,7 +866,7 @@
           "maxSeats": 6,
           "bookedSeats": 2,
           "availableSeats": 4,
-          "isAvailable": true
+          "isAvailable": false
         },
         {
           "id": "slot-2",
@@ -910,7 +926,107 @@
       "photo": "https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80",
       "rating": 5.0,
       "reviews_count": 92,
-      "about": "Primary care physician focused on preventive health & comprehensive checkups."
+      "about": "Primary care physician focused on preventive health & comprehensive checkups.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-marvin",
@@ -928,7 +1044,107 @@
       "photo": "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&auto=format&fit=crop&q=80",
       "rating": 4.3,
       "reviews_count": 110,
-      "about": "Senior Cardiologist specializing in preventive heart health and electrophysiology."
+      "about": "Senior Cardiologist specializing in preventive heart health and electrophysiology.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-arlene",
@@ -946,7 +1162,107 @@
       "photo": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
       "rating": 4.5,
       "reviews_count": 78,
-      "about": "Internal medicine specialist dedicated to holistic patient care."
+      "about": "Internal medicine specialist dedicated to holistic patient care.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-eleanor",
@@ -964,7 +1280,107 @@
       "photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
       "rating": 4.4,
       "reviews_count": 88,
-      "about": "Specialist in joint health, rheumatoid care, and orthopedic therapy."
+      "about": "Specialist in joint health, rheumatoid care, and orthopedic therapy.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-kaiya",
@@ -982,7 +1398,107 @@
       "photo": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
       "rating": 5.0,
       "reviews_count": 105,
-      "about": "Endocrine care expert specializing in thyroid & metabolic health."
+      "about": "Endocrine care expert specializing in thyroid & metabolic health.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-1",
@@ -1000,7 +1516,107 @@
       "photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
       "rating": 4.9,
       "reviews_count": 142,
-      "about": "Lead Cardiologist specializing in heart disease prevention and non-invasive cardiac imaging."
+      "about": "Lead Cardiologist specializing in heart disease prevention and non-invasive cardiac imaging.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-2",
@@ -1018,7 +1634,107 @@
       "photo": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
       "rating": 4.7,
       "reviews_count": 95,
-      "about": "Board-certified dermatologist with clinical expertise in clinical aesthetics and laser therapy."
+      "about": "Board-certified dermatologist with clinical expertise in clinical aesthetics and laser therapy.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-3",
@@ -1032,12 +1748,112 @@
       "phone": "+91 98765 11009",
       "email": "sophia.p@carepulse.com",
       "room_number": "Cabin 108 - 1st Floor",
-      "is_available": false,
+      "is_available": true,
       "photo": "https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80",
       "rating": 4.9,
       "reviews_count": 210,
       "about": "Senior Pediatrician dedicated to neonatal care, child development, and vaccinations.",
-      "isAvailable": false
+      "isAvailable": true,
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-4",
@@ -1055,7 +1871,107 @@
       "photo": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
       "rating": 4.8,
       "reviews_count": 160,
-      "about": "Specialist in stroke recovery, cognitive disorders, migraines, and neuro-rehabilitation."
+      "about": "Specialist in stroke recovery, cognitive disorders, migraines, and neuro-rehabilitation.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": false
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     }
   ],
   "staff": [
@@ -1064,20 +1980,20 @@
       "name": "Emily Watson",
       "email": "rec",
       "username": "rec",
-      "password": "$2b$12$t8FQiHsSpgLkQvj9/k0RLuRX.wdmKKIVRbaaQk3J6KQnuD4bX7cgO",
+      "password": "$2b$12$IGbQBIvvJdeM0Nmj1vtUJ.0sKNS2WPA8vBy6u9kUGDl4jJDWt6.A.",
       "role": "receptionist",
       "department": "Main Reception & OPD Queue",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$t8FQiHsSpgLkQvj9/k0RLuRX.wdmKKIVRbaaQk3J6KQnuD4bX7cgO"
+      "password_hash": "$2b$12$IGbQBIvvJdeM0Nmj1vtUJ.0sKNS2WPA8vBy6u9kUGDl4jJDWt6.A."
     },
     {
       "id": "doc-1",
       "name": "Dr. Olivia Wilson",
       "email": "doc",
       "username": "doc",
-      "password": "$2b$12$.ImFFuyLz4/Dv9J5f83tHujoMEhiWrd3Qt1qAv87psswk3CjETL.6",
+      "password": "$2b$12$qcyVtRiBlf5VtTstW0nP5.MA4D1wDbSVYzAQpZdN3tz0EcD3t/s9C",
       "role": "doctor",
       "specialty": "Cardiologist",
       "department": "Cardiology",
@@ -1086,7 +2002,7 @@
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$.ImFFuyLz4/Dv9J5f83tHujoMEhiWrd3Qt1qAv87psswk3CjETL.6"
+      "password_hash": "$2b$12$qcyVtRiBlf5VtTstW0nP5.MA4D1wDbSVYzAQpZdN3tz0EcD3t/s9C"
     },
     {
       "id": "admin-1",
