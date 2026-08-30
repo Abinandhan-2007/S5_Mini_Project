@@ -124,10 +124,13 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
 
         dob_str = str(row.get("dob") or "")
         token_str = generate_patient_jwt(str(row["id"]), row["email"])
+        p_code = row.get("patient_code")
         return AuthResponse(
             success=True,
             user=PatientResponse(
                 id=str(row["id"]),
+                patient_code=p_code,
+                patientCode=p_code,
                 fullName=row["full_name"],
                 email=row["email"],
                 phone=row.get("phone") or "",
@@ -156,8 +159,20 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
                 found["avatar_url"] = picture
             found["auth_provider"] = "google"
         else:
+            import re
+            max_num = 0
+            for pt in patients:
+                code_val = pt.get("patient_code") or pt.get("patientCode")
+                if code_val and code_val.startswith("PAT-"):
+                    m = re.search(r"\d+", code_val)
+                    if m:
+                        max_num = max(max_num, int(m.group(0)))
+            new_code = f"PAT-{max_num + 1:06d}"
+
             found = {
                 "id": str(uuid.uuid4()),
+                "patient_code": new_code,
+                "patientCode": new_code,
                 "full_name": name,
                 "email": email,
                 "phone": "",
@@ -174,10 +189,13 @@ def process_google_login(google_user: Dict[str, Any]) -> AuthResponse:
         write_json_db(db)
 
         token_str = generate_patient_jwt(str(found["id"]), found["email"])
+        p_code = found.get("patient_code") or found.get("patientCode")
         return AuthResponse(
             success=True,
             user=PatientResponse(
                 id=found["id"],
+                patient_code=p_code,
+                patientCode=p_code,
                 fullName=found["full_name"],
                 email=found["email"],
                 phone=found.get("phone", ""),

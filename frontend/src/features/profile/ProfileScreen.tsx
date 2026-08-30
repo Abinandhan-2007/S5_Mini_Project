@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Phone,
   ShieldCheck,
-  Sparkles,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -72,7 +71,7 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  // Unified Edit Form State
+  // Unified Edit Form State (Name, Email, Phone, Address, DOB, Gender, Blood Group, Emergency Contact)
   const [editName, setEditName] = useState(user?.fullName || '');
   const [editEmail, setEditEmail] = useState(user?.email || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
@@ -83,8 +82,6 @@ export const ProfileScreen: React.FC = () => {
   const [editEmergencyName, setEditEmergencyName] = useState(user?.emergencyContact?.name || '');
   const [editEmergencyPhone, setEditEmergencyPhone] = useState(user?.emergencyContact?.phone || '');
   const [editEmergencyRel, setEditEmergencyRel] = useState(user?.emergencyContact?.relationship || 'Parent');
-  const [editAllergies, setEditAllergies] = useState(user?.allergies || '');
-  const [editConditions, setEditConditions] = useState(user?.preExistingConditions || '');
 
   const openEditModal = () => {
     if (user) {
@@ -104,8 +101,6 @@ export const ProfileScreen: React.FC = () => {
           : ''
       );
       setEditEmergencyRel(user.emergencyContact?.relationship || 'Parent');
-      setEditAllergies(user.allergies || '');
-      setEditConditions(user.preExistingConditions || '');
     }
     setSaveError(null);
     setSaveSuccess(null);
@@ -171,8 +166,6 @@ export const ProfileScreen: React.FC = () => {
       dob: cleanDob,
       gender: editGender,
       bloodGroup: editBloodGroup,
-      allergies: editAllergies.trim() || undefined,
-      preExistingConditions: editConditions.trim() || undefined,
       emergencyContact: {
         name: cleanEmergName || 'Primary Contact',
         phone: cleanEmergPhone || cleanPhone,
@@ -354,13 +347,6 @@ export const ProfileScreen: React.FC = () => {
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
               VITAL MEDICAL STATS
             </h3>
-            <button
-              type="button"
-              onClick={openEditModal}
-              className="text-[11px] font-extrabold text-[#0B5A54] hover:underline flex items-center gap-1 bg-teal-50 hover:bg-[#0B5A54] hover:text-white px-2.5 py-0.5 rounded-full transition-colors active:scale-95 cursor-pointer"
-            >
-              <Edit3 className="w-3 h-3" /> Edit All
-            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -414,29 +400,6 @@ export const ProfileScreen: React.FC = () => {
             </Card>
           </div>
         </div>
-
-        {/* CLINICAL ALLERGIES & CONDITIONS (IF SET) */}
-        {(user.allergies || user.preExistingConditions) && (
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-2 shadow-2xs">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
-              CLINICAL HEALTH NOTES
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {user.allergies && (
-                <div className="p-2.5 bg-rose-50/50 rounded-xl border border-rose-100">
-                  <span className="text-[10px] font-black text-rose-700 uppercase block">Known Allergies</span>
-                  <span className="font-bold text-slate-800">{user.allergies}</span>
-                </div>
-              )}
-              {user.preExistingConditions && (
-                <div className="p-2.5 bg-teal-50/50 rounded-xl border border-teal-100">
-                  <span className="text-[10px] font-black text-teal-700 uppercase block">Pre-Existing Conditions</span>
-                  <span className="font-bold text-slate-800">{user.preExistingConditions}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* BIOMETRIC SECURITY TOGGLE CARD */}
         <div className="space-y-2 pt-1">
@@ -779,44 +742,6 @@ export const ProfileScreen: React.FC = () => {
                       <option value="Guardian">Guardian</option>
                       <option value="Friend">Friend / Relative</option>
                     </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 4: CLINICAL NOTES */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-wider font-heading">
-                    4. Clinical Notes (Optional)
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Known Allergies
-                    </label>
-                    <input
-                      type="text"
-                      value={editAllergies}
-                      onChange={(e) => setEditAllergies(e.target.value)}
-                      placeholder="e.g. Penicillin, Peanuts, None"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Pre-Existing Conditions
-                    </label>
-                    <input
-                      type="text"
-                      value={editConditions}
-                      onChange={(e) => setEditConditions(e.target.value)}
-                      placeholder="e.g. Asthma, Hypertension, None"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
-                    />
                   </div>
                 </div>
               </div>

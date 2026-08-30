@@ -33,6 +33,8 @@ class RegisterRequest(BaseModel):
 
 class PatientResponse(BaseModel):
     id: str
+    patient_code: Optional[str] = None
+    patientCode: Optional[str] = None
     fullName: str
     email: str
     phone: Optional[str] = ""
@@ -272,5 +274,14 @@ class DoctorResponse(BaseModel):
     about: Optional[str] = ""
     availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
     slotCapacities: Optional[List[Any]] = []
+
+class DeviceTokenRequest(BaseModel):
+    patient_id: str
+    fcm_token: str
+    platform: Optional[str] = "android"
+
+class AppointmentCancelRequest(BaseModel):
+    reason: Optional[str] = "Patient requested cancellation"
+
 
 

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bell } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
+import { isUserProfileIncomplete } from '../../features/auth/CompleteProfileScreen';
 
 export interface TopBarProps {
   title?: string;
@@ -21,6 +22,8 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const user = useCarePulseStore((s) => s.user);
+  const appointments = useCarePulseStore((s) => s.appointments);
+  const prescriptions = useCarePulseStore((s) => s.prescriptions);
 
   const handleBack = () => {
     if (onBack) {
@@ -29,6 +32,35 @@ export const TopBar: React.FC<TopBarProps> = ({
       navigate(-1);
     }
   };
+
+  // Determine if there are actual unread alerts for this user
+  const hasUnread = useMemo(() => {
+    if (!user) return false;
+    let readIds: string[] = [];
+    let clearedIds: string[] = [];
+    try {
+      readIds = JSON.parse(localStorage.getItem(`carepulse_read_notifs_${user.id}`) || '[]');
+      clearedIds = JSON.parse(localStorage.getItem(`carepulse_cleared_notifs_${user.id}`) || '[]');
+    } catch {}
+
+    const notifIds: string[] = [];
+
+    // Profile incomplete
+    if (isUserProfileIncomplete(user)) {
+      notifIds.push(`notif-profile-setup-${user.id}`);
+    }
+
+    // Active/Upcoming Appointments
+    appointments
+      .filter((a) => a.status === 'Upcoming')
+      .forEach((a) => notifIds.push(`notif-apt-${a.id}`));
+
+    // Active Prescriptions
+    prescriptions.forEach((p) => notifIds.push(`notif-rx-${p.id}`));
+
+    const activeUnread = notifIds.filter((id) => !clearedIds.includes(id) && !readIds.includes(id));
+    return activeUnread.length > 0;
+  }, [user, appointments, prescriptions]);
 
   const displayName = user?.fullName ? user.fullName.split(' ')[0] : 'User';
 
@@ -56,8 +88,8 @@ export const TopBar: React.FC<TopBarProps> = ({
             onClick={handleBack}
             className={
               isCyan
-                ? 'w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs'
-                : 'w-8 h-8 rounded-full bg-white border border-[#E4E7EC] flex items-center justify-center text-[#111827] hover:bg-gray-50 transition-all active:scale-95 shadow-2xs'
+                ? 'w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs cursor-pointer'
+                : 'w-8 h-8 rounded-full bg-white border border-[#E4E7EC] flex items-center justify-center text-[#111827] hover:bg-gray-50 transition-all active:scale-95 shadow-2xs cursor-pointer'
             }
             aria-label="Go Back"
           >
@@ -65,7 +97,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
         )}
 
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 text-left">
           {isCyan ? (
             <>
               <p className="text-[11px] font-bold text-teal-100/90 tracking-wide uppercase">
@@ -91,13 +123,17 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Right Side: Bell Icon Button */}
       <button
         onClick={() => navigate('/notifications')}
-        className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm"
+        className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm cursor-pointer"
         aria-label="Notifications"
         title="Notifications"
       >
         <Bell className="w-4 h-4 text-[#111827]" />
-        <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
+        {hasUnread && (
+          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+        )}
       </button>
     </header>
   );
 };
+
+export default TopBar;

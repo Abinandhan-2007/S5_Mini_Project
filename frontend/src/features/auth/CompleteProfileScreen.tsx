@@ -10,7 +10,6 @@ import {
   AlertCircle,
   CheckCircle2,
   HeartPulse,
-  Sparkles,
   ArrowRight,
 } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
@@ -70,8 +69,6 @@ export const CompleteProfileScreen: React.FC = () => {
       : ''
   );
   const [emergencyRel, setEmergencyRel] = useState(user?.emergencyContact?.relationship || 'Parent');
-  const [allergies, setAllergies] = useState(user?.allergies || '');
-  const [conditions, setConditions] = useState(user?.preExistingConditions || '');
 
   useEffect(() => {
     if (user) {
@@ -153,8 +150,6 @@ export const CompleteProfileScreen: React.FC = () => {
       dob: cleanDob,
       gender,
       bloodGroup,
-      allergies: allergies.trim() || undefined,
-      preExistingConditions: conditions.trim() || undefined,
       emergencyContact: {
         name: cleanEmergName || 'Primary Contact',
         phone: cleanEmergPhone || cleanPhone,
@@ -439,44 +434,6 @@ export const CompleteProfileScreen: React.FC = () => {
                   <option value="Guardian">Guardian</option>
                   <option value="Friend">Friend / Relative</option>
                 </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Clinical Health Vitals (Optional) */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-              <Sparkles className="w-4 h-4 text-teal-600" />
-              <h2 className="text-xs font-black uppercase text-slate-800 tracking-wider font-heading">
-                3. Clinical Health Notes (Optional)
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Known Allergies
-                </label>
-                <input
-                  type="text"
-                  value={allergies}
-                  onChange={(e) => setAllergies(e.target.value)}
-                  placeholder="e.g. Penicillin, Peanuts, None"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Pre-Existing Conditions
-                </label>
-                <input
-                  type="text"
-                  value={conditions}
-                  onChange={(e) => setConditions(e.target.value)}
-                  placeholder="e.g. Mild Asthma, Hypertension, None"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all"
-                />
               </div>
             </div>
           </div>

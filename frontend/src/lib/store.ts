@@ -4,6 +4,7 @@ import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, Bookin
 import { INITIAL_CHAT_MESSAGES } from './mockApi';
 import { apiGet, apiFetch } from './apiFetch';
 import { signOutGoogle } from './googleAuth';
+import { registerPushNotifications } from './pushNotifications';
 
 interface CarePulseState {
   // Auth state
@@ -181,6 +182,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       get().syncAppointments(user.id);
       get().syncPrescriptions(user.id);
       get().syncHistory(user.id);
+      registerPushNotifications(user.id).catch(() => {});
     }
   },
 
@@ -265,6 +267,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             get().syncAppointments(userData.id);
             get().syncPrescriptions(userData.id);
             get().syncHistory(userData.id);
+            registerPushNotifications(userData.id).catch(() => {});
             return true;
           } else if (res && (res.status === 401 || res.status === 403)) {
             // Token is invalid/expired — purge stale credentials immediately
@@ -296,6 +299,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         get().syncAppointments(cachedUser.id);
         get().syncPrescriptions(cachedUser.id);
         get().syncHistory(cachedUser.id);
+        registerPushNotifications(cachedUser.id).catch(() => {});
         return true;
       }
 

@@ -427,9 +427,9 @@ export const AdminLayout: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════
           MAIN CONTENT AREA & TOP BAR
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen w-full max-w-full overflow-x-hidden min-w-0">
         {/* ── Top Bar ── */}
-        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3.5 sm:px-8 py-3.5 flex items-center justify-between gap-2.5 sm:gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
@@ -557,7 +557,7 @@ export const AdminLayout: React.FC = () => {
         </header>
 
         {/* ── Main Tab Content Area ── */}
-        <main className="flex-1 p-4 sm:p-6 w-full no-scrollbar">
+        <main className="flex-1 p-3.5 sm:p-6 w-full max-w-full overflow-x-hidden min-w-0 no-scrollbar">
           {activeTab === 'dashboard' && (
             <AdminDashboard onNavigateTab={handleNavigateTab} />
           )}

@@ -1,5 +1,7 @@
 # backend/routes/admin_routes.py
 import uuid
+import re
+import json
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Header, status
 from pydantic import BaseModel
@@ -10,6 +12,7 @@ try:
 except ImportError:
     from backend.core.security import hash_password
 from routes.staff_auth import get_current_staff
+from schemas import PatientResponse
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Portal"])
 
@@ -125,8 +128,56 @@ def create_receptionist(payload: ReceptionistCreate):
         raise HTTPException(status_code=400, detail="Staff member with this email already exists")
 
     new_id = f"rec-{uuid.uuid4().hex[:8]}"
+    raw_pass = payload.password or "password123"
+    if len(raw_pass.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Password cannot exceed 72 bytes.")
+    hashed_pass = hash_password(raw_pass)
+
+    staff_code = None
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO staff (full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id)
+                        VALUES (%s, %s, %s, 'receptionist', %s, %s, %s, %s)
+                        RETURNING id, staff_code
+                        """,
+                        (
+                            payload.name,
+                            payload.email,
+                            hashed_pass,
+                            payload.department,
+                            payload.phone,
+                            payload.avatarUrl or "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+                            payload.hospital_id
+                        )
+                    )
+                    inserted = cur.fetchone()
+                    if inserted:
+                        new_id = str(inserted["id"])
+                        staff_code = inserted.get("staff_code")
+                    conn.commit()
+        except Exception as e:
+            database.logger.warning(f"Could not insert staff in Postgres: {e}")
+
+    if not staff_code:
+        max_rec = 0
+        for s in staff:
+            if s.get("role") == "receptionist":
+                code = s.get("staff_code") or s.get("staffCode")
+                if code and code.startswith("REC-"):
+                    m = re.search(r"\d+", code)
+                    if m:
+                        max_rec = max(max_rec, int(m.group(0)))
+        staff_code = f"REC-{max_rec + 1:04d}"
+
     new_rec = {
         "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
         "name": payload.name,
         "email": payload.email,
         "phone": payload.phone,
@@ -139,20 +190,19 @@ def create_receptionist(payload: ReceptionistCreate):
         "joinDate": "2026-08-17"
     }
 
-    raw_pass = payload.password or "password123"
-    if len(raw_pass.encode("utf-8")) > 72:
-        raise HTTPException(status_code=400, detail="Password cannot exceed 72 bytes.")
-    hashed_pass = hash_password(raw_pass)
-
     new_staff_entry = {
         "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
         "name": payload.name,
         "email": payload.email,
         "password": hashed_pass,
         "password_hash": hashed_pass,
         "role": "receptionist",
         "department": payload.department,
-        "avatar": new_rec["avatarUrl"]
+        "avatar": new_rec["avatarUrl"],
+        "hospital_id": payload.hospital_id,
+        "hospitalId": payload.hospital_id
     }
 
     receptionists.append(new_rec)
@@ -199,6 +249,163 @@ def delete_receptionist(rec_id: str):
     write_json_db(db)
 
     return {"message": "Receptionist removed successfully"}
+
+
+# ==========================================
+# DISPLAY CODE LOOKUP ENDPOINTS (PAT-XXXXXX & STF-XXXX)
+# ==========================================
+
+@router.get("/patients/lookup/{patient_code}", response_model=PatientResponse)
+def lookup_patient_by_code(
+    patient_code: str,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Lookup patient by human-readable display code (e.g. PAT-000042).
+    Accessible by staff/admin.
+    """
+    clean_code = (patient_code or "").strip().upper()
+    if not clean_code:
+        raise HTTPException(status_code=400, detail="Patient display code is required.")
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM patients WHERE UPPER(patient_code) = %s LIMIT 1",
+                    (clean_code,)
+                )
+                row = cur.fetchone()
+                if row:
+                    emerg = row.get("emergency_contact")
+                    if isinstance(emerg, str):
+                        try:
+                            emerg = json.loads(emerg)
+                        except Exception:
+                            emerg = None
+                    return PatientResponse(
+                        id=str(row["id"]),
+                        patient_code=row.get("patient_code"),
+                        patientCode=row.get("patient_code"),
+                        fullName=row["full_name"],
+                        email=row["email"],
+                        phone=row.get("phone") or "",
+                        address=row.get("address") or "",
+                        dob=str(row.get("dob") or ""),
+                        gender=row.get("gender") or "Not specified",
+                        bloodGroup=row.get("blood_group") or "O+",
+                        avatarUrl=row.get("avatar_url") or "",
+                        authProvider=row.get("auth_provider") or "local",
+                        allergies=row.get("allergies") or "",
+                        preExistingConditions=row.get("pre_existing_conditions") or "",
+                        emergencyContact=emerg
+                    )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient with code '{patient_code}' not found"
+        )
+    else:
+        db = read_json_db()
+        for p in db.get("patients", []):
+            p_code = (p.get("patient_code") or p.get("patientCode") or "").strip().upper()
+            if p_code == clean_code:
+                return PatientResponse(
+                    id=str(p["id"]),
+                    patient_code=p.get("patient_code") or p.get("patientCode"),
+                    patientCode=p.get("patient_code") or p.get("patientCode"),
+                    fullName=p["full_name"],
+                    email=p["email"],
+                    phone=p.get("phone", ""),
+                    address=p.get("address", ""),
+                    dob=str(p.get("dob", "")),
+                    gender=p.get("gender", "Female"),
+                    bloodGroup=p.get("blood_group", "O+"),
+                    avatarUrl=p.get("avatar_url", ""),
+                    authProvider=p.get("auth_provider", "local"),
+                    allergies=p.get("allergies", ""),
+                    preExistingConditions=p.get("pre_existing_conditions", ""),
+                    emergencyContact=p.get("emergency_contact")
+                )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient with code '{patient_code}' not found"
+        )
+
+
+@router.get("/staff/lookup/{staff_code}")
+def lookup_staff_by_code(
+    staff_code: str,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Lookup staff member by human-readable display code (e.g. ADM-0001, REC-0001, DOC-0001).
+    Accessible by staff/admin.
+    """
+    clean_code = (staff_code or "").strip().upper()
+    if not clean_code:
+        raise HTTPException(status_code=400, detail="Staff display code is required.")
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, full_name, email, role, specialization, phone, avatar_url, hospital_id, doctor_id, is_active, staff_code 
+                    FROM staff 
+                    WHERE UPPER(staff_code) = %s 
+                    LIMIT 1
+                    """,
+                    (clean_code,)
+                )
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "id": str(row["id"]),
+                        "staff_code": row.get("staff_code"),
+                        "staffCode": row.get("staff_code"),
+                        "fullName": row["full_name"],
+                        "name": row["full_name"],
+                        "email": row["email"],
+                        "role": row["role"],
+                        "department": row.get("specialization") or "General",
+                        "phone": row.get("phone") or "",
+                        "avatarUrl": row.get("avatar_url") or "",
+                        "hospitalId": row.get("hospital_id"),
+                        "hospital_id": row.get("hospital_id"),
+                        "doctorId": row.get("doctor_id"),
+                        "doctor_id": row.get("doctor_id"),
+                        "isActive": row.get("is_active", True)
+                    }
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Staff member with code '{staff_code}' not found"
+        )
+    else:
+        db = read_json_db()
+        for s in db.get("staff", []):
+            s_code = (s.get("staff_code") or s.get("staffCode") or "").strip().upper()
+            if s_code == clean_code:
+                return {
+                    "id": str(s.get("id")),
+                    "staff_code": s.get("staff_code") or s.get("staffCode"),
+                    "staffCode": s.get("staff_code") or s.get("staffCode"),
+                    "fullName": s.get("name") or s.get("full_name") or "Staff Member",
+                    "name": s.get("name") or s.get("full_name") or "Staff Member",
+                    "email": s.get("email"),
+                    "role": s.get("role", "staff"),
+                    "department": s.get("department") or s.get("specialization") or "General",
+                    "phone": s.get("phone") or "",
+                    "avatarUrl": s.get("avatarUrl") or s.get("avatar") or "",
+                    "hospitalId": s.get("hospital_id") or s.get("hospitalId"),
+                    "hospital_id": s.get("hospital_id") or s.get("hospitalId"),
+                    "doctorId": s.get("doctor_id") or s.get("doctorId"),
+                    "doctor_id": s.get("doctor_id") or s.get("doctorId"),
+                    "isActive": s.get("isActive", True) if s.get("isActive") is not None else s.get("is_active", True)
+                }
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Staff member with code '{staff_code}' not found"
+        )
 
 
 @router.get("/analytics")

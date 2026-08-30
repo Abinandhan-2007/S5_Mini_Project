@@ -235,15 +235,15 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           1. LIVE TOKEN COMMAND DECK & AUDIO CALL BROADCASTER
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-slate-200/80 shadow-xs space-y-4 sm:space-y-5 w-full">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center shadow-xs">
-                <Ticket className="w-5 h-5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center shadow-xs shrink-0">
+                <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-black text-slate-900 font-heading truncate">
                   Live OPD Queue & Token Desk
                 </h1>
                 <p className="text-xs text-slate-400 font-medium mt-0.5">
@@ -254,11 +254,11 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           </div>
 
           {/* Top Actions */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => handleCallNext(selectedDoctorFilter === 'ALL' ? undefined : selectedDoctorFilter)}
               disabled={waitingTokens.length === 0}
-              className="px-5 py-3 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sm:py-3 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Volume2 className="w-4 h-4 text-teal-200 stroke-[2.5]" />
               <span>Call Next Token</span>
@@ -266,7 +266,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 
             <button
               onClick={onOpenNewAppointment}
-              className="px-5 py-3 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sm:py-3 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
             >
               <UserPlus className="w-4 h-4 text-slate-900 stroke-[2.5]" />
               <span>+ Walk-In</span>

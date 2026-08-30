@@ -11,7 +11,9 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "auth_provider": "local",
       "password_hash": "newSecurePassword2026!",
-      "password": "newSecurePassword2026!"
+      "password": "newSecurePassword2026!",
+      "patient_code": "PAT-000001",
+      "patientCode": "PAT-000001"
     },
     {
       "id": "bbe117ea-6804-4dd3-8784-df0249ef2458",
@@ -23,7 +25,9 @@
       "bloodGroup": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "google_id": "google-e45d43deca",
-      "auth_provider": "google"
+      "auth_provider": "google",
+      "patient_code": "PAT-000002",
+      "patientCode": "PAT-000002"
     },
     {
       "id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
@@ -35,7 +39,9 @@
       "bloodGroup": "O+",
       "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocLjbVs3uo4L92uNGJ9Tp6grAXyfZTAemlu8cdNP0QTvGKJ-dGPL=s96-c",
       "google_id": "110145146189776698078",
-      "auth_provider": "google"
+      "auth_provider": "google",
+      "patient_code": "PAT-000003",
+      "patientCode": "PAT-000003"
     },
     {
       "id": "625ace2c-d76d-430a-92e3-12f12dcabc53",
@@ -48,7 +54,9 @@
       "blood_group": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$gwztTutA2g66tCxi./SQbu4uULNMOkS.1eaIM70/CuATxm9mO0oQG",
-      "auth_provider": "local"
+      "auth_provider": "local",
+      "patient_code": "PAT-000004",
+      "patientCode": "PAT-000004"
     },
     {
       "id": "e28ad034-e601-4b11-81e2-d7a875506271",
@@ -61,7 +69,9 @@
       "blood_group": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$jM7ZojFU2QOOIXDYIoz/j.H.anlvzShkBxST9/gLkP4y.wLrfzB4K",
-      "auth_provider": "local"
+      "auth_provider": "local",
+      "patient_code": "PAT-000005",
+      "patientCode": "PAT-000005"
     },
     {
       "id": "f37bb7a8-5c3a-4770-808b-c2d672a0f0b1",
@@ -74,7 +84,9 @@
       "blood_group": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$1yrJApkon6Og2PLzKphlQ.la788pEvwGzC.6n/HSt1j6L7Rtw5zgS",
-      "auth_provider": "local"
+      "auth_provider": "local",
+      "patient_code": "PAT-000006",
+      "patientCode": "PAT-000006"
     },
     {
       "id": "a1a33fe4-6f9d-4af1-a2af-21574b279a64",
@@ -87,6 +99,53 @@
       "blood_group": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$NpYvY1mZlCLFZxouMlbthe1DHZPwAWPjtb4UogyfRNg3HwQT3nA5C",
+      "auth_provider": "local",
+      "patient_code": "PAT-000007",
+      "patientCode": "PAT-000007"
+    },
+    {
+      "id": "2aea1d55-c805-47fc-9ee4-9de33de4e2fb",
+      "patient_code": "PAT-000008",
+      "patientCode": "PAT-000008",
+      "full_name": "Test Patient fd7ab6f8",
+      "email": "test_pat_fd7ab6f8@example.com",
+      "phone": "+91 99999 fd7ab",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$cLFFNltHpUiunM7ZALsYVOxMaerp8a3.CdKVlsa0Q5LI65itu0EhG",
+      "auth_provider": "local"
+    },
+    {
+      "id": "7c3a499e-8f68-409e-819b-1ef72695a9d0",
+      "patient_code": "PAT-000009",
+      "patientCode": "PAT-000009",
+      "full_name": "Test Patient 1cfd7d74",
+      "email": "test_pat_1cfd7d74@example.com",
+      "phone": "+91 99999 1cfd7",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$.bhVhHYazZyeCX7TOWCAzOBbqD9pR8LKcoz93hRvR1S2bveRWbCz6",
+      "auth_provider": "local"
+    },
+    {
+      "id": "c371e5b8-af86-4991-916b-681323b293f3",
+      "patient_code": "PAT-000010",
+      "patientCode": "PAT-000010",
+      "full_name": "Test Patient ed12aafc",
+      "email": "test_pat_ed12aafc@example.com",
+      "phone": "+91 99999 ed12a",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$f9/0Pl29WdC5h04ghyMPUeNzsgWGhoXXZWpjiKVx0Bea3VrxDQxum",
       "auth_provider": "local"
     }
   ],
@@ -1064,13 +1123,15 @@
       "name": "Emily Watson",
       "email": "rec",
       "username": "rec",
-      "password": "$2b$12$t8FQiHsSpgLkQvj9/k0RLuRX.wdmKKIVRbaaQk3J6KQnuD4bX7cgO",
+      "password": "$2b$12$cimy8UxsJyOvCdzgH8PJheLt6pv2IPcIWR0IsZx5f9GSQ42xNouA.",
       "role": "receptionist",
       "department": "Main Reception & OPD Queue",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$t8FQiHsSpgLkQvj9/k0RLuRX.wdmKKIVRbaaQk3J6KQnuD4bX7cgO"
+      "password_hash": "$2b$12$cimy8UxsJyOvCdzgH8PJheLt6pv2IPcIWR0IsZx5f9GSQ42xNouA.",
+      "staff_code": "REC-0001",
+      "staffCode": "REC-0001"
     },
     {
       "id": "doc-1",
@@ -1086,19 +1147,65 @@
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$.ImFFuyLz4/Dv9J5f83tHujoMEhiWrd3Qt1qAv87psswk3CjETL.6"
+      "password_hash": "$2b$12$.ImFFuyLz4/Dv9J5f83tHujoMEhiWrd3Qt1qAv87psswk3CjETL.6",
+      "staff_code": "DOC-0001",
+      "staffCode": "DOC-0001"
     },
     {
       "id": "admin-1",
       "name": "Dr. Arthur Vance",
       "email": "admin@carepulse.com",
-      "password": "$2b$12$.6rD9nIdbAK7YLrdFhIHU.kyrdOhMMrw8t1I1tCo1qLhAcjyChSAW",
+      "password": "$2b$12$CDOrLPK7aQ3b5NM5XadPM.NGgGSXPAmVO40o9hZwVvJph7Y3Ar7na",
       "role": "admin",
       "department": "Chief Medical Administration",
       "hospital_id": null,
       "hospitalId": null,
       "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$.6rD9nIdbAK7YLrdFhIHU.kyrdOhMMrw8t1I1tCo1qLhAcjyChSAW"
+      "password_hash": "$2b$12$CDOrLPK7aQ3b5NM5XadPM.NGgGSXPAmVO40o9hZwVvJph7Y3Ar7na",
+      "staff_code": "ADM-0001",
+      "staffCode": "ADM-0001"
+    },
+    {
+      "id": "rec-a04a256b",
+      "staff_code": "REC-0002",
+      "staffCode": "REC-0002",
+      "name": "Receptionist fd7ab6f8",
+      "email": "rec_fd7ab6f8@carepulse.com",
+      "password": "$2b$12$MyGTTQqAn0rLvwnXVf955.ySYFOFGRUmjLwXxRvx/Qm9EPe6LtwZe",
+      "password_hash": "$2b$12$MyGTTQqAn0rLvwnXVf955.ySYFOFGRUmjLwXxRvx/Qm9EPe6LtwZe",
+      "role": "receptionist",
+      "department": "Front Desk A",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": null,
+      "hospitalId": null
+    },
+    {
+      "id": "rec-02990678",
+      "staff_code": "REC-0003",
+      "staffCode": "REC-0003",
+      "name": "Receptionist 1cfd7d74",
+      "email": "rec_1cfd7d74@carepulse.com",
+      "password": "$2b$12$9GLG2OWQ/t/VP4HxtEzKs.I84ok9fwMjMVRjXs1UFoL8I7AoQYPkS",
+      "password_hash": "$2b$12$9GLG2OWQ/t/VP4HxtEzKs.I84ok9fwMjMVRjXs1UFoL8I7AoQYPkS",
+      "role": "receptionist",
+      "department": "Front Desk A",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": null,
+      "hospitalId": null
+    },
+    {
+      "id": "rec-cac69f5b",
+      "staff_code": "REC-0004",
+      "staffCode": "REC-0004",
+      "name": "Receptionist ed12aafc",
+      "email": "rec_ed12aafc@carepulse.com",
+      "password": "$2b$12$bN/CovhJcjDdFEHM9EWEVe2lHxqZ2vwWIOMpBgvZ1cUB76uXNOV7a",
+      "password_hash": "$2b$12$bN/CovhJcjDdFEHM9EWEVe2lHxqZ2vwWIOMpBgvZ1cUB76uXNOV7a",
+      "role": "receptionist",
+      "department": "Front Desk A",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": null,
+      "hospitalId": null
     }
   ],
   "hospital_settings": {
@@ -1128,7 +1235,9 @@
       "isActive": true,
       "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
       "assignedDoctorsCount": 4,
-      "joinDate": "2024-03-15"
+      "joinDate": "2024-03-15",
+      "staff_code": "REC-0001",
+      "staffCode": "REC-0001"
     },
     {
       "id": "rec-102",
@@ -1141,7 +1250,9 @@
       "isActive": false,
       "avatarUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
       "assignedDoctorsCount": 3,
-      "joinDate": "2024-06-10"
+      "joinDate": "2024-06-10",
+      "staff_code": "REC-0002",
+      "staffCode": "REC-0002"
     },
     {
       "id": "rec-103",
@@ -1154,7 +1265,54 @@
       "isActive": false,
       "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80",
       "assignedDoctorsCount": 2,
-      "joinDate": "2025-01-20"
+      "joinDate": "2025-01-20",
+      "staff_code": "REC-0003",
+      "staffCode": "REC-0003"
+    },
+    {
+      "id": "rec-a04a256b",
+      "staff_code": "REC-0002",
+      "staffCode": "REC-0002",
+      "name": "Receptionist fd7ab6f8",
+      "email": "rec_fd7ab6f8@carepulse.com",
+      "phone": "+91 98888 11111",
+      "department": "Front Desk A",
+      "deskNumber": "Desk A-1",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 2,
+      "joinDate": "2026-08-17"
+    },
+    {
+      "id": "rec-02990678",
+      "staff_code": "REC-0003",
+      "staffCode": "REC-0003",
+      "name": "Receptionist 1cfd7d74",
+      "email": "rec_1cfd7d74@carepulse.com",
+      "phone": "+91 98888 11111",
+      "department": "Front Desk A",
+      "deskNumber": "Desk A-1",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 2,
+      "joinDate": "2026-08-17"
+    },
+    {
+      "id": "rec-cac69f5b",
+      "staff_code": "REC-0004",
+      "staffCode": "REC-0004",
+      "name": "Receptionist ed12aafc",
+      "email": "rec_ed12aafc@carepulse.com",
+      "phone": "+91 98888 11111",
+      "department": "Front Desk A",
+      "deskNumber": "Desk A-1",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 2,
+      "joinDate": "2026-08-17"
     }
   ]
 }

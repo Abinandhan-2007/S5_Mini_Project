@@ -55,6 +55,8 @@ from schemas import (
     SearchResultItem,
     HospitalResponse,
     DoctorResponse,
+    DeviceTokenRequest,
+    AppointmentCancelRequest,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
@@ -63,6 +65,8 @@ from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
 from routes.doctor_routes import router as doctor_router
+from notifications.fcm_service import register_device_token, send_push_notification
+from notifications.scheduler import start_scheduler, shutdown_scheduler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("carepulse.main")
@@ -71,7 +75,9 @@ logger = logging.getLogger("carepulse.main")
 async def lifespan(app: FastAPI):
     # Initialize DB connection and schema on startup
     init_db()
+    start_scheduler()
     yield
+    shutdown_scheduler()
 
 app = FastAPI(
     title="CarePulse Backend API",
@@ -202,6 +208,7 @@ def register_patient(request: RegisterRequest):
                             detail=f"An account with phone number '{phone}' already exists. Please log in instead."
                         )
 
+                dob_val = dob.strip() if dob and dob.strip() else None
                 try:
                     cur.execute(
                         """
@@ -209,7 +216,7 @@ def register_patient(request: RegisterRequest):
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'local')
                         RETURNING *
                         """,
-                        (name, email, phone, address, dob, gender, blood_group, avatar, hashed_password_to_store)
+                        (name, email, phone, address, dob_val, gender, blood_group, avatar, hashed_password_to_store)
                     )
                 except Exception:
                     # Fallback if address column is not present in existing table instance
@@ -220,7 +227,7 @@ def register_patient(request: RegisterRequest):
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'local')
                         RETURNING *
                         """,
-                        (name, email, phone, dob, gender, blood_group, avatar, hashed_password_to_store)
+                        (name, email, phone, dob_val, gender, blood_group, avatar, hashed_password_to_store)
                     )
                 row = cur.fetchone()
                 conn.commit()
@@ -229,6 +236,8 @@ def register_patient(request: RegisterRequest):
                     success=True,
                     user=PatientResponse(
                         id=str(row["id"]),
+                        patient_code=row.get("patient_code"),
+                        patientCode=row.get("patient_code"),
                         fullName=row["full_name"],
                         email=row["email"],
                         phone=row.get("phone") or "",
@@ -268,8 +277,19 @@ def register_patient(request: RegisterRequest):
                 )
 
         new_id = str(uuid.uuid4())
+        max_pat = 0
+        for pt in patients:
+            code_val = pt.get("patient_code") or pt.get("patientCode")
+            if code_val and code_val.startswith("PAT-"):
+                m = re.search(r"\d+", code_val)
+                if m:
+                    max_pat = max(max_pat, int(m.group(0)))
+        new_code = f"PAT-{max_pat + 1:06d}"
+
         new_patient = {
             "id": new_id,
+            "patient_code": new_code,
+            "patientCode": new_code,
             "full_name": name,
             "email": email,
             "phone": phone,
@@ -289,6 +309,8 @@ def register_patient(request: RegisterRequest):
             success=True,
             user=PatientResponse(
                 id=new_id,
+                patient_code=new_code,
+                patientCode=new_code,
                 fullName=name,
                 email=email,
                 phone=phone,
@@ -404,6 +426,8 @@ def standard_login(request: LoginRequest):
                     success=True,
                     user=PatientResponse(
                         id=str(row["id"]),
+                        patient_code=row.get("patient_code"),
+                        patientCode=row.get("patient_code"),
                         fullName=row["full_name"],
                         email=row["email"],
                         phone=row.get("phone") or "",
@@ -497,6 +521,8 @@ def standard_login(request: LoginRequest):
         success=True,
         user=PatientResponse(
             id=found["id"],
+            patient_code=found.get("patient_code") or found.get("patientCode"),
+            patientCode=found.get("patient_code") or found.get("patientCode"),
             fullName=found["full_name"],
             email=found["email"],
             phone=found.get("phone", phone),
@@ -1044,6 +1070,8 @@ def get_patient(patient_id: str):
                             emerg = None
                     return PatientResponse(
                         id=str(row["id"]),
+                        patient_code=row.get("patient_code"),
+                        patientCode=row.get("patient_code"),
                         fullName=row["full_name"],
                         email=row["email"],
                         phone=row.get("phone") or "",
@@ -1064,6 +1092,8 @@ def get_patient(patient_id: str):
             if str(p.get("id")) == str(patient_id):
                 return PatientResponse(
                     id=str(p["id"]),
+                    patient_code=p.get("patient_code") or p.get("patientCode"),
+                    patientCode=p.get("patient_code") or p.get("patientCode"),
                     fullName=p["full_name"],
                     email=p["email"],
                     phone=p.get("phone", ""),
@@ -1141,6 +1171,8 @@ def update_patient_profile(patient_id: str, request: UpdatePatientRequest):
 
                 return PatientResponse(
                     id=str(updated_row["id"]),
+                    patient_code=updated_row.get("patient_code"),
+                    patientCode=updated_row.get("patient_code"),
                     fullName=updated_row["full_name"],
                     email=updated_row["email"],
                     phone=updated_row.get("phone") or "",
@@ -1634,6 +1666,128 @@ def get_patient_appointments(patient_id: str):
             for a in apps
             if a.get("patient_id") and str(a.get("patient_id")).strip() == str(patient_id).strip()
         ]
+
+
+@app.post("/api/patient/device-token")
+def save_patient_device_token(req: DeviceTokenRequest):
+    """Register or update patient FCM push notification device token."""
+    res = register_device_token(req.patient_id, req.fcm_token, req.platform or "android")
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to save device token"))
+    return {"success": True, "message": "Device token registered successfully"}
+
+
+@app.put("/api/appointments/{appointment_id}/cancel")
+@app.post("/api/appointments/{appointment_id}/cancel")
+def cancel_appointment(appointment_id: str, cancel_req: Optional[AppointmentCancelRequest] = None):
+    """
+    Cancel an appointment and dispatch an immediate push notification to the patient.
+    """
+    app_id = str(appointment_id).strip()
+    reason = cancel_req.reason if cancel_req and cancel_req.reason else "Cancelled by patient/hospital"
+
+    cancelled_app = None
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE appointments
+                    SET status = 'Cancelled'
+                    WHERE id::text = %s
+                    RETURNING id, patient_id, doctor_name, date, time_slot, status
+                    """,
+                    (app_id,)
+                )
+                row = cur.fetchone()
+                if row:
+                    cancelled_app = dict(row)
+                    conn.commit()
+    else:
+        db = read_json_db()
+        for a in db.get("appointments", []):
+            if str(a.get("id")) == app_id:
+                a["status"] = "Cancelled"
+                cancelled_app = dict(a)
+                write_json_db(db)
+                break
+
+    if not cancelled_app:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    p_id = str(cancelled_app.get("patient_id"))
+    doc_name = cancelled_app.get("doctor_name", "your doctor")
+    app_date = str(cancelled_app.get("date", ""))
+
+    # Trigger immediate push notification to patient
+    push_title = "Appointment Cancelled"
+    push_body = f"Your appointment with {doc_name} on {app_date} has been cancelled."
+    push_data = {
+        "type": "appointment_cancelled",
+        "appointment_id": app_id,
+        "patient_id": p_id,
+        "reason": reason
+    }
+    send_push_notification(p_id, push_title, push_body, push_data)
+
+    return {
+        "success": True,
+        "message": f"Appointment {app_id} cancelled successfully",
+        "appointment": cancelled_app
+    }
+
+
+@app.put("/api/appointments/{appointment_id}/status")
+def update_appointment_status(appointment_id: str, status_data: TokenStatusUpdate):
+    """
+    Update appointment status. If status is changed to Cancelled, dispatches push notification.
+    """
+    app_id = str(appointment_id).strip()
+    new_status = status_data.status
+
+    updated_app = None
+
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE appointments
+                    SET status = %s
+                    WHERE id::text = %s
+                    RETURNING id, patient_id, doctor_name, date, time_slot, status
+                    """,
+                    (new_status, app_id)
+                )
+                row = cur.fetchone()
+                if row:
+                    updated_app = dict(row)
+                    conn.commit()
+    else:
+        db = read_json_db()
+        for a in db.get("appointments", []):
+            if str(a.get("id")) == app_id:
+                a["status"] = new_status
+                updated_app = dict(a)
+                write_json_db(db)
+                break
+
+    if not updated_app:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if new_status.lower() == "cancelled":
+        p_id = str(updated_app.get("patient_id"))
+        doc_name = updated_app.get("doctor_name", "your doctor")
+        app_date = str(updated_app.get("date", ""))
+        send_push_notification(
+            p_id,
+            "Appointment Cancelled",
+            f"Your appointment with {doc_name} on {app_date} has been cancelled.",
+            {"type": "appointment_cancelled", "appointment_id": app_id, "patient_id": p_id}
+        )
+
+    return {"success": True, "appointment": updated_app}
 
 
 @app.get("/api/prescriptions/patient/{patient_id}")

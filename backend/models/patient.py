@@ -21,6 +21,7 @@ try:
         __tablename__ = "patients"
 
         id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+        patient_code = Column(String(20), unique=True, nullable=True)
         full_name = Column(String(255), nullable=False)
         email = Column(String(255), unique=True, nullable=False, index=True)
         phone = Column(String(50), default="")
@@ -35,11 +36,13 @@ try:
         created_at = Column(DateTime(timezone=True), default=func.now(), server_default=func.now())
 
         def __repr__(self) -> str:
-            return f"<Patient(id={self.id}, full_name='{self.full_name}', email='{self.email}')>"
+            return f"<Patient(id={self.id}, patient_code='{self.patient_code}', full_name='{self.full_name}', email='{self.email}')>"
 
         def to_dict(self) -> Dict[str, Any]:
             return {
                 "id": str(self.id) if self.id else None,
+                "patient_code": self.patient_code,
+                "patientCode": self.patient_code,
                 "full_name": self.full_name,
                 "email": self.email,
                 "phone": self.phone,
@@ -68,6 +71,8 @@ class PatientCreate(BaseModel):
     """Pydantic schema for creating a new patient record."""
     full_name: str
     email: EmailStr
+    patient_code: Optional[str] = None
+    patientCode: Optional[str] = None
     phone: Optional[str] = ""
     dob: Optional[str] = ""
     gender: Optional[str] = "Not specified"
@@ -81,6 +86,8 @@ class PatientCreate(BaseModel):
 class PatientOut(BaseModel):
     """Pydantic schema for returning patient details in API responses."""
     id: str
+    patient_code: Optional[str] = None
+    patientCode: Optional[str] = None
     full_name: str
     email: EmailStr
     phone: Optional[str] = ""
@@ -96,6 +103,8 @@ class PatientOut(BaseModel):
 class PatientUpdate(BaseModel):
     """Pydantic schema for updating existing patient profile data."""
     full_name: Optional[str] = None
+    patient_code: Optional[str] = None
+    patientCode: Optional[str] = None
     phone: Optional[str] = None
     dob: Optional[str] = None
     gender: Optional[str] = None

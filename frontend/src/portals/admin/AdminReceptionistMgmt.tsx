@@ -402,10 +402,10 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                     <span>Change Password</span>
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                   <div>
                     <span className="text-[10px] text-slate-400 font-bold uppercase block">Login Email</span>
-                    <span className="font-mono font-black text-slate-900">{selectedRec.email}</span>
+                    <span className="font-mono font-black text-slate-900 truncate block">{selectedRec.email}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 font-bold uppercase block">Station Password</span>
@@ -425,7 +425,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 grid grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase block">Assigned Wing</span>
                   <span className="text-slate-900">{selectedRec.department}</span>
@@ -569,7 +569,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Login Email / Username</label>
                   <input
@@ -593,7 +593,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Assigned Department Wing</label>
                   <input

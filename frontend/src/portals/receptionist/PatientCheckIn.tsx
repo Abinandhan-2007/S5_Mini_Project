@@ -276,7 +276,7 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   {/* Blood Pressure */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
                     <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1.5">

@@ -190,20 +190,19 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
             </div>
           </div>
         ) : (
-          /* REGISTRATION FORM (CLEAN 2-COLUMN FULL-SCREEN LAYOUT) */
-          <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8 max-h-[80vh] overflow-y-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-h-[85vh] overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8">
               {/* LEFT COLUMN: PATIENT PERSONAL DETAILS */}
-              <div className="space-y-5 bg-slate-50/70 p-6 rounded-3xl border border-slate-200/80">
+              <div className="space-y-4 sm:space-y-5 bg-slate-50/70 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/80">
                 <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200/80">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54] shrink-0">
                     <User className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 font-heading">
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 font-heading">
                       1. Patient Identification & Demographics
                     </h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Personal contact info and blood profile</p>
+                    <p className="text-[10.5px] sm:text-[11px] text-slate-500 font-medium">Personal contact info and blood profile</p>
                   </div>
                 </div>
 
@@ -226,7 +225,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                 </div>
 
                 {/* Age & Blood Group */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       Age (Years) <span className="text-rose-500">*</span>
@@ -265,32 +264,32 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                   </div>
                 </div>
 
-                {/* Phone Number */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Phone Number <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+91 98765 43210"
-                      value={patientPhone}
-                      onChange={(e) => setPatientPhone(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
-                    />
-                  </div>
+              {/* Phone Number */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Mobile Phone Number <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="+91 98765 43210"
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 font-mono"
+                  />
                 </div>
+              </div>
 
-                {/* Address */}
+                {/* Physical Address */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Residential Address</label>
                   <div className="relative">
                     <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     <input
                       type="text"
-                      placeholder="e.g. Flat 4B, Emerald Heights, MG Road, City"
+                      placeholder="Street, locality, area..."
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
@@ -299,44 +298,45 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: CLINICAL INTAKE & DOCTOR ASSIGNMENT */}
-              <div className="space-y-5 bg-slate-50/70 p-6 rounded-3xl border border-slate-200/80">
+              {/* RIGHT COLUMN: CLINICAL TRIAGE & SCHEDULING */}
+              <div className="space-y-4 sm:space-y-5 bg-slate-50/70 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/80">
                 <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200/80">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54] shrink-0">
                     <Stethoscope className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 font-heading">
-                      2. Clinical Intake & Doctor Assignment
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 font-heading">
+                      2. Clinical Assignment & Slot Timing
                     </h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Health issue description and doctor queue slot</p>
+                    <p className="text-[10.5px] sm:text-[11px] text-slate-500 font-medium">Select physician, room, and queue window</p>
                   </div>
                 </div>
 
-                {/* Health Issue / Chief Complaint */}
+                {/* Chief Health Complaint */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Chief Health Issue / Symptoms
+                    Chief Health Complaint / Symptoms <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <Activity className="w-4 h-4 text-amber-500 absolute left-3.5 top-3.5" />
-                    <textarea
-                      rows={3}
-                      placeholder="Describe primary symptoms, pain duration, or consultation reason (e.g. Chest tightness, hypertension checkup)..."
+                    <Activity className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Severe chest pain, seasonal fever, migraine..."
                       value={healthIssue}
                       onChange={(e) => setHealthIssue(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 resize-none"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
                     />
                   </div>
                 </div>
 
-                {/* Assign Doctor */}
+                {/* Doctor Selection */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Assign Doctor <span className="text-rose-500">*</span>
+                    Assign Attending Physician <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <Stethoscope className="w-4 h-4 text-[#0B5A54] absolute left-3.5 top-3.5" />
+                    <Stethoscope className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     <select
                       value={selectedDoctorId}
                       onChange={(e) => setSelectedDoctorId(e.target.value)}
@@ -352,7 +352,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                 </div>
 
                 {/* Date & Time Slot */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">Appointment Date</label>
                     <div className="relative">

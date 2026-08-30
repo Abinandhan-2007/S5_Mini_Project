@@ -1,6 +1,9 @@
+-- CarePulse Database Schema & Migrations (PostgreSQL + pgvector)
+
 -- Patients Table
 CREATE TABLE IF NOT EXISTS patients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_code VARCHAR(20) UNIQUE,
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(50) DEFAULT '',
@@ -15,6 +18,7 @@ CREATE TABLE IF NOT EXISTS patients (
 );
 
 -- Migration support if table already exists
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS patient_code VARCHAR(20) UNIQUE;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS address TEXT DEFAULT '';
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT '';
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;
@@ -25,6 +29,29 @@ ALTER TABLE patients ADD COLUMN IF NOT EXISTS pre_existing_conditions TEXT DEFAU
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS emergency_contact JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE patients ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE patients ALTER COLUMN dob DROP NOT NULL;
+
+-- Sequences for Auto-Numbering Display Codes
+CREATE SEQUENCE IF NOT EXISTS patient_code_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS admin_code_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS receptionist_code_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS doctor_code_seq START 1;
+
+-- Trigger Function for Auto-Generating Patient Display Codes (PAT-000042)
+CREATE OR REPLACE FUNCTION generate_patient_code()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.patient_code IS NULL OR NEW.patient_code = '' THEN
+        NEW.patient_code := 'PAT-' || LPAD(nextval('patient_code_seq')::text, 6, '0');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_generate_patient_code ON patients;
+CREATE TRIGGER trigger_generate_patient_code
+BEFORE INSERT ON patients
+FOR EACH ROW
+EXECUTE FUNCTION generate_patient_code();
 
 -- Hospitals Table
 CREATE TABLE IF NOT EXISTS hospitals (
@@ -90,7 +117,7 @@ ALTER TABLE doctors ADD COLUMN IF NOT EXISTS about TEXT;
 ALTER TABLE doctors ADD COLUMN IF NOT EXISTS available_days JSONB DEFAULT '["Mon", "Tue", "Wed", "Thu", "Fri"]'::jsonb;
 ALTER TABLE doctors ADD COLUMN IF NOT EXISTS slot_capacities JSONB DEFAULT '[]'::jsonb;
 
--- Appointments Table (Placed after patients as it references patients.id)
+-- Appointments Table
 CREATE TABLE IF NOT EXISTS appointments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
@@ -126,22 +153,18 @@ CREATE TABLE IF NOT EXISTS consultations (
     doctor_name VARCHAR(255) NOT NULL,
     hospital_id VARCHAR(100) REFERENCES hospitals(id),
     date DATE NOT NULL,
-    
-    -- JSONB column containing structured SOAP clinical logs
     soap_data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE consultations ADD COLUMN IF NOT EXISTS hospital_id VARCHAR(100) REFERENCES hospitals(id);
-
--- Indexes for optimal performance
 CREATE INDEX IF NOT EXISTS idx_consultations_soap_data ON consultations USING gin (soap_data);
 CREATE INDEX IF NOT EXISTS idx_consultations_hospital_id ON consultations (hospital_id);
 
 -- Staff Table
 CREATE TABLE IF NOT EXISTS staff (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    staff_code VARCHAR(20) UNIQUE,
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255),
@@ -158,8 +181,35 @@ CREATE TABLE IF NOT EXISTS staff (
     last_login_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_code VARCHAR(20) UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_staff_email ON staff(email);
 CREATE INDEX IF NOT EXISTS idx_staff_role ON staff(role);
+
+-- Trigger Function for Auto-Generating Staff Display Codes (ADM-0001, REC-0001, DOC-0001)
+CREATE OR REPLACE FUNCTION generate_staff_code()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.staff_code IS NULL OR NEW.staff_code = '' THEN
+        IF NEW.role = 'admin' THEN
+            NEW.staff_code := 'ADM-' || LPAD(nextval('admin_code_seq')::text, 4, '0');
+        ELSIF NEW.role = 'receptionist' THEN
+            NEW.staff_code := 'REC-' || LPAD(nextval('receptionist_code_seq')::text, 4, '0');
+        ELSIF NEW.role = 'doctor' THEN
+            NEW.staff_code := 'DOC-' || LPAD(nextval('doctor_code_seq')::text, 4, '0');
+        ELSE
+            NEW.staff_code := 'STF-' || LPAD(nextval('admin_code_seq')::text, 4, '0');
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_generate_staff_code ON staff;
+CREATE TRIGGER trigger_generate_staff_code
+BEFORE INSERT ON staff
+FOR EACH ROW
+EXECUTE FUNCTION generate_staff_code();
 
 -- Emergency Contacts Table
 CREATE TABLE IF NOT EXISTS emergency_contacts (
@@ -281,3 +331,27 @@ CREATE TABLE IF NOT EXISTS password_reset_otps (
     used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Device Tokens Table for FCM Push Notifications
+CREATE TABLE IF NOT EXISTS device_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    fcm_token TEXT NOT NULL,
+    platform VARCHAR(20) DEFAULT 'android',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_patient_id ON device_tokens(patient_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_device_tokens_unique ON device_tokens(patient_id, fcm_token);
+
+-- Notification Tracking Log Table
+CREATE TABLE IF NOT EXISTS notification_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    notification_type VARCHAR(50) NOT NULL,
+    reference_id UUID,
+    sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_notification_log_lookup ON notification_log(patient_id, notification_type, reference_id);
+

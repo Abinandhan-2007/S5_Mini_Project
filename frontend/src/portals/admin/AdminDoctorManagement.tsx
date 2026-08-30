@@ -759,7 +759,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block mb-1 text-[11px]">Portal Username</label>
                     <input
@@ -794,7 +794,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Clinical Specialty</label>
                   <input
@@ -822,7 +822,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Consultation Fee (₹)</label>
                   <input
@@ -847,7 +847,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Contact Email</label>
                   <input

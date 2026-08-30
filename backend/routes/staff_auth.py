@@ -175,7 +175,7 @@ def staff_login(request: StaffLoginRequest):
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT id, full_name, email, password_hash, role, specialization, avatar_url, hospital_id, doctor_id, is_active 
+                        SELECT id, full_name, email, password_hash, role, specialization, avatar_url, hospital_id, doctor_id, is_active, staff_code 
                         FROM staff 
                         WHERE LOWER(TRIM(email)) = %s 
                         LIMIT 1
@@ -267,8 +267,18 @@ def staff_login(request: StaffLoginRequest):
         except Exception as e:
             logger.warning(f"Could not sync staff hospital_id: {e}")
 
+    stf_code = found_staff.get("staff_code") or found_staff.get("staffCode")
+    if not stf_code and role == "admin":
+        stf_code = "ADM-0001"
+    elif not stf_code and role == "receptionist":
+        stf_code = "REC-0001"
+    elif not stf_code and role == "doctor":
+        stf_code = "DOC-0001"
+
     staff_profile = {
         "id": str(found_staff.get("id")),
+        "staff_code": stf_code,
+        "staffCode": stf_code,
         "name": found_staff.get("name") or found_staff.get("full_name") or "Staff Member",
         "email": found_staff.get("email"),
         "role": role,

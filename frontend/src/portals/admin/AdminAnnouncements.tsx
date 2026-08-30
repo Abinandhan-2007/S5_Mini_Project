@@ -135,7 +135,7 @@ export const AdminAnnouncements: React.FC<AdminAnnouncementsProps> = ({ onShowTo
             </div>
 
             {/* Target Audience */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block mb-1 text-slate-900">Target Audience</label>
                 <select

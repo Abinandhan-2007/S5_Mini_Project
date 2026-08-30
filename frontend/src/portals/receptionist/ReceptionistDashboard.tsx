@@ -94,37 +94,37 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           1. EXECUTIVE HERO BANNER & LIVE COMMAND CONTROLS
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#0B5A54] via-teal-900 to-[#06332F] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0B5A54] via-teal-900 to-[#06332F] rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
         {/* Ambient Glows */}
         <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-teal-400/15 blur-3xl pointer-events-none" />
         <div className="absolute right-1/3 -bottom-16 w-60 h-60 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2.5 max-w-2xl">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+          <div className="space-y-2 sm:space-y-2.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-black uppercase tracking-wider text-teal-200">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-teal-200">
                 <Sparkles className="w-3.5 h-3.5 text-teal-300" />
                 Live OPD Command Center
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10.5px] font-bold">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] sm:text-[10.5px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                 Live Desk Active
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black font-heading tracking-tight text-white">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black font-heading tracking-tight text-white leading-tight">
               Welcome back, {receptionistProfile.name || 'Front Desk'}
             </h1>
             <p className="text-xs sm:text-sm text-teal-100/90 font-medium leading-relaxed">
               Monitoring active consultation rooms, patient intake flow, token queue broadcasts, and doctor availability in real time.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-teal-200 font-semibold font-mono">
-              <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-xl border border-white/10">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1 text-xs text-teal-200 font-semibold font-mono">
+              <span className="flex items-center gap-1.5 bg-black/20 px-2.5 sm:px-3 py-1 rounded-xl border border-white/10 text-[11px] sm:text-xs">
                 <Clock className="w-3.5 h-3.5 text-teal-300" />
                 {currentTime || '08:00 AM'}
               </span>
-              <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-xl border border-white/10">
+              <span className="flex items-center gap-1.5 bg-black/20 px-2.5 sm:px-3 py-1 rounded-xl border border-white/10 text-[11px] sm:text-xs">
                 <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />
                 {receptionistProfile.department || 'Main OPD Reception'}
               </span>
@@ -132,27 +132,27 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
           </div>
 
           {/* Quick Action Triggers */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
             <button
               onClick={() => handleCallNext()}
               disabled={waitingTokens.length === 0}
-              className="px-5 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Volume2 className="w-4 h-4 text-slate-900 stroke-[2.5]" />
-              <span>Call Next Token</span>
+              <span>Call Next</span>
             </button>
 
             <button
               onClick={onOpenNewAppointment}
-              className="px-5 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-3 sm:py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
             >
               <Plus className="w-4 h-4 text-[#0B5A54] stroke-[3]" />
-              <span>+ Walk-In Patient</span>
+              <span>+ Walk-In</span>
             </button>
 
             <button
               onClick={handlePrintRoster}
-              className="p-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl border border-white/20 transition-all cursor-pointer"
+              className="p-3 sm:p-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl border border-white/20 transition-all cursor-pointer"
               title="Print Today's OPD Roster"
             >
               <Printer className="w-4 h-4 text-teal-200" />
@@ -164,126 +164,126 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           2. EXECUTIVE 6-CARD KPI METRICS MATRIX
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 w-full">
         {/* Waiting in Queue */}
         <div
           onClick={() => onNavigateTab?.('queue')}
-          className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer space-y-2 group"
+          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
               Waiting Queue
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Users className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono truncate">
             {waitingTokens.length}
           </div>
-          <p className="text-[10.5px] text-amber-700 font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            In Waiting Hall
+          <p className="text-[10px] sm:text-[10.5px] text-amber-700 font-bold flex items-center gap-1 truncate">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            <span className="truncate">In Waiting Hall</span>
           </p>
         </div>
 
         {/* In Consultation */}
         <div
           onClick={() => onNavigateTab?.('queue')}
-          className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-teal-300 transition-all cursor-pointer space-y-2 group"
+          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-teal-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
               In Consultation
             </span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center group-hover:scale-110 transition-transform">
-              <UserCheck className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-[#0B5A54] font-mono">
+          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-[#0B5A54] font-mono truncate">
             {inConsultationTokens.length}
           </div>
-          <p className="text-[10.5px] text-teal-700 font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-            Active In Cabins
+          <p className="text-[10px] sm:text-[10.5px] text-teal-700 font-bold flex items-center gap-1 truncate">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse shrink-0" />
+            <span className="truncate">Active In Cabins</span>
           </p>
         </div>
 
         {/* On-Duty Doctors */}
         <div
           onClick={() => onNavigateTab?.('doctors')}
-          className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer space-y-2 group"
+          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
               On-Duty Doctors
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Stethoscope className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <Stethoscope className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono">
+          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-600 font-mono truncate">
             {activeDoctors.length}{' '}
-            <span className="text-xs text-slate-400 font-normal font-sans">/ {doctors.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-400 font-normal font-sans">/ {doctors.length}</span>
           </div>
-          <p className="text-[10.5px] text-emerald-700 font-bold">Available Now</p>
+          <p className="text-[10px] sm:text-[10.5px] text-emerald-700 font-bold truncate">Available Now</p>
         </div>
 
         {/* Completed Visits */}
         <div
           onClick={() => onNavigateTab?.('bookings')}
-          className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer space-y-2 group"
+          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
               Completed
             </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-blue-600 font-mono">
+          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-blue-600 font-mono truncate">
             {completedTokens.length}
           </div>
-          <p className="text-[10.5px] text-blue-700 font-bold">Consultations Done</p>
+          <p className="text-[10px] sm:text-[10.5px] text-blue-700 font-bold truncate">Done Today</p>
         </div>
 
         {/* Online App Tokens */}
         <div
           onClick={() => onNavigateTab?.('bookings')}
-          className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer space-y-2 group"
+          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
               Online App
             </span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Smartphone className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-purple-700 font-mono">
+          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-purple-700 font-mono truncate">
             {onlineTokens.length}
           </div>
-          <p className="text-[10.5px] text-purple-700 font-bold">Pre-Booked Slots</p>
+          <p className="text-[10px] sm:text-[10.5px] text-purple-700 font-bold truncate">Pre-Booked</p>
         </div>
 
         {/* Walk-In Registrations */}
         <div
           onClick={() => onNavigateTab?.('bookings')}
-          className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer space-y-2 group"
+          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
               Walk-Ins
             </span>
-            <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <UserPlus className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-sky-700 font-mono">
+          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-sky-700 font-mono truncate">
             {walkInTokens.length}
           </div>
-          <p className="text-[10.5px] text-sky-700 font-bold">Registered at Desk</p>
+          <p className="text-[10px] sm:text-[10.5px] text-sky-700 font-bold truncate">Front Desk</p>
         </div>
       </div>
 

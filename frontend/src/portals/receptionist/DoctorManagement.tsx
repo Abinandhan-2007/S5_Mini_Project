@@ -204,7 +204,7 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                 )}
 
                 {/* Contact & Cabin Location */}
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
                   <div className="flex items-center gap-1.5 truncate">
                     <MapPin className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
                     <span className="truncate font-semibold">{doctor.roomNumber}</span>

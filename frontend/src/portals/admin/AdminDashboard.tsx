@@ -123,34 +123,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
       {/* ══════════════════════════════════════════════════════════════════
           ROW 1: 4 TOP KPI STAT CARDS
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
         {/* Stat 1: Total Doctors */}
         <div
           onClick={() => onNavigateTab('doctors')}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
+          className="min-w-0 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
         >
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Stethoscope className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-[10.5px] sm:text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
               <ArrowUpRight className="w-3 h-3" />
               <span>+12.5%</span>
             </span>
           </div>
 
-          <div className="mt-3">
-            <p className="text-xs font-bold text-slate-500">Total Physicians</p>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight">
+          <div className="mt-3 min-w-0">
+            <p className="text-xs font-bold text-slate-500 truncate">Total Physicians</p>
+            <div className="flex items-baseline justify-between mt-0.5 gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight truncate">
                 {totalDoctorsCount}
               </h3>
-              <span className="text-[11px] font-bold text-[#0B5A54] group-hover:underline flex items-center gap-0.5">
+              <span className="text-[11px] font-bold text-[#0B5A54] group-hover:underline flex items-center gap-0.5 shrink-0">
                 Manage
                 <ChevronRight className="w-3 h-3" />
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[10.5px] sm:text-[11px] text-slate-400 font-medium mt-0.5 truncate">
               {doctors.filter((d) => d.isAvailable).length} on active duty today
             </p>
           </div>
@@ -159,29 +159,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
         {/* Stat 2: Total Receptionist Desks */}
         <div
           onClick={() => onNavigateTab('receptionists')}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
+          className="min-w-0 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
         >
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <UserCheck className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-black text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+            <span className="inline-flex items-center gap-1 text-[10.5px] sm:text-[11px] font-black text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200 shrink-0">
               Active Desk
             </span>
           </div>
 
-          <div className="mt-3">
-            <p className="text-xs font-bold text-slate-500">Receptionist Desks</p>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight">
+          <div className="mt-3 min-w-0">
+            <p className="text-xs font-bold text-slate-500 truncate">Receptionist Desks</p>
+            <div className="flex items-baseline justify-between mt-0.5 gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight truncate">
                 {totalReceptionistsCount}
               </h3>
-              <span className="text-[11px] font-bold text-sky-700 group-hover:underline flex items-center gap-0.5">
+              <span className="text-[11px] font-bold text-sky-700 group-hover:underline flex items-center gap-0.5 shrink-0">
                 View Desks
                 <ChevronRight className="w-3 h-3" />
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[10.5px] sm:text-[11px] text-slate-400 font-medium mt-0.5 truncate">
               Live token queue synchronized
             </p>
           </div>
@@ -190,30 +190,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
         {/* Stat 3: Total Bookings (Today) */}
         <div
           onClick={() => onNavigateTab('appointments')}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
+          className="min-w-0 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
         >
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <CalendarCheck className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <CalendarCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-[10.5px] sm:text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
               <ArrowUpRight className="w-3 h-3" />
               <span>+18.4%</span>
             </span>
           </div>
 
-          <div className="mt-3">
-            <p className="text-xs font-bold text-slate-500">Bookings (Today)</p>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight">
+          <div className="mt-3 min-w-0">
+            <p className="text-xs font-bold text-slate-500 truncate">Bookings (Today)</p>
+            <div className="flex items-baseline justify-between mt-0.5 gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight truncate">
                 {totalBookingsToday}
               </h3>
-              <span className="text-[11px] font-bold text-emerald-700 group-hover:underline flex items-center gap-0.5">
+              <span className="text-[11px] font-bold text-emerald-700 group-hover:underline flex items-center gap-0.5 shrink-0">
                 Overview
                 <ChevronRight className="w-3 h-3" />
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[10.5px] sm:text-[11px] text-slate-400 font-medium mt-0.5 truncate">
               Online app & walk-in aggregate
             </p>
           </div>
@@ -222,30 +222,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
         {/* Stat 4: Total Patients */}
         <div
           onClick={() => onNavigateTab('reports')}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
+          className="min-w-0 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
         >
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Users className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+            <span className="inline-flex items-center gap-1 text-[10.5px] sm:text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200 shrink-0">
               <ArrowUpRight className="w-3 h-3" />
               <span>+9.1%</span>
             </span>
           </div>
 
-          <div className="mt-3">
-            <p className="text-xs font-bold text-slate-500">Total Registered Patients</p>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight">
+          <div className="mt-3 min-w-0">
+            <p className="text-xs font-bold text-slate-500 truncate">Total Registered Patients</p>
+            <div className="flex items-baseline justify-between mt-0.5 gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight truncate">
                 {totalPatientsCount.toLocaleString()}
               </h3>
-              <span className="text-[11px] font-bold text-purple-700 group-hover:underline flex items-center gap-0.5">
+              <span className="text-[11px] font-bold text-purple-700 group-hover:underline flex items-center gap-0.5 shrink-0">
                 Analytics
                 <ChevronRight className="w-3 h-3" />
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <p className="text-[10.5px] sm:text-[11px] text-slate-400 font-medium mt-0.5 truncate">
               Empathetic healthcare records
             </p>
           </div>

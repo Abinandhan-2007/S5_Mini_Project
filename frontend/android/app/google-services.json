@@ -1,31 +1,36 @@
 {
   "project_info": {
-    "project_number": "100000000000",
-    "project_id": "carepulse-app-prod",
-    "storage_bucket": "carepulse-app-prod.appspot.com"
+    "project_number": "1073201837854",
+    "project_id": "carepulse-39f95",
+    "storage_bucket": "carepulse-39f95.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:100000000000:android:carepulse0000000000",
+        "mobilesdk_app_id": "1:1073201837854:android:8cda64ebe7980aad9c7b0f",
         "android_client_info": {
           "package_name": "com.carepulse.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "100000000000-dummyclientid.apps.googleusercontent.com",
+          "client_id": "1073201837854-jrl9ieqkfjq2pnreoc208ecpb5214skq.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDummyKeyForCarePulseAppAndroidClient"
+          "current_key": "AIzaSyCmVsYgMmr8xZR1V7HAou36l1UK0rw9YdI"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1073201837854-jrl9ieqkfjq2pnreoc208ecpb5214skq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
