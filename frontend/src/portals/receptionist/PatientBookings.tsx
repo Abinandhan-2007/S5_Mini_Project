@@ -9,26 +9,40 @@ import {
   CheckCircle2,
   Smartphone,
   UserPlus,
-  Calendar,
   X,
   RefreshCw,
+  Printer,
+  Layers,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import { NewAppointmentModal } from './NewAppointmentModal';
+import type { TokenQueueItem, TokenStatus } from '../../types/receptionist';
 
-export const PatientBookings: React.FC = () => {
+interface PatientBookingsProps {
+  onShowToast?: (msg: string) => void;
+  onOpenNewAppointment?: () => void;
+}
+
+export const PatientBookings: React.FC<PatientBookingsProps> = ({
+  onShowToast,
+  onOpenNewAppointment,
+}) => {
   const tokens = useStaffStore((s) => s.tokens);
   const doctors = useStaffStore((s) => s.doctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'ONLINE' | 'OFFLINE' | 'ALL'>('ONLINE');
+  const [activeTab, setActiveTab] = useState<'ONLINE' | 'OFFLINE' | 'COMPLETED' | 'ALL'>('ONLINE');
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('ALL');
-  const [selectedDateFilter, setSelectedDateFilter] = useState('ALL');
   const [selectedSlotFilter, setSelectedSlotFilter] = useState('ALL');
-  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [showOfflineSuccessAlert, setShowOfflineSuccessAlert] = useState(false);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
+
+  // Printable Token Slip Modal State
+  const [tokenToPrint, setTokenToPrint] = useState<TokenQueueItem | null>(null);
 
   useEffect(() => {
     fetchTokens();
@@ -37,14 +51,11 @@ export const PatientBookings: React.FC = () => {
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     await fetchTokens();
-    setTimeout(() => setIsRefreshing(false), 500);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      onShowToast?.('Live patient bookings synchronized.');
+    }, 400);
   };
-
-  const availableDates = useMemo(() => {
-    const datesSet = new Set<string>();
-    tokens.forEach((t) => datesSet.add(t.date || '13 Aug 2026'));
-    return Array.from(datesSet);
-  }, [tokens]);
 
   const availableSlots = useMemo(() => {
     const slotsSet = new Set<string>();
@@ -52,414 +63,588 @@ export const PatientBookings: React.FC = () => {
     return Array.from(slotsSet).sort();
   }, [tokens]);
 
-  const handleOfflinePatientAdded = () => {
-    setActiveTab('OFFLINE');
-    setSearchQuery('');
-    setSelectedDateFilter('ALL');
-    setSelectedSlotFilter('ALL');
-    setShowOfflineSuccessAlert(true);
-    setTimeout(() => setShowOfflineSuccessAlert(false), 4500);
-  };
-
-  // Filter and sort date-time wise
+  // Filter & sort logic
   const filteredBookings = useMemo(() => {
     return tokens
       .filter((item) => {
-        // Tab Filter: Online Tokens vs Offline Walk-Ins vs All
-        const isOnline = item.type === 'In-Person' || item.type === 'Video Call' || !item.type.includes('Walk-In');
+        const isOnline = item.type !== 'Walk-In';
         const matchesTab =
           activeTab === 'ALL' ||
           (activeTab === 'ONLINE' && isOnline) ||
-          (activeTab === 'OFFLINE' && !isOnline);
+          (activeTab === 'OFFLINE' && !isOnline) ||
+          (activeTab === 'COMPLETED' && item.status === 'Completed');
 
         const matchesDoctor = selectedDoctorFilter === 'ALL' || item.doctorId === selectedDoctorFilter;
-        const matchesDate = selectedDateFilter === 'ALL' || (item.date || '13 Aug 2026') === selectedDateFilter;
         const matchesSlot = selectedSlotFilter === 'ALL' || item.timeSlot === selectedSlotFilter;
+        const matchesStatus = selectedStatusFilter === 'ALL' || item.status === selectedStatusFilter;
+
+        const q = searchQuery.toLowerCase();
         const matchesSearch =
-          item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.tokenNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.patientPhone.includes(searchQuery);
+          item.patientName.toLowerCase().includes(q) ||
+          item.ticketNumber.toLowerCase().includes(q) ||
+          item.tokenNumber.toLowerCase().includes(q) ||
+          item.patientPhone.includes(q);
 
-        return matchesTab && matchesDoctor && matchesDate && matchesSlot && matchesSearch;
+        return matchesTab && matchesDoctor && matchesSlot && matchesStatus && matchesSearch;
       })
-      .sort((a, b) => {
-        return a.timeSlot.localeCompare(b.timeSlot);
-      });
-  }, [tokens, activeTab, selectedDoctorFilter, selectedDateFilter, selectedSlotFilter, searchQuery]);
+      .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+  }, [
+    tokens,
+    activeTab,
+    selectedDoctorFilter,
+    selectedSlotFilter,
+    selectedStatusFilter,
+    searchQuery,
+  ]);
 
-
-
-  const onlineTokensCount = tokens.filter(
-    (t) => t.type === 'In-Person' || t.type === 'Video Call' || !t.type.includes('Walk-In')
-  ).length;
+  const onlineTokensCount = tokens.filter((t) => t.type !== 'Walk-In').length;
   const offlineTokensCount = tokens.filter((t) => t.type === 'Walk-In').length;
+  const completedCount = tokens.filter((t) => t.status === 'Completed').length;
+
+  const handlePrintSlip = (token: TokenQueueItem) => {
+    setTokenToPrint(token);
+  };
+
+  const getStatusBadge = (status: TokenStatus) => {
+    switch (status) {
+      case 'Completed':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'In Consultation':
+        return 'bg-teal-50 text-[#0B5A54] border-teal-200';
+      case 'Cancelled':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+      case 'Skipped':
+        return 'bg-slate-100 text-slate-600 border-slate-200';
+      default:
+        return 'bg-amber-50 text-amber-800 border-amber-200';
+    }
+  };
 
   return (
-    <div className="space-y-8 pb-16 text-left max-w-[1600px] mx-auto px-1 sm:px-2">
-      {/* EXECUTIVE HERO BANNER */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-800 to-[#084540] rounded-3xl p-7 sm:p-8 text-white shadow-xl shadow-teal-950/10 border border-teal-700/50">
-        {/* Subtle Background Decorative Blur Shapes */}
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute right-48 -bottom-16 w-56 h-56 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
-
+    <div className="space-y-6 pb-12 text-left">
+      {/* ══════════════════════════════════════════════════════════════════
+          1. EXECUTIVE HERO BANNER
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-900 to-[#084540] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold tracking-wider text-teal-100 uppercase">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-black tracking-wider text-teal-100 uppercase">
               <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-              <span>Online & Offline Patient Registry</span>
+              <span>OPD Registry & Token Log</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-white">
-              Patient Bookings Record
+              Patient Bookings & Appointments
             </h1>
             <p className="text-xs sm:text-sm text-teal-100/90 font-medium leading-relaxed">
-              Organized date & time-wise schedule for online patient app tokens with full offline walk-in patient registration support.
+              Comprehensive roster of pre-booked mobile appointments and same-day front-desk walk-in registrations.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="px-4 py-3.5 bg-white/15 hover:bg-white/25 text-white font-bold rounded-2xl border border-white/20 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider active:scale-95 disabled:opacity-50"
-              title="Sync live patient bookings"
+              className="px-4 py-3 bg-white/15 hover:bg-white/25 text-white font-bold rounded-2xl border border-white/20 shadow-xs transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? 'Syncing...' : 'Sync Live'}</span>
             </button>
 
             <button
-              onClick={() => setIsBookModalOpen(true)}
-              className="px-6 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
+              onClick={onOpenNewAppointment}
+              className="px-5 py-3 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
             >
-              <UserPlus className="w-5 h-5 stroke-[2.5]" />
-              <span>Add Offline Patient (Walk-In)</span>
+              <UserPlus className="w-4 h-4 stroke-[2.5]" />
+              <span>+ Add Walk-In Patient</span>
             </button>
           </div>
-
         </div>
       </div>
 
-      {/* FILTER & CATEGORY NAVIGATION TOOLBAR */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-sm space-y-5">
-        {/* Main Tab Switcher */}
-        <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 no-scrollbar border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-3">
+      {/* ══════════════════════════════════════════════════════════════════
+          2. FILTER & CATEGORY NAVIGATION TOOLBAR
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+        {/* Main Tab Switcher & View Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             <button
               onClick={() => setActiveTab('ONLINE')}
-              className={`px-5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2.5 ${activeTab === 'ONLINE'
-                  ? 'bg-[#0B5A54] text-white shadow-md shadow-teal-900/10'
-                  : 'bg-slate-100/90 hover:bg-slate-200/80 text-slate-700'
-                }`}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'ONLINE'
+                  ? 'bg-[#0B5A54] text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+              }`}
             >
-              <Smartphone className="w-4 h-4 text-teal-300" />
-              <span>Online App Tokens ({onlineTokensCount})</span>
-              <span className="text-[10px] bg-white/20 px-2.5 py-0.5 rounded-full font-bold">Date & Time-wise</span>
+              <Smartphone className="w-3.5 h-3.5 text-teal-300" />
+              <span>Online App ({onlineTokensCount})</span>
             </button>
 
             <button
               onClick={() => setActiveTab('OFFLINE')}
-              className={`px-5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2.5 ${activeTab === 'OFFLINE'
-                  ? 'bg-[#0B5A54] text-white shadow-md shadow-teal-900/10'
-                  : 'bg-slate-100/90 hover:bg-slate-200/80 text-slate-700'
-                }`}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'OFFLINE'
+                  ? 'bg-[#0B5A54] text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+              }`}
             >
-              <UserPlus className="w-4 h-4 text-amber-300" />
-              <span>Offline Walk-Ins ({offlineTokensCount})</span>
+              <UserPlus className="w-3.5 h-3.5 text-amber-300" />
+              <span>Walk-Ins ({offlineTokensCount})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('COMPLETED')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'COMPLETED'
+                  ? 'bg-[#0B5A54] text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Completed ({completedCount})</span>
             </button>
 
             <button
               onClick={() => setActiveTab('ALL')}
-              className={`px-5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2.5 ${activeTab === 'ALL'
-                  ? 'bg-[#0B5A54] text-white shadow-md shadow-teal-900/10'
-                  : 'bg-slate-100/90 hover:bg-slate-200/80 text-slate-700'
-                }`}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'ALL'
+                  ? 'bg-[#0B5A54] text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+              }`}
             >
-              <FileText className="w-4 h-4 text-blue-300" />
-              <span>All Records ({tokens.length})</span>
+              <Layers className="w-3.5 h-3.5 text-blue-300" />
+              <span>All ({tokens.length})</span>
+            </button>
+          </div>
+
+          {/* View Mode Toggle (Grid vs Table) */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl self-end sm:self-auto shrink-0">
+            <button
+              onClick={() => setViewMode('GRID')}
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'GRID' ? 'bg-white text-[#0B5A54] shadow-xs' : 'text-slate-500'
+              }`}
+              title="Card Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('TABLE')}
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'TABLE' ? 'bg-white text-[#0B5A54] shadow-xs' : 'text-slate-500'
+              }`}
+              title="Table Roster View"
+            >
+              <List className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-
-        {/* Search Bar & Dropdowns */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-1">
-          {/* Search Input Bar */}
-          <div className="relative flex-1">
-            <Search className="w-5 h-5 text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+        {/* Multi-Dimensional Filter Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Search Bar */}
+          <div className="lg:col-span-2 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search patient name, phone number, or token # (#TOK-001)..."
+              placeholder="Search patient, phone, token #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
             />
-
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200 transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Secondary Filters */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {/* Booked Date Filter */}
-            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700">
-              <Calendar className="w-4 h-4 text-[#0B5A54]" />
-              <select
-                value={selectedDateFilter}
-                onChange={(e) => setSelectedDateFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold focus:outline-none text-slate-900 cursor-pointer pr-1"
-              >
-                <option value="ALL">All Booked Dates</option>
-                {availableDates.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Scheduled Time Slot Filter */}
-            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700">
-              <Clock className="w-4 h-4 text-[#0B5A54]" />
-              <select
-                value={selectedSlotFilter}
-                onChange={(e) => setSelectedSlotFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold focus:outline-none text-slate-900 cursor-pointer pr-1"
-              >
-                <option value="ALL">All Time Slots</option>
-                {availableSlots.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Doctor Filter */}
-            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700">
-              <Stethoscope className="w-4 h-4 text-[#0B5A54]" />
-              <select
-                value={selectedDoctorFilter}
-                onChange={(e) => setSelectedDoctorFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold focus:outline-none text-slate-900 cursor-pointer pr-1"
-              >
-                <option value="ALL">All Assigned Doctors</option>
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Doctor Filter */}
+          <div>
+            <select
+              value={selectedDoctorFilter}
+              onChange={(e) => setSelectedDoctorFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
+            >
+              <option value="ALL">All Physicians</option>
+              {doctors.map((doc) => (
+                <option key={doc.id} value={doc.id}>
+                  {doc.name}
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Time Slot Filter */}
+          <div>
+            <select
+              value={selectedSlotFilter}
+              onChange={(e) => setSelectedSlotFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
+            >
+              <option value="ALL">All Time Slots</option>
+              {availableSlots.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
+          </div>
 
+          {/* Status Filter */}
+          <div>
+            <select
+              value={selectedStatusFilter}
+              onChange={(e) => setSelectedStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="Waiting">Waiting</option>
+              <option value="In Consultation">In Consultation</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* EXECUTIVE PATIENT BOOKINGS DATA TABLE (PROPER SPACING & PREMIUM PADDING) */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden text-left">
-        {/* Table Subheader Row */}
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/60">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200/70 flex items-center justify-center text-[#0B5A54]">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900 font-heading">
-                Showing {filteredBookings.length} {activeTab === 'ONLINE' ? 'Online App' : activeTab === 'OFFLINE' ? 'Offline Walk-In' : ''} Patient Bookings
-              </h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Complete appointment log & scheduled patient queue
-              </p>
-            </div>
-          </div>
+      {/* ══════════════════════════════════════════════════════════════════
+          3. BOOKINGS ROSTER DISPLAY (GRID OR TABLE)
+      ══════════════════════════════════════════════════════════════════ */}
+      {filteredBookings.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-xs space-y-3">
+          <FileText className="w-10 h-10 text-slate-300 mx-auto" />
+          <h3 className="text-base font-black text-slate-900">No Patient Records Found</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            No booking records match your selected filters. Try changing filters or search terms.
+          </p>
         </div>
+      ) : viewMode === 'GRID' ? (
+        /* GRID VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredBookings.map((item) => {
+            const doc = doctors.find((d) => d.id === item.doctorId);
+            const isOnline = item.type !== 'Walk-In';
 
-
-        {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
-            <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-black uppercase text-[#0B5A54]/80 tracking-wider">
-                <th className="py-4.5 px-6 sm:px-8">Booked Date</th>
-                <th className="py-4.5 px-6">Patient Profile</th>
-                <th className="py-4.5 px-6">Assigned Doctor</th>
-                <th className="py-4.5 px-6">Scheduled Slot (Time-wise)</th>
-                <th className="py-4.5 px-6">Token #</th>
-                <th className="py-4.5 px-6 sm:px-8">Booking Source</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-16 px-6">
-                    <div className="max-w-xs mx-auto space-y-3">
-                      <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#0B5A54] mx-auto">
-                        <Search className="w-6 h-6" />
-                      </div>
-                      <h4 className="text-sm font-extrabold text-slate-900">No Patient Records Found</h4>
-                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                        No {activeTab.toLowerCase()} booking records match your selected date or doctor filter.
-                      </p>
-                      <div className="flex items-center justify-center gap-2 pt-1">
-                        <button
-                          onClick={() => {
-                            setSearchQuery('');
-                            setSelectedDoctorFilter('ALL');
-                            setSelectedDateFilter('ALL');
-                            setSelectedSlotFilter('ALL');
-                            setActiveTab('ALL');
-                          }}
-
-                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
-                        >
-                          Reset Filters
-                        </button>
-                        <button
-                          onClick={() => setIsBookModalOpen(true)}
-                          className="px-4 py-2 bg-[#0B5A54] text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                        >
-                          Add Offline Patient
-                        </button>
-
-                      </div>
+            return (
+              <div
+                key={item.id}
+                className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-teal-300/70 transition-all space-y-3.5 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  {/* Card Header: Token Number & Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-teal-50 text-[#0B5A54] border border-teal-200 rounded-xl font-mono text-xs font-black">
+                        {item.tokenNumber}
+                      </span>
+                      <span
+                        className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          isOnline
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}
+                      >
+                        {isOnline ? 'Online App' : 'Walk-In'}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredBookings.map((b) => {
-                  const isOnlineToken = b.type === 'In-Person' || b.type === 'Video Call' || !b.type.includes('Walk-In');
 
-                  return (
-                    <tr
-                      key={b.id}
-                      className="hover:bg-[#0B5A54]/[0.02] transition-colors group"
+                    <span
+                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadge(
+                        item.status
+                      )}`}
                     >
-                      {/* Booked Date */}
-                      <td className="py-5 px-6 sm:px-8 text-slate-900">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200/90 text-[#0B5A54] text-xs font-black shadow-2xs">
-                          <Calendar className="w-3.5 h-3.5 text-[#0B5A54]" />
-                          <span>{b.date || '13 Aug 2026'}</span>
-                        </div>
-                      </td>
+                      {item.status}
+                    </span>
+                  </div>
 
-
-
-                      {/* Patient Profile */}
-                      <td className="py-5 px-6">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
-                            {b.patientName.charAt(0)}
-                          </div>
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-black text-slate-900 text-xs sm:text-sm leading-tight">{b.patientName}</span>
-                              {b.age && (
-                                <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                                  {b.age} yrs
-                                </span>
-                              )}
-                              {b.bloodGroup && (
-                                <span className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md">
-                                  {b.bloodGroup}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5">
-                              <Phone className="w-3 h-3 text-slate-400" />
-                              <span className="font-mono text-slate-600">{b.patientPhone}</span>
-                            </div>
-                            {b.healthIssue && (
-                              <div className="text-[10.5px] font-medium line-clamp-1 italic bg-amber-50/70 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-200/60 mt-1">
-                                Issue: {b.healthIssue}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-
-                      {/* Doctor & Specialty */}
-                      <td className="py-5 px-6 text-slate-700">
-                        <div className="font-black text-slate-900 text-xs sm:text-sm leading-tight">{b.doctorName}</div>
-                        <span className="inline-block mt-1 text-[10.5px] font-bold text-[#0B5A54] bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200/80">
-                          {b.doctorSpecialty}
-                        </span>
-                      </td>
-
-                      {/* Time Slot (Ordered Date & Time-wise) */}
-                      <td className="py-5 px-6 text-slate-600">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs font-bold text-slate-800 shadow-2xs">
-                          <Clock className="w-4 h-4 text-[#0B5A54]" />
-                          <span>{b.timeSlot}</span>
-                        </div>
-                      </td>
-
-                      {/* Token Number */}
-                      <td className="py-5 px-6">
-                        <span className="px-3.5 py-1.5 rounded-xl bg-teal-500/10 border border-teal-300/60 text-[#0B5A54] font-mono font-black text-xs shadow-2xs">
-                          {b.tokenNumber}
-                        </span>
-                      </td>
-
-                      {/* Booking Source */}
-                      <td className="py-5 px-6 sm:px-8">
-                        {isOnlineToken ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-200/90 text-[11px] font-bold shadow-2xs">
-                            <Smartphone className="w-3.5 h-3.5 text-[#0B5A54]" />
-                            <span>Online App Token</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/90 text-[11px] font-bold shadow-2xs">
-                            <UserPlus className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Offline Walk-In</span>
+                  {/* Patient Info */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-800 text-white font-black text-xs flex items-center justify-center font-heading shrink-0 shadow-xs">
+                      {item.patientName.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <h4 className="font-black text-slate-900 text-sm truncate">
+                          {item.patientName}
+                        </h4>
+                        {item.age && (
+                          <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-1.5 rounded shrink-0">
+                            {item.age}y
                           </span>
                         )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-semibold">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          {item.patientPhone}
+                        </span>
+                        {item.bloodGroup && (
+                          <span className="text-[9.5px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-1.5 rounded">
+                            {item.bloodGroup}
+                          </span>
+                        )}
+                      </div>
+
+                      {item.healthIssue && (
+                        <p className="text-[11px] text-slate-600 italic truncate mt-0.5">
+                          Symptoms: {item.healthIssue}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Doctor & Slot Info */}
+                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-700 font-bold">
+                      <span className="flex items-center gap-1 text-[11px] truncate">
+                        <Stethoscope className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
+                        {item.doctorName}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {item.ticketNumber}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10.5px] text-slate-500 font-medium">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        {item.timeSlot}
+                      </span>
+                      <span>{doc?.roomNumber || 'Cabin 101'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => handlePrintSlip(item)}
+                    className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Print Thermal Queue Slip"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Slip</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    {item.status === 'Waiting' && (
+                      <button
+                        onClick={() => {
+                          updateTokenStatus(item.id, 'In Consultation');
+                          onShowToast?.(`Token ${item.tokenNumber} summoned into consultation.`);
+                        }}
+                        className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+                      >
+                        Call In
+                      </button>
+                    )}
+                    {item.status === 'In Consultation' && (
+                      <button
+                        onClick={() => {
+                          updateTokenStatus(item.id, 'Completed');
+                          onShowToast?.(`Token ${item.tokenNumber} marked as completed.`);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+                      >
+                        Complete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* TABLE ROSTER VIEW */
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                <tr>
+                  <th className="p-4">Token / Type</th>
+                  <th className="p-4">Patient Details</th>
+                  <th className="p-4">Doctor & Cabin</th>
+                  <th className="p-4">Slot Time</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredBookings.map((item) => {
+                  const doc = doctors.find((d) => d.id === item.doctorId);
+                  const isOnline = item.type !== 'Walk-In';
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-4">
+                        <span className="px-2.5 py-1 bg-teal-50 text-[#0B5A54] border border-teal-200 rounded-xl font-mono text-xs font-black block w-max">
+                          {item.tokenNumber}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold block mt-1">
+                          {isOnline ? '📱 Mobile App' : '🏢 Walk-In'}
+                        </span>
+                      </td>
+
+                      <td className="p-4">
+                        <div className="font-extrabold text-slate-900 text-sm">
+                          {item.patientName}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          {item.patientPhone} {item.bloodGroup && `• ${item.bloodGroup}`}
+                        </div>
+                      </td>
+
+                      <td className="p-4">
+                        <div className="font-bold text-slate-800">{item.doctorName}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">
+                          {doc?.roomNumber || 'Cabin 101'}
+                        </div>
+                      </td>
+
+                      <td className="p-4 font-mono font-bold text-slate-700">{item.timeSlot}</td>
+
+                      <td className="p-4">
+                        <span
+                          className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${getStatusBadge(
+                            item.status
+                          )}`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handlePrintSlip(item)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+                            title="Print Slip"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+
+                          {item.status === 'Waiting' && (
+                            <button
+                              onClick={() => {
+                                updateTokenStatus(item.id, 'In Consultation');
+                                onShowToast?.(`Token ${item.tokenNumber} summoned into consultation.`);
+                              }}
+                              className="px-2.5 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold rounded-lg text-xs cursor-pointer"
+                            >
+                              Call In
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-
-      {/* SUCCESS NOTIFICATION ALERT BANNER */}
-      {showOfflineSuccessAlert && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 p-4 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span className="text-xs font-extrabold">
-              Offline Walk-In Patient successfully registered! The record has been added to the screen below.
-            </span>
+                })}
+              </tbody>
+            </table>
           </div>
-          <button
-            onClick={() => setShowOfflineSuccessAlert(false)}
-            className="text-emerald-700 hover:text-emerald-950 p-1 rounded-lg hover:bg-emerald-100 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       )}
 
-      {/* NEW OFFLINE PATIENT APPOINTMENT MODAL */}
-      <NewAppointmentModal
-        isOpen={isBookModalOpen}
-        onClose={() => setIsBookModalOpen(false)}
-        onSuccess={handleOfflinePatientAdded}
-      />
+      {/* ══════════════════════════════════════════════════════════════════
+          4. PRINTABLE TOKEN SLIP MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {tokenToPrint && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-left animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-[#0B5A54]" />
+                <h3 className="text-base font-black text-slate-900 font-heading">
+                  CarePulse OPD Queue Slip
+                </h3>
+              </div>
+              <button
+                onClick={() => setTokenToPrint(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Slip Paper Preview */}
+            <div className="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-2xl space-y-4 font-mono text-xs">
+              <div className="text-center space-y-0.5 border-b border-slate-200 pb-3">
+                <h4 className="font-black text-slate-900 text-sm">CAREPULSE CENTRAL HOSPITAL</h4>
+                <p className="text-[10px] text-slate-500">Outpatient Consultation Pass</p>
+              </div>
+
+              <div className="text-center py-2 bg-white rounded-xl border border-slate-200">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                  QUEUE TOKEN
+                </span>
+                <span className="text-3xl font-black text-[#0B5A54] block mt-0.5">
+                  {tokenToPrint.tokenNumber}
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Ticket: {tokenToPrint.ticketNumber}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-[11px] pt-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Patient:</span>
+                  <span className="font-bold text-slate-900">{tokenToPrint.patientName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Doctor:</span>
+                  <span className="font-bold text-slate-900">{tokenToPrint.doctorName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Cabin Room:</span>
+                  <span className="font-bold text-slate-900">
+                    {doctors.find((d) => d.id === tokenToPrint.doctorId)?.roomNumber || 'Cabin 101'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Slot Time:</span>
+                  <span className="font-bold text-slate-900">{tokenToPrint.timeSlot}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Intake Type:</span>
+                  <span className="font-bold text-[#0B5A54]">{tokenToPrint.type}</span>
+                </div>
+              </div>
+
+              <div className="text-center pt-3 border-t border-slate-200 text-[10px] text-slate-400">
+                Please wait in the reception lounge until your token number is broadcasted.
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setTokenToPrint(null)}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition-all cursor-pointer text-center"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  window.print();
+                  setTokenToPrint(null);
+                }}
+                className="flex-1 py-3 px-4 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Thermal Slip</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-
+export default PatientBookings;

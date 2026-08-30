@@ -18,7 +18,7 @@ export interface DateScrollerProps {
 }
 
 // Generate upcoming 14 days starting from today (or reference date)
-export const generateUpcomingDates = (baseDate?: Date): DateOption[] => {
+const generateUpcomingDates = (baseDate?: Date): DateOption[] => {
   const dates: DateOption[] = [];
   const start = baseDate ? new Date(baseDate) : new Date();
   start.setHours(0, 0, 0, 0);

@@ -160,8 +160,7 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
-          >
-          </input>
+          />
         </div>
       </div>
 

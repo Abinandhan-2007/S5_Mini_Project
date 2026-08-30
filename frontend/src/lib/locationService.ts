@@ -62,7 +62,7 @@ export const requestNativeLocation = async (): Promise<LocationResult> => {
         error: 'Location permission denied by user.',
       };
     }
-  } catch (err: any) {
+  } catch {
     // Fallback: Standard W3C HTML5 Geolocation API
     return new Promise((resolve) => {
       if ('geolocation' in navigator) {

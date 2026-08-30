@@ -5,9 +5,10 @@ import { useStaffStore } from '../../store/staffStore';
 interface CreateDoctorProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose }) => {
+export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onSuccess }) => {
   const createDoctor = useStaffStore((s) => s.createDoctor);
 
   const [name, setName] = useState('');
@@ -59,6 +60,7 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose }) =
     });
 
     setIsSubmitting(false);
+    onSuccess?.();
     onClose();
   };
 

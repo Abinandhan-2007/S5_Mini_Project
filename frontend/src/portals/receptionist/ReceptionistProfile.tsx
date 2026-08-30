@@ -1,27 +1,24 @@
 import React, { useState } from 'react';
 import {
-  User,
   ShieldCheck,
   Building,
-  Clock,
-  Mail,
-  Phone,
   LogOut,
-  Award,
-  CheckCircle2,
   Edit3,
   KeyRound,
   Ticket,
   Smartphone,
   UserPlus,
-  Save,
   X,
+  Clock,
 } from 'lucide-react';
-
 import { useStaffStore } from '../../store/staffStore';
 import { useNavigate } from 'react-router-dom';
 
-export const ReceptionistProfile: React.FC = () => {
+interface ReceptionistProfileProps {
+  onShowToast?: (msg: string) => void;
+}
+
+export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShowToast }) => {
   const profile = useStaffStore((s) => s.receptionistProfile);
   const updateProfile = useStaffStore((s) => s.updateReceptionistProfile);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
@@ -36,7 +33,6 @@ export const ReceptionistProfile: React.FC = () => {
   const [clinicName, setClinicName] = useState(profile.clinicName);
   const [department, setDepartment] = useState(profile.department);
   const [isSaving, setIsSaving] = useState(false);
-  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   const handleLogout = () => {
     logoutStaff();
@@ -56,58 +52,48 @@ export const ReceptionistProfile: React.FC = () => {
     });
     setIsSaving(false);
     setIsEditModalOpen(false);
-    setShowSaveSuccess(true);
-    setTimeout(() => setShowSaveSuccess(false), 4000);
+    onShowToast?.('Receptionist desk profile updated successfully.');
   };
 
-  const onlineCount = tokens.filter(
-    (t) => t.type === 'In-Person' || t.type === 'Video Call' || !t.type.includes('Walk-In')
-  ).length;
+  const onlineCount = tokens.filter((t) => t.type !== 'Walk-In').length;
   const offlineCount = tokens.filter((t) => t.type === 'Walk-In').length;
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 pb-16 text-left px-1 sm:px-2">
-      {/* Toast Alert */}
-      {showSaveSuccess && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl flex items-center justify-between text-xs font-bold shadow-md animate-in fade-in zoom-in-95">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span>Receptionist Staff Profile updated successfully!</span>
-          </div>
-          <button onClick={() => setShowSaveSuccess(false)} className="text-emerald-700 hover:text-emerald-900">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* EXECUTIVE HERO HEADER CARD */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-800 to-[#084540] rounded-3xl p-7 sm:p-10 text-white shadow-xl shadow-teal-950/10 border border-teal-700/50">
-        {/* Background Blur Shapes */}
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute right-48 -bottom-16 w-56 h-56 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left flex-1">
+    <div className="space-y-6 pb-12 text-left">
+      {/* ══════════════════════════════════════════════════════════════════
+          1. EXECUTIVE HERO PROFILE CARD
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-900 to-[#084540] rounded-3xl p-7 sm:p-9 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
+        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left flex-1">
             <div className="relative">
               <img
-                src={profile.avatarUrl}
+                src={
+                  profile.avatarUrl ||
+                  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
+                }
                 alt={profile.name}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover border-4 border-white/20 shadow-2xl"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white/20 shadow-xl"
               />
-              <span className="w-5 h-5 rounded-full bg-emerald-500 border-3 border-teal-900 absolute bottom-1 right-1 shadow-md" title="Active On Duty" />
+              <span
+                className="w-4 h-4 rounded-full bg-emerald-400 border-2 border-teal-900 absolute bottom-1 right-1 shadow"
+                title="Active On Duty"
+              />
             </div>
 
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-bold text-teal-100 border border-white/20 flex items-center gap-1.5 uppercase tracking-wider">
-                  <ShieldCheck className="w-3.5 h-3.5 text-teal-300" /> Certified Reception Desk Administrator
+                <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10.5px] font-black text-teal-200 border border-white/20 flex items-center gap-1.5 uppercase tracking-wider">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-300" /> Certified Desk Administrator
                 </span>
-                <span className="px-3 py-1 bg-emerald-400/20 text-emerald-200 font-extrabold rounded-full text-[11px] border border-emerald-400/30 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Active On Duty
+                <span className="px-2.5 py-0.5 bg-emerald-400/20 text-emerald-300 font-extrabold rounded-full text-[10.5px] border border-emerald-400/30">
+                  Active On Duty
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl font-black font-heading tracking-tight text-white">{profile.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-white">
+                {profile.name}
+              </h1>
               <p className="text-xs sm:text-sm text-teal-100/90 font-medium">
                 {profile.clinicName} • {profile.department}
               </p>
@@ -138,232 +124,215 @@ export const ReceptionistProfile: React.FC = () => {
         </div>
       </div>
 
-      {/* SHIFT & LIVE METRIC SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
-            <Ticket className="w-5 h-5" />
+      {/* ══════════════════════════════════════════════════════════════════
+          2. PRODUCTIVITY & INTAKE STATS SUMMARY
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center">
+            <Ticket className="w-4 h-4" />
           </div>
           <div className="text-2xl font-black font-mono text-slate-900">{tokens.length}</div>
-          <div className="text-xs font-bold text-slate-500">Total Tokens Logged</div>
+          <div className="text-[11px] font-bold text-slate-400">Total Tokens Logged</div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-            <Smartphone className="w-5 h-5" />
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <Smartphone className="w-4 h-4" />
           </div>
-          <div className="text-2xl font-black font-mono text-slate-900">{onlineCount}</div>
-          <div className="text-xs font-bold text-slate-500">Online Patient App Tokens</div>
+          <div className="text-2xl font-black font-mono text-purple-700">{onlineCount}</div>
+          <div className="text-[11px] font-bold text-slate-400">App Appointments</div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800">
-            <UserPlus className="w-5 h-5 text-amber-800" />
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <UserPlus className="w-4 h-4" />
           </div>
-          <div className="text-2xl font-black font-mono text-slate-900">{offlineCount}</div>
-          <div className="text-xs font-bold text-slate-500">Offline Walk-In Registrations</div>
+          <div className="text-2xl font-black font-mono text-amber-800">{offlineCount}</div>
+          <div className="text-[11px] font-bold text-slate-400">Walk-In Intakes</div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700">
-            <Clock className="w-5 h-5" />
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <Clock className="w-4 h-4" />
           </div>
-          <div className="text-2xl font-black font-mono text-slate-900">3.8 mins</div>
-          <div className="text-xs font-bold text-slate-500">Avg. Token Intake Speed</div>
+          <div className="text-2xl font-black font-mono text-emerald-700">3.5m</div>
+          <div className="text-[11px] font-bold text-slate-400">Avg. Intake Speed</div>
         </div>
       </div>
 
-      {/* DETAILED INFORMATION CARDS GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* WORKSTATION & SCHEDULE CARD */}
-        <div className="bg-white rounded-3xl p-7 border border-slate-200/90 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
-              <Building className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-slate-900 font-heading">
-                Workstation & Duty Schedule
-              </h3>
-              <p className="text-xs text-slate-500 font-medium">Assigned hospital branch & active shift parameters</p>
-            </div>
+      {/* ══════════════════════════════════════════════════════════════════
+          3. DETAILED INFORMATION CARDS GRID
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Workstation & Schedule Card */}
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+            <Building className="w-5 h-5 text-[#0B5A54]" />
+            <h3 className="text-base font-black text-slate-900 font-heading">
+              Desk Assignment & Hospital Schedule
+            </h3>
           </div>
 
-          <div className="space-y-3.5 text-xs">
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold">Assigned Hospital</span>
+          <div className="space-y-4 text-xs">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Assigned Workstation:</span>
               <span className="font-extrabold text-slate-900">{profile.clinicName}</span>
             </div>
 
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold">OPD Desk Department</span>
-              <span className="font-extrabold text-slate-900">{profile.department}</span>
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Desk Department:</span>
+              <span className="font-extrabold text-[#0B5A54]">{profile.department}</span>
             </div>
 
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold">Active Shift Schedule</span>
-              <span className="font-extrabold text-[#0B5A54] flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-[#0B5A54]" />
-                {profile.shift}
-              </span>
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Shift Schedule:</span>
+              <span className="font-extrabold text-slate-900">{profile.shift}</span>
             </div>
 
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold">OPD Desk Counter</span>
-              <span className="font-extrabold text-slate-900">Counter #01 (Main Lobby)</span>
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Live Emergency Extension:</span>
+              <span className="font-mono font-extrabold text-slate-900">Ext. 4092 (OPD Front)</span>
             </div>
           </div>
         </div>
 
-        {/* STAFF CONTACT & SECURITY CARD */}
-        <div className="bg-white rounded-3xl p-7 border border-slate-200/90 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
-              <User className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-slate-900 font-heading">
-                Contact & Authorization Details
-              </h3>
-              <p className="text-xs text-slate-500 font-medium">Official staff credentials and encryption token</p>
-            </div>
+        {/* Contact & Security Credentials */}
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+            <KeyRound className="w-5 h-5 text-[#0B5A54]" />
+            <h3 className="text-base font-black text-slate-900 font-heading">
+              Contact & Staff Security
+            </h3>
           </div>
 
-          <div className="space-y-3.5 text-xs">
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold flex items-center gap-2">
-                <Mail className="w-4 h-4 text-slate-400" /> Official Email
-              </span>
-              <span className="font-extrabold text-slate-900">{profile.email}</span>
+          <div className="space-y-4 text-xs">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Staff Email:</span>
+              <span className="font-extrabold text-slate-900 font-mono">{profile.email}</span>
             </div>
 
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold flex items-center gap-2">
-                <Phone className="w-4 h-4 text-slate-400" /> Phone Contact
-              </span>
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Phone Number:</span>
               <span className="font-extrabold text-slate-900 font-mono">{profile.phone}</span>
             </div>
 
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold flex items-center gap-2">
-                <Award className="w-4 h-4 text-slate-400" /> System Access Level
-              </span>
-              <span className="font-black text-emerald-700 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Level 2 OPD Administrator
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Account Role:</span>
+              <span className="font-extrabold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+                Front-Desk Receptionist
               </span>
             </div>
 
-            <div className="p-4 bg-slate-50/80 rounded-2xl flex items-center justify-between border border-slate-200/70">
-              <span className="text-slate-500 font-bold flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-slate-400" /> Security Status
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <span className="text-slate-500 font-bold">Two-Factor Authentication:</span>
+              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Enabled (CarePulse Staff SSO)
               </span>
-              <span className="font-mono text-[11px] font-bold text-slate-700">Encrypted JWT Active</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* EDIT PROFILE MODAL */}
+      {/* ══════════════════════════════════════════════════════════════════
+          4. EDIT PROFILE MODAL
+      ══════════════════════════════════════════════════════════════════ */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto relative animate-in fade-in zoom-in-95 duration-200 text-left">
-            <div className="bg-gradient-to-r from-[#0B5A54] to-teal-800 text-white p-6 flex items-center justify-between border-b border-teal-700">
-              <div>
-                <h3 className="text-xl font-black font-heading">Edit Staff Profile</h3>
-                <p className="text-xs text-teal-100 font-medium">Update official receptionist staff details</p>
-              </div>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 text-left animate-in zoom-in-95 duration-200 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 font-heading">
+                Edit Receptionist Profile
+              </h3>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-5">
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name</label>
+                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Official Email</label>
+                  <label className="font-bold text-slate-700 block mb-1">Email</label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Phone Contact</label>
+                  <label className="font-bold text-slate-700 block mb-1">Phone</label>
                   <input
                     type="tel"
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Shift Schedule</label>
+                <label className="font-bold text-slate-700 block mb-1">Shift Timings</label>
                 <input
                   type="text"
-                  required
                   value={shift}
                   onChange={(e) => setShift(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
+                  placeholder="Morning Shift (08:00 AM - 04:00 PM)"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Hospital Name</label>
+                  <label className="font-bold text-slate-700 block mb-1">Hospital / Clinic</label>
                   <input
                     type="text"
-                    required
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Department</label>
+                  <label className="font-bold text-slate-700 block mb-1">Department</label>
                   <input
                     type="text"
-                    required
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-7 py-3 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl text-xs shadow-md"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>{isSaving ? 'Saving Changes...' : 'Save Profile Changes'}</span>
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -373,3 +342,5 @@ export const ReceptionistProfile: React.FC = () => {
     </div>
   );
 };
+
+export default ReceptionistProfile;

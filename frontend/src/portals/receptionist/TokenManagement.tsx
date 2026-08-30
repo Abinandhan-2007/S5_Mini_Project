@@ -10,14 +10,19 @@ import {
   UserCheck,
   Phone,
   Stethoscope,
-  Sparkles,
-  ChevronRight,
 } from 'lucide-react';
-
 import { useStaffStore } from '../../store/staffStore';
 import type { TokenQueueItem } from '../../types/receptionist';
 
-export const TokenManagement: React.FC = () => {
+interface TokenManagementProps {
+  onShowToast?: (msg: string) => void;
+  onOpenNewAppointment?: () => void;
+}
+
+export const TokenManagement: React.FC<TokenManagementProps> = ({
+  onShowToast,
+  onOpenNewAppointment,
+}) => {
   const tokens = useStaffStore((s) => s.tokens);
   const doctors = useStaffStore((s) => s.doctors);
   const callNextToken = useStaffStore((s) => s.callNextToken);
@@ -25,11 +30,12 @@ export const TokenManagement: React.FC = () => {
 
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [lastAnnouncedToken, setLastAnnouncedToken] = useState<string | null>(null);
 
-  // FILTER OUT COMPLETED & CANCELLED TOKENS FROM ACTIVE QUEUES
+  // Active queue tokens (exclude completed or cancelled)
   const activeQueueTokens = tokens.filter((t) => {
     const isCompletedOrCancelled = t.status === 'Completed' || t.status === 'Cancelled';
-    if (isCompletedOrCancelled) return false; // Remove details if completed
+    if (isCompletedOrCancelled) return false;
 
     const matchesDoctor = selectedDoctorFilter === 'ALL' || t.doctorId === selectedDoctorFilter;
     const matchesSearch =
@@ -41,18 +47,32 @@ export const TokenManagement: React.FC = () => {
     return matchesDoctor && matchesSearch;
   });
 
-  // SPLIT INTO ONLINE AND OFFLINE QUEUES
   const onlineQueue = activeQueueTokens.filter(
     (t) => t.type === 'In-Person' || t.type === 'Video Call' || !t.type.includes('Walk-In')
   );
-
   const offlineQueue = activeQueueTokens.filter((t) => t.type === 'Walk-In');
 
-  const activeInConsultation = tokens.find((t) => t.status === 'In Consultation');
-  const waitingCount = activeQueueTokens.filter((t) => t.status === 'Waiting').length;
+  const currentlyInConsultation = tokens.filter((t) => t.status === 'In Consultation');
+  const waitingTokens = activeQueueTokens.filter((t) => t.status === 'Waiting');
 
-  const handleCallNext = async () => {
-    await callNextToken(selectedDoctorFilter === 'ALL' ? undefined : selectedDoctorFilter);
+  const handleCallNext = async (doctorId?: string) => {
+    const targetToken = doctorId
+      ? waitingTokens.find((t) => t.doctorId === doctorId)
+      : waitingTokens[0];
+
+    if (!targetToken) {
+      onShowToast?.('No waiting patients found in this queue lane.');
+      return;
+    }
+
+    await callNextToken(doctorId);
+    setLastAnnouncedToken(targetToken.tokenNumber);
+    onShowToast?.(`Calling next patient: ${targetToken.tokenNumber} (${targetToken.patientName})`);
+  };
+
+  const handleAnnounceChime = (token: TokenQueueItem) => {
+    setLastAnnouncedToken(token.tokenNumber);
+    onShowToast?.(`📢 Audio broadcast chime: Token ${token.tokenNumber} - ${token.patientName}, please proceed to ${doctors.find((d) => d.id === token.doctorId)?.roomNumber || 'Cabin 101'}.`);
   };
 
   const renderTokenCard = (token: TokenQueueItem, isOnline: boolean) => {
@@ -62,130 +82,150 @@ export const TokenManagement: React.FC = () => {
     return (
       <div
         key={token.id}
-        className={`p-5 rounded-3xl border transition-all duration-200 shadow-xs space-y-4 relative ${
+        className={`p-4 sm:p-5 rounded-3xl border transition-all duration-200 shadow-2xs space-y-3.5 relative ${
           isConsulting
-            ? 'bg-gradient-to-br from-amber-50/90 to-amber-100/60 border-amber-300 ring-2 ring-amber-400/40'
-            : 'bg-white hover:bg-slate-50/70 border-slate-200/90 hover:border-teal-300/80 hover:shadow-md'
+            ? 'bg-gradient-to-br from-teal-50/90 via-white to-teal-50/50 border-teal-300 ring-2 ring-teal-500/20 shadow-md'
+            : 'bg-white hover:bg-slate-50/70 border-slate-200/90 hover:border-teal-300/80 hover:shadow-xs'
         }`}
       >
-        {/* Top Card Bar: Token Badge & Status Indicator */}
+        {/* Top Card Bar */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <span
-              className={`px-3.5 py-1.5 rounded-2xl font-mono text-xs font-black shadow-2xs ${
+              className={`px-3 py-1 rounded-xl font-mono text-xs font-black shadow-2xs ${
                 isOnline
-                  ? 'bg-teal-50 text-[#0B5A54] border border-teal-200/90'
-                  : 'bg-amber-50 text-amber-900 border border-amber-200/90'
+                  ? 'bg-teal-50 text-[#0B5A54] border border-teal-200'
+                  : 'bg-amber-50 text-amber-900 border border-amber-200'
               }`}
             >
               {token.tokenNumber}
             </span>
             <span
-              className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+              className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                 isOnline
-                  ? 'bg-teal-100/60 text-[#0B5A54] border-teal-200'
-                  : 'bg-amber-100/60 text-amber-800 border-amber-200'
+                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                  : 'bg-sky-50 text-sky-700 border-sky-200'
               }`}
             >
-              {isOnline ? '📱 Online App' : '🏢 Offline Walk-In'}
+              {isOnline ? 'Mobile App' : 'Walk-In'}
             </span>
           </div>
 
-          {/* Status Badge */}
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-extrabold border shadow-2xs ${
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
               isConsulting
-                ? 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse'
-                : 'bg-sky-50 text-sky-900 border-sky-200'
+                ? 'bg-teal-100 text-[#0B5A54] border-teal-300 animate-pulse'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
             }`}
           >
-            {isConsulting && <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />}
-            <span>{isConsulting ? 'In Consultation' : 'Waiting in Queue'}</span>
+            {isConsulting ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-ping" />
+                In Consultation
+              </>
+            ) : (
+              'Waiting in Queue'
+            )}
           </span>
         </div>
 
-        {/* Patient Profile Details */}
-        <div className="flex items-start gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+        {/* Patient Profile */}
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-800 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0 font-heading">
             {token.patientName.charAt(0)}
           </div>
 
-          <div className="flex-1 space-y-1">
+          <div className="flex-1 min-w-0 space-y-0.5">
             <div className="flex items-center justify-between gap-2">
-              <h4 className="font-black text-slate-900 text-sm">{token.patientName}</h4>
+              <h4 className="font-black text-slate-900 text-xs sm:text-sm truncate">
+                {token.patientName}
+              </h4>
               {token.age && (
-                <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {token.age} yrs
+                <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded shrink-0">
+                  {token.age}y
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold">
-              <span className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-semibold">
+              <span className="flex items-center gap-1 font-mono">
                 <Phone className="w-3 h-3 text-slate-400" />
-                <span className="font-mono text-slate-600">{token.patientPhone}</span>
+                {token.patientPhone}
               </span>
               {token.bloodGroup && (
-                <span className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md">
+                <span className="text-[9.5px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-1.5 rounded">
                   {token.bloodGroup}
                 </span>
               )}
             </div>
 
             {token.healthIssue && (
-              <div className="text-[11px] font-medium text-slate-600 italic bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200/70 mt-1">
-                Symptoms: {token.healthIssue}
-              </div>
+              <p className="text-[11px] text-slate-600 italic truncate mt-0.5">
+                Note: {token.healthIssue}
+              </p>
             )}
           </div>
         </div>
 
         {/* Doctor & Location Info */}
-        <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-700">
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center gap-1.5 min-w-0">
             <Stethoscope className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
-            <div className="truncate">
-              <span className="font-bold text-slate-900 block truncate">{token.doctorName}</span>
-              <span className="text-[10px] text-[#0B5A54] font-semibold block truncate">{token.doctorSpecialty}</span>
-            </div>
+            <span className="font-bold text-slate-800 truncate text-[11px]">
+              {token.doctorName}
+            </span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <div className="truncate">
-              <span className="font-bold text-slate-800 block truncate">{token.timeSlot}</span>
-              <span className="text-[10px] text-slate-400 font-semibold block truncate">{doc?.roomNumber || 'Cabin 101'}</span>
-            </div>
+          <div className="flex items-center gap-1.5 shrink-0 text-slate-500 text-[11px]">
+            <Clock className="w-3 h-3 text-slate-400" />
+            <span className="font-mono">{token.timeSlot}</span>
           </div>
         </div>
 
-        {/* Action Buttons: Cancel, Call Patient, Mark Completed */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-          <button
-            onClick={() => updateTokenStatus(token.id, 'Cancelled')}
-            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors cursor-pointer"
-            title="Cancel Appointment"
-          >
-            Cancel
-          </button>
+        {/* Action Controls */}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleAnnounceChime(token)}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              title="Broadcast Audio Chime for this patient"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={() => {
+                updateTokenStatus(token.id, 'Cancelled');
+                onShowToast?.(`Token ${token.tokenNumber} cancelled.`);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] border border-rose-200 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             {!isConsulting ? (
               <button
-                onClick={() => updateTokenStatus(token.id, 'In Consultation')}
-                className="px-4 py-2 bg-gradient-to-r from-[#0B5A54] to-teal-700 hover:from-[#084540] hover:to-[#0B5A54] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1.5"
+                onClick={() => {
+                  updateTokenStatus(token.id, 'In Consultation');
+                  onShowToast?.(`Token ${token.tokenNumber} admitted to ${doc?.roomNumber || 'Cabin'}.`);
+                }}
+                className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1"
               >
-                <UserCheck className="w-3.5 h-3.5 text-teal-200" />
+                <UserCheck className="w-3.5 h-3.5" />
                 <span>Call Patient</span>
-                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             ) : (
               <button
-                onClick={() => updateTokenStatus(token.id, 'Completed')}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1.5"
+                onClick={() => {
+                  updateTokenStatus(token.id, 'Completed');
+                  onShowToast?.(`Token ${token.tokenNumber} marked as completed.`);
+                }}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                <span>Mark Completed</span>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Complete</span>
               </button>
             )}
           </div>
@@ -195,170 +235,205 @@ export const TokenManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-16 text-left max-w-[1600px] mx-auto px-1 sm:px-2">
-      {/* EXECUTIVE CONTROL HERO BANNER */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-800 to-[#084540] rounded-3xl p-7 sm:p-8 text-white shadow-xl shadow-teal-950/10 border border-teal-700/50">
-        {/* Background Blur Shapes */}
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute right-48 -bottom-16 w-56 h-56 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold tracking-wider text-teal-100 uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-              <span>Live Dual-Queue Controller</span>
+    <div className="space-y-6 pb-12 text-left">
+      {/* ══════════════════════════════════════════════════════════════════
+          1. LIVE TOKEN COMMAND DECK & AUDIO CALL BROADCASTER
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center shadow-xs">
+                <Ticket className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                  Live OPD Queue & Token Desk
+                </h1>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">
+                  Synchronized live arrival tokens with split online vs offline lanes and broadcast summons.
+                </p>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-white flex items-center gap-2.5">
-              <Ticket className="w-7 h-7 text-teal-200" />
-              <span>Live Token Queue Management</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-teal-100/90 font-medium leading-relaxed">
-              Separated 2-column live queue for Online Patient App tokens and Offline Walk-In registrations.
-            </p>
           </div>
 
-          {/* Active Call Control Box */}
-          <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 flex items-center gap-5 shrink-0">
-            <div>
-              <span className="text-[10px] font-black uppercase text-teal-200 tracking-wider block">Current Active Call</span>
-              <div className="text-2xl font-black font-mono text-white mt-0.5">
-                {activeInConsultation ? activeInConsultation.tokenNumber : 'No Token Called'}
-              </div>
-              <p className="text-xs text-teal-100 truncate mt-0.5 font-medium max-w-[180px]">
-                {activeInConsultation
-                  ? `${activeInConsultation.patientName} (${activeInConsultation.doctorName})`
-                  : `${waitingCount} Patients Waiting`}
-              </p>
-            </div>
+          {/* Top Actions */}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => handleCallNext(selectedDoctorFilter === 'ALL' ? undefined : selectedDoctorFilter)}
+              disabled={waitingTokens.length === 0}
+              className="px-5 py-3 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Volume2 className="w-4 h-4 text-teal-200 stroke-[2.5]" />
+              <span>Call Next Token</span>
+            </button>
 
             <button
-              onClick={handleCallNext}
-              disabled={waitingCount === 0}
-              className="px-5 py-3.5 bg-white text-[#0B5A54] hover:bg-teal-50 font-black rounded-2xl shadow-lg transition-all flex items-center gap-2 text-xs uppercase tracking-wider disabled:opacity-50 cursor-pointer hover:scale-[1.02] shrink-0"
+              onClick={onOpenNewAppointment}
+              className="px-5 py-3 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
             >
-              <Volume2 className="w-4 h-4 text-[#0B5A54]" />
-              <span>Call Next</span>
+              <UserPlus className="w-4 h-4 text-slate-900 stroke-[2.5]" />
+              <span>+ Walk-In</span>
             </button>
           </div>
         </div>
-      </div>
 
-      {/* FILTER AND SEARCH TOOLBAR */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Search Bar */}
-          <div className="relative flex-1">
-            <Search className="w-5 h-5 text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
-            <input
-              type="text"
-              placeholder="Search by Token # (#TOK-001), Patient Name, Phone, or Ticket..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs"
-            />
+        {/* Currently Calling Banner */}
+        {currentlyInConsultation.length > 0 && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-teal-500/5 border border-teal-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping shrink-0" />
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#0B5A54] block">
+                  Now In Consultation
+                </span>
+                <div className="flex items-center gap-2 font-bold text-xs text-slate-800 mt-0.5">
+                  {currentlyInConsultation.map((c) => (
+                    <span
+                      key={c.id}
+                      className="bg-white px-2.5 py-1 rounded-xl border border-teal-200 font-mono shadow-2xs"
+                    >
+                      <strong className="text-[#0B5A54]">{c.tokenNumber}</strong>: {c.patientName} ({c.doctorName})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {lastAnnouncedToken && (
+              <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-3 py-1 rounded-xl border border-slate-200">
+                Last Summoned: <span className="font-mono text-[#0B5A54]">{lastAnnouncedToken}</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">
+              Doctor Filter:
+            </span>
+            <button
+              onClick={() => setSelectedDoctorFilter('ALL')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedDoctorFilter === 'ALL'
+                  ? 'bg-[#0B5A54] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              All Physicians ({doctors.length})
+            </button>
+
+            {doctors.map((doc) => (
+              <button
+                key={doc.id}
+                onClick={() => setSelectedDoctorFilter(doc.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  selectedDoctorFilter === doc.id
+                    ? 'bg-[#0B5A54] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {doc.name.replace('Dr. ', '')}
+              </button>
+            ))}
           </div>
 
-          {/* Doctor Filter Dropdown */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700">
-              <Stethoscope className="w-4 h-4 text-[#0B5A54]" />
-              <select
-                value={selectedDoctorFilter}
-                onChange={(e) => setSelectedDoctorFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold focus:outline-none text-slate-900 cursor-pointer pr-1"
-              >
-                <option value="ALL">All Doctors Queue</option>
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.specialty})
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Search Input */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search token # or patient..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
+            />
           </div>
         </div>
       </div>
 
-      {/* TWO-COLUMN DUAL QUEUE BOARD: ONLINE VS OFFLINE */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* COLUMN 1: ONLINE APP TOKENS QUEUE */}
+      {/* ══════════════════════════════════════════════════════════════════
+          2. SPLIT LIVE LANES: ONLINE APP TOKENS VS OFFLINE WALK-INS
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Lane 1: Online App Tokens */}
         <div className="space-y-4">
-          {/* Column Header */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="bg-purple-50/80 border border-purple-200/80 rounded-3xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54] shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-2xs">
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-black text-slate-900 font-heading">
-                  Online App Queue ({onlineQueue.length})
+                <h3 className="text-base font-black text-purple-950 font-heading">
+                  Online App Queue
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">Booked via Patient Mobile App</p>
+                <p className="text-xs text-purple-800 font-medium">
+                  Pre-scheduled digital appointments via CarePulse Patient App.
+                </p>
               </div>
             </div>
 
-            <span className="px-3 py-1 bg-teal-50 text-[#0B5A54] border border-teal-200 font-extrabold text-xs rounded-full">
-              {onlineQueue.filter((t) => t.status === 'Waiting').length} Waiting
+            <span className="px-3 py-1 bg-white text-purple-900 font-mono font-black text-xs rounded-full border border-purple-200 shadow-2xs">
+              {onlineQueue.length} Active
             </span>
           </div>
 
-          {/* Tokens List */}
-          <div className="space-y-4">
-            {onlineQueue.length === 0 ? (
-              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#0B5A54] mx-auto">
-                  <Smartphone className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-extrabold text-slate-900">No Online Tokens in Queue</h4>
-                <p className="text-xs text-slate-400 font-medium">
-                  Completed tokens are automatically removed from the live queue.
-                </p>
-              </div>
-            ) : (
-              onlineQueue.map((token) => renderTokenCard(token, true))
-            )}
-          </div>
+          {onlineQueue.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="text-xs font-bold text-slate-600">No active online app tokens in queue.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {onlineQueue.map((item) => renderTokenCard(item, true))}
+            </div>
+          )}
         </div>
 
-        {/* COLUMN 2: OFFLINE WALK-IN TOKENS QUEUE */}
+        {/* Lane 2: Offline Walk-In Registrations */}
         <div className="space-y-4">
-          {/* Column Header */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
+          <div className="bg-amber-50/80 border border-amber-200/80 rounded-3xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-900 shrink-0">
-                <UserPlus className="w-5 h-5 text-amber-800" />
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-2xs">
+                <UserPlus className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-black text-slate-900 font-heading">
-                  Offline Walk-In Queue ({offlineQueue.length})
+                <h3 className="text-base font-black text-amber-950 font-heading">
+                  Offline Walk-In Desk Queue
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">Registered at Reception Desk</p>
+                <p className="text-xs text-amber-800 font-medium">
+                  Same-day OPD arrivals registered in-person at the front desk.
+                </p>
               </div>
             </div>
 
-            <span className="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 font-extrabold text-xs rounded-full">
-              {offlineQueue.filter((t) => t.status === 'Waiting').length} Waiting
+            <span className="px-3 py-1 bg-white text-amber-900 font-mono font-black text-xs rounded-full border border-amber-200 shadow-2xs">
+              {offlineQueue.length} Active
             </span>
           </div>
 
-          {/* Tokens List */}
-          <div className="space-y-4">
-            {offlineQueue.length === 0 ? (
-              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-800 mx-auto">
-                  <UserPlus className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-extrabold text-slate-900">No Offline Tokens in Queue</h4>
-                <p className="text-xs text-slate-400 font-medium">
-                  Completed walk-in tokens are automatically removed from the live queue.
-                </p>
-              </div>
-            ) : (
-              offlineQueue.map((token) => renderTokenCard(token, false))
-            )}
-          </div>
+          {offlineQueue.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="text-xs font-bold text-slate-600">No active walk-in tokens in queue.</p>
+              <button
+                onClick={onOpenNewAppointment}
+                className="text-xs font-bold text-[#0B5A54] hover:underline"
+              >
+                + Register Walk-In Patient
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {offlineQueue.map((item) => renderTokenCard(item, false))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+export default TokenManagement;
