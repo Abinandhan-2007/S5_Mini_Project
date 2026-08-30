@@ -147,6 +147,21 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$f9/0Pl29WdC5h04ghyMPUeNzsgWGhoXXZWpjiKVx0Bea3VrxDQxum",
       "auth_provider": "local"
+    },
+    {
+      "id": "74ecb83b-7eb9-4155-bca2-e4c7e0bbe946",
+      "patient_code": "PAT-000011",
+      "patientCode": "PAT-000011",
+      "full_name": "Test Patient 52bdde77",
+      "email": "test_pat_52bdde77@example.com",
+      "phone": "+91 99999 52bdd",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$UcRRDAk5j8MhI5L3BU7FVO3xFII0zwMU.rh480TaLvG4ZSgK/uR6a",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -1206,6 +1221,20 @@
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
       "hospital_id": null,
       "hospitalId": null
+    },
+    {
+      "id": "rec-b32f1ea1",
+      "staff_code": "REC-0005",
+      "staffCode": "REC-0005",
+      "name": "Receptionist 52bdde77",
+      "email": "rec_52bdde77@carepulse.com",
+      "password": "$2b$12$zhBETuRAFCKt6vVfYiCdYeQa0Aq9Dy7ievJO8h9dGX2vvNjJE26Pu",
+      "password_hash": "$2b$12$zhBETuRAFCKt6vVfYiCdYeQa0Aq9Dy7ievJO8h9dGX2vvNjJE26Pu",
+      "role": "receptionist",
+      "department": "Front Desk A",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": null,
+      "hospitalId": null
     }
   ],
   "hospital_settings": {
@@ -1305,6 +1334,21 @@
       "staffCode": "REC-0004",
       "name": "Receptionist ed12aafc",
       "email": "rec_ed12aafc@carepulse.com",
+      "phone": "+91 98888 11111",
+      "department": "Front Desk A",
+      "deskNumber": "Desk A-1",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 2,
+      "joinDate": "2026-08-17"
+    },
+    {
+      "id": "rec-b32f1ea1",
+      "staff_code": "REC-0005",
+      "staffCode": "REC-0005",
+      "name": "Receptionist 52bdde77",
+      "email": "rec_52bdde77@carepulse.com",
       "phone": "+91 98888 11111",
       "department": "Front Desk A",
       "deskNumber": "Desk A-1",
