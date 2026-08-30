@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Activity, Users, Clock, CheckCircle2, Calendar,
-  ChevronRight, LogOut, Stethoscope, Bell, User,
+  LogOut, Stethoscope, Bell, User,
   ClipboardList, TrendingUp, AlertCircle
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
@@ -33,6 +33,7 @@ export const DoctorDashboard: React.FC = () => {
   const logoutStaff  = useStaffStore((s) => s.logoutStaff);
   const rawTokens    = useStaffStore((s) => s.tokens);
   const fetchTokens  = useStaffStore((s) => s.fetchTokens);
+  const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const navigate     = useNavigate();
   const [activeFilter, setActiveFilter] = useState<string>('All');
 
@@ -253,8 +254,25 @@ export const DoctorDashboard: React.FC = () => {
                     <span>{cfg.label}</span>
                   </span>
 
-                  {/* Chevron */}
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0B5A54] shrink-0 transition-colors" />
+                  {/* Doctor Action Button */}
+                  {patient.status === 'In Consultation' && (
+                    <button
+                      onClick={() => updateTokenStatus(patient.id, 'Completed')}
+                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95 shrink-0"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Finish & Complete</span>
+                    </button>
+                  )}
+
+                  {patient.status === 'Waiting' && (
+                    <button
+                      onClick={() => updateTokenStatus(patient.id, 'In Consultation')}
+                      className="px-3 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95 shrink-0"
+                    >
+                      <span>Call Into Cabin</span>
+                    </button>
+                  )}
                 </motion.div>
               );
             })}

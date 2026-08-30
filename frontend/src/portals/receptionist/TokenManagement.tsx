@@ -3,7 +3,6 @@ import {
   Ticket,
   Clock,
   Search,
-  Volume2,
   Smartphone,
   UserPlus,
   CheckCircle2,
@@ -13,12 +12,10 @@ import {
   Users,
   Layers,
   Check,
-  Radio,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
-  Lock,
-  Ban,
+  AlertTriangle,
+  Building2,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { TokenQueueItem } from '../../types/receptionist';
@@ -88,7 +85,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 }) => {
   const tokens = useStaffStore((s) => s.tokens);
   const doctors = useStaffStore((s) => s.doctors);
-  const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const updateSlotCapacity = useStaffStore((s) => s.updateSlotCapacity);
 
@@ -97,7 +93,8 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Waiting' | 'In Consultation' | 'Completed'>('ALL');
-  const [lastAnnouncedToken, setLastAnnouncedToken] = useState<string | null>(null);
+  const [showSlotToggleConfirm, setShowSlotToggleConfirm] = useState(false);
+  const [tokenToCancel, setTokenToCancel] = useState<TokenQueueItem | null>(null);
 
   // Horizontal scroll refs for slick navigation
   const doctorScrollRef = useRef<HTMLDivElement>(null);
@@ -255,15 +252,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   const onlineBookedPatients = useMemo(() => filteredTokens.filter(isOnlineToken), [filteredTokens]);
   const offlineBookedPatients = useMemo(() => filteredTokens.filter((t) => !isOnlineToken(t)), [filteredTokens]);
 
-  // Active in consultation list
-  const currentlyInConsultation = useMemo(() => {
-    return tokens.filter((t) => {
-      const matchesDoc = selectedDoctorId === 'ALL' || t.doctorId === selectedDoctorId;
-      const matchesSlot = selectedTimeSlot === 'ALL' || isSlotMatching(t.timeSlot, selectedTimeSlot);
-      return t.status === 'In Consultation' && matchesDoc && matchesSlot;
-    });
-  }, [tokens, selectedDoctorId, selectedTimeSlot]);
-
   // Waiting tokens in view
   const waitingTokensInView = useMemo(() => {
     return filteredTokens.filter((t) => t.status === 'Waiting');
@@ -287,13 +275,17 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     );
   }, [selectedTimeSlot, selectedDoctorId, activeDoctor, doctors]);
 
-  // Handler to Block / Unblock the current active slot timing
-  const handleToggleBlockCurrentSlot = async () => {
+  // Handler to prompt warning before toggling slot availability
+  const handleToggleBlockCurrentSlot = () => {
     if (selectedTimeSlot === 'ALL') {
-      onShowToast?.('Please select a specific time slot first to Block or Unblock it.');
+      onShowToast?.('Please select a specific time slot first to toggle availability.');
       return;
     }
+    setShowSlotToggleConfirm(true);
+  };
 
+  // Execution handler called after confirming the warning modal
+  const executeToggleBlockCurrentSlot = async () => {
     const nextAvail = isCurrentSlotBlocked; // toggling: if currently blocked (true), next state is available (true)
 
     if (selectedDoctorId !== 'ALL' && activeDoctor) {
@@ -302,8 +294,8 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       await updateSlotCapacity(activeDoctor.id, selectedTimeSlot, maxSeats, nextAvail);
       onShowToast?.(
         nextAvail
-          ? `🟢 Slot "${selectedTimeSlot}" is UNBLOCKED and visible in Patient App.`
-          : `🚫 Slot "${selectedTimeSlot}" is now BLOCKED and hidden from Patient App.`
+          ? `🟢 Slot "${selectedTimeSlot}" is now marked as Available.`
+          : `🔴 Slot "${selectedTimeSlot}" is now marked as Not Available.`
       );
     } else {
       for (const doc of doctors) {
@@ -314,46 +306,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       }
       onShowToast?.(
         nextAvail
-          ? `🟢 Slot "${selectedTimeSlot}" is UNBLOCKED for all doctors.`
-          : `🚫 Slot "${selectedTimeSlot}" is now BLOCKED for all doctors and hidden from Patient App.`
+          ? `🟢 Slot "${selectedTimeSlot}" is now marked as Available for all doctors.`
+          : `🔴 Slot "${selectedTimeSlot}" is now marked as Not Available for all doctors.`
       );
     }
-  };
-
-  // Call Next Token handler
-  const handleCallNext = async (doctorId?: string) => {
-    const targetToken = doctorId
-      ? waitingTokensInView.find((t) => t.doctorId === doctorId)
-      : waitingTokensInView[0];
-
-    if (!targetToken) {
-      onShowToast?.('No waiting patients found in this queue selection.');
-      return;
-    }
-
-    await callNextToken(doctorId);
-    setLastAnnouncedToken(targetToken.tokenNumber);
-    playHospitalChime();
-
-    const doc = doctors.find((d) => d.id === targetToken.doctorId);
-    const room = doc?.roomNumber || 'Consultation Cabin';
-    const speechText = `Token ${targetToken.tokenNumber.replace('#', '')}. ${targetToken.patientName}. Please proceed to ${room}.`;
-    speakAnnouncement(speechText);
-
-    onShowToast?.(`📢 Calling next: ${targetToken.tokenNumber} (${targetToken.patientName}) -> ${room}`);
-  };
-
-  // Audio broadcast summons
-  const handleAnnounceChime = (token: TokenQueueItem) => {
-    setLastAnnouncedToken(token.tokenNumber);
-    playHospitalChime();
-
-    const doc = doctors.find((d) => d.id === token.doctorId);
-    const room = doc?.roomNumber || 'Consultation Cabin';
-    const speechText = `Attention please. Token ${token.tokenNumber.replace('#', '')}. ${token.patientName}. Please proceed to ${room}.`;
-    speakAnnouncement(speechText);
-
-    onShowToast?.(`📢 Audio broadcast summons: Token ${token.tokenNumber} (${token.patientName}) -> ${room}`);
   };
 
   // Render a Single Patient Card
@@ -365,14 +321,14 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     return (
       <div
         key={token.id}
-        className={`group p-4 sm:p-4.5 rounded-2xl border transition-all duration-200 relative shadow-2xs hover:shadow-sm ${
+        className={`group p-4 sm:p-4.5 rounded-2xl border border-slate-200/90 transition-all duration-200 relative shadow-2xs hover:shadow-sm ${
           isConsulting
-            ? 'bg-gradient-to-br from-teal-50/95 via-white to-emerald-50/60 border-teal-400 ring-2 ring-teal-500/20 shadow-teal-500/10'
+            ? 'bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/20'
             : isCompleted
-            ? 'bg-slate-50/80 border-slate-200/90 opacity-75'
+            ? 'bg-slate-50/80 opacity-75'
             : isOnline
-            ? 'bg-white hover:bg-purple-50/15 border-slate-200/90 hover:border-purple-300'
-            : 'bg-white hover:bg-amber-50/15 border-slate-200/90 hover:border-amber-300'
+            ? 'bg-white hover:bg-purple-50/15 hover:border-purple-200'
+            : 'bg-white hover:bg-amber-50/15 hover:border-amber-200'
         }`}
       >
         {/* Card Header Bar */}
@@ -402,14 +358,14 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-2.5 h-2.5 text-amber-600" />
+                  <Building2 className="w-2.5 h-2.5 text-amber-600" />
                   <span>Walk-In</span>
                 </>
               )}
             </span>
 
             {token.ticketNumber && (
-              <span className="text-[9.5px] font-mono text-slate-400 font-semibold">
+              <span className="px-1.5 py-0.5 rounded-md font-mono text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200/80">
                 {token.ticketNumber}
               </span>
             )}
@@ -419,7 +375,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           <span
             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border transition-all ${
               isConsulting
-                ? 'bg-teal-100 text-[#0B5A54] border-teal-300 animate-pulse'
+                ? 'bg-teal-100 text-[#0B5A54] border-teal-300'
                 : isCompleted
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -427,7 +383,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           >
             {isConsulting ? (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
                 <span>In Consultation</span>
               </>
             ) : isCompleted ? (
@@ -458,12 +414,20 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 
           <div className="flex-1 min-w-0 space-y-0.5">
             <div className="flex items-center justify-between gap-2">
-              <h4 className="font-black text-slate-900 text-xs sm:text-sm truncate group-hover:text-[#0B5A54] transition-colors">
-                {token.patientName}
-              </h4>
-              {token.age && (
-                <span className="text-[9.5px] font-extrabold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded shrink-0 border border-slate-200/80">
-                  {token.age}y
+              <div className="flex items-center gap-2 min-w-0">
+                <h4 className="font-black text-slate-900 text-xs sm:text-sm truncate group-hover:text-[#0B5A54] transition-colors">
+                  {token.patientName}
+                </h4>
+                {token.age && (
+                  <span className="text-[9.5px] font-extrabold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded shrink-0 border border-slate-200/80">
+                    {token.age}y
+                  </span>
+                )}
+              </div>
+
+              {token.arrivalTime && (
+                <span className="text-[10.5px] text-slate-500 font-semibold shrink-0">
+                  • Arrived: {token.arrivalTime}
                 </span>
               )}
             </div>
@@ -477,12 +441,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               {token.bloodGroup && (
                 <span className="text-[9.5px] font-black text-rose-700 bg-rose-50 border border-rose-200/80 px-1.5 rounded">
                   {token.bloodGroup}
-                </span>
-              )}
-
-              {token.arrivalTime && (
-                <span className="text-[10px] text-slate-400 font-normal">
-                  • Arrived: {token.arrivalTime}
                 </span>
               )}
             </div>
@@ -516,22 +474,11 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 
         {/* Card Actions */}
         <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => handleAnnounceChime(token)}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#0B5A54] text-slate-600 hover:text-white transition-all cursor-pointer shadow-2xs"
-              title="Broadcast Audio Chime & Summon Patient"
-            >
-              <Volume2 className="w-3.5 h-3.5" />
-            </button>
-
+          <div>
             {!isCompleted && (
               <button
-                onClick={() => {
-                  updateTokenStatus(token.id, 'Cancelled');
-                  onShowToast?.(`Token ${token.tokenNumber} cancelled.`);
-                }}
-                className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[10.5px] border border-rose-200 transition-all cursor-pointer"
+                onClick={() => setTokenToCancel(token)}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs border border-rose-200 shadow-2xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
               >
                 Cancel
               </button>
@@ -548,24 +495,17 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   speakAnnouncement(speechText);
                   onShowToast?.(`Token ${token.tokenNumber} admitted to ${doc?.roomNumber || 'Cabin'}.`);
                 }}
-                className="px-3 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-lg text-xs shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1"
+                className="px-3.5 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1"
               >
-                <UserCheck className="w-3 h-3" />
+                <UserCheck className="w-3.5 h-3.5" />
                 <span>Call Patient</span>
               </button>
             ) : isConsulting ? (
-              <button
-                onClick={() => {
-                  updateTokenStatus(token.id, 'Completed');
-                  onShowToast?.(`Token ${token.tokenNumber} marked as completed.`);
-                }}
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-xs shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1"
-              >
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Complete</span>
-              </button>
-            ) : (
               <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                In Session
+              </span>
+            ) : (
+              <span className="text-[10.5px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">
                 ✓ Finished
               </span>
             )}
@@ -587,76 +527,15 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               <Ticket className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
-                  Live Token & Slot Management Desk
-                </h1>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Sync
-                </span>
-              </div>
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
+                Live Token & Slot Management Desk
+              </h1>
               <p className="text-xs text-slate-500 font-medium hidden sm:block">
                 Synchronized live arrival tokens with split online vs offline lanes and broadcast summons.
               </p>
             </div>
           </div>
-
-          {/* Quick Actions */}
-          <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
-            <button
-              onClick={() => handleCallNext(selectedDoctorId === 'ALL' ? undefined : selectedDoctorId)}
-              disabled={waitingTokensInView.length === 0}
-              className="px-4 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Volume2 className="w-3.5 h-3.5 text-teal-200 stroke-[2.5]" />
-              <span>Call Next</span>
-            </button>
-
-            <button
-              onClick={onOpenNewAppointment}
-              className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
-            >
-              <UserPlus className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
-              <span>+ Walk-In</span>
-            </button>
-          </div>
         </div>
-
-        {/* ── Active Consultation Live Banner ── */}
-        {currentlyInConsultation.length > 0 && (
-          <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-teal-500/15 via-emerald-500/10 to-teal-500/10 border border-teal-300 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-              <div>
-                <span className="text-[9.5px] font-black uppercase tracking-wider text-[#0B5A54] block">
-                  Now In Consultation
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5 font-bold text-xs text-slate-800 mt-0.5">
-                  {currentlyInConsultation.map((c) => (
-                    <span
-                      key={c.id}
-                      className="bg-white px-2.5 py-1 rounded-lg border border-teal-200 font-mono shadow-2xs flex items-center gap-1"
-                    >
-                      <strong className="text-[#0B5A54] font-black">{c.tokenNumber}</strong>
-                      <span className="text-slate-700">{c.patientName}</span>
-                      <span className="text-slate-400 text-[10px]">({c.doctorName})</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {lastAnnouncedToken && (
-              <div className="flex items-center gap-1.5 bg-white/90 px-3 py-1 rounded-lg border border-teal-200/80 shadow-2xs text-[11px] font-bold text-slate-600">
-                <Radio className="w-3 h-3 text-[#0B5A54] animate-pulse" />
-                <span>
-                  Summoned: <strong className="font-mono text-[#0B5A54]">{lastAnnouncedToken}</strong>
-                </span>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ══════════════════════════════════════════════════════════════════
             2. DOCTOR SELECTIVITY FILTER ROW
@@ -880,7 +759,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                           '🚫 Blocked'
                         ) : hasActiveConsultation ? (
                           <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             <span>Active</span>
                           </>
                         ) : metrics.total > 0 ? (
@@ -965,20 +844,23 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
             ))}
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          {/* Premium Search Input */}
+          <div className="relative w-full sm:w-80 md:w-96 group">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-teal-50 text-[#0B5A54] flex items-center justify-center pointer-events-none group-focus-within:bg-[#0B5A54] group-focus-within:text-white transition-colors duration-200 shadow-2xs">
+              <Search className="w-3.5 h-3.5" />
+            </div>
             <input
               type="text"
-              placeholder="Search patient, phone, #TOK-001..."
+              placeholder="Search patient, phone, token (#TOK-001)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8.5 pr-7 py-1.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/30"
+              className="w-full pl-11 pr-9 py-2 bg-slate-50/80 hover:bg-white focus:bg-white border border-slate-200/90 focus:border-[#0B5A54] rounded-2xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-3 focus:ring-[#0B5A54]/15 shadow-2xs transition-all duration-200"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] font-black transition-all cursor-pointer hover:scale-110"
+                title="Clear search"
               >
                 ✕
               </button>
@@ -990,74 +872,85 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           5. CURRENT SELECTION OVERVIEW STRIP
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#0B5A54] to-slate-900 text-white rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-teal-300 shrink-0">
-            <Layers className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#0B5A54] shrink-0 shadow-2xs">
+            <Layers className="w-4.5 h-4.5 stroke-[2.2]" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 text-[10.5px]">
-              <span className="font-bold uppercase tracking-wider text-teal-300">Active View:</span>
-              <span className="text-white/80 font-semibold truncate">
+            <div className="flex items-center gap-1.5 text-[11px]">
+              <span className="font-extrabold uppercase tracking-wider text-[#0B5A54]">Active View:</span>
+              <span className="text-slate-600 font-bold truncate">
                 {activeDoctor ? activeDoctor.name : 'All Physicians'}
               </span>
             </div>
-            <h2 className="text-sm sm:text-base font-black text-white font-heading">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 font-heading tracking-tight">
               {selectedTimeSlot === 'ALL' ? 'All Scheduled Time Slots' : selectedTimeSlot}
             </h2>
           </div>
         </div>
 
         {/* Metrics Chips */}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <div className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/15">
-            <span className="text-white/60 font-medium">Total: </span>
-            <strong className="font-mono text-white font-black">{filteredTokens.length}</strong>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 shadow-2xs">
+            <span className="text-slate-400 font-bold text-[11px]">Total: </span>
+            <strong className="font-mono text-slate-900 font-black">{filteredTokens.length}</strong>
           </div>
-          <div className="px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-400/30 text-purple-200">
-            <span className="font-medium">📱 Online: </span>
-            <strong className="font-mono text-white font-black">{onlineBookedPatients.length}</strong>
+          <div className="px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200/80 text-purple-800 shadow-2xs">
+            <span className="font-bold text-[11px]">📱 Online: </span>
+            <strong className="font-mono text-purple-950 font-black">{onlineBookedPatients.length}</strong>
           </div>
-          <div className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/30 text-amber-200">
-            <span className="font-medium">🚶 Walk-In: </span>
-            <strong className="font-mono text-white font-black">{offlineBookedPatients.length}</strong>
+          <div className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 shadow-2xs">
+            <span className="font-bold text-[11px]">🚶 Walk-In: </span>
+            <strong className="font-mono text-amber-950 font-black">{offlineBookedPatients.length}</strong>
           </div>
-          <div className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-200">
-            <span className="font-medium">⏳ Waiting: </span>
-            <strong className="font-mono text-white font-black">{waitingTokensInView.length}</strong>
+          <div className="px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-800 shadow-2xs">
+            <span className="font-bold text-[11px]">⏳ Waiting: </span>
+            <strong className="font-mono text-teal-950 font-black">{waitingTokensInView.length}</strong>
           </div>
 
-          {/* Block / Unblock Action Button Next to Waiting */}
+          {/* Available / Not Available Toggle Button */}
           {selectedTimeSlot !== 'ALL' ? (
             <button
               onClick={handleToggleBlockCurrentSlot}
-              className={`px-3 py-1 rounded-lg font-black text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer hover:scale-105 active:scale-95 border ${
-                isCurrentSlotBlocked
-                  ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 ring-2 ring-rose-400/40 animate-pulse'
-                  : 'bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 hover:text-white border-rose-400/40'
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-95 border ${
+                !isCurrentSlotBlocked
+                  ? 'bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200'
+                  : 'bg-rose-50 hover:bg-rose-100/80 text-rose-800 border-rose-200'
               }`}
               title={
-                isCurrentSlotBlocked
-                  ? 'Slot is BLOCKED in Patient App. Click to unblock.'
-                  : 'Block this timing slot to hide it from the Patient Booking App.'
+                !isCurrentSlotBlocked
+                  ? 'Slot is Currently Available. Click to mark Not Available.'
+                  : 'Slot is Currently Not Available. Click to mark Available.'
               }
             >
-              {isCurrentSlotBlocked ? (
-                <>
-                  <Ban className="w-3.5 h-3.5 text-white" />
-                  <span>🚫 Blocked (Unblock)</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-rose-300" />
-                  <span>Block Slot</span>
-                </>
-              )}
+              <span className="flex items-center gap-1.5 text-[11px] font-bold">
+                <span className={`w-2 h-2 rounded-full ${!isCurrentSlotBlocked ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                {!isCurrentSlotBlocked ? 'Available' : 'Not Available'}
+              </span>
+
+              {/* Interactive Toggle Switch */}
+              <div
+                className={`w-7 h-4 rounded-full transition-colors relative flex items-center px-0.5 ${
+                  !isCurrentSlotBlocked ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+              >
+                <div
+                  className={`w-3 h-3 rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out transform ${
+                    !isCurrentSlotBlocked ? 'translate-x-3' : 'translate-x-0'
+                  }`}
+                />
+              </div>
             </button>
           ) : (
-            <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/40 text-[11px] font-medium hidden sm:flex items-center gap-1">
-              <Lock className="w-3 h-3 text-white/30" />
-              <span>Select slot to block</span>
+            <div
+              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-400 text-xs font-semibold hidden sm:flex items-center gap-2"
+              title="Select a specific time slot above to toggle availability"
+            >
+              <span className="text-[11px] font-semibold text-slate-400">Availability</span>
+              <div className="w-7 h-4 rounded-full bg-slate-200 relative flex items-center px-0.5 opacity-60">
+                <div className="w-3 h-3 rounded-full bg-white shadow-xs" />
+              </div>
             </div>
           )}
         </div>
@@ -1069,24 +962,14 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start w-full max-w-full">
         {/* ── COLUMN 1: ONLINE APP BOOKINGS (MOBILE APP QUEUE) ── */}
         <div className="space-y-3 w-full">
-          <div className="bg-gradient-to-r from-purple-50 via-indigo-50/50 to-purple-50 border border-purple-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                <Smartphone className="w-5 h-5" />
+          <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Smartphone className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm sm:text-base font-black text-purple-950 font-heading">
-                    Online App Bookings
-                  </h3>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9.5px] font-black bg-purple-200 text-purple-900 font-mono">
-                    50% Split
-                  </span>
-                </div>
-                <p className="text-[11px] text-purple-800/80 font-medium">
-                  Pre-scheduled digital appointments via CarePulse Patient App.
-                </p>
-              </div>
+              <h3 className="text-sm font-black text-purple-950 font-heading">
+                Online App Bookings
+              </h3>
             </div>
 
             <span className="px-2.5 py-1 bg-white text-purple-950 font-mono font-black text-xs rounded-xl border border-purple-200 shadow-2xs shrink-0">
@@ -1118,40 +1001,26 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 
         {/* ── COLUMN 2: OFFLINE WALK-IN DESK REGISTRATIONS ── */}
         <div className="space-y-3 w-full">
-          <div className="bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 border border-amber-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs shrink-0">
-                <UserPlus className="w-5 h-5" />
+          <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Building2 className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm sm:text-base font-black text-amber-950 font-heading">
-                    Offline Walk-In Desk Queue
-                  </h3>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9.5px] font-black bg-amber-200 text-amber-900 font-mono">
-                    50% Split
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-800/80 font-medium">
-                  Same-day OPD arrivals registered in-person at front desk.
-                </p>
-              </div>
+              <h3 className="text-sm font-black text-amber-950 font-heading">
+                Offline Walk-In Desk Queue
+              </h3>
             </div>
 
-            <button
-              onClick={onOpenNewAppointment}
-              className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-950 font-extrabold text-xs rounded-xl border border-amber-300 shadow-2xs transition-all cursor-pointer flex items-center gap-1 shrink-0"
-            >
-              <Sparkles className="w-3 h-3 text-amber-600" />
-              <span>+ Walk-In</span>
-            </button>
+            <span className="px-2.5 py-1 bg-white text-amber-950 font-mono font-black text-xs rounded-xl border border-amber-200 shadow-2xs shrink-0">
+              {offlineBookedPatients.length} Active
+            </span>
           </div>
 
           {/* List of Offline Walk-In Patients */}
           {offlineBookedPatients.length === 0 ? (
             <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-amber-200 space-y-2 shadow-2xs">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 mx-auto flex items-center justify-center">
-                <UserPlus className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+                <Building2 className="w-5 h-5" />
               </div>
               <div>
                 <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Walk-In Patients</h4>
@@ -1165,7 +1034,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 onClick={onOpenNewAppointment}
                 className="mt-1.5 inline-flex items-center gap-1 px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-lg text-xs shadow-2xs transition-all hover:scale-105 cursor-pointer"
               >
-                <UserPlus className="w-3 h-3" />
+                <Building2 className="w-3 h-3" />
                 <span>Register Walk-In Patient</span>
               </button>
             </div>
@@ -1176,6 +1045,132 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           )}
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          7. SLOT AVAILABILITY TOGGLE WARNING MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {showSlotToggleConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
+            <div
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-xs border ${
+                !isCurrentSlotBlocked
+                  ? 'bg-rose-50 border-rose-200/80 text-rose-600'
+                  : 'bg-emerald-50 border-emerald-200/80 text-emerald-600'
+              }`}
+            >
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                {!isCurrentSlotBlocked ? 'Mark Slot as Not Available?' : 'Make Slot Available?'}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                You are about to mark timing slot <strong className="text-slate-900 font-extrabold">{selectedTimeSlot}</strong> {activeDoctor ? `for ${activeDoctor.name}` : 'for all doctors'} as{' '}
+                <span className={`font-black ${!isCurrentSlotBlocked ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {!isCurrentSlotBlocked ? 'NOT AVAILABLE' : 'AVAILABLE'}
+                </span>.
+              </p>
+              {!isCurrentSlotBlocked ? (
+                <p className="text-[11px] text-rose-600 font-semibold bg-rose-50/80 p-2.5 rounded-xl border border-rose-200/60">
+                  ⚠️ Patients will not be able to book appointments for this time slot on the mobile app.
+                </p>
+              ) : (
+                <p className="text-[11px] text-emerald-700 font-semibold bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200/60">
+                  ✓ Patients will immediately be able to book appointments for this slot on the mobile app.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowSlotToggleConfirm(false)}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowSlotToggleConfirm(false);
+                  await executeToggleBlockCurrentSlot();
+                }}
+                className={`w-full py-3 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95 ${
+                  !isCurrentSlotBlocked
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-[#0B5A54] hover:bg-[#084540]'
+                }`}
+              >
+                Confirm {!isCurrentSlotBlocked ? 'Not Available' : 'Available'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          8. TOKEN CANCELLATION WARNING MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {tokenToCancel && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                Cancel Token Appointment?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Are you sure you want to cancel token <strong className="text-slate-900 font-extrabold">{tokenToCancel.tokenNumber}</strong> for <strong className="text-slate-900 font-extrabold">{tokenToCancel.patientName}</strong>?
+              </p>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-left text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-700">
+                  <span className="text-slate-500 font-medium">Doctor:</span>
+                  <span className="font-bold">{tokenToCancel.doctorName}</span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span className="text-slate-500 font-medium">Time Slot:</span>
+                  <span className="font-bold font-mono">{tokenToCancel.timeSlot}</span>
+                </div>
+                {tokenToCancel.ticketNumber && (
+                  <div className="flex justify-between text-slate-700">
+                    <span className="text-slate-500 font-medium">Ticket ID:</span>
+                    <span className="font-bold font-mono text-slate-900">{tokenToCancel.ticketNumber}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-rose-600 font-semibold bg-rose-50/80 p-2.5 rounded-xl border border-rose-200/60">
+                ⚠️ This patient will be removed from the active queue. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setTokenToCancel(null)}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition-all cursor-pointer"
+              >
+                Keep Token
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateTokenStatus(tokenToCancel.id, 'Cancelled');
+                  onShowToast?.(`🔴 Token ${tokenToCancel.tokenNumber} cancelled.`);
+                  setTokenToCancel(null);
+                }}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
+              >
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,12 +13,10 @@ import {
   Activity,
   Menu,
   X,
-  CheckCircle2,
   ChevronDown,
-  Plus,
-  Volume2,
-  ShieldCheck,
   UserPlus,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
@@ -27,9 +25,9 @@ import { PatientCheckIn } from './PatientCheckIn';
 import { DoctorManagement } from './DoctorManagement';
 import { TokenManagement } from './TokenManagement';
 import { ReceptionistProfile } from './ReceptionistProfile';
+import { ReceptionistNotifications } from './ReceptionistNotifications';
 import { NewAppointmentModal } from './NewAppointmentModal';
 import { usePolling } from '../../lib/usePolling';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 
 export type ReceptionistTab =
   | 'dashboard'
@@ -38,6 +36,7 @@ export type ReceptionistTab =
   | 'doctors'
   | 'tokens'
   | 'queue'
+  | 'notifications'
   | 'profile';
 
 interface NavSection {
@@ -55,10 +54,12 @@ export const ReceptionistLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ReceptionistTab>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState<string>('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -70,12 +71,27 @@ export const ReceptionistLayout: React.FC = () => {
   const tokens = useStaffStore((s) => s.tokens);
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
-  const callNextToken = useStaffStore((s) => s.callNextToken);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
+  // Real-time live date & time clock
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
+      setCurrentDate(
+        now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+      );
+    };
+    updateDateTime();
+    const timer = setInterval(updateDateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Automatic robust background polling for receptionist token queue & doctors
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  usePolling(
     async () => {
       await Promise.all([
         fetchTokens(undefined, true),
@@ -88,9 +104,29 @@ export const ReceptionistLayout: React.FC = () => {
     }
   );
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+  // Global search filtering across tokens and doctors
+  const filteredSearchResults = useMemo(() => {
+    const q = globalSearch.trim().toLowerCase();
+    if (!q) return { tokens: [], doctors: [] };
+    return {
+      tokens: tokens.filter(
+        (t) =>
+          t.tokenNumber?.toLowerCase().includes(q) ||
+          t.patientName?.toLowerCase().includes(q) ||
+          t.patientPhone?.toLowerCase().includes(q) ||
+          t.doctorName?.toLowerCase().includes(q)
+      ).slice(0, 4),
+      doctors: doctors.filter(
+        (d) =>
+          d.name?.toLowerCase().includes(q) ||
+          d.specialty?.toLowerCase().includes(q) ||
+          d.roomNumber?.toLowerCase().includes(q)
+      ).slice(0, 3),
+    };
+  }, [globalSearch, tokens, doctors]);
+
+  const showToast = (_msg?: string) => {
+    // Floating toast popup disabled per design directive
   };
 
   const handleLogout = () => {
@@ -105,16 +141,6 @@ export const ReceptionistLayout: React.FC = () => {
       setActiveTab(tab as ReceptionistTab);
     }
     setIsMobileSidebarOpen(false);
-  };
-
-  const handleQuickCallNext = async () => {
-    const waitingTokens = tokens.filter((t) => t.status === 'Waiting');
-    if (waitingTokens.length === 0) {
-      showToast('No patients currently waiting in queue.');
-      return;
-    }
-    await callNextToken();
-    showToast(`Calling next token: ${waitingTokens[0].tokenNumber} (${waitingTokens[0].patientName})`);
   };
 
   // Close dropdowns on outside click
@@ -168,15 +194,23 @@ export const ReceptionistLayout: React.FC = () => {
           id: 'doctors',
           label: 'Doctors & Slot Capacity',
           icon: Stethoscope,
-          badge: activeDoctorsCount > 0 ? `${activeDoctorsCount} On-Duty` : undefined,
-          badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         },
         {
           id: 'tokens',
           label: 'Token Management',
           icon: Ticket,
-          badge: waitingCount > 0 ? `${waitingCount} Waiting` : undefined,
-          badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+        },
+      ],
+    },
+    {
+      groupTitle: 'COMMUNICATION & ALERTS',
+      items: [
+        {
+          id: 'notifications',
+          label: 'Notifications & Alerts',
+          icon: Bell,
+          badge: '3 New',
+          badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
         },
       ],
     },
@@ -217,6 +251,11 @@ export const ReceptionistLayout: React.FC = () => {
           title: 'Token & Slot Management Desk',
           breadcrumb: 'Front Desk / Time Slots & Live Token Queue',
         };
+      case 'notifications':
+        return {
+          title: 'Desk Notifications & Clinical Alerts',
+          breadcrumb: 'Front Desk / Alerts & Announcements',
+        };
       case 'profile':
         return {
           title: 'Desk Settings & Receptionist Profile',
@@ -234,14 +273,6 @@ export const ReceptionistLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFB] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white w-full max-w-full overflow-x-hidden">
-      {/* ── Toast Feedback Notification ── */}
-      {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#0B5A54] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-400/30 flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-300 font-bold text-xs">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════════════════
           PERSISTENT EXECUTIVE SIDEBAR NAVIGATION (Matching Admin Portal)
       ══════════════════════════════════════════════════════════════════ */}
@@ -367,58 +398,17 @@ export const ReceptionistLayout: React.FC = () => {
           </nav>
         </div>
 
-        {/* ── Sidebar Footer: Live OPD Health & Receptionist Profile Card ── */}
-        <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/40 shrink-0">
-          {/* Live OPD Status Widget */}
-          <div className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-[11px] font-black text-slate-700">OPD Live Desk</span>
-            </div>
-            <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              {waitingCount} Waiting
-            </span>
-          </div>
-
-          {/* Receptionist Profile Card */}
-          <div
-            onClick={() => setActiveTab('profile')}
-            className="p-2.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer flex items-center justify-between group"
+        {/* ── Sidebar Footer: Logout Button ── */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/40 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full py-2.5 px-3 rounded-2xl bg-rose-50/80 hover:bg-rose-100 text-rose-700 font-extrabold text-xs border border-rose-200/90 shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
+            title="Logout"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="relative shrink-0">
-                <img
-                  src={profile.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'}
-                  alt={staffDisplayName}
-                  className="w-8 h-8 rounded-xl object-cover border border-slate-200 shadow-xs"
-                />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full" />
-              </div>
-              <div className="truncate">
-                <p className="text-xs font-black text-slate-900 truncate font-heading group-hover:text-[#0B5A54] transition-colors">
-                  {staffDisplayName}
-                </p>
-                <p className="text-[10px] text-slate-400 font-bold truncate flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-[#0B5A54]" />
-                  Desk Administrator
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLogout();
-              }}
-              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          </div>
+            <LogOut className="w-4 h-4 text-rose-600" />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
@@ -447,47 +437,136 @@ export const ReceptionistLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Live Polling Sync Indicator */}
-            <LiveIndicator
-              lastUpdated={lastUpdated}
-              isPolling={isPolling}
-              onRefresh={refetch}
-              label="Live Sync"
-            />
-
-            {/* Global Search Bar */}
-            <div className="relative hidden md:block w-64 lg:w-72">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            {/* Global Premium Search Bar (Expanded Width) */}
+            <div className="relative hidden md:block w-80 md:w-96 lg:w-[400px] xl:w-[460px] group">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none text-slate-400 group-focus-within:text-[#0B5A54] transition-colors">
+                <Search className="w-4 h-4" />
+              </div>
               <input
                 type="text"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Search patient, phone, #TOK-001..."
-                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54]"
+                placeholder="Search patient, phone, #TOK-001, doctor..."
+                className="w-full pl-10 pr-20 py-2.5 bg-slate-50/90 hover:bg-white focus:bg-white border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-[#0B5A54] transition-all shadow-2xs"
               />
-              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-mono font-bold text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded">
-                ⌘K
-              </kbd>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {globalSearch && (
+                  <button
+                    onClick={() => setGlobalSearch('')}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[10px] font-mono font-bold text-slate-400 bg-white border border-slate-200/80 px-2 py-0.5 rounded-lg shadow-2xs pointer-events-none">
+                  ⌘K
+                </kbd>
+              </div>
+
+              {/* Instant Search Results Dropdown */}
+              {globalSearch.trim().length > 0 && (
+                <div className="absolute left-0 right-0 mt-2 bg-white rounded-3xl border border-slate-200 shadow-2xl p-3 z-50 animate-in fade-in duration-150 space-y-2.5 max-h-80 overflow-y-auto">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-2">
+                    <span>Matching Results ({filteredSearchResults.tokens.length + filteredSearchResults.doctors.length})</span>
+                    <button
+                      onClick={() => setGlobalSearch('')}
+                      className="text-slate-400 hover:text-slate-700 text-[10.5px] uppercase font-bold cursor-pointer hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  {/* Token Results */}
+                  {filteredSearchResults.tokens.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        handleNavigateTab('tokens');
+                        setGlobalSearch('');
+                      }}
+                      className="p-2.5 rounded-2xl hover:bg-teal-50/70 border border-transparent hover:border-teal-200 transition-all cursor-pointer flex items-center justify-between gap-3 text-xs group/item"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="px-2.5 py-1 bg-[#0B5A54] text-white font-mono font-black text-[11px] rounded-xl shadow-2xs">
+                          {t.tokenNumber}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-900 group-hover/item:text-[#0B5A54] transition-colors truncate">
+                            {t.patientName}
+                          </p>
+                          <p className="text-[10.5px] text-slate-400 truncate">
+                            With Dr. {t.doctorName} • {t.timeSlot}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full shrink-0 border ${
+                        t.status === 'In Consultation'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : t.status === 'Waiting'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
+                        {t.status}
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Doctor Results */}
+                  {filteredSearchResults.doctors.map((d) => (
+                    <div
+                      key={d.id}
+                      onClick={() => {
+                        handleNavigateTab('doctors');
+                        setGlobalSearch('');
+                      }}
+                      className="p-2.5 rounded-2xl hover:bg-teal-50/70 border border-transparent hover:border-teal-200 transition-all cursor-pointer flex items-center justify-between gap-3 text-xs group/item"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-teal-100 text-[#0B5A54] font-black text-xs flex items-center justify-center shrink-0 border border-teal-200">
+                          <Stethoscope className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-900 group-hover/item:text-[#0B5A54] transition-colors truncate">
+                            {d.name}
+                          </p>
+                          <p className="text-[10.5px] text-slate-400 truncate">
+                            {d.specialty} • {d.roomNumber}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full shrink-0 border ${
+                        d.isAvailable
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}>
+                        {d.isAvailable ? 'On Duty' : 'Off Duty'}
+                      </span>
+                    </div>
+                  ))}
+
+                  {filteredSearchResults.tokens.length === 0 && filteredSearchResults.doctors.length === 0 && (
+                    <div className="py-6 text-center text-xs text-slate-400 space-y-1">
+                      <p className="font-bold text-slate-600">No matching patient tokens or doctors found</p>
+                      <p className="text-[11px]">Search by token (#TOK-001), patient name, or doctor name.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Quick Action: Call Next Token */}
-            <button
-              onClick={handleQuickCallNext}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 font-extrabold rounded-xl border border-amber-200 text-xs shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
-              title="Call the next waiting patient in queue"
-            >
-              <Volume2 className="w-3.5 h-3.5 text-amber-700" />
-              <span>Call Next</span>
-            </button>
-
-            {/* Quick Action: New Walk-In Patient */}
-            <button
-              onClick={() => setIsNewAppointmentOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              <span>+ Walk-In</span>
-            </button>
+            {/* Live Current Date & Time Display */}
+            <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-700 shadow-2xs font-sans">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-600">
+                <Calendar className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>{currentDate || 'Today'}</span>
+              </div>
+              <span className="text-slate-300">•</span>
+              <div className="flex items-center gap-1.5 font-mono font-black text-slate-900">
+                <Clock className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>{currentTime || '09:00 AM'}</span>
+              </div>
+            </div>
 
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>
@@ -529,6 +608,16 @@ export const ReceptionistLayout: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotifOpen(false);
+                      setActiveTab('notifications');
+                    }}
+                    className="w-full py-2 bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-black text-xs rounded-xl border border-teal-200 transition-colors cursor-pointer text-center block"
+                  >
+                    View All Notifications & Alerts →
+                  </button>
                 </div>
               )}
             </div>
@@ -567,7 +656,10 @@ export const ReceptionistLayout: React.FC = () => {
                     <span>Desk Settings & Profile</span>
                   </button>
                   <button
-                    onClick={handleLogout}
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setShowLogoutConfirm(true);
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -613,6 +705,12 @@ export const ReceptionistLayout: React.FC = () => {
               onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
             />
           )}
+          {activeTab === 'notifications' && (
+            <ReceptionistNotifications
+              onShowToast={showToast}
+              onNavigateTab={handleNavigateTab}
+            />
+          )}
           {activeTab === 'profile' && (
             <ReceptionistProfile onShowToast={showToast} />
           )}
@@ -627,6 +725,52 @@ export const ReceptionistLayout: React.FC = () => {
           showToast('Walk-in patient registered and token issued successfully!');
         }}
       />
+
+      {/* ══════════════════════════════════════════════════════════════════
+          LOGOUT CONFIRMATION WARNING MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200 my-auto">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <LogOut className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                Confirm Terminal Sign Out?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                You are about to sign out from the Receptionist Desk terminal at{' '}
+                <strong className="text-slate-900 font-extrabold">{profile.clinicName || 'CarePulse Central Hospital'}</strong>.
+              </p>
+              <p className="text-[11px] text-slate-500 font-semibold bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                Live queues, token counts, and doctor cabin schedules will remain saved.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition-all cursor-pointer"
+              >
+                Stay Logged In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  handleLogout();
+                }}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
+              >
+                Sign Out Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

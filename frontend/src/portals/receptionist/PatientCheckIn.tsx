@@ -107,46 +107,27 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
   return (
     <div className="space-y-6 pb-12 text-left">
       {/* ══════════════════════════════════════════════════════════════════
-          1. EXECUTIVE HERO BANNER
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-900 to-[#084540] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-black tracking-wider text-teal-100 uppercase">
-              <Activity className="w-3.5 h-3.5 text-teal-300" />
-              <span>Patient Arrival & Vitals Desk</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-white">
-              Express Patient Check-In
-            </h1>
-            <p className="text-xs sm:text-sm text-teal-100/90 font-medium leading-relaxed">
-              Verify pre-booked patient arrival, record triage vital signs (BP, Pulse, Temp, SpO2, Weight), and route to consultation hall.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={onOpenNewAppointment}
-              className="px-5 py-3.5 bg-white hover:bg-teal-50 text-[#0B5A54] font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
-            >
-              <UserPlus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ New Walk-In Patient</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          2. SEARCH & PATIENT SELECTION / VITALS CAPTURE GRID
+          1. SEARCH & PATIENT SELECTION / VITALS CAPTURE GRID
       ══════════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (1 Col): Patient Search & Pending Arrival Selector */}
         <div className="space-y-5">
           {/* Search Box */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 font-mono">
-              Find Scheduled Patient
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 font-mono">
+                Find Scheduled Patient
+              </h3>
+              {onOpenNewAppointment && (
+                <button
+                  onClick={onOpenNewAppointment}
+                  className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Walk-In</span>
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input

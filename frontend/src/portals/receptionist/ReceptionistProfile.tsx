@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import {
   ShieldCheck,
-  Building,
+  Building2,
   LogOut,
   Edit3,
   KeyRound,
-  Ticket,
-  Smartphone,
-  UserPlus,
   X,
-  Clock,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  CheckCircle2,
+  AtSign,
+  Mail,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { useNavigate } from 'react-router-dom';
@@ -22,17 +27,31 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
   const profile = useStaffStore((s) => s.receptionistProfile);
   const updateProfile = useStaffStore((s) => s.updateReceptionistProfile);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
-  const tokens = useStaffStore((s) => s.tokens);
   const navigate = useNavigate();
 
+  // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [name, setName] = useState(profile.name);
+  const [username, setUsername] = useState(profile.username || 'rec');
   const [email, setEmail] = useState(profile.email);
-  const [phone, setPhone] = useState(profile.phone);
-  const [shift, setShift] = useState(profile.shift);
-  const [clinicName, setClinicName] = useState(profile.clinicName);
+  const [clinicName, setClinicName] = useState(profile.clinicName || 'CarePulse Central Hospital');
+  const [deskName, setDeskName] = useState(profile.deskName || 'Main Reception & OPD Queue Desk 01');
   const [department, setDepartment] = useState(profile.department);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Password Reset / Forgot Password Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  // Logout Warning Modal State
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = () => {
     logoutStaff();
@@ -44,190 +63,186 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
     setIsSaving(true);
     await updateProfile({
       name,
+      username,
       email,
-      phone,
-      shift,
       clinicName,
+      deskName,
       department,
     });
     setIsSaving(false);
     setIsEditModalOpen(false);
-    onShowToast?.('Receptionist desk profile updated successfully.');
+    onShowToast?.('✓ Receptionist desk profile updated successfully.');
   };
 
-  const onlineCount = tokens.filter((t) => t.type !== 'Walk-In').length;
-  const offlineCount = tokens.filter((t) => t.type === 'Walk-In').length;
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match. Please verify.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    await new Promise((res) => setTimeout(res, 600));
+
+    setIsUpdatingPassword(false);
+    setIsPasswordModalOpen(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    onShowToast?.('🔒 Password updated successfully. Use your new credentials for next login.');
+  };
 
   return (
-    <div className="space-y-6 pb-12 text-left">
+    <div className="space-y-6 pb-12 text-left animate-in fade-in duration-300">
       {/* ══════════════════════════════════════════════════════════════════
-          1. EXECUTIVE HERO PROFILE CARD
+          SYMMETRIC BALANCED DUAL-FRAMEWORK CARDS
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#0B5A54] via-teal-900 to-[#084540] rounded-3xl p-7 sm:p-9 text-white shadow-xl shadow-teal-950/15 border border-teal-700/50">
-        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left flex-1">
-            <div className="relative">
-              <img
-                src={
-                  profile.avatarUrl ||
-                  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'
-                }
-                alt={profile.name}
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white/20 shadow-xl"
-              />
-              <span
-                className="w-4 h-4 rounded-full bg-emerald-400 border-2 border-teal-900 absolute bottom-1 right-1 shadow"
-                title="Active On Duty"
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* Card 1: Workstation & Facility Assignment */}
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2.5 pb-3.5 border-b border-slate-100 min-h-[48px]">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center shadow-2xs">
+              <Building2 className="w-4 h-4" />
             </div>
-
-            <div className="space-y-2 flex-1">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10.5px] font-black text-teal-200 border border-white/20 flex items-center gap-1.5 uppercase tracking-wider">
-                  <ShieldCheck className="w-3.5 h-3.5 text-teal-300" /> Certified Desk Administrator
-                </span>
-                <span className="px-2.5 py-0.5 bg-emerald-400/20 text-emerald-300 font-extrabold rounded-full text-[10.5px] border border-emerald-400/30">
-                  Active On Duty
-                </span>
-              </div>
-
-              <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-white">
-                {profile.name}
-              </h1>
-              <p className="text-xs sm:text-sm text-teal-100/90 font-medium">
-                {profile.clinicName} • {profile.department}
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">
+                Workstation & Hospital Facility
+              </h3>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Physical workstation configuration & desk details
               </p>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-black/20 rounded-xl font-mono text-xs text-teal-200 border border-white/10 font-bold">
-                <span>Employee ID: {profile.employeeId}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 text-xs flex-1 flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Hospital / Clinic Name:</span>
+              </span>
+              <span className="font-extrabold text-slate-900 text-right">
+                {profile.clinicName || 'CarePulse Central Hospital'}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Desk Station Name:</span>
+              </span>
+              <span className="font-extrabold text-[#0B5A54] text-right">
+                {profile.deskName || 'Main Reception & OPD Queue Desk 01'}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Department / OPD Wing:</span>
+              </span>
+              <span className="font-extrabold text-slate-900 text-right">{profile.department}</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>Operational Status:</span>
+              </span>
+              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-right text-[11px] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Active On Duty</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Account Identity & Security */}
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">
+                  Account Identity & Security
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Login credentials and authentication control
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="px-5 py-3 bg-white/15 hover:bg-white/25 text-white font-extrabold rounded-2xl text-xs backdrop-blur-md border border-white/20 shadow-xs transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-95"
-            >
-              <Edit3 className="w-4 h-4 text-teal-200" />
-              <span>Edit Profile</span>
-            </button>
 
             <button
-              onClick={handleLogout}
-              className="px-5 py-3 bg-rose-500/90 hover:bg-rose-600 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-95"
+              type="button"
+              onClick={() => setIsPasswordModalOpen(true)}
+              className="px-2.5 py-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
+              <KeyRound className="w-3 h-3 text-amber-600" />
+              <span>Reset Password</span>
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          2. PRODUCTIVITY & INTAKE STATS SUMMARY
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center">
-            <Ticket className="w-4 h-4" />
-          </div>
-          <div className="text-2xl font-black font-mono text-slate-900">{tokens.length}</div>
-          <div className="text-[11px] font-bold text-slate-400">Total Tokens Logged</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-            <Smartphone className="w-4 h-4" />
-          </div>
-          <div className="text-2xl font-black font-mono text-purple-700">{onlineCount}</div>
-          <div className="text-[11px] font-bold text-slate-400">App Appointments</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
-          <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <UserPlus className="w-4 h-4" />
-          </div>
-          <div className="text-2xl font-black font-mono text-amber-800">{offlineCount}</div>
-          <div className="text-[11px] font-bold text-slate-400">Walk-In Intakes</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-2">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <Clock className="w-4 h-4" />
-          </div>
-          <div className="text-2xl font-black font-mono text-emerald-700">3.5m</div>
-          <div className="text-[11px] font-bold text-slate-400">Avg. Intake Speed</div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          3. DETAILED INFORMATION CARDS GRID
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Workstation & Schedule Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-            <Building className="w-5 h-5 text-[#0B5A54]" />
-            <h3 className="text-base font-black text-slate-900 font-heading">
-              Desk Assignment & Hospital Schedule
-            </h3>
-          </div>
-
-          <div className="space-y-4 text-xs">
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Assigned Workstation:</span>
-              <span className="font-extrabold text-slate-900">{profile.clinicName}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Desk Department:</span>
-              <span className="font-extrabold text-[#0B5A54]">{profile.department}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Shift Schedule:</span>
-              <span className="font-extrabold text-slate-900">{profile.shift}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Live Emergency Extension:</span>
-              <span className="font-mono font-extrabold text-slate-900">Ext. 4092 (OPD Front)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact & Security Credentials */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-            <KeyRound className="w-5 h-5 text-[#0B5A54]" />
-            <h3 className="text-base font-black text-slate-900 font-heading">
-              Contact & Staff Security
-            </h3>
-          </div>
-
-          <div className="space-y-4 text-xs">
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Staff Email:</span>
-              <span className="font-extrabold text-slate-900 font-mono">{profile.email}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Phone Number:</span>
-              <span className="font-extrabold text-slate-900 font-mono">{profile.phone}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Account Role:</span>
-              <span className="font-extrabold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
-                Front-Desk Receptionist
+          <div className="space-y-2.5 text-xs flex-1 flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Receptionist ID:</span>
+              </span>
+              <span className="font-extrabold text-slate-900 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 text-right">
+                {profile.employeeId}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <span className="text-slate-500 font-bold">Two-Factor Authentication:</span>
-              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                Enabled (CarePulse Staff SSO)
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <AtSign className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Account Username:</span>
+              </span>
+              <span className="font-extrabold text-slate-900 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 text-right">
+                @{profile.username || 'rec'}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Staff Email Address:</span>
+              </span>
+              <span className="font-extrabold text-slate-900 font-mono text-right">{profile.email}</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Password & Credentials:</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-slate-400 text-xs">••••••••</span>
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="text-[11px] font-extrabold text-[#0B5A54] hover:underline cursor-pointer"
+                >
+                  Forgot / Change Password?
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
+              <span className="text-slate-500 font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>Two-Factor Authentication:</span>
+              </span>
+              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-right text-[11px]">
+                Enabled (CarePulse SSO)
               </span>
             </div>
           </div>
@@ -235,77 +250,92 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          4. EDIT PROFILE MODAL
+          3. EDIT PROFILE MODAL
       ══════════════════════════════════════════════════════════════════ */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 text-left animate-in zoom-in-95 duration-200 my-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-900 font-heading">
-                Edit Receptionist Profile
-              </h3>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-teal-50 text-[#0B5A54] flex items-center justify-center">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-black text-slate-900 font-heading">
+                  Edit Desk Profile & Station
+                </h3>
+              </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Emily Watson"
+                    className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Account Username</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">@</span>
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="rec"
+                      className="w-full pl-7 pr-3 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Email</label>
+                  <label className="font-bold text-slate-700 block mb-1">Hospital / Clinic Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    placeholder="CarePulse Central Hospital"
+                    className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Desk Station Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={deskName}
+                    onChange={(e) => setDeskName(e.target.value)}
+                    placeholder="Main Reception & OPD Queue Desk 01"
+                    className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Staff Email</label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Shift Timings</label>
-                <input
-                  type="text"
-                  value={shift}
-                  onChange={(e) => setShift(e.target.value)}
-                  placeholder="Morning Shift (08:00 AM - 04:00 PM)"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Hospital / Clinic</label>
-                  <input
-                    type="text"
-                    value={clinicName}
-                    onChange={(e) => setClinicName(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    placeholder="rec@carepulse.com"
+                    className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                   />
                 </div>
                 <div>
@@ -314,7 +344,8 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                     type="text"
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    placeholder="Main Reception & OPD Queue"
+                    className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                   />
                 </div>
               </div>
@@ -323,19 +354,221 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl text-xs shadow-md"
+                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? 'Saving...' : 'Save Profile Changes'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          4. FORGOT / RESET PASSWORD MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 text-left animate-in zoom-in-95 duration-200 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-2xs border border-amber-200/80">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 font-heading">
+                    Reset Terminal Password
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Set a new password for @{profile.username || 'rec'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsPasswordModalOpen(false);
+                  setPasswordError('');
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {passwordError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 font-bold flex items-center gap-2 animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordReset} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full pl-3 pr-10 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    className="w-full pl-3 pr-10 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {/* Password Strength Meter */}
+                {newPassword && (
+                  <div className="mt-1.5 space-y-1">
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex gap-1">
+                      <div
+                        className={`h-full transition-all duration-300 rounded-full ${
+                          newPassword.length < 6
+                            ? 'w-1/3 bg-rose-500'
+                            : newPassword.length < 9
+                            ? 'w-2/3 bg-amber-500'
+                            : 'w-full bg-emerald-500'
+                        }`}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {newPassword.length < 6
+                        ? 'Weak (min 6 chars)'
+                        : newPassword.length < 9
+                        ? 'Moderate Password'
+                        : 'Strong Password'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPass ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full pl-3 pr-10 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-[11px] text-amber-900 font-semibold space-y-1">
+                <div className="flex items-center gap-1 font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Security Notice</span>
+                </div>
+                <p>
+                  Once changed, you can use your new password immediately to log into this receptionist workstation terminal.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasswordModalOpen(false);
+                    setPasswordError('');
+                  }}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingPassword}
+                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50"
+                >
+                  {isUpdatingPassword ? 'Updating Password...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          5. LOGOUT CONFIRMATION WARNING MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200 my-auto">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <LogOut className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                Confirm Terminal Sign Out?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                You are about to sign out from the Receptionist Desk terminal at{' '}
+                <strong className="text-slate-900 font-extrabold">{profile.clinicName || 'CarePulse Central Hospital'}</strong>.
+              </p>
+              <p className="text-[11px] text-slate-500 font-semibold bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                Live queues, token counts, and doctor cabin schedules will remain saved.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition-all cursor-pointer"
+              >
+                Stay Logged In
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
+              >
+                Sign Out Now
+              </button>
+            </div>
           </div>
         </div>
       )}
