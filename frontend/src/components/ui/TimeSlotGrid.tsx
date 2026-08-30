@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { motion } from 'framer-motion';
-import { Clock, Sun, Sunrise, Sunset } from 'lucide-react';
+import { Clock, Sun, Sunrise, Sunset, AlertCircle } from 'lucide-react';
+import type { TimeSlotCapacity } from '../../types/receptionist';
+import type { Doctor } from '../../lib/types';
 
 export interface TimeSlot {
   time: string; // e.g. "09:00 AM"
@@ -11,6 +13,9 @@ export interface TimeSlot {
 export interface TimeSlotGridProps {
   selectedSlot: string;
   onSelectSlot: (slot: string) => void;
+  doctor?: Doctor;
+  slotCapacities?: TimeSlotCapacity[];
+  blockedSlots?: string[];
 }
 
 const DEFAULT_SLOTS: TimeSlot[] = [
@@ -37,16 +42,62 @@ const DEFAULT_SLOTS: TimeSlot[] = [
   { time: '08:00 PM', period: 'Evening' },
 ];
 
+// Helper to check if a specific time falls inside a slot window (e.g. "09:00 AM" inside "09:00 AM - 10:00 AM")
+const isTimeInWindow = (timeStr: string, windowStr: string) => {
+  if (!timeStr || !windowStr) return false;
+  const cleanTime = timeStr.toLowerCase().replace(/\s+/g, '');
+  const cleanWindow = windowStr.toLowerCase().replace(/\s+/g, '');
+  if (cleanTime === cleanWindow) return true;
+  if (cleanWindow.includes(cleanTime)) return true;
+
+  // Check hour match
+  const timeHour = timeStr.split(':')[0].trim();
+  const timeAmPm = timeStr.slice(-2).toUpperCase();
+  if (windowStr.includes(timeHour) && windowStr.includes(timeAmPm)) {
+    return true;
+  }
+  return false;
+};
+
 export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   selectedSlot,
   onSelectSlot,
+  doctor,
+  slotCapacities,
+  blockedSlots = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'All' | 'Morning' | 'Afternoon' | 'Evening'>('All');
 
+  // Extract effective blocked slot strings
+  const effectiveBlockedList = React.useMemo(() => {
+    const list: string[] = [...blockedSlots];
+
+    // Check doctor slotCapacities
+    const slots = slotCapacities || (doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities || [];
+    if (Array.isArray(slots)) {
+      slots.forEach((s: any) => {
+        if (s.isAvailable === false || s.is_available === false) {
+          list.push(s.timeSlot || s.time_slot || '');
+        }
+      });
+    }
+
+    return list.filter(Boolean);
+  }, [doctor, slotCapacities, blockedSlots]);
+
+  // Filter slots to exclude any blocked slots
+  const availableSlots = React.useMemo(() => {
+    return DEFAULT_SLOTS.filter((slot) => {
+      // If slot falls in any blocked window, hide it completely
+      const isBlocked = effectiveBlockedList.some((blocked) => isTimeInWindow(slot.time, blocked));
+      return !isBlocked;
+    });
+  }, [effectiveBlockedList]);
+
   const filteredSlots = React.useMemo(() => {
-    if (activeTab === 'All') return DEFAULT_SLOTS;
-    return DEFAULT_SLOTS.filter((s) => s.period === activeTab);
-  }, [activeTab]);
+    if (activeTab === 'All') return availableSlots;
+    return availableSlots.filter((s) => s.period === activeTab);
+  }, [activeTab, availableSlots]);
 
   return (
     <div className="space-y-3.5">
@@ -76,45 +127,55 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
       </div>
 
       {/* Slots Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-        {filteredSlots.map((slot) => {
-          const isSelected = selectedSlot === slot.time;
+      {filteredSlots.length === 0 ? (
+        <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1.5">
+          <AlertCircle className="w-6 h-6 text-slate-400 mx-auto" />
+          <p className="text-xs font-bold text-slate-700">No Available Slots for this Period</p>
+          <p className="text-[11px] text-slate-400">
+            All slots in this window are currently booked or reserved. Please choose another date or category.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+          {filteredSlots.map((slot) => {
+            const isSelected = selectedSlot === slot.time;
 
-          return (
-            <motion.button
-              key={slot.time}
-              type="button"
-              whileHover={{ y: -1.5 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onSelectSlot(slot.time)}
-              className={clsx(
-                'relative flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition-all duration-200 border text-left focus:outline-none cursor-pointer select-none',
-                isSelected
-                  ? 'bg-gradient-to-r from-[#0B5A54] to-[#0D6D65] text-white border-[#0B5A54] shadow-md shadow-teal-900/15 ring-2 ring-[#14B8A6]/40'
-                  : 'bg-white hover:bg-teal-50/40 text-slate-700 border-slate-200/80 hover:border-[#14B8A6]/40 shadow-2xs'
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Clock
-                  className={clsx(
-                    'w-3.5 h-3.5 shrink-0',
-                    isSelected ? 'text-teal-200' : 'text-slate-400'
-                  )}
-                />
-                <span className={clsx('font-black font-heading', isSelected ? 'text-white' : 'text-slate-800')}>
-                  {slot.time}
-                </span>
-              </div>
+            return (
+              <motion.button
+                key={slot.time}
+                type="button"
+                whileHover={{ y: -1.5 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onSelectSlot(slot.time)}
+                className={clsx(
+                  'relative flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition-all duration-200 border text-left focus:outline-none cursor-pointer select-none',
+                  isSelected
+                    ? 'bg-gradient-to-r from-[#0B5A54] to-[#0D6D65] text-white border-[#0B5A54] shadow-md shadow-teal-900/15 ring-2 ring-[#14B8A6]/40'
+                    : 'bg-white hover:bg-teal-50/40 text-slate-700 border-slate-200/80 hover:border-[#14B8A6]/40 shadow-2xs'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock
+                    className={clsx(
+                      'w-3.5 h-3.5 shrink-0',
+                      isSelected ? 'text-teal-200' : 'text-slate-400'
+                    )}
+                  />
+                  <span className={clsx('font-black font-heading', isSelected ? 'text-white' : 'text-slate-800')}>
+                    {slot.time}
+                  </span>
+                </div>
 
-              {isSelected && (
-                <span className="text-[9px] font-black uppercase text-teal-100 bg-white/20 px-1.5 py-0.5 rounded-full">
-                  Selected
-                </span>
-              )}
-            </motion.button>
-          );
-        })}
-      </div>
+                {isSelected && (
+                  <span className="text-[9px] font-black uppercase text-teal-100 bg-white/20 px-1.5 py-0.5 rounded-full">
+                    Selected
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

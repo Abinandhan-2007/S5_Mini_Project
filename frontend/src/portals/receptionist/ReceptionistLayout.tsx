@@ -233,7 +233,7 @@ export const ReceptionistLayout: React.FC = () => {
   const headerContext = getHeaderContext();
 
   return (
-    <div className="min-h-screen bg-[#F8FAFB] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFB] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white w-full max-w-full overflow-x-hidden">
       {/* ── Toast Feedback Notification ── */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-[#0B5A54] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-400/30 flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-300 font-bold text-xs">
@@ -425,9 +425,9 @@ export const ReceptionistLayout: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════
           MAIN CONTENT AREA & TOP BAR
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen w-full max-w-full overflow-x-hidden min-w-0">
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
         {/* ── Executive Top Bar ── */}
-        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3.5 sm:px-8 py-3.5 flex items-center justify-between gap-2.5 sm:gap-4">
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
@@ -580,7 +580,7 @@ export const ReceptionistLayout: React.FC = () => {
         </header>
 
         {/* ── Main Tab Content Area ── */}
-        <main className="flex-1 p-3.5 sm:p-6 w-full max-w-full overflow-x-hidden min-w-0 no-scrollbar">
+        <main className="flex-1 p-3.5 sm:p-5 lg:p-6 w-full max-w-[1600px] mx-auto overflow-x-hidden no-scrollbar">
           {activeTab === 'dashboard' && (
             <ReceptionistDashboard
               onNavigateTab={handleNavigateTab}

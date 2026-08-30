@@ -253,7 +253,7 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
                         </div>
                         <div className="flex justify-between text-[11px] text-slate-500">
                           <span>Online / Walk-In:</span>
-                          <span>{slot.onlineBookedSeats}/{slot.onlineMaxSeats} • {slot.offlineBookedSeats}/{slot.offlineMaxSeats}</span>
+                          <span className="font-mono">{slot.onlineBookedSeats ?? 0}/{slot.onlineMaxSeats ?? Math.ceil((slot.maxSeats || 6) / 2)} • {slot.offlineBookedSeats ?? 0}/{slot.offlineMaxSeats ?? Math.floor((slot.maxSeats || 6) / 2)}</span>
                         </div>
                       </div>
 

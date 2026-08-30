@@ -11,7 +11,6 @@ import {
   Trash2,
   PlusCircle,
   AlertTriangle,
-  Sparkles,
   Search,
   X,
 } from 'lucide-react';
@@ -179,8 +178,8 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                   <button
                     onClick={() => setDoctorToToggle(doctor)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0 ${doctor.isAvailable
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
                   >
                     {doctor.isAvailable ? (
@@ -250,186 +249,160 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          3. TIME SLOT CAPACITY CONFIGURATION MODAL
+          3. SIMPLE & CLEAN TIME SLOT CAPACITY CONFIGURATION MODAL
       ══════════════════════════════════════════════════════════════════ */}
       {activeDoctorInModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 text-left animate-in zoom-in-95 duration-200 my-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-slate-200 space-y-4 text-left animate-in zoom-in-95 duration-150 my-auto">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
                 <img
                   src={activeDoctorInModal.photo}
                   alt={activeDoctorInModal.name}
-                  className="w-12 h-12 rounded-2xl object-cover border border-slate-200"
+                  className="w-11 h-11 rounded-xl object-cover border border-slate-200 shrink-0"
                 />
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 font-heading">
+                  <h3 className="text-base font-black text-slate-900 font-heading">
                     {activeDoctorInModal.name}
                   </h3>
-                  <p className="text-xs text-[#0B5A54] font-bold">
-                    Slot Capacities & 50/50 Seat Allocation
+                  <p className="text-xs text-slate-500 font-medium">
+                    {activeDoctorInModal.specialty} • {activeDoctorInModal.roomNumber}
                   </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setSelectedDoctorForSlots(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Explanatory Banner */}
-            <div className="p-3.5 bg-teal-50/80 rounded-2xl border border-teal-100 text-xs text-teal-900 space-y-1">
-              <p className="font-bold flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#0B5A54]" />
-                Automated 50/50 Online & Offline Seat Distribution
-              </p>
-              <p className="text-[11px] text-teal-800 leading-normal font-medium">
-                Each hourly time slot automatically allocates 50% capacity for pre-scheduled CarePulse app patients and 50% for front-desk walk-ins.
-              </p>
-            </div>
+            {/* Simple Slots List */}
+            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1 no-scrollbar">
+              {activeDoctorInModal.slotCapacities?.map((slot) => {
+                const maxSeats = slot.maxSeats || 6;
+                const onlineMax = slot.onlineMaxSeats ?? Math.ceil(maxSeats / 2);
+                const offlineMax = slot.offlineMaxSeats ?? Math.floor(maxSeats / 2);
+                const isAvail = slot.isAvailable !== false;
 
-            {/* Slots List */}
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1 no-scrollbar">
-              {activeDoctorInModal.slotCapacities?.map((slot) => (
-                <div
-                  key={slot.id}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-[#0B5A54]" />
-                      <span className="font-bold text-xs text-slate-900">{slot.timeSlot}</span>
+                return (
+                  <div
+                    key={slot.id}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                      isAvail ? 'bg-slate-50/70 hover:bg-slate-50 border-slate-200' : 'bg-slate-100/60 border-slate-200 opacity-60'
+                    }`}
+                  >
+                    {/* Left: Time & 50/50 split */}
+                    <div className="space-y-0.5 min-w-[130px]">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 font-mono">
+                        <Clock className="w-3.5 h-3.5 text-[#0B5A54]" />
+                        <span>{slot.timeSlot}</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-500 font-medium">
+                        📱 {onlineMax} App • 🚶 {offlineMax} Walk-In
+                      </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* Center: Total Seats Stepper */}
+                    <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Seats:</span>
+                      <button
+                        onClick={() => handleUpdateSeatLimit(slot, -1)}
+                        disabled={maxSeats <= (slot.bookedSeats || 0)}
+                        className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs disabled:opacity-30 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono font-black text-slate-900 text-xs w-4 text-center">{maxSeats}</span>
+                      <button
+                        onClick={() => handleUpdateSeatLimit(slot, 1)}
+                        className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Right: Active Toggle & Delete */}
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleToggleSlotAvailability(slot)}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border cursor-pointer ${slot.isAvailable
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
+                          isAvail
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border-rose-200'
-                          }`}
+                        }`}
                       >
-                        {slot.isAvailable ? 'Active' : 'Disabled'}
+                        {isAvail ? 'Active' : 'Closed'}
                       </button>
 
                       <button
                         onClick={() => handleRemoveSlot(slot.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Delete slot"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-
-                  {/* Seat Adjuster Row */}
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="p-2 bg-white rounded-xl border border-slate-200">
-                      <span className="text-[10px] font-black text-slate-400 uppercase block">
-                        Max Seats
-                      </span>
-                      <div className="flex items-center justify-center gap-2 mt-1">
-                        <button
-                          onClick={() => handleUpdateSeatLimit(slot, -1)}
-                          disabled={slot.maxSeats <= slot.bookedSeats}
-                          className="w-5 h-5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-black disabled:opacity-30"
-                        >
-                          -
-                        </button>
-                        <span className="font-mono font-black text-slate-900">{slot.maxSeats}</span>
-                        <button
-                          onClick={() => handleUpdateSeatLimit(slot, 1)}
-                          className="w-5 h-5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-black"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-2 bg-purple-50 rounded-xl border border-purple-200">
-                      <span className="text-[10px] font-black text-purple-700 uppercase block">
-                        📱 Online Split
-                      </span>
-                      <span className="font-mono font-black text-purple-900 text-xs block mt-1">
-                        {slot.onlineBookedSeats} / {slot.onlineMaxSeats} booked
-                      </span>
-                    </div>
-
-                    <div className="p-2 bg-amber-50 rounded-xl border border-amber-200">
-                      <span className="text-[10px] font-black text-amber-800 uppercase block">
-                        🏢 Walk-In Split
-                      </span>
-                      <span className="font-mono font-black text-amber-950 text-xs block mt-1">
-                        {slot.offlineBookedSeats} / {slot.offlineMaxSeats} booked
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Add New Custom Slot Form */}
             {isAddingNewSlot ? (
               <form
                 onSubmit={handleAddNewSlotSubmit}
-                className="p-4 bg-teal-50/70 border border-teal-200 rounded-2xl space-y-3 text-xs"
+                className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs animate-in slide-in-from-top-1"
               >
-                <h4 className="font-black text-slate-900">Add Custom Hourly Slot</h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
-                      Start Time
-                    </label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Start Time</label>
                     <input
                       type="text"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
                       placeholder="08:00 AM"
-                      className="w-full p-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold"
+                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
-                      End Time
-                    </label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-0.5">End Time</label>
                     <input
                       type="text"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
                       placeholder="09:00 AM"
-                      className="w-full p-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold"
+                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
-                      Max Seats
-                    </label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Max Seats</label>
                     <input
                       type="number"
                       min={2}
                       max={30}
                       value={newSlotMaxSeats}
                       onChange={(e) => setNewSlotMaxSeats(Number(e.target.value))}
-                      className="w-full p-2 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold"
+                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-1">
+                <div className="flex items-center justify-end gap-2 pt-0.5">
                   <button
                     type="button"
                     onClick={() => setIsAddingNewSlot(false)}
-                    className="px-3 py-1.5 bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                    className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-[#0B5A54] text-white font-black rounded-xl text-xs shadow-xs"
+                    className="px-3.5 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-lg text-xs cursor-pointer"
                   >
                     Save Slot
                   </button>
@@ -438,18 +411,18 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
             ) : (
               <button
                 onClick={() => setIsAddingNewSlot(true)}
-                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold rounded-2xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border border-dashed border-slate-300"
               >
-                <PlusCircle className="w-4 h-4 text-[#0B5A54]" />
-                <span>+ Add New Custom Time Slot</span>
+                <PlusCircle className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>+ Add Time Slot</span>
               </button>
             )}
 
             {/* Modal Close Button */}
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 onClick={() => setSelectedDoctorForSlots(null)}
-                className="w-full py-3 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer"
+                className="w-full py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-xs"
               >
                 Done
               </button>
@@ -490,8 +463,8 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
               <button
                 onClick={handleConfirmToggleAvailability}
                 className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${doctorToToggle.isAvailable
-                    ? 'bg-rose-600 hover:bg-rose-700'
-                    : 'bg-[#0B5A54] hover:bg-[#084540]'
+                  ? 'bg-rose-600 hover:bg-rose-700'
+                  : 'bg-[#0B5A54] hover:bg-[#084540]'
                   }`}
               >
                 Confirm {doctorToToggle.isAvailable ? 'Off-Duty' : 'Available'}
