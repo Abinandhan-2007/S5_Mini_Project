@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import React, { useState } from 'react';
-=======
 import React, { useState, useRef, useEffect } from 'react';
->>>>>>> Stashed changes
 import { Navigate, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -32,12 +28,8 @@ import { DoctorManagement } from './DoctorManagement';
 import { PatientCheckIn } from './PatientCheckIn';
 import { ReceptionistProfile } from './ReceptionistProfile';
 import { NewAppointmentModal } from './NewAppointmentModal';
-<<<<<<< Updated upstream
-import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
 import { LiveIndicator } from '../../components/ui/LiveIndicator';
-=======
->>>>>>> Stashed changes
 
 export type ReceptionistTab =
   | 'dashboard'
@@ -81,7 +73,6 @@ export const ReceptionistLayout: React.FC = () => {
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
-<<<<<<< Updated upstream
   // Automatic robust background polling for receptionist token queue & doctors
   const { isPolling, lastUpdated, refetch } = usePolling(
     async () => {
@@ -95,19 +86,6 @@ export const ReceptionistLayout: React.FC = () => {
       enabled: !!currentStaff && currentStaff.role === 'receptionist',
     }
   );
-=======
-  // Polling for live tokens and doctors
-  useEffect(() => {
-    fetchDoctors();
-    fetchTokens();
-
-    const interval = setInterval(() => {
-      fetchTokens();
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [fetchDoctors, fetchTokens]);
->>>>>>> Stashed changes
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -270,8 +248,9 @@ export const ReceptionistLayout: React.FC = () => {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
-          }`}
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
@@ -317,142 +296,132 @@ export const ReceptionistLayout: React.FC = () => {
             </button>
           </div>
 
-<<<<<<< Updated upstream
-  {/* Right Action Encapsulated Capsule & Circular Icon Buttons */ }
-  <div className="flex items-center gap-3">
-    {/* Live Polling Sync Indicator */}
-    <LiveIndicator
-      lastUpdated={lastUpdated}
-      isPolling={isPolling}
-      onRefresh={refetch}
-      label="Live Sync"
-    />
-
-    {/* New Appointment Encapsulated Pill Button */}
-=======
           {/* ── Categorized Navigation Links ── */}
-    <nav className="p-3 space-y-4 overflow-y-auto flex-1 no-scrollbar">
-      {navSections.map((section) => (
-        <div key={section.groupTitle} className="space-y-1">
-          {/* Section Header */}
-          <div className="px-2.5 pb-1 pt-0.5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-mono">
-              {section.groupTitle}
+          <nav className="p-3 space-y-4 overflow-y-auto flex-1 no-scrollbar">
+            {navSections.map((section) => (
+              <div key={section.groupTitle} className="space-y-1">
+                {/* Section Header */}
+                <div className="px-2.5 pb-1 pt-0.5">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-mono">
+                    {section.groupTitle}
+                  </span>
+                </div>
+
+                {/* Section Links */}
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          setIsMobileSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${
+                          isActive
+                            ? 'bg-teal-50/90 text-[#0B5A54] font-black shadow-2xs border border-teal-200/70'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Active Accent Bar */}
+                          {isActive && (
+                            <div className="w-1.5 h-4 bg-[#0B5A54] rounded-full shrink-0 -ml-0.5" />
+                          )}
+
+                          <Icon
+                            className={`w-4 h-4 shrink-0 transition-transform ${
+                              isActive
+                                ? 'text-[#0B5A54] scale-105'
+                                : 'text-slate-400 group-hover:text-slate-600 group-hover:scale-105'
+                            }`}
+                          />
+                          <span className="truncate tracking-tight">{item.label}</span>
+                        </div>
+
+                        {/* Optional Count Badge */}
+                        {item.badge && (
+                          <span
+                            className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${
+                              item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        {/* ── Sidebar Footer: Live OPD Health & Receptionist Profile Card ── */}
+        <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/40 shrink-0">
+          {/* Live OPD Status Widget */}
+          <div className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[11px] font-black text-slate-700">OPD Live Desk</span>
+            </div>
+            <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              {waitingCount} Waiting
             </span>
           </div>
 
-          {/* Section Links */}
-          <div className="space-y-0.5">
-            {section.items.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+          {/* Receptionist Profile Card */}
+          <div
+            onClick={() => setActiveTab('profile')}
+            className="p-2.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative shrink-0">
+                <img
+                  src={profile.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'}
+                  alt={staffDisplayName}
+                  className="w-8 h-8 rounded-xl object-cover border border-slate-200 shadow-xs"
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full" />
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-black text-slate-900 truncate font-heading group-hover:text-[#0B5A54] transition-colors">
+                  {staffDisplayName}
+                </p>
+                <p className="text-[10px] text-slate-400 font-bold truncate flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-[#0B5A54]" />
+                  Desk Administrator
+                </p>
+              </div>
+            </div>
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${isActive
-                      ? 'bg-teal-50/90 text-[#0B5A54] font-black shadow-2xs border border-teal-200/70'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {/* Active Accent Bar */}
-                    {isActive && (
-                      <div className="w-1.5 h-4 bg-[#0B5A54] rounded-full shrink-0 -ml-0.5" />
-                    )}
-
-                    <Icon
-                      className={`w-4 h-4 shrink-0 transition-transform ${isActive
-                          ? 'text-[#0B5A54] scale-105'
-                          : 'text-slate-400 group-hover:text-slate-600 group-hover:scale-105'
-                        }`}
-                    />
-                    <span className="truncate tracking-tight">{item.label}</span>
-                  </div>
-
-                  {/* Optional Count Badge */}
-                  {item.badge && (
-                    <span
-                      className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
+              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
-      ))}
-    </nav>
-  </div>
+      </aside>
 
-  {/* ── Sidebar Footer: Live OPD Health & Receptionist Profile Card ── */ }
-  <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/40 shrink-0">
-    {/* Live OPD Status Widget */}
-    <div className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between shadow-2xs">
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-        </span>
-        <span className="text-[11px] font-black text-slate-700">OPD Live Desk</span>
-      </div>
-      <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-        {waitingCount} Waiting
-      </span>
-    </div>
-
-    {/* Receptionist Profile Card */}
-    <div
-      onClick={() => setActiveTab('profile')}
-      className="p-2.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer flex items-center justify-between group"
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="relative shrink-0">
-          <img
-            src={profile.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'}
-            alt={staffDisplayName}
-            className="w-8 h-8 rounded-xl object-cover border border-slate-200 shadow-xs"
-          />
-          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full" />
-        </div>
-        <div className="truncate">
-          <p className="text-xs font-black text-slate-900 truncate font-heading group-hover:text-[#0B5A54] transition-colors">
-            {staffDisplayName}
-          </p>
-          <p className="text-[10px] text-slate-400 font-bold truncate flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3 text-[#0B5A54]" />
-            Desk Administrator
-          </p>
-        </div>
-      </div>
-
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleLogout();
-        }}
-        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-        title="Sign Out"
-      >
-        <LogOut className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  </div>
-      </aside >
-
-{/* ══════════════════════════════════════════════════════════════════
+      {/* ══════════════════════════════════════════════════════════════════
           MAIN CONTENT AREA & TOP BAR
       ══════════════════════════════════════════════════════════════════ */}
-  < div className = "flex-1 lg:pl-64 flex flex-col min-h-screen" >
-    {/* ── Executive Top Bar ── */ }
-    < header className = "sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4" >
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
+        {/* ── Executive Top Bar ── */}
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
@@ -472,6 +441,14 @@ export const ReceptionistLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Live Polling Sync Indicator */}
+            <LiveIndicator
+              lastUpdated={lastUpdated}
+              isPolling={isPolling}
+              onRefresh={refetch}
+              label="Live Sync"
+            />
+
             {/* Global Search Bar */}
             <div className="relative hidden md:block w-64 lg:w-72">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -498,7 +475,6 @@ export const ReceptionistLayout: React.FC = () => {
             </button>
 
             {/* Quick Action: New Walk-In Patient */}
->>>>>>> Stashed changes
             <button
               onClick={() => setIsNewAppointmentOpen(true)}
               className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
@@ -595,68 +571,58 @@ export const ReceptionistLayout: React.FC = () => {
               )}
             </div>
           </div>
-        </header >
+        </header>
 
-  {/* ── Main Tab Content Area ── */ }
-  < main className = "flex-1 p-4 sm:p-6 w-full no-scrollbar" >
-    { activeTab === 'dashboard' && (
-      <ReceptionistDashboard
-        onNavigateTab={handleNavigateTab}
-        onShowToast={showToast}
-        onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
+        {/* ── Main Tab Content Area ── */}
+        <main className="flex-1 p-4 sm:p-6 w-full no-scrollbar">
+          {activeTab === 'dashboard' && (
+            <ReceptionistDashboard
+              onNavigateTab={handleNavigateTab}
+              onShowToast={showToast}
+              onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
+            />
+          )}
+
+          {activeTab === 'queue' && (
+            <TokenManagement
+              onShowToast={showToast}
+              onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
+            />
+          )}
+
+          {activeTab === 'bookings' && (
+            <PatientBookings
+              onShowToast={showToast}
+              onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
+            />
+          )}
+
+          {activeTab === 'checkin' && (
+            <PatientCheckIn
+              onShowToast={showToast}
+              onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
+            />
+          )}
+
+          {activeTab === 'doctors' && (
+            <DoctorManagement onShowToast={showToast} />
+          )}
+
+          {activeTab === 'profile' && (
+            <ReceptionistProfile onShowToast={showToast} />
+          )}
+        </main>
+      </div>
+
+      {/* Global New Walk-In Appointment Modal */}
+      <NewAppointmentModal
+        isOpen={isNewAppointmentOpen}
+        onClose={() => setIsNewAppointmentOpen(false)}
+        onSuccess={() => {
+          showToast('Walk-in patient registered and token issued successfully!');
+        }}
       />
-    )}
-
-{
-  activeTab === 'queue' && (
-    <TokenManagement
-      onShowToast={showToast}
-      onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
-    />
-  )
-}
-
-{
-  activeTab === 'bookings' && (
-    <PatientBookings
-      onShowToast={showToast}
-      onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
-    />
-  )
-}
-
-{
-  activeTab === 'checkin' && (
-    <PatientCheckIn
-      onShowToast={showToast}
-      onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
-    />
-  )
-}
-
-{
-  activeTab === 'doctors' && (
-    <DoctorManagement onShowToast={showToast} />
-  )
-}
-
-{
-  activeTab === 'profile' && (
-    <ReceptionistProfile onShowToast={showToast} />
-  )
-}
-        </main >
-      </div >
-
-  {/* Global New Walk-In Appointment Modal */ }
-  < NewAppointmentModal
-isOpen = { isNewAppointmentOpen }
-onClose = {() => setIsNewAppointmentOpen(false)}
-onSuccess = {() => {
-  showToast('Walk-in patient registered and token issued successfully!');
-}}
-      />
-    </div >
+    </div>
   );
 };
 

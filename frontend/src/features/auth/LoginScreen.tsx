@@ -112,18 +112,21 @@ export const LoginScreen: React.FC = () => {
                   console.error('Backend Google Auth error:', err);
                   const decoded = parseJwt(response.credential);
                   if (decoded?.email) {
-                    await setUserAuth({
-                      id: decoded.sub || `usr-${Date.now()}`,
-                      fullName: decoded.name || decoded.email.split('@')[0],
-                      email: decoded.email,
-                      phone: '',
-                      dob: '1995-07-24',
-                      gender: 'Not specified',
-                      bloodGroup: 'O+',
-                      emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
-                      avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
-                      authProvider: 'google',
-                    });
+                    await setUserAuth(
+                      {
+                        id: decoded.sub || `usr-${Date.now()}`,
+                        fullName: decoded.name || decoded.email.split('@')[0],
+                        email: decoded.email,
+                        phone: '',
+                        dob: '1995-07-24',
+                        gender: 'Not specified',
+                        bloodGroup: 'O+',
+                        emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
+                        avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+                        authProvider: 'google',
+                      },
+                      response.credential
+                    );
                     navigate('/home');
                   } else {
                     setErrorMessage(err.message || 'Failed to authenticate with Google.');
