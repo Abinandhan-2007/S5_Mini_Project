@@ -15,7 +15,6 @@ import {
   Activity,
   Menu,
   X,
-  CheckCircle2,
   ChevronDown,
   Layers,
   ShieldCheck,
@@ -58,7 +57,6 @@ export const AdminLayout: React.FC = () => {
   const [autoOpenDoctorAdd, setAutoOpenDoctorAdd] = useState(false);
   const [autoOpenReceptionistAdd, setAutoOpenReceptionistAdd] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -100,9 +98,8 @@ export const AdminLayout: React.FC = () => {
     adminProfile.name ||
     (currentStaff?.email ? currentStaff.email.split('@')[0] : 'Admin');
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+  const showToast = (_msg?: string) => {
+    // Floating toast popup disabled per design directive
   };
 
   const handleLogout = () => {
@@ -252,14 +249,6 @@ export const AdminLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFB] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white">
-      {/* ── Toast Feedback Notification ── */}
-      {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#0B5A54] text-white px-5 py-3 rounded-2xl shadow-xl border border-teal-400/30 flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-300 font-bold text-xs">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════════════════
           PERSISTENT PREMIUM DESKTOP & MOBILE SIDEBAR NAVIGATION
       ══════════════════════════════════════════════════════════════════ */}

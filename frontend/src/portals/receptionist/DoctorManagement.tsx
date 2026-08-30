@@ -39,6 +39,12 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
   const [endTime, setEndTime] = useState('09:00 AM');
   const [newSlotMaxSeats, setNewSlotMaxSeats] = useState<number>(6);
   const [isAddingNewSlot, setIsAddingNewSlot] = useState(false);
+  const [slotToDelete, setSlotToDelete] = useState<{
+    doctorId: string;
+    doctorName: string;
+    slotId: string;
+    timeSlot: string;
+  } | null>(null);
 
   const activeDoctorInModal =
     doctors.find((d) => d.id === selectedDoctorForSlots?.id) || selectedDoctorForSlots;
@@ -62,19 +68,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
     const updatedSeats = Math.max(slot.bookedSeats, slot.maxSeats + delta);
     await updateSlotCapacity(activeDoctorInModal.id, slot.timeSlot, updatedSeats, slot.isAvailable);
     onShowToast?.(`Seat capacity for ${slot.timeSlot} updated to ${updatedSeats}.`);
-  };
-
-  const handleToggleSlotAvailability = async (slot: TimeSlotCapacity) => {
-    if (!activeDoctorInModal) return;
-    const newAvail = !slot.isAvailable;
-    await updateSlotCapacity(activeDoctorInModal.id, slot.timeSlot, slot.maxSeats, newAvail);
-    onShowToast?.(`Slot ${slot.timeSlot} marked as ${newAvail ? 'Available' : 'Unavailable'}.`);
-  };
-
-  const handleRemoveSlot = (slotId: string) => {
-    if (!activeDoctorInModal) return;
-    removeTimeSlot(activeDoctorInModal.id, slotId);
-    onShowToast?.('Time slot removed.');
   };
 
   const handleAddNewSlotSubmit = (e: React.FormEvent) => {
@@ -287,14 +280,10 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                 const maxSeats = slot.maxSeats || 6;
                 const onlineMax = slot.onlineMaxSeats ?? Math.ceil(maxSeats / 2);
                 const offlineMax = slot.offlineMaxSeats ?? Math.floor(maxSeats / 2);
-                const isAvail = slot.isAvailable !== false;
-
                 return (
                   <div
                     key={slot.id}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                      isAvail ? 'bg-slate-50/70 hover:bg-slate-50 border-slate-200' : 'bg-slate-100/60 border-slate-200 opacity-60'
-                    }`}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all flex items-center justify-between gap-3"
                   >
                     {/* Left: Time & 50/50 split */}
                     <div className="space-y-0.5 min-w-[130px]">
@@ -326,25 +315,23 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                       </button>
                     </div>
 
-                    {/* Right: Active Toggle & Delete */}
-                    <div className="flex items-center gap-1.5">
+                    {/* Right: Delete */}
+                    <div className="flex items-center">
                       <button
-                        onClick={() => handleToggleSlotAvailability(slot)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
-                          isAvail
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}
-                      >
-                        {isAvail ? 'Active' : 'Closed'}
-                      </button>
-
-                      <button
-                        onClick={() => handleRemoveSlot(slot.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => {
+                          if (activeDoctorInModal) {
+                            setSlotToDelete({
+                              doctorId: activeDoctorInModal.id,
+                              doctorName: activeDoctorInModal.name,
+                              slotId: slot.id,
+                              timeSlot: slot.timeSlot,
+                            });
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Delete slot"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -468,6 +455,52 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                   }`}
               >
                 Confirm {doctorToToggle.isAvailable ? 'Off-Duty' : 'Available'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          5. CONFIRM DELETE TIME SLOT WARNING MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {slotToDelete && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                Confirm Deleting Time Slot?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Are you sure you want to remove the slot <strong className="text-slate-900 font-extrabold">{slotToDelete.timeSlot}</strong> for <strong className="text-[#0B5A54] font-extrabold">{slotToDelete.doctorName}</strong>?
+              </p>
+              <p className="text-[11px] text-rose-600 font-semibold bg-rose-50/80 p-2.5 rounded-xl border border-rose-200/60">
+                ⚠️ This time slot will be removed from future patient appointment booking rosters.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setSlotToDelete(null)}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  removeTimeSlot(slotToDelete.doctorId, slotToDelete.slotId);
+                  onShowToast?.(`Time slot "${slotToDelete.timeSlot}" removed.`);
+                  setSlotToDelete(null);
+                }}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
+              >
+                Delete Slot
               </button>
             </div>
           </div>

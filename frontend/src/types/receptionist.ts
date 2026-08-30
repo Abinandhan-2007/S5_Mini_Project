@@ -65,10 +65,12 @@ export interface TokenQueueItem {
 export interface ReceptionistProfile {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   employeeId: string;
   clinicName: string;
+  deskName?: string;
   department: string;
   shift: string;
   avatarUrl: string;

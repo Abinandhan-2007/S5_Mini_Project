@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Upload, CheckCircle2, FileText } from 'lucide-react';
+import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Upload, CheckCircle2, FileText, ChevronDown } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 
 interface CreateDoctorProps {
@@ -12,13 +12,13 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
   const createDoctor = useStaffStore((s) => s.createDoctor);
 
   const [name, setName] = useState('');
-  const [specialty, setSpecialty] = useState('Cardiologist');
-  const [department, setDepartment] = useState('Cardiology');
-  const [experienceYears, setExperienceYears] = useState(5);
-  const [consultationFee, setConsultationFee] = useState(750);
+  const [specialty, setSpecialty] = useState('');
+  const [department, setDepartment] = useState('');
+  const [experienceYears, setExperienceYears] = useState<string>('');
+  const [consultationFee, setConsultationFee] = useState<string>('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [roomNumber, setRoomNumber] = useState('Cabin 105 - 1st Floor');
+  const [roomNumber, setRoomNumber] = useState('');
   const [about, setAbout] = useState('');
   const [photo, setPhoto] = useState('');
   const [filePreview, setFilePreview] = useState<string | null>(null);
@@ -43,28 +43,44 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
     e.preventDefault();
     if (!name.trim()) return;
 
+    const expNum = parseInt(experienceYears, 10) || 1;
+    const feeNum = parseFloat(consultationFee) || 500;
+    const selectedSpecialty = specialty || 'General Physician';
+    const selectedDept = department || selectedSpecialty;
+
     setIsSubmitting(true);
     await createDoctor({
       name,
-      specialty,
-      department,
-      experienceYears,
-      consultationFee,
+      specialty: selectedSpecialty,
+      department: selectedDept,
+      experienceYears: expNum,
+      consultationFee: feeNum,
       phone: phone || '+91 98765 00000',
       email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@carepulse.com`,
-      roomNumber,
-      about: about || `Senior ${specialty} with ${experienceYears}+ years of clinical experience in advanced medical care and patient consultation.`,
+      roomNumber: roomNumber || 'Cabin 101 - 1st Floor',
+      about: about || `Senior ${selectedSpecialty} with clinical experience in medical consultations and patient care.`,
       photo: photo || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
       isAvailable: true,
       availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     });
 
+    // Reset form fields
+    setName('');
+    setSpecialty('');
+    setDepartment('');
+    setExperienceYears('');
+    setConsultationFee('');
+    setPhone('');
+    setEmail('');
+    setRoomNumber('');
+    setAbout('');
+    setPhoto('');
+    setFilePreview(null);
+
     setIsSubmitting(false);
     onSuccess?.();
     onClose();
   };
-
-
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -92,10 +108,10 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
               <input
                 type="text"
                 required
-                placeholder="Dr. Alexander Wright"
+                placeholder="e.g. Dr. Alexander Wright"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 font-medium"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 font-medium placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -104,22 +120,37 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Specialty</label>
               <div className="relative">
-                <Stethoscope className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Stethoscope className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
                 <select
+                  required
                   value={specialty}
                   onChange={(e) => {
                     setSpecialty(e.target.value);
                     setDepartment(e.target.value);
                   }}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 appearance-none"
+                  className={`w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer appearance-none ${
+                    !specialty ? 'text-slate-400 font-normal' : 'text-slate-900 font-semibold'
+                  }`}
                 >
+                  <option value="" disabled>Select Specialty...</option>
                   <option value="Cardiologist">Cardiologist</option>
                   <option value="Dermatologist">Dermatologist</option>
                   <option value="Pediatrician">Pediatrician</option>
                   <option value="Neurologist">Neurologist</option>
                   <option value="General Physician">General Physician</option>
-                  <option value="Orthopedic">Orthopedic</option>
+                  <option value="Orthopedic Surgeon">Orthopedic Surgeon</option>
+                  <option value="Gynecologist">Gynecologist</option>
+                  <option value="ENT Specialist">ENT Specialist</option>
+                  <option value="Ophthalmologist">Ophthalmologist</option>
+                  <option value="Psychiatrist">Psychiatrist</option>
+                  <option value="Oncologist">Oncologist</option>
+                  <option value="Radiologist">Radiologist</option>
+                  <option value="Urologist">Urologist</option>
+                  <option value="Endocrinologist">Endocrinologist</option>
+                  <option value="Gastroenterologist">Gastroenterologist</option>
+                  <option value="Dentist">Dentist</option>
                 </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
               </div>
             </div>
 
@@ -129,9 +160,10 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 type="number"
                 min={1}
                 max={50}
+                placeholder="e.g. 5"
                 value={experienceYears}
-                onChange={(e) => setExperienceYears(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                onChange={(e) => setExperienceYears(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
               />
             </div>
           </div>
@@ -143,9 +175,10 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="number"
+                  placeholder="e.g. 750"
                   value={consultationFee}
-                  onChange={(e) => setConsultationFee(parseFloat(e.target.value) || 0)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                  onChange={(e) => setConsultationFee(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                 />
               </div>
             </div>
@@ -156,9 +189,10 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
+                  placeholder="e.g. Cabin 105 - 1st Floor"
                   value={roomNumber}
                   onChange={(e) => setRoomNumber(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                 />
               </div>
             </div>
@@ -171,10 +205,10 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="tel"
-                  placeholder="+91 98765 11000"
+                  placeholder="e.g. +91 98765 11000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                 />
               </div>
             </div>
@@ -185,10 +219,10 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="email"
-                  placeholder="doctor@carepulse.com"
+                  placeholder="e.g. doctor@carepulse.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                 />
               </div>
             </div>
@@ -203,7 +237,7 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 placeholder="Senior specialist with clinical experience in advanced medical care, consultations, and patient wellness..."
                 value={about}
                 onChange={(e) => setAbout(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0B5A54] resize-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] resize-none"
               />
             </div>
           </div>

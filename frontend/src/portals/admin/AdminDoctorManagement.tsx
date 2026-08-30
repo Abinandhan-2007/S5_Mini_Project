@@ -91,16 +91,16 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
   const handleOpenAdd = () => {
     setFormName('');
-    setFormSpecialty('Cardiologist');
-    setFormDepartment('Cardiology');
-    setFormFee(800);
-    setFormExperience(10);
-    setFormPhone('+91 98765 11000');
-    setFormEmail('doctor@carepulse.com');
-    setFormUsername('doctor.carepulse');
-    setFormPassword('doc123');
+    setFormSpecialty('');
+    setFormDepartment('');
+    setFormFee(0);
+    setFormExperience(1);
+    setFormPhone('');
+    setFormEmail('');
+    setFormUsername('');
+    setFormPassword('');
     setShowFormPassword(false);
-    setFormRoom('Cabin 101 - 1st Floor');
+    setFormRoom('');
     setFormDays(DEFAULT_DAYS);
     setIsAddModalOpen(true);
   };
@@ -797,14 +797,33 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1">Clinical Specialty</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={formSpecialty}
-                    onChange={(e) => setFormSpecialty(e.target.value)}
-                    placeholder="e.g. Cardiologist"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-                  />
+                    onChange={(e) => {
+                      setFormSpecialty(e.target.value);
+                      setFormDepartment(e.target.value);
+                    }}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer"
+                  >
+                    <option value="" disabled>Select Clinical Specialty...</option>
+                    <option value="Cardiologist">Cardiologist</option>
+                    <option value="Dermatologist">Dermatologist</option>
+                    <option value="Pediatrician">Pediatrician</option>
+                    <option value="Neurologist">Neurologist</option>
+                    <option value="General Physician">General Physician</option>
+                    <option value="Orthopedic Surgeon">Orthopedic Surgeon</option>
+                    <option value="Gynecologist">Gynecologist</option>
+                    <option value="ENT Specialist">ENT Specialist</option>
+                    <option value="Ophthalmologist">Ophthalmologist</option>
+                    <option value="Psychiatrist">Psychiatrist</option>
+                    <option value="Oncologist">Oncologist</option>
+                    <option value="Radiologist">Radiologist</option>
+                    <option value="Urologist">Urologist</option>
+                    <option value="Endocrinologist">Endocrinologist</option>
+                    <option value="Gastroenterologist">Gastroenterologist</option>
+                    <option value="Dentist">Dentist</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block mb-1">Assigned Department</label>
