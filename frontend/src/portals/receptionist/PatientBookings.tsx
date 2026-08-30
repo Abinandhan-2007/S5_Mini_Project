@@ -170,11 +170,10 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             <button
               onClick={() => setActiveTab('ONLINE')}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'ONLINE'
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'ONLINE'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
-              }`}
+                }`}
             >
               <Smartphone className="w-3.5 h-3.5 text-teal-300" />
               <span>Online App ({onlineTokensCount})</span>
@@ -182,11 +181,10 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
 
             <button
               onClick={() => setActiveTab('OFFLINE')}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'OFFLINE'
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'OFFLINE'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
-              }`}
+                }`}
             >
               <UserPlus className="w-3.5 h-3.5 text-amber-300" />
               <span>Walk-Ins ({offlineTokensCount})</span>
@@ -194,11 +192,10 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
 
             <button
               onClick={() => setActiveTab('COMPLETED')}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'COMPLETED'
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'COMPLETED'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
-              }`}
+                }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
               <span>Completed ({completedCount})</span>
@@ -206,11 +203,10 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
 
             <button
               onClick={() => setActiveTab('ALL')}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'ALL'
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'ALL'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
-              }`}
+                }`}
             >
               <Layers className="w-3.5 h-3.5 text-blue-300" />
               <span>All ({tokens.length})</span>
@@ -221,18 +217,16 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl self-end sm:self-auto shrink-0">
             <button
               onClick={() => setViewMode('GRID')}
-              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-                viewMode === 'GRID' ? 'bg-white text-[#0B5A54] shadow-xs' : 'text-slate-500'
-              }`}
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${viewMode === 'GRID' ? 'bg-white text-[#0B5A54] shadow-xs' : 'text-slate-500'
+                }`}
               title="Card Grid View"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('TABLE')}
-              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-                viewMode === 'TABLE' ? 'bg-white text-[#0B5A54] shadow-xs' : 'text-slate-500'
-              }`}
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${viewMode === 'TABLE' ? 'bg-white text-[#0B5A54] shadow-xs' : 'text-slate-500'
+                }`}
               title="Table Roster View"
             >
               <List className="w-4 h-4" />
@@ -342,11 +336,10 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                         {item.tokenNumber}
                       </span>
                       <span
-                        className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                          isOnline
+                        className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${isOnline
                             ? 'bg-purple-50 text-purple-700 border-purple-200'
                             : 'bg-amber-50 text-amber-800 border-amber-200'
-                        }`}
+                          }`}
                       >
                         {isOnline ? 'Online App' : 'Walk-In'}
                       </span>

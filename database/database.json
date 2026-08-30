@@ -159,9 +159,209 @@
         "plan": "Continue current routine."
       },
       "soap_embedding": []
+    },
+    {
+      "id": "c-b28354eb1b95",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "date": "2026-09-05",
+      "soap_data": {
+        "subjective": "Follow up examination.",
+        "objective": "Normal vital signs.",
+        "assessment": "Healthy.",
+        "plan": "Continue current routine."
+      },
+      "soap_embedding": []
+    },
+    {
+      "id": "c-3d150580ecc7",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "date": "2026-09-05",
+      "soap_data": {
+        "subjective": "Follow up examination.",
+        "objective": "Normal vital signs.",
+        "assessment": "Healthy.",
+        "plan": "Continue current routine."
+      },
+      "soap_embedding": []
     }
   ],
   "appointments": [
+    {
+      "id": "98d6c082-b1c9-4e4a-a68c-92eee7292346",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-BACD",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "CarePulse Central Hospital",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-d9ddbfe2fb",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-5836",
+      "doctor_id": "doc-4",
+      "doctor_name": "Dr. Ethan Reynolds",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
+      "hospital_name": "Metropolitan General Hospital",
+      "date": "2026-09-02",
+      "time_slot": "02:00 PM - 03:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-0b5c9c4d98",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-6016",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-01",
+      "time_slot": "10:00 AM - 11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "f165a9f4-fb8d-40e4-9701-c42a196620a4",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-7338",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "CarePulse Central Hospital",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-aa42aadf50",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-3468",
+      "doctor_id": "doc-4",
+      "doctor_name": "Dr. Ethan Reynolds",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
+      "hospital_name": "Metropolitan General Hospital",
+      "date": "2026-09-02",
+      "time_slot": "02:00 PM - 03:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-6fd9dd5a1f",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-4440",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-01",
+      "time_slot": "10:00 AM - 11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-6409e73947",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-7835",
+      "doctor_id": "doc-4",
+      "doctor_name": "Dr. Ethan Reynolds",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
+      "hospital_name": "Metropolitan General Hospital",
+      "date": "2026-09-02",
+      "time_slot": "02:00 PM - 03:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-42aa91bf85",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-7513",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-01",
+      "time_slot": "10:00 AM - 11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-89eb34b6eb",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-4348",
+      "doctor_id": "doc-4",
+      "doctor_name": "Dr. Ethan Reynolds",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
+      "hospital_name": "Metropolitan General Hospital",
+      "date": "2026-09-02",
+      "time_slot": "02:00 PM - 03:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "app-3cc94f75ae",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "ticket_number": "#CP-4471",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "doctor_photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "date": "2026-09-01",
+      "time_slot": "10:00 AM - 11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
     {
       "id": "4a9e3d52-0e35-4719-958d-48eda3b5ecbd",
       "patient_name": "Tamper Test Patient",
@@ -176,7 +376,7 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming",
+      "status": "Cancelled",
       "patient_id": "test-patient-walkin-99"
     },
     {
@@ -431,7 +631,7 @@
       "date": "2026-09-05",
       "time_slot": "09:00 AM - 10:00 AM",
       "type": "Walk-In",
-      "status": "Upcoming",
+      "status": "Completed",
       "patient_id": "test-patient-walkin-99"
     },
     {
@@ -481,7 +681,7 @@
       "date": "2026-08-15",
       "time_slot": "11:00 AM",
       "type": "In-Person",
-      "status": "Upcoming",
+      "status": "Waiting",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1"
     },
@@ -498,7 +698,7 @@
       "date": "2026-08-15",
       "time_slot": "11:00 AM",
       "type": "In-Person",
-      "status": "Upcoming",
+      "status": "Waiting",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1"
     }
@@ -592,7 +792,107 @@
       "photo": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80",
       "rating": 4.5,
       "reviews_count": 85,
-      "about": "Specialist in metabolic health, diabetes management, and endocrine disorders."
+      "about": "Specialist in metabolic health, diabetes management, and endocrine disorders.",
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 2,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ],
+      "slot_capacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 2,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 4,
+          "availableSeats": 2,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 1,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 3,
+          "availableSeats": 3,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 2,
+          "availableSeats": 3,
+          "isAvailable": true
+        }
+      ]
     },
     {
       "id": "doc-marilyn",
@@ -762,32 +1062,22 @@
     {
       "id": "rec-101",
       "name": "Emily Watson",
-      "email": "receptionist@carepulse.com",
-      "password": "$2b$12$eindd9xnoKa6C0i0Od9RPOm5iU0K3Rs8ejzFXOyqMVc0UDp8JZLs6",
+      "email": "rec",
+      "username": "rec",
+      "password": "$2b$12$t8FQiHsSpgLkQvj9/k0RLuRX.wdmKKIVRbaaQk3J6KQnuD4bX7cgO",
       "role": "receptionist",
-      "department": "Front Desk",
+      "department": "Main Reception & OPD Queue",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$eindd9xnoKa6C0i0Od9RPOm5iU0K3Rs8ejzFXOyqMVc0UDp8JZLs6"
+      "password_hash": "$2b$12$t8FQiHsSpgLkQvj9/k0RLuRX.wdmKKIVRbaaQk3J6KQnuD4bX7cgO"
     },
     {
-      "id": "rec-102",
-      "name": "Anna Mathews",
-      "email": "anna.m@carepulse.com",
-      "password": "$2b$12$qRV8rIQyq6GF9X1h4JcL5OZnDAs.Ix4OmUEutLwbu9EKG194m8TFW",
-      "role": "receptionist",
-      "department": "Front Desk",
-      "hospital_id": "hosp-2",
-      "hospitalId": "hosp-2",
-      "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$qRV8rIQyq6GF9X1h4JcL5OZnDAs.Ix4OmUEutLwbu9EKG194m8TFW"
-    },
-    {
-      "id": "doc-olivia",
+      "id": "doc-1",
       "name": "Dr. Olivia Wilson",
-      "email": "olivia.w@carepulse.com",
-      "password": "$2b$12$DDI1Nw4nB7kHkgxXQJ/mWudsvOBqZJcRpWUOxFDO7i4YxhBbS1HDy",
+      "email": "doc",
+      "username": "doc",
+      "password": "$2b$12$.ImFFuyLz4/Dv9J5f83tHujoMEhiWrd3Qt1qAv87psswk3CjETL.6",
       "role": "doctor",
       "specialty": "Cardiologist",
       "department": "Cardiology",
@@ -796,61 +1086,19 @@
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$DDI1Nw4nB7kHkgxXQJ/mWudsvOBqZJcRpWUOxFDO7i4YxhBbS1HDy"
-    },
-    {
-      "id": "doc-marcus",
-      "name": "Dr. Marcus Vance",
-      "email": "marcus.v@carepulse.com",
-      "password": "doctor123",
-      "role": "doctor",
-      "specialty": "Dermatologist",
-      "department": "Dermatology",
-      "doctor_id": "doc-2",
-      "doctorId": "doc-2",
-      "hospital_id": "hosp-3",
-      "hospitalId": "hosp-3",
-      "avatar": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80"
-    },
-    {
-      "id": "doc-sophia",
-      "name": "Dr. Sophia Patel",
-      "email": "sophia.p@carepulse.com",
-      "password": "doctor123",
-      "role": "doctor",
-      "specialty": "Pediatrician",
-      "department": "Pediatrics",
-      "doctor_id": "doc-3",
-      "doctorId": "doc-3",
-      "hospital_id": "hosp-1",
-      "hospitalId": "hosp-1",
-      "avatar": "https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80"
-    },
-    {
-      "id": "doc-ethan",
-      "name": "Dr. Ethan Reynolds",
-      "email": "ethan.r@carepulse.com",
-      "password": "doctor123",
-      "role": "doctor",
-      "specialty": "Neurologist",
-      "department": "Neurology",
-      "doctor_id": "doc-4",
-      "doctorId": "doc-4",
-      "hospital_id": "hosp-2",
-      "hospitalId": "hosp-2",
-      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80"
+      "password_hash": "$2b$12$.ImFFuyLz4/Dv9J5f83tHujoMEhiWrd3Qt1qAv87psswk3CjETL.6"
     },
     {
       "id": "admin-1",
       "name": "Dr. Arthur Vance",
       "email": "admin@carepulse.com",
-      "password": "$2b$12$xnwtR6Iakapp.lZmPb75GOWA1tf7IhMjVPpP3m9oCpBAOmCCAP28.",
+      "password": "$2b$12$.6rD9nIdbAK7YLrdFhIHU.kyrdOhMMrw8t1I1tCo1qLhAcjyChSAW",
       "role": "admin",
       "department": "Chief Medical Administration",
       "hospital_id": null,
       "hospitalId": null,
       "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$xnwtR6Iakapp.lZmPb75GOWA1tf7IhMjVPpP3m9oCpBAOmCCAP28."
+      "password_hash": "$2b$12$.6rD9nIdbAK7YLrdFhIHU.kyrdOhMMrw8t1I1tCo1qLhAcjyChSAW"
     }
   ],
   "hospital_settings": {
@@ -871,7 +1119,8 @@
     {
       "id": "rec-101",
       "name": "Emily Watson",
-      "email": "receptionist@carepulse.com",
+      "email": "rec",
+      "username": "rec",
       "phone": "+91 98765 43220",
       "department": "Main Reception",
       "deskNumber": "Desk A-1 (Ground Floor)",
@@ -889,7 +1138,7 @@
       "department": "Emergency & OPD Desk",
       "deskNumber": "Desk B-2 (Wing C)",
       "shift": "Evening",
-      "isActive": true,
+      "isActive": false,
       "avatarUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
       "assignedDoctorsCount": 3,
       "joinDate": "2024-06-10"
@@ -902,7 +1151,7 @@
       "department": "Specialist Clinic Desk",
       "deskNumber": "Desk C-1 (2nd Floor)",
       "shift": "Full Day",
-      "isActive": true,
+      "isActive": false,
       "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80",
       "assignedDoctorsCount": 2,
       "joinDate": "2025-01-20"

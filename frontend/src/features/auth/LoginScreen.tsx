@@ -264,19 +264,13 @@ export const LoginScreen: React.FC = () => {
         return;
       }
 
-      if (
-        (inputLower === 'doctor' || inputLower === 'olivia.w' || inputLower === 'doctor@carepulse.com') &&
-        (passVal === 'doc123' || passVal === 'Doctor@123' || passVal === 'doctor' || passVal === 'password123')
-      ) {
+      if (inputLower === 'doc' && passVal === 'doc123') {
         useCarePulseStore.setState({ isAuthenticated: true });
         navigate('/doctor');
         return;
       }
 
-      if (
-        (inputLower === 'receptionist' || inputLower === 'emma.davis' || inputLower === 'receptionist@carepulse.com') &&
-        (passVal === 'Password@123' || passVal === 'rec123' || passVal === 'receptionist' || passVal === 'password123')
-      ) {
+      if (inputLower === 'rec' && passVal === 'rec123') {
         useCarePulseStore.setState({ isAuthenticated: true });
         navigate('/receptionist');
         return;
