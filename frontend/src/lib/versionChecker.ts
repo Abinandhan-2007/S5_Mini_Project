@@ -60,18 +60,21 @@ export function compareSemver(v1: string, v2: string): number {
  * Check if a new APK version is available on the backend.
  */
 export async function checkForAppUpdate(): Promise<AppVersionInfo | null> {
+  // Guard: APK updates are only applicable to native mobile platforms (e.g. Android app)
+  if (!Capacitor.isNativePlatform()) {
+    return null;
+  }
+
   try {
     // 1. Get installed app version
     let installedVersion = '1.0.0';
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const info = await App.getInfo();
-        if (info?.version) {
-          installedVersion = info.version;
-        }
-      } catch (appErr) {
-        console.warn('[UpdateChecker] Could not read native app version:', appErr);
+    try {
+      const info = await App.getInfo();
+      if (info?.version) {
+        installedVersion = info.version;
       }
+    } catch (appErr) {
+      console.warn('[UpdateChecker] Could not read native app version:', appErr);
     }
 
     // 2. Fetch latest server version from backend
@@ -181,10 +184,17 @@ export async function downloadAndInstallApk(
       try {
         if (onProgress) onProgress(30);
 
-        const res = await fetch(targetUrl, {
+        // Add cache busting param
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        const cacheBustedUrl = `${targetUrl}${separator}_t=${Date.now()}`;
+
+        const res = await fetch(cacheBustedUrl, {
           method: 'GET',
+          cache: 'no-store',
           headers: {
             'ngrok-skip-browser-warning': 'true',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
           },
         });
 
@@ -208,8 +218,16 @@ export async function downloadAndInstallApk(
     // Convert to base64
     const base64Data = arrayBufferToBase64(buffer);
 
-    // Save to native cache directory
+    // Clean up any existing cached update file first
     const fileName = 'CarePulse_update.apk';
+    try {
+      await Filesystem.deleteFile({
+        path: fileName,
+        directory: Directory.Cache,
+      });
+    } catch (_) {}
+
+    // Save fresh binary to native cache directory
     await Filesystem.writeFile({
       path: fileName,
       data: base64Data,

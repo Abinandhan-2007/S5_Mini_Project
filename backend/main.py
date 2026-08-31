@@ -2291,7 +2291,22 @@ from fastapi.responses import FileResponse
 
 downloads_dir = Path(__file__).resolve().parent / "static_downloads"
 downloads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/downloads", StaticFiles(directory=str(downloads_dir)), name="downloads")
+
+@app.api_route("/downloads/{filename}", methods=["GET", "HEAD"])
+async def download_static_file(filename: str):
+    target_file = downloads_dir / filename
+    if not target_file.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(
+        path=target_file,
+        media_type="application/vnd.android.package-archive",
+        filename=filename,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/api/app/version")

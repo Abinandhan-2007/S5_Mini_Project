@@ -76,18 +76,23 @@ import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
 const AppUpdateChecker: React.FC = () => {
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
 
-  const runCheck = async () => {
-    try {
-      const info = await checkForAppUpdate();
-      if (info && info.isUpdateAvailable) {
-        setUpdateInfo(info);
-      }
-    } catch (err) {
-      console.warn('[AppUpdateChecker] check error:', err);
-    }
-  };
-
   useEffect(() => {
+    // Only run update check on native Android/iOS platform (not on web browser or staff portals)
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    const runCheck = async () => {
+      try {
+        const info = await checkForAppUpdate();
+        if (info && info.isUpdateAvailable) {
+          setUpdateInfo(info);
+        }
+      } catch (err) {
+        console.warn('[AppUpdateChecker] check error:', err);
+      }
+    };
+
     // Run check immediately on mount
     const timer = setTimeout(() => {
       runCheck();
@@ -107,7 +112,7 @@ const AppUpdateChecker: React.FC = () => {
     };
   }, []);
 
-  if (!updateInfo) return null;
+  if (!Capacitor.isNativePlatform() || !updateInfo) return null;
 
   return (
     <UpdateAvailableModal
