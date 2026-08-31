@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Camera,
@@ -32,6 +32,9 @@ import { useCarePulseStore } from '../../lib/store';
 import { registerDeviceBiometrics, checkDeviceBiometricSupport } from '../../lib/biometricAuthService';
 import { calculateAge, getTodayDateString } from '../../lib/dateUtils';
 import { apiPost } from '../../lib/apiFetch';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
+import { isUserProfileIncomplete, clearProfilePromptTracking } from '../auth/CompleteProfileScreen';
 
 export const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -48,6 +51,21 @@ export const ProfileScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('1.0.0');
+
+  useEffect(() => {
+    const fetchAppVersion = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const info = await App.getInfo();
+          if (info?.version) {
+            setAppVersion(info.version);
+          }
+        } catch (_) {}
+      }
+    };
+    fetchAppVersion();
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -185,6 +203,7 @@ export const ProfileScreen: React.FC = () => {
         try {
           localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
         } catch {}
+        clearProfilePromptTracking(user.id);
       }
 
       setSaveSuccess('Profile and medical stats saved successfully!');
@@ -353,6 +372,33 @@ export const ProfileScreen: React.FC = () => {
             <span>Edit Profile & Vitals</span>
           </button>
         </div>
+
+        {/* INCOMPLETE PROFILE REMINDER CARD */}
+        {isUserProfileIncomplete(user) && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <AlertCircle className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0 text-left">
+                <h4 className="text-xs font-black text-slate-900 font-heading tracking-tight">
+                  Medical Profile Incomplete
+                </h4>
+                <p className="text-[10.5px] text-slate-600 font-medium">
+                  Add your contact and emergency details to enable appointment bookings.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/complete-profile')}
+              className="px-3.5 py-1.5 bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              Complete Now →
+            </button>
+          </div>
+        )}
 
         {/* VITAL INFORMATION COMPACT GRID */}
         <div className="space-y-2">
@@ -550,6 +596,13 @@ export const ProfileScreen: React.FC = () => {
             <LogOut className="w-4 h-4 text-rose-600" />
             <span>Sign Out</span>
           </button>
+        </div>
+
+        {/* APP VERSION INDICATOR */}
+        <div className="pt-4 pb-2 text-center select-none">
+          <p className="text-[11px] font-bold text-slate-400 tracking-wide font-mono">
+            CarePulse v{appVersion}
+          </p>
         </div>
       </main>
 

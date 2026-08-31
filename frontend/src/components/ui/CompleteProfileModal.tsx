@@ -16,24 +16,14 @@ import {
 import { useCarePulseStore } from '../../lib/store';
 import { apiPost } from '../../lib/apiFetch';
 import { getTodayDateString, calculateAge } from '../../lib/dateUtils';
+import {
+  isUserProfileIncomplete,
+  shouldPromptProfileCompletion,
+  markProfilePromptShown,
+  clearProfilePromptTracking,
+} from '../../features/auth/CompleteProfileScreen';
 
-export const isUserProfileIncomplete = (user: any): boolean => {
-  if (!user) return false;
-  // Check if profile was already marked complete
-  try {
-    const isMarked = localStorage.getItem(`carepulse_profile_completed_${user.id}`);
-    if (isMarked === 'true') return false;
-  } catch {}
-
-  const phone = (user.phone || '').trim();
-  const isDefaultPhone = phone === '' || phone === '+91 98765 00000' || phone === '+91 98765 43210';
-  const isDefaultGender = !user.gender || user.gender === 'Not specified';
-  const isDefaultDob = !user.dob || user.dob === getTodayDateString();
-  const isDefaultEmergency = !user.emergencyContact?.phone || user.emergencyContact?.phone === '+91 98765 00000';
-
-  // For Google users or any account missing primary phone / emergency / gender / dob
-  return isDefaultPhone || (user.authProvider === 'google' && (isDefaultGender || isDefaultEmergency || isDefaultDob));
-};
+export { isUserProfileIncomplete };
 
 export const CompleteProfileModal: React.FC = () => {
   const user = useCarePulseStore((s) => s.user);
@@ -69,7 +59,7 @@ export const CompleteProfileModal: React.FC = () => {
       return;
     }
 
-    if (isUserProfileIncomplete(user)) {
+    if (shouldPromptProfileCompletion(user)) {
       setFullName(user.fullName || '');
       setPhone(user.phone && user.phone !== '+91 98765 00000' && user.phone !== '+91 98765 43210' ? user.phone : '');
       setDob(user.dob && user.dob !== getTodayDateString() ? user.dob : '2000-01-15');
@@ -88,6 +78,7 @@ export const CompleteProfileModal: React.FC = () => {
       setAllergies(user.allergies || '');
       setConditions(user.preExistingConditions || '');
       setIsOpen(true);
+      markProfilePromptShown(user.id);
     } else {
       setIsOpen(false);
     }
@@ -98,7 +89,10 @@ export const CompleteProfileModal: React.FC = () => {
   const calculatedAge = calculateAge(dob);
 
   const handleDismiss = () => {
-    sessionStorage.setItem(`carepulse_profile_modal_dismissed_${user.id}`, 'true');
+    if (user?.id) {
+      sessionStorage.setItem(`carepulse_profile_modal_dismissed_${user.id}`, 'true');
+      markProfilePromptShown(user.id);
+    }
     setIsOpen(false);
   };
 
@@ -171,6 +165,7 @@ export const CompleteProfileModal: React.FC = () => {
         localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
         sessionStorage.setItem(`carepulse_profile_modal_dismissed_${user.id}`, 'true');
       } catch {}
+      clearProfilePromptTracking(user.id);
 
       setSuccessMessage('Medical profile saved successfully!');
       setTimeout(() => {

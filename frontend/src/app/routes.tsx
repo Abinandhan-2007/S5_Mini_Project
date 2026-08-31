@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginScreen } from '../features/auth/LoginScreen';
 import { RegisterScreen } from '../features/auth/RegisterScreen';
-import { CompleteProfileScreen, isUserProfileIncomplete } from '../features/auth/CompleteProfileScreen';
+import { CompleteProfileScreen, shouldPromptProfileCompletion } from '../features/auth/CompleteProfileScreen';
 import { HomeScreen } from '../features/home/HomeScreen';
 import { HealthAIChatScreen } from '../features/health-ai/HealthAIChatScreen';
 import { EscalationNoticeScreen } from '../features/health-ai/EscalationNoticeScreen';
@@ -73,7 +73,7 @@ export const AppRoutes: React.FC = () => {
               isStaffDomain()
                 ? '/staff/login'
                 : isAuthenticated
-                ? isUserProfileIncomplete(user)
+                ? shouldPromptProfileCompletion(user)
                   ? '/complete-profile'
                   : '/home'
                 : '/login'

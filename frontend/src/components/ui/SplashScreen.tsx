@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, RotateCw, WifiOff, AlertTriangle } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
 import { checkBackendHealth } from '../../lib/apiFetch';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -20,9 +22,22 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     () => (isOnlineInitially ? 'Checking connection...' : 'Internet is turned off. Please turn on Wi-Fi or Mobile Data.')
   );
   const [isRetrying, setIsRetrying] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('1.5.0');
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
   const isCancelledRef = useRef(false);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      App.getInfo()
+        .then((info) => {
+          if (info?.version) {
+            setAppVersion(info.version);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   // Real Health-Checked Loading Flow
   const startLinearLoading = useCallback(async () => {
@@ -350,7 +365,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         className="w-full text-center z-10"
       >
         <p className="text-[10px] tracking-[0.25em] text-teal-100/30 uppercase font-mono">
-          CarePulse • v1.0.0
+          CarePulse • v{appVersion}
         </p>
       </motion.div>
     </div>

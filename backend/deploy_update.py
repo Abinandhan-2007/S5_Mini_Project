@@ -90,7 +90,11 @@ def update_app_version_json(new_name: str, release_notes: str):
 
 def run_command(cmd: str, cwd: Path, desc: str):
     print(f"\n🚀 {desc}...")
-    result = subprocess.run(cmd, cwd=str(cwd), shell=True, text=True, capture_output=True)
+    env = os.environ.copy()
+    jbr_path = Path("C:/Program Files/Android/Android Studio/jbr")
+    if jbr_path.exists() and not env.get("JAVA_HOME"):
+        env["JAVA_HOME"] = str(jbr_path)
+    result = subprocess.run(cmd, cwd=str(cwd), shell=True, text=True, capture_output=True, env=env)
     if result.returncode != 0:
         print(f"❌ {desc} failed with exit code {result.returncode}:")
         print(result.stderr or result.stdout)

@@ -14,7 +14,7 @@ import {
 } from '../../lib/googleAuth';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { apiPost } from '../../lib/apiFetch';
-import { isUserProfileIncomplete } from './CompleteProfileScreen';
+import { shouldPromptProfileCompletion } from './CompleteProfileScreen';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -63,7 +63,7 @@ export const LoginScreen: React.FC = () => {
           if (authResult?.user) {
             await setUserAuth(authResult.user, authResult.token);
             window.history.replaceState(null, '', window.location.pathname);
-            if (isUserProfileIncomplete(authResult.user)) {
+            if (shouldPromptProfileCompletion(authResult.user)) {
               navigate('/complete-profile', { replace: true });
             } else {
               navigate('/home', { replace: true });
@@ -93,7 +93,7 @@ export const LoginScreen: React.FC = () => {
             if (authResult?.user) {
               await setUserAuth(authResult.user, authResult.token);
               window.history.replaceState(null, '', window.location.pathname);
-              if (isUserProfileIncomplete(authResult.user)) {
+              if (shouldPromptProfileCompletion(authResult.user)) {
                 navigate('/complete-profile', { replace: true });
               } else {
                 navigate('/home', { replace: true });
@@ -129,7 +129,7 @@ export const LoginScreen: React.FC = () => {
               if (authResult?.user) {
                 await setUserAuth(authResult.user, authResult.token);
                 window.history.replaceState(null, '', window.location.pathname);
-                if (isUserProfileIncomplete(authResult.user)) {
+                if (shouldPromptProfileCompletion(authResult.user)) {
                   navigate('/complete-profile', { replace: true });
                 } else {
                   navigate('/home', { replace: true });
@@ -164,7 +164,7 @@ export const LoginScreen: React.FC = () => {
                   const authResult = await authenticateWithBackend({ credential: response.credential });
                   if (authResult?.user) {
                     await setUserAuth(authResult.user, authResult.token);
-                    if (isUserProfileIncomplete(authResult.user)) {
+                    if (shouldPromptProfileCompletion(authResult.user)) {
                       navigate('/complete-profile', { replace: true });
                     } else {
                       navigate('/home', { replace: true });
@@ -187,7 +187,7 @@ export const LoginScreen: React.FC = () => {
                       authProvider: 'google',
                     };
                     await setUserAuth(fallbackUser, response.credential);
-                    if (isUserProfileIncomplete(fallbackUser)) {
+                    if (shouldPromptProfileCompletion(fallbackUser)) {
                       navigate('/complete-profile', { replace: true });
                     } else {
                       navigate('/home', { replace: true });
@@ -223,7 +223,7 @@ export const LoginScreen: React.FC = () => {
     setGoogleError(null);
     googleSignIn(async (user, token) => {
       await setUserAuth(user, token);
-      if (isUserProfileIncomplete(user)) {
+      if (shouldPromptProfileCompletion(user)) {
         navigate('/complete-profile', { replace: true });
       } else {
         navigate('/home', { replace: true });

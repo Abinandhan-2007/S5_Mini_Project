@@ -25,6 +25,8 @@ def normalize_text_key(val: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "", val).lower()
 
 from fastapi import FastAPI, HTTPException, status, Header, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -2286,9 +2288,6 @@ app.include_router(staff_auth_router)
 app.include_router(doctor_router)
 
 # Mount static APK downloads folder for self-hosted updates
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
 downloads_dir = Path(__file__).resolve().parent / "static_downloads"
 downloads_dir.mkdir(parents=True, exist_ok=True)
 

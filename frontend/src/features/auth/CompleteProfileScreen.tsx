@@ -17,6 +17,9 @@ import { apiPost } from '../../lib/apiFetch';
 import { getTodayDateString, calculateAge } from '../../lib/dateUtils';
 import { Avatar } from '../../components/ui/Avatar';
 
+export const PROFILE_PROMPT_KEY = 'profile_prompt_last_shown';
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
 export const isUserProfileIncomplete = (user: any): boolean => {
   if (!user) return false;
   try {
@@ -36,6 +39,60 @@ export const isUserProfileIncomplete = (user: any): boolean => {
     return hasNoGender || hasNoEmergency || hasNoDob || !user.address;
   }
   return false;
+};
+
+/**
+ * Determines whether the user should be automatically prompted to complete their profile.
+ * Only returns true if:
+ * 1. The profile is incomplete.
+ * 2. More than 24 hours have passed since the last prompt (or never prompted).
+ */
+export const shouldPromptProfileCompletion = (user: any): boolean => {
+  if (!user) return false;
+  if (!isUserProfileIncomplete(user)) return false;
+
+  try {
+    const userKey = `profile_prompt_last_shown_${user.id}`;
+    const lastShownStr = localStorage.getItem(userKey) || localStorage.getItem(PROFILE_PROMPT_KEY);
+    if (!lastShownStr) {
+      return true; // Not shown yet -> prompt once
+    }
+
+    const lastShown = parseInt(lastShownStr, 10);
+    if (isNaN(lastShown)) {
+      return true;
+    }
+
+    const now = Date.now();
+    return now - lastShown > TWENTY_FOUR_HOURS_MS;
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Record the timestamp when the profile prompt is shown to the user.
+ */
+export const markProfilePromptShown = (userId?: string) => {
+  try {
+    const now = Date.now().toString();
+    if (userId) {
+      localStorage.setItem(`profile_prompt_last_shown_${userId}`, now);
+    }
+    localStorage.setItem(PROFILE_PROMPT_KEY, now);
+  } catch {}
+};
+
+/**
+ * Clear the profile prompt timestamp once profile is completed.
+ */
+export const clearProfilePromptTracking = (userId?: string) => {
+  try {
+    if (userId) {
+      localStorage.removeItem(`profile_prompt_last_shown_${userId}`);
+    }
+    localStorage.removeItem(PROFILE_PROMPT_KEY);
+  } catch {}
 };
 
 export const CompleteProfileScreen: React.FC = () => {
@@ -104,6 +161,13 @@ export const CompleteProfileScreen: React.FC = () => {
     }
   }, [user]);
 
+  // Track that the profile completion prompt has been shown
+  useEffect(() => {
+    if (user?.id) {
+      markProfilePromptShown(user.id);
+    }
+  }, [user?.id]);
+
   const calculatedAge = calculateAge(dob);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,6 +233,8 @@ export const CompleteProfileScreen: React.FC = () => {
         try {
           localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
         } catch {}
+        // Clear tracking key entirely once profile is completed
+        clearProfilePromptTracking(user.id);
       }
 
       setSuccessMessage('Medical profile completed successfully! Redirecting to home...');
@@ -187,6 +253,7 @@ export const CompleteProfileScreen: React.FC = () => {
       try {
         sessionStorage.setItem(`carepulse_profile_modal_dismissed_${user.id}`, 'true');
       } catch {}
+      markProfilePromptShown(user.id);
     }
     navigate('/home', { replace: true });
   };

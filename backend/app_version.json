@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.4.0",
+  "version": "1.5.1",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "Testing OTA upgrade flow",
+  "release_notes": "Dynamic splash screen version display",
   "released_at": "2026-08-31"
 }
