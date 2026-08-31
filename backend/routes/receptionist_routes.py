@@ -520,15 +520,6 @@ def fetch_all_tokens_from_db(
             })
             idx += 1
 
-    # Fallback to MOCK_TOKEN_QUEUE if both DB and JSON are empty (only for unrestricted or matching hospital)
-    if not tokens and not (staff_ctx and staff_ctx.get("role") in ["receptionist", "doctor"] and not staff_ctx.get("hospital_id")):
-        for t in MOCK_TOKEN_QUEUE:
-            if doctor_id and t.get("doctorId") != doctor_id:
-                continue
-            if effective_hosp_id and t.get("hospital_id") != effective_hosp_id:
-                continue
-            tokens.append(dict(t))
-
     return tokens
 
 @router.get("/tokens")

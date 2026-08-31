@@ -277,128 +277,141 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          2. EXECUTIVE 6-CARD KPI METRICS MATRIX
+      {/* ══════════════════════════════════════════════════════════════════
+          2. EXECUTIVE 6-CARD KPI METRICS MATRIX (RESPONSIVE ALIGNMENT)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 w-full">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 w-full">
         {/* Waiting in Queue */}
         <div
           onClick={() => onNavigateTab?.('queue')}
-          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
+          className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-black text-slate-400 uppercase tracking-wider leading-tight">
               Waiting Queue
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono truncate">
-            {waitingTokens.length}
+          <div>
+            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono">
+              {waitingTokens.length}
+            </div>
+            <p className="text-[10px] sm:text-[10.5px] text-amber-700 font-bold flex items-center gap-1 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span>In Waiting Hall</span>
+            </p>
           </div>
-          <p className="text-[10px] sm:text-[10.5px] text-amber-700 font-bold flex items-center gap-1 truncate">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-            <span className="truncate">In Waiting Hall</span>
-          </p>
         </div>
 
         {/* In Consultation */}
         <div
           onClick={() => onNavigateTab?.('queue')}
-          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-teal-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
+          className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-teal-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-black text-slate-400 uppercase tracking-wider leading-tight">
               In Consultation
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-[#0B5A54] font-mono truncate">
-            {inConsultationTokens.length}
+          <div>
+            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-[#0B5A54] font-mono">
+              {inConsultationTokens.length}
+            </div>
+            <p className="text-[10px] sm:text-[10.5px] text-teal-700 font-bold flex items-center gap-1 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse shrink-0" />
+              <span>Active In Cabins</span>
+            </p>
           </div>
-          <p className="text-[10px] sm:text-[10.5px] text-teal-700 font-bold flex items-center gap-1 truncate">
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse shrink-0" />
-            <span className="truncate">Active In Cabins</span>
-          </p>
         </div>
 
         {/* On-Duty Doctors */}
         <div
           onClick={() => onNavigateTab?.('doctors')}
-          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
+          className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-black text-slate-400 uppercase tracking-wider leading-tight">
               On-Duty Doctors
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <Stethoscope className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-600 font-mono truncate">
-            {activeDoctors.length}{' '}
-            <span className="text-[11px] sm:text-xs text-slate-400 font-normal font-sans">/ {doctors.length}</span>
+          <div>
+            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-600 font-mono">
+              {activeDoctors.length}{' '}
+              <span className="text-[11px] sm:text-xs text-slate-400 font-normal font-sans">/ {doctors.length}</span>
+            </div>
+            <p className="text-[10px] sm:text-[10.5px] text-emerald-700 font-bold mt-0.5">Available Now</p>
           </div>
-          <p className="text-[10px] sm:text-[10.5px] text-emerald-700 font-bold truncate">Available Now</p>
         </div>
 
         {/* Completed Visits */}
         <div
           onClick={() => onNavigateTab?.('bookings')}
-          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
+          className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-black text-slate-400 uppercase tracking-wider leading-tight">
               Completed
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-blue-600 font-mono truncate">
-            {completedTokens.length}
+          <div>
+            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-blue-600 font-mono">
+              {completedTokens.length}
+            </div>
+            <p className="text-[10px] sm:text-[10.5px] text-blue-700 font-bold mt-0.5">Done Today</p>
           </div>
-          <p className="text-[10px] sm:text-[10.5px] text-blue-700 font-bold truncate">Done Today</p>
         </div>
 
         {/* Online App Tokens */}
         <div
           onClick={() => onNavigateTab?.('bookings')}
-          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
+          className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-black text-slate-400 uppercase tracking-wider leading-tight">
               Online App
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-purple-700 font-mono truncate">
-            {onlineTokens.length}
+          <div>
+            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-purple-700 font-mono">
+              {onlineTokens.length}
+            </div>
+            <p className="text-[10px] sm:text-[10.5px] text-purple-700 font-bold mt-0.5">Pre-Booked</p>
           </div>
-          <p className="text-[10px] sm:text-[10.5px] text-purple-700 font-bold truncate">Pre-Booked</p>
         </div>
 
         {/* Walk-In Registrations */}
         <div
           onClick={() => onNavigateTab?.('bookings')}
-          className="min-w-0 overflow-hidden bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer space-y-1.5 sm:space-y-2 group"
+          className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-black text-slate-400 uppercase tracking-wider leading-tight">
               Walk-Ins
             </span>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-3xl font-black text-sky-700 font-mono truncate">
-            {walkInTokens.length}
+          <div>
+            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-sky-700 font-mono">
+              {walkInTokens.length}
+            </div>
+            <p className="text-[10px] sm:text-[10.5px] text-sky-700 font-bold mt-0.5">Front Desk</p>
           </div>
-          <p className="text-[10px] sm:text-[10.5px] text-sky-700 font-bold truncate">Front Desk</p>
         </div>
       </div>
 
@@ -600,35 +613,35 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               </span>
             </div>
 
-            {/* 2x2 Spacious Light Hospital-Themed Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 flex-1 my-1">
+            {/* Responsive Light Hospital-Themed Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-3.5 flex-1 my-1">
               {/* 1. Walk-In Registration (Clinical Mint & Sage Teal) */}
               <button
                 onClick={onOpenNewAppointment}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-teal-50/90 via-emerald-50/50 to-teal-100/50 border border-teal-200/90 hover:border-teal-400 shadow-2xs hover:shadow-lg hover:shadow-teal-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[135px] sm:min-h-[148px]"
+                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-teal-50/90 via-emerald-50/50 to-teal-100/50 border border-teal-200/90 hover:border-teal-400 shadow-2xs hover:shadow-lg hover:shadow-teal-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#0B5A54_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <Plus className="w-5 h-5 stroke-[3]" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
                   </div>
-                  <span className="px-2.5 py-1 rounded-xl bg-teal-100/90 text-teal-900 border border-teal-300/80 text-[10.5px] font-mono font-black">
+                  <span className="px-2.5 py-0.5 rounded-xl bg-teal-100/90 text-teal-900 border border-teal-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
                     + Intake
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-3">
+                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-[#0B5A54] transition-colors leading-snug truncate">
+                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-[#0B5A54] transition-colors leading-snug">
                       Walk-In Patient
                     </h4>
-                    <p className="text-xs text-slate-500 font-medium truncate">
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
                       Issue instant token
                     </p>
                   </div>
-                  <div className="w-7 h-7 rounded-xl bg-white text-slate-700 border border-teal-200 group-hover:bg-[#0B5A54] group-hover:text-white group-hover:border-[#0B5A54] flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-teal-200 group-hover:bg-[#0B5A54] group-hover:text-white group-hover:border-[#0B5A54] flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -637,30 +650,30 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               {/* 2. Express Arrival Check-In (Medical Cyan & Ocean Sky) */}
               <button
                 onClick={() => onNavigateTab?.('checkin')}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-sky-50/90 via-cyan-50/50 to-sky-100/50 border border-sky-200/90 hover:border-sky-400 shadow-2xs hover:shadow-lg hover:shadow-sky-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[135px] sm:min-h-[148px]"
+                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-sky-50/90 via-cyan-50/50 to-sky-100/50 border border-sky-200/90 hover:border-sky-400 shadow-2xs hover:shadow-lg hover:shadow-sky-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#0284c7_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <UserCheck className="w-5 h-5 stroke-[2.5]" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-1 rounded-xl bg-sky-100/90 text-sky-900 border border-sky-300/80 text-[10.5px] font-mono font-black">
+                  <span className="px-2.5 py-0.5 rounded-xl bg-sky-100/90 text-sky-900 border border-sky-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
                     {onlineTokens.length} Online
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-3">
+                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-sky-800 transition-colors leading-snug truncate">
+                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-sky-800 transition-colors leading-snug">
                       Express Arrival
                     </h4>
-                    <p className="text-xs text-slate-500 font-medium truncate">
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
                       Verify app booking
                     </p>
                   </div>
-                  <div className="w-7 h-7 rounded-xl bg-white text-slate-700 border border-sky-200 group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-sky-200 group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -669,30 +682,30 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               {/* 3. Today's History & Visit Logs (Clinical Lilac & Care Violet) */}
               <button
                 onClick={() => onNavigateTab?.('bookings')}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-purple-50/90 via-indigo-50/50 to-purple-100/50 border border-purple-200/90 hover:border-purple-400 shadow-2xs hover:shadow-lg hover:shadow-purple-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[135px] sm:min-h-[148px]"
+                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-purple-50/90 via-indigo-50/50 to-purple-100/50 border border-purple-200/90 hover:border-purple-400 shadow-2xs hover:shadow-lg hover:shadow-purple-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#7c3aed_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-purple-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <CalendarCheck className="w-5 h-5 stroke-[2.5]" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-purple-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <CalendarCheck className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-1 rounded-xl bg-purple-100/90 text-purple-900 border border-purple-300/80 text-[10.5px] font-mono font-black">
+                  <span className="px-2.5 py-0.5 rounded-xl bg-purple-100/90 text-purple-900 border border-purple-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
                     {completedTokens.length} Done
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-3">
+                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-purple-800 transition-colors leading-snug truncate">
+                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-purple-800 transition-colors leading-snug">
                       Today's History
                     </h4>
-                    <p className="text-xs text-slate-500 font-medium truncate">
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
                       Bookings & visit log
                     </p>
                   </div>
-                  <div className="w-7 h-7 rounded-xl bg-white text-slate-700 border border-purple-200 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-purple-200 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -701,30 +714,30 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               {/* 4. Print OPD Roster (Medical Amber & Warm Sand) */}
               <button
                 onClick={handlePrintRoster}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-amber-100/50 border border-amber-200/90 hover:border-amber-400 shadow-2xs hover:shadow-lg hover:shadow-amber-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[135px] sm:min-h-[148px]"
+                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-amber-100/50 border border-amber-200/90 hover:border-amber-400 shadow-2xs hover:shadow-lg hover:shadow-amber-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#d97706_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <Printer className="w-5 h-5 stroke-[2.5]" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <Printer className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-1 rounded-xl bg-amber-100/90 text-amber-900 border border-amber-300/80 text-[10.5px] font-mono font-black">
+                  <span className="px-2.5 py-0.5 rounded-xl bg-amber-100/90 text-amber-900 border border-amber-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
                     PDF / Print
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-3">
+                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-amber-800 transition-colors leading-snug truncate">
+                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-amber-800 transition-colors leading-snug">
                       Print OPD Roster
                     </h4>
-                    <p className="text-xs text-slate-500 font-medium truncate">
-                      Daily physician sheet
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                      Token schedule
                     </p>
                   </div>
-                  <div className="w-7 h-7 rounded-xl bg-white text-slate-700 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>

@@ -123,72 +123,7 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
   }
 ];
 
-const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
-  {
-    id: 'tok-1',
-    tokenNumber: '#TOK-001',
-    patientName: 'Sarah Jenkins',
-    patientPhone: '+91 98765 43210',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    ticketNumber: '#CP-4821',
-    timeSlot: '10:00 AM - 11:00 AM',
-    status: 'In Consultation',
-    arrivalTime: '09:45 AM',
-    issueTime: '09:50 AM',
-    type: 'In-Person',
-    date: '13 Aug 2026'
-  },
-  {
-    id: 'tok-2',
-    tokenNumber: '#TOK-002',
-    patientName: 'Robert Chen',
-    patientPhone: '+91 98111 22334',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    ticketNumber: '#CP-4822',
-    timeSlot: '10:00 AM - 11:00 AM',
-    status: 'Waiting',
-    arrivalTime: '10:05 AM',
-    issueTime: '10:08 AM',
-    type: 'Walk-In',
-    date: '13 Aug 2026'
-  },
-  {
-    id: 'tok-3',
-    tokenNumber: '#TOK-003',
-    patientName: 'Elena Rostova',
-    patientPhone: '+91 97777 88899',
-    doctorId: 'doc-2',
-    doctorName: 'Dr. Marcus Vance',
-    doctorSpecialty: 'Dermatologist',
-    ticketNumber: '#CP-4823',
-    timeSlot: '11:00 AM - 12:00 PM',
-    status: 'Waiting',
-    arrivalTime: '10:15 AM',
-    issueTime: '10:20 AM',
-    type: 'In-Person',
-    date: '13 Aug 2026'
-  },
-  {
-    id: 'tok-4',
-    tokenNumber: '#TOK-004',
-    patientName: 'Michael Scott',
-    patientPhone: '+91 91234 56789',
-    doctorId: 'doc-4',
-    doctorName: 'Dr. Ethan Reynolds',
-    doctorSpecialty: 'Neurologist',
-    ticketNumber: '#CP-4824',
-    timeSlot: '11:00 AM - 12:00 PM',
-    status: 'Waiting',
-    arrivalTime: '10:25 AM',
-    issueTime: '10:28 AM',
-    type: 'Walk-In',
-    date: '13 Aug 2026'
-  }
-];
+
 
 const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
   id: 'rec-101',
@@ -550,7 +485,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   departments: DEFAULT_DEPARTMENTS,
   announcements: DEFAULT_ANNOUNCEMENTS,
   doctors: MOCK_INITIAL_DOCTORS,
-  tokens: MOCK_INITIAL_TOKENS,
+  tokens: [],
   isLoading: false,
   error: null,
 
@@ -703,11 +638,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     if (!silent) set({ isLoading: true });
     try {
       const tokens = await receptionistService.getTokenQueue(doctorId);
-      if (tokens && tokens.length > 0) {
-        set({ tokens, isLoading: false });
-      } else {
-        if (!silent) set({ isLoading: false });
-      }
+      set({ tokens: Array.isArray(tokens) ? tokens : [], isLoading: false });
     } catch {
       if (!silent) set({ isLoading: false });
     }
