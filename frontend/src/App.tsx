@@ -70,10 +70,9 @@ import { checkForAppUpdate, type AppVersionInfo } from './lib/versionChecker';
 import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
 
 /**
- * Handles in-app APK version checking on startup.
- * Non-blocking, fails silently if offline, and prompts user if server version > installed.
+ * Handles live foreground-resume APK version checking when app is already running.
  */
-const AppUpdateChecker: React.FC = () => {
+const AppResumeUpdateChecker: React.FC = () => {
   const [updateInfo, setUpdateInfo] = useState<AppVersionInfo | null>(null);
 
   useEffect(() => {
@@ -89,16 +88,11 @@ const AppUpdateChecker: React.FC = () => {
           setUpdateInfo(info);
         }
       } catch (err) {
-        console.warn('[AppUpdateChecker] check error:', err);
+        console.warn('[AppResumeUpdateChecker] check error:', err);
       }
     };
 
-    // Run check immediately on mount
-    const timer = setTimeout(() => {
-      runCheck();
-    }, 400);
-
-    // Also check when app comes to foreground
+    // Check when app returns from background to foreground
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         runCheck();
@@ -107,7 +101,6 @@ const AppUpdateChecker: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearTimeout(timer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
@@ -125,26 +118,53 @@ const AppUpdateChecker: React.FC = () => {
 export const App: React.FC = () => {
   // Show splash on patient app launch / cold start. Bypass for staff portals.
   const [showSplash, setShowSplash] = useState<boolean>(() => !isStaffLanding());
+  const [startupUpdateInfo, setStartupUpdateInfo] = useState<AppVersionInfo | null>(null);
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
+  // If staff portal, check auth session immediately on mount
   useEffect(() => {
-    checkAuthSession();
+    if (isStaffLanding()) {
+      checkAuthSession();
+    }
   }, [checkAuthSession]);
 
-  const handleSplashComplete = () => {
-    // Finish initialization and transition into the app
-    useCarePulseStore.setState({ isInitializing: false });
+  const handleSplashComplete = (updateInfo?: AppVersionInfo | null) => {
     setShowSplash(false);
+    if (updateInfo && updateInfo.isUpdateAvailable) {
+      // Prompt user FIRST with update modal before mounting routes, login screen, or biometric lock
+      setStartupUpdateInfo(updateInfo);
+    } else {
+      useCarePulseStore.setState({ isInitializing: false });
+    }
   };
 
+  const handleDismissStartupUpdate = () => {
+    setStartupUpdateInfo(null);
+    useCarePulseStore.setState({ isInitializing: false });
+  };
+
+  // 1. Splash Screen Phase
   if (showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
 
+  // 2. Pre-Auth Update Check Phase: Render Update Available Modal FIRST if a newer APK is detected on native mobile
+  if (startupUpdateInfo && Capacitor.isNativePlatform()) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <UpdateAvailableModal
+          updateInfo={startupUpdateInfo}
+          onDismiss={handleDismissStartupUpdate}
+        />
+      </div>
+    );
+  }
+
+  // 3. Normal Authenticated App Flow (Biometric Lock / Session Restore / Login / Routes)
   return (
     <BrowserRouter>
       <NotificationNavigationListener />
-      <AppUpdateChecker />
+      <AppResumeUpdateChecker />
       <OfflineBanner />
       <div className="min-h-screen bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col overflow-x-hidden">
         <AppRoutes />

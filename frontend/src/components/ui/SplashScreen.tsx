@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, RotateCw, WifiOff, AlertTriangle } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
 import { checkBackendHealth } from '../../lib/apiFetch';
+import { checkForAppUpdate, type AppVersionInfo } from '../../lib/versionChecker';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
 interface SplashScreenProps {
-  onComplete: () => void;
+  onComplete: (updateInfo?: AppVersionInfo | null) => void;
 }
 
 export type SplashState = 'loading' | 'success' | 'error';
@@ -18,6 +19,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [splashState, setSplashState] = useState<SplashState>(() => (isOnlineInitially ? 'loading' : 'error'));
   const [errorType, setErrorType] = useState<ErrorType>(() => (isOnlineInitially ? 'server' : 'network'));
   const [progress, setProgress] = useState(0);
+  const targetProgressRef = useRef(0);
   const [statusText, setStatusText] = useState(
     () => (isOnlineInitially ? 'Checking connection...' : 'Internet is turned off. Please turn on Wi-Fi or Mobile Data.')
   );
@@ -26,6 +28,27 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
   const isCancelledRef = useRef(false);
+  const detectedUpdateRef = useRef<AppVersionInfo | null>(null);
+
+  // Smooth frame-based continuous progress interpolator (0% to 100% constant flow)
+  useEffect(() => {
+    let animationFrameId: number;
+    const updateSmoothProgress = () => {
+      setProgress((prev) => {
+        const target = targetProgressRef.current;
+        if (prev < target) {
+          const diff = target - prev;
+          const step = Math.max(0.4, diff * 0.1);
+          const next = Math.min(target, prev + step);
+          return next;
+        }
+        return prev;
+      });
+      animationFrameId = requestAnimationFrame(updateSmoothProgress);
+    };
+    animationFrameId = requestAnimationFrame(updateSmoothProgress);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -50,7 +73,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     }
 
     isCancelledRef.current = false;
-    setProgress(15);
+    targetProgressRef.current = 25;
     setSplashState('loading');
     setStatusText('Connecting to CarePulse server...');
 
@@ -67,37 +90,48 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       return;
     }
 
-    // 3. Backend verified online -> Smoothly sync session & finish loading
-    setProgress(45);
-    setStatusText('Connecting to server...');
+    // 3. Backend verified online -> Concurrently check session & check for native APK update
+    targetProgressRef.current = 65;
+    setStatusText('Checking for updates & syncing...');
 
     try {
-      await checkAuthSession();
+      const sessionPromise = checkAuthSession().catch(() => {});
+      const updatePromise = Capacitor.isNativePlatform()
+        ? Promise.race([
+            checkForAppUpdate(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+          ])
+        : Promise.resolve(null);
+
+      const [, updateResult] = await Promise.allSettled([sessionPromise, updatePromise]);
+      if (updateResult.status === 'fulfilled' && updateResult.value) {
+        detectedUpdateRef.current = updateResult.value;
+      }
     } catch {
-      // Non-fatal if session sync fails
+      // Non-fatal if session sync or update check fails
     }
 
     if (isCancelledRef.current) return;
 
-    setProgress(75);
+    targetProgressRef.current = 88;
     setStatusText('Fetching your data...');
 
-    const timer1 = setTimeout(() => {
-      if (isCancelledRef.current) return;
-      setProgress(95);
-      setStatusText('Almost ready...');
+    await new Promise((r) => setTimeout(r, 250));
+    if (isCancelledRef.current) return;
 
-      const timer2 = setTimeout(() => {
-        if (isCancelledRef.current) return;
-        setProgress(100);
-        setSplashState('success');
-        setStatusText('Ready');
-      }, 300);
+    targetProgressRef.current = 96;
+    setStatusText('Almost ready...');
 
-      return () => clearTimeout(timer2);
-    }, 400);
+    await new Promise((r) => setTimeout(r, 250));
+    if (isCancelledRef.current) return;
 
-    return () => clearTimeout(timer1);
+    targetProgressRef.current = 100;
+    setStatusText('Ready');
+
+    await new Promise((r) => setTimeout(r, 350));
+    if (isCancelledRef.current) return;
+
+    setSplashState('success');
   }, [checkAuthSession]);
 
   // Initial startup
@@ -109,12 +143,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       return;
     }
 
-    const cleanupPromise = startLinearLoading();
+    startLinearLoading();
     return () => {
       isCancelledRef.current = true;
-      cleanupPromise.then((cleanup) => {
-        if (cleanup) cleanup();
-      });
     };
   }, [startLinearLoading]);
 
@@ -122,7 +153,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   useEffect(() => {
     if (splashState === 'success') {
       const timer = setTimeout(() => {
-        onComplete();
+        onComplete(detectedUpdateRef.current);
       }, 300);
       return () => clearTimeout(timer);
     }

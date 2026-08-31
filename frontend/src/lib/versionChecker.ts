@@ -153,6 +153,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 /**
  * Download APK file within the app and launch Android package installer dialog.
+ * Streams chunks in real-time to report a continuous, steady progress from 0% to 100%.
  */
 export async function downloadAndInstallApk(
   downloadUrl: string,
@@ -163,6 +164,8 @@ export async function downloadAndInstallApk(
   }
 
   try {
+    if (onProgress) onProgress(0);
+
     // Determine download URL targets (fallbacks if ngrok tunnel shifts)
     const urlsToTry: string[] = [downloadUrl];
     const candidateBases = getApiBaseUrls();
@@ -177,14 +180,9 @@ export async function downloadAndInstallApk(
     let buffer: ArrayBuffer | null = null;
     let lastErr: any = null;
 
-    if (onProgress) onProgress(15);
-
-    // If native Capacitor platform, try direct fetch or CapacitorHttp
+    // Try target URLs with streaming byte reader
     for (const targetUrl of urlsToTry) {
       try {
-        if (onProgress) onProgress(30);
-
-        // Add cache busting param
         const separator = targetUrl.includes('?') ? '&' : '?';
         const cacheBustedUrl = `${targetUrl}${separator}_t=${Date.now()}`;
 
@@ -199,9 +197,41 @@ export async function downloadAndInstallApk(
         });
 
         if (res.ok) {
-          if (onProgress) onProgress(50);
-          buffer = await res.arrayBuffer();
-          if (onProgress) onProgress(85);
+          const contentLength = res.headers.get('content-length');
+          // Default estimated size to 10.4MB if Content-Length header is omitted by proxy
+          const totalBytes = contentLength ? parseInt(contentLength, 10) : 10434000;
+
+          if (res.body && typeof res.body.getReader === 'function') {
+            const reader = res.body.getReader();
+            let receivedBytes = 0;
+            const chunks: Uint8Array[] = [];
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value) {
+                chunks.push(value);
+                receivedBytes += value.length;
+                if (onProgress && totalBytes > 0) {
+                  const percent = Math.min(94, Math.max(1, Math.round((receivedBytes / totalBytes) * 94)));
+                  onProgress(percent);
+                }
+              }
+            }
+
+            // Combine stream chunks into single ArrayBuffer
+            const combined = new Uint8Array(receivedBytes);
+            let offset = 0;
+            for (const chunk of chunks) {
+              combined.set(chunk, offset);
+              offset += chunk.length;
+            }
+            buffer = combined.buffer;
+          } else {
+            if (onProgress) onProgress(45);
+            buffer = await res.arrayBuffer();
+            if (onProgress) onProgress(90);
+          }
           break;
         }
       } catch (e) {
@@ -213,7 +243,7 @@ export async function downloadAndInstallApk(
       throw new Error(lastErr?.message || 'Failed to download APK package from server.');
     }
 
-    if (onProgress) onProgress(92);
+    if (onProgress) onProgress(96);
 
     // Convert to base64
     const base64Data = arrayBufferToBase64(buffer);
@@ -226,6 +256,8 @@ export async function downloadAndInstallApk(
         directory: Directory.Cache,
       });
     } catch (_) {}
+
+    if (onProgress) onProgress(98);
 
     // Save fresh binary to native cache directory
     await Filesystem.writeFile({
