@@ -202,8 +202,9 @@ export const FindHospitalsScreen: React.FC = () => {
                 {/* Hero Image Section */}
                 <div className="relative h-48 w-full bg-slate-900 overflow-hidden">
                   <img
-                    src={hosp.imageUrl}
+                    src={hosp.imageUrl || '/hospital_default.jpg'}
                     alt={hosp.name}
+                    onError={(e) => { e.currentTarget.src = '/hospital_default.jpg'; }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-90"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 via-55% to-transparent" />

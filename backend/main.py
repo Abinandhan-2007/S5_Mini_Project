@@ -1519,7 +1519,7 @@ def book_appointment(data: AppointmentCreate):
     patient_id = str(data.patientId).strip() if data.patientId else f"usr-{uuid.uuid4().hex[:10]}"
     ticket_no = data.ticketNumber or f"#CP-{random_ticket()}"
     specialty = data.doctorSpecialty or "General Physician"
-    photo = data.doctorPhoto or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80"
+    photo = data.doctorPhoto or "/doctor_default.jpg"
     app_type = data.type or "In-Person"
 
     # 1. Lookup doctor's authoritative hospital_id and hospital_name snapshot
@@ -1698,7 +1698,7 @@ def get_patient_appointments(patient_id: str):
                         doctorId=r["doctor_id"],
                         doctorName=r["doctor_name"],
                         doctorSpecialty=r.get("doctor_specialty") or "General Medicine",
-                        doctorPhoto=r.get("doctor_photo") or "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+                        doctorPhoto=r.get("doctor_photo") or "/doctor_default.jpg",
                         hospitalId=r.get("hospital_id"),
                         hospital_id=r.get("hospital_id"),
                         hospitalName=r.get("hospital_name") or "CarePulse Central Hospital",
@@ -2083,7 +2083,7 @@ def format_hospital(h: dict) -> HospitalResponse:
     reviews = int(h.get("reviews_count") or h.get("reviewsCount") or 1500)
     emergency = bool(h.get("emergency_available") if h.get("emergency_available") is not None else h.get("emergencyAvailable", True))
     dist = float(h.get("distance_miles") or h.get("distanceMiles") or 1.0)
-    image = h.get("image_url") or h.get("imageUrl") or "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80"
+    image = h.get("image_url") or h.get("imageUrl") or "/hospital_default.jpg"
     fac_type = h.get("facility_type") or h.get("facilityType") or "General"
     h_code = h.get("hospital_code") or h.get("hospitalCode")
 
@@ -2123,7 +2123,7 @@ def format_doctor(d: dict) -> DoctorResponse:
         except Exception:
             slots = []
 
-    photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80"
+    photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "/doctor_default.jpg"
     is_avail = bool(d.get("is_available") if d.get("is_available") is not None else d.get("isAvailable", True))
     hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-1"
     hosp_name = d.get("hospital_name") or d.get("hospitalName") or "St. Jude Heart & Medical Center"

@@ -50,7 +50,7 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
     operatingHours: '24/7 Emergency & OPD',
     doctorsCount: 6,
     receptionDesksCount: 2,
-    logoUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400&auto=format&fit=crop&q=80',
+    logoUrl: '/hospital_default.jpg',
     isActive: true,
   });
 
@@ -69,7 +69,7 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
       operatingHours: '24/7 Emergency & OPD (08:00 AM - 10:00 PM)',
       doctorsCount: 6,
       receptionDesksCount: 2,
-      logoUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400&auto=format&fit=crop&q=80',
+      logoUrl: '/hospital_default.jpg',
       isActive: true,
     });
     setIsAddModalOpen(true);

@@ -60,7 +60,7 @@ export const AppointmentDetailScreen: React.FC = () => {
     clientName: passedState.clientName || targetApt?.patientName || user?.fullName || 'Patient',
     doctorName: passedState.doctorName || targetApt?.doctorName || 'Attending Physician',
     doctorSpecialty: passedState.doctorSpecialty || targetApt?.doctorSpecialty || 'General Medicine',
-    doctorPhoto: passedState.doctorPhoto || targetApt?.doctorPhoto || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+    doctorPhoto: passedState.doctorPhoto || targetApt?.doctorPhoto || '/doctor_default.jpg',
     facilityName: passedState.facilityName || targetApt?.hospitalName || 'CarePulse Partner Hospital',
     facilityAddress: passedState.facilityAddress || 'Main OPD Block, Wing A',
     facilityPhone: passedState.facilityPhone || '+91 98765 43210',
@@ -258,8 +258,9 @@ export const AppointmentDetailScreen: React.FC = () => {
           <div className="flex items-center gap-3.5 sm:gap-4">
             <div className="relative shrink-0">
               <img
-                src={appointmentData.doctorPhoto}
+                src={appointmentData.doctorPhoto || '/doctor_default.jpg'}
                 alt={appointmentData.doctorName}
+                onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                 className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl object-cover border-2 border-teal-100 shadow-md"
               />
               <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[9px] font-bold ring-2 ring-white">

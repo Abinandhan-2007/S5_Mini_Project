@@ -213,8 +213,9 @@ export const HospitalDetailScreen: React.FC = () => {
                     {/* Avatar + Doctor Name */}
                     <div className="flex items-start gap-3">
                       <img
-                        src={doc.photoUrl}
+                        src={doc.photoUrl || '/doctor_default.jpg'}
                         alt={doc.name}
+                        onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                         className={clsx(
                           'w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shrink-0 shadow-2xs group-hover:scale-105 transition-transform',
                           isSelected ? 'ring-2 ring-teal-200' : 'ring-2 ring-slate-100'

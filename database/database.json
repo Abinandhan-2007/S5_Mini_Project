@@ -352,7 +352,7 @@
       "rating": 4.9,
       "reviews_count": 2420,
       "emergency_available": true,
-      "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "Cardiology",
         "General Medicine",
@@ -362,7 +362,8 @@
       "facility_type": "Cardiology",
       "distance_miles": 0.8,
       "hospital_code": "H001",
-      "hospitalCode": "H001"
+      "hospitalCode": "H001",
+      "imageUrl": "/hospital_default.jpg"
     },
     {
       "id": "hosp-2",
@@ -372,7 +373,7 @@
       "rating": 4.8,
       "reviews_count": 1850,
       "emergency_available": true,
-      "image_url": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&auto=format&fit=crop&q=80",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "General",
         "Emergency Care",
@@ -382,7 +383,8 @@
       "facility_type": "General",
       "distance_miles": 1.4,
       "hospital_code": "H002",
-      "hospitalCode": "H002"
+      "hospitalCode": "H002",
+      "imageUrl": "/hospital_default.jpg"
     },
     {
       "id": "hosp-3",
@@ -392,7 +394,7 @@
       "rating": 4.7,
       "reviews_count": 940,
       "emergency_available": false,
-      "image_url": "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=800&auto=format&fit=crop&q=80",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "Dermatology",
         "Wellness",
@@ -401,7 +403,8 @@
       "facility_type": "Specialty Clinic",
       "distance_miles": 2.1,
       "hospital_code": "H003",
-      "hospitalCode": "H003"
+      "hospitalCode": "H003",
+      "imageUrl": "/hospital_default.jpg"
     },
     {
       "id": "hosp-4",
@@ -411,7 +414,7 @@
       "rating": 4.9,
       "reviews_count": 3100,
       "emergency_available": true,
-      "image_url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "Pediatrics",
         "Neonatology",
@@ -420,7 +423,8 @@
       "facility_type": "Pediatrics",
       "distance_miles": 3.5,
       "hospital_code": "H004",
-      "hospitalCode": "H004"
+      "hospitalCode": "H004",
+      "imageUrl": "/hospital_default.jpg"
     },
     {
       "id": "hosp-060f89",
@@ -434,8 +438,8 @@
       "reviews_count": 1000,
       "emergencyAvailable": true,
       "emergency_available": true,
-      "imageUrl": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
-      "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
+      "imageUrl": "/hospital_default.jpg",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "General",
         "Emergency Care"
@@ -457,8 +461,8 @@
       "reviews_count": 1000,
       "emergencyAvailable": true,
       "emergency_available": true,
-      "imageUrl": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
-      "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
+      "imageUrl": "/hospital_default.jpg",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "General",
         "Emergency Care"
@@ -480,8 +484,8 @@
       "reviews_count": 1000,
       "emergencyAvailable": true,
       "emergency_available": true,
-      "imageUrl": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
-      "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
+      "imageUrl": "/hospital_default.jpg",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "General",
         "Emergency Care"
@@ -503,8 +507,8 @@
       "reviews_count": 1000,
       "emergencyAvailable": true,
       "emergency_available": true,
-      "imageUrl": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
-      "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
+      "imageUrl": "/hospital_default.jpg",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "General",
         "Emergency Care"
@@ -526,8 +530,8 @@
       "reviews_count": 1000,
       "emergencyAvailable": true,
       "emergency_available": true,
-      "imageUrl": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
-      "image_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80",
+      "imageUrl": "/hospital_default.jpg",
+      "image_url": "/hospital_default.jpg",
       "specialties": [
         "General",
         "Emergency Care"
@@ -552,7 +556,7 @@
       "email": "johan.j@carepulse.com",
       "room_number": "Cabin 102 - 1st Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.5,
       "reviews_count": 85,
       "about": "Specialist in metabolic health, diabetes management, and endocrine disorders.",
@@ -670,7 +674,7 @@
       "email": "marilyn.s@carepulse.com",
       "room_number": "Cabin 104 - 1st Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 5.0,
       "reviews_count": 92,
       "about": "Primary care physician focused on preventive health & comprehensive checkups."
@@ -688,7 +692,7 @@
       "email": "marvin.m@carepulse.com",
       "room_number": "Cabin 201 - 2nd Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.3,
       "reviews_count": 110,
       "about": "Senior Cardiologist specializing in preventive heart health and electrophysiology."
@@ -706,7 +710,7 @@
       "email": "arlene.m@carepulse.com",
       "room_number": "Cabin 203 - 2nd Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.5,
       "reviews_count": 78,
       "about": "Internal medicine specialist dedicated to holistic patient care."
@@ -724,7 +728,7 @@
       "email": "eleanor.p@carepulse.com",
       "room_number": "Cabin 302 - 3rd Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.4,
       "reviews_count": 88,
       "about": "Specialist in joint health, rheumatoid care, and orthopedic therapy."
@@ -742,7 +746,7 @@
       "email": "kaiya.d@carepulse.com",
       "room_number": "Cabin 305 - 3rd Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 5.0,
       "reviews_count": 105,
       "about": "Endocrine care expert specializing in thyroid & metabolic health."
@@ -760,7 +764,7 @@
       "email": "olivia.w@carepulse.com",
       "room_number": "Cabin 101 - 1st Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.9,
       "reviews_count": 142,
       "about": "Lead Cardiologist specializing in heart disease prevention and non-invasive cardiac imaging."
@@ -778,7 +782,7 @@
       "email": "marcus.v@carepulse.com",
       "room_number": "Cabin 204 - 2nd Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.7,
       "reviews_count": 95,
       "about": "Board-certified dermatologist with clinical expertise in clinical aesthetics and laser therapy."
@@ -796,7 +800,7 @@
       "email": "sophia.p@carepulse.com",
       "room_number": "Cabin 108 - 1st Floor",
       "is_available": false,
-      "photo": "https://images.unsplash.com/photo-1594824813566-78a99478f237?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.9,
       "reviews_count": 210,
       "about": "Senior Pediatrician dedicated to neonatal care, child development, and vaccinations.",
@@ -815,7 +819,7 @@
       "email": "ethan.r@carepulse.com",
       "room_number": "Cabin 301 - 3rd Floor",
       "is_available": true,
-      "photo": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
+      "photo": "/doctor_default.jpg",
       "rating": 4.8,
       "reviews_count": 160,
       "about": "Specialist in stroke recovery, cognitive disorders, migraines, and neuro-rehabilitation."

@@ -58,7 +58,7 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
       patientName: user?.fullName || 'CarePulse Patient',
       doctorId: 'doc-2',
       doctorName: 'Dr. Elena Rostova',
-      doctorPhoto: 'https://images.unsplash.com/photo-1594824813566-88855ce78347?w=400&auto=format&fit=crop&q=80',
+      doctorPhoto: '/doctor_default.jpg',
       doctorSpecialty: 'General Medicine',
       hospitalName: 'CarePulse Central Hospital',
       date: '2026-08-12',
@@ -246,8 +246,9 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
             {/* Doctor Info Card */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4">
               <img
-                src={currentApp.doctorPhoto}
+                src={currentApp.doctorPhoto || '/doctor_default.jpg'}
                 alt={currentApp.doctorName}
+                onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                 className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-100 shadow-xs"
               />
               <div className="flex-1">

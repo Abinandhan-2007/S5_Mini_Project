@@ -125,9 +125,7 @@ export const MedicalHistoryScreen: React.FC = () => {
         status: apt.status || 'Upcoming',
         specialtyIcon: 'stethoscope',
         ticketNumber: apt.ticketNumber,
-        doctorPhoto:
-          apt.doctorPhoto ||
-          'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+        doctorPhoto: apt.doctorPhoto || '/doctor_default.jpg',
         isAppointment: true,
       });
     });
@@ -137,8 +135,7 @@ export const MedicalHistoryScreen: React.FC = () => {
       if (!records.some((r) => r.id === h.id)) {
         records.push({
           ...h,
-          doctorPhoto:
-            'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+          doctorPhoto: h.doctorPhoto || '/doctor_default.jpg',
           isAppointment: false,
         });
       }

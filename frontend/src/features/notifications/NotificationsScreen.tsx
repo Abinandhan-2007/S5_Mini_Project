@@ -72,7 +72,7 @@ export const NotificationsScreen: React.FC = () => {
         badgeVariant: 'upcoming',
         doctorName: 'CarePulse Medical Desk',
         doctorSpecialty: 'Account & Safety Verification',
-        doctorPhotoUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
+        doctorPhotoUrl: '/doctor_default.jpg',
         dateTime: 'Action Needed',
         isRead: false,
         actionRoute: '/complete-profile',
@@ -92,9 +92,7 @@ export const NotificationsScreen: React.FC = () => {
           badgeVariant: 'upcoming',
           doctorName: apt.doctorName || 'Attending Physician',
           doctorSpecialty: apt.doctorSpecialty || 'General Medicine',
-          doctorPhotoUrl:
-            apt.doctorPhoto ||
-            'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+          doctorPhotoUrl: apt.doctorPhoto || '/doctor_default.jpg',
           dateTime: `${apt.date || 'Today'}${apt.timeSlot ? ` at ${apt.timeSlot}` : ''}`,
           isRead: false,
           actionRoute: `/appointment-detail/${apt.id}`,
@@ -112,7 +110,7 @@ export const NotificationsScreen: React.FC = () => {
         badgeVariant: 'upcoming',
         doctorName: rx.prescriber || 'Prescribing Physician',
         doctorSpecialty: 'Pharmacy Dispensed',
-        doctorPhotoUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+        doctorPhotoUrl: '/doctor_default.jpg',
         dateTime: `${rx.frequency || 'Daily'} • ${rx.dosage || 'As prescribed'}`,
         isRead: false,
         actionRoute: '/prescriptions',
@@ -132,9 +130,7 @@ export const NotificationsScreen: React.FC = () => {
           badgeVariant: 'completed',
           doctorName: apt.doctorName || 'Attending Physician',
           doctorSpecialty: apt.doctorSpecialty || 'General Medicine',
-          doctorPhotoUrl:
-            apt.doctorPhoto ||
-            'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+          doctorPhotoUrl: apt.doctorPhoto || '/doctor_default.jpg',
           dateTime: `${apt.date || 'Completed'}${apt.timeSlot ? ` • ${apt.timeSlot}` : ''}`,
           isRead: true,
           actionRoute: `/appointment-detail/${apt.id}`,
@@ -153,8 +149,7 @@ export const NotificationsScreen: React.FC = () => {
           badgeVariant: 'completed',
           doctorName: h.doctorName || 'Attending Specialist',
           doctorSpecialty: h.hospitalName || 'Clinical Consultation',
-          doctorPhotoUrl:
-            'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+          doctorPhotoUrl: h.doctorPhoto || '/doctor_default.jpg',
           dateTime: h.date || 'Past Visit',
           isRead: true,
           actionRoute: '/history',

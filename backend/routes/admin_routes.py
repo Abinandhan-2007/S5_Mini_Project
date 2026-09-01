@@ -49,7 +49,7 @@ class HospitalCreate(BaseModel):
     rating: Optional[float] = 4.8
     reviews_count: Optional[int] = 1000
     emergency_available: Optional[bool] = True
-    image_url: Optional[str] = "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800&auto=format&fit=crop&q=80"
+    image_url: Optional[str] = "/hospital_default.jpg"
     specialties: Optional[List[str]] = ["General", "Emergency Care"]
     facility_type: Optional[str] = "General"
     distance_miles: Optional[float] = 1.0

@@ -164,10 +164,10 @@ def main():
 
     # 6. Locate generated APK
     source_apk = None
-    if CACHE_APK.exists():
-        source_apk = CACHE_APK
-    elif LOCAL_BUILD_APK.exists():
+    if LOCAL_BUILD_APK.exists():
         source_apk = LOCAL_BUILD_APK
+    elif CACHE_APK.exists():
+        source_apk = CACHE_APK
     else:
         # Search anywhere in android build directory
         found = list(ANDROID_DIR.glob("**/app-debug.apk"))

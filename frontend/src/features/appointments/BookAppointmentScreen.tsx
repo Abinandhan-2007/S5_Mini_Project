@@ -260,8 +260,9 @@ export const BookAppointmentScreen: React.FC = () => {
             <div className="relative shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden ring-4 ring-slate-100 shadow-md bg-slate-100">
                 <img
-                  src={doctor.photoUrl}
+                  src={doctor.photoUrl || '/doctor_default.jpg'}
                   alt={doctor.name}
+                  onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                   className="w-full h-full object-cover object-top"
                 />
               </div>
@@ -595,8 +596,9 @@ export const BookAppointmentScreen: React.FC = () => {
                 {/* Doctor Mini Profile */}
                 <div className="flex items-center gap-3">
                   <img
-                    src={doctor.photoUrl}
+                    src={doctor.photoUrl || '/doctor_default.jpg'}
                     alt={doctor.name}
+                    onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                     className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-200 shrink-0"
                   />
                   <div className="min-w-0 flex-1">

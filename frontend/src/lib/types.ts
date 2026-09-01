@@ -107,6 +107,7 @@ export interface MedicalHistoryItem {
   time: string;
   doctorId?: string;
   doctorName: string;
+  doctorPhoto?: string;
   specialty: string;
   hospitalId?: string;
   hospital_id?: string;

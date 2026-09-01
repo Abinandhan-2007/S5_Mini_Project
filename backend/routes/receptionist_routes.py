@@ -115,7 +115,7 @@ def format_receptionist_doctor(d: dict) -> dict:
     if not slots or len(slots) == 0:
         slots = [dict(s) for s in DEFAULT_SLOTS]
 
-    photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80"
+    photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "/doctor_default.jpg"
     is_avail = bool(d.get("is_available") if d.get("is_available") is not None else d.get("isAvailable", True))
     room = d.get("room_number") or d.get("roomNumber") or f"Cabin {d.get('id', '101')}"
     fee = float(d.get("consultation_fee") or d.get("consultationFee") or 500.0)
@@ -218,7 +218,7 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
         "hospital_name": hosp_name,
         "experienceYears": payload.experienceYears,
         "consultationFee": payload.consultationFee,
-        "photo": payload.photo or "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
+        "photo": payload.photo or "/doctor_default.jpg",
         "phone": payload.phone or "+91 98765 00000",
         "email": payload.email or f"{payload.name.lower().replace(' ', '.')}@carepulse.com",
         "roomNumber": payload.roomNumber or "Cabin 105",

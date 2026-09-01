@@ -59,7 +59,7 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
       email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@carepulse.com`,
       roomNumber: roomNumber || 'Cabin 101 - 1st Floor',
       about: about || `Senior ${selectedSpecialty} with clinical experience in medical consultations and patient care.`,
-      photo: photo || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+      photo: photo || '/doctor_default.jpg',
       isAvailable: true,
       availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     });
