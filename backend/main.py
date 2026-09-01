@@ -68,6 +68,7 @@ from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
 from routes.doctor_routes import router as doctor_router
+from routes.ai_routes import router as ai_router
 from notifications.fcm_service import register_device_token, send_push_notification
 from notifications.scheduler import start_scheduler, shutdown_scheduler
 
@@ -97,6 +98,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API Routers
+app.include_router(ai_router)
+app.include_router(receptionist_router)
+app.include_router(admin_router)
+app.include_router(staff_auth_router)
+app.include_router(doctor_router)
 
 @app.get("/api/health")
 def health_check():

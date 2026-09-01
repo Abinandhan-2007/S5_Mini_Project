@@ -1,37 +1,69 @@
 """
 CarePulse Core AI Inference Module.
-Handles symptom triage, RAG retrieval grounding, and SOAP note synthesis.
+Handles symptom triage, document vision scanning, ambient voice scribing, drug safety guard, and RAG chat generation.
 """
 
 from typing import Optional, Dict, Any, List
 
 try:
-    from .schemas import AITriageRequest, AITriageResponse
+    from .schemas import (
+        AITriageRequest, AITriageResponse,
+        AIVisionRequest, AIVisionResponse,
+        AIVoiceScribeRequest, AIVoiceScribeResponse,
+        AIDrugGuardRequest, AIDrugGuardResponse,
+        AIChatRequest, AIChatResponse
+    )
     from .triage import evaluate_medical_triage
     from .agents.triage_agent import run_triage_assessment
     from .agents.report_agent import generate_soap_clinical_note
     from .rag import rag_engine
     from .confidence import calculate_evidence_confidence
+    from .vision_parser import analyze_medical_document_image
+    from .voice_scribe import process_ambient_consultation_transcript
+    from .drug_guard import check_drug_interactions
+    from .llm import generate_conversational_response
+    from .patient_context import extract_patient_entities
 except (ImportError, ValueError):
     try:
-        from ai.schemas import AITriageRequest, AITriageResponse
+        from ai.schemas import (
+            AITriageRequest, AITriageResponse,
+            AIVisionRequest, AIVisionResponse,
+            AIVoiceScribeRequest, AIVoiceScribeResponse,
+            AIDrugGuardRequest, AIDrugGuardResponse,
+            AIChatRequest, AIChatResponse
+        )
         from ai.triage import evaluate_medical_triage
         from ai.agents.triage_agent import run_triage_assessment
         from ai.agents.report_agent import generate_soap_clinical_note
         from ai.rag import rag_engine
         from ai.confidence import calculate_evidence_confidence
+        from ai.vision_parser import analyze_medical_document_image
+        from ai.voice_scribe import process_ambient_consultation_transcript
+        from ai.drug_guard import check_drug_interactions
+        from ai.llm import generate_conversational_response
+        from ai.patient_context import extract_patient_entities
     except (ImportError, ValueError):
-        from schemas import AITriageRequest, AITriageResponse
+        from schemas import (
+            AITriageRequest, AITriageResponse,
+            AIVisionRequest, AIVisionResponse,
+            AIVoiceScribeRequest, AIVoiceScribeResponse,
+            AIDrugGuardRequest, AIDrugGuardResponse,
+            AIChatRequest, AIChatResponse
+        )
         from triage import evaluate_medical_triage
         from agents.triage_agent import run_triage_assessment
         from agents.report_agent import generate_soap_clinical_note
         from rag import rag_engine
         from confidence import calculate_evidence_confidence
+        from vision_parser import analyze_medical_document_image
+        from voice_scribe import process_ambient_consultation_transcript
+        from drug_guard import check_drug_interactions
+        from llm import generate_conversational_response
+        from patient_context import extract_patient_entities
+
 
 def predict_triage(request: AITriageRequest) -> AITriageResponse:
-    """
-    Run clinical symptom triage inference on patient input using the 4-step triage agent.
-    """
+    """Run clinical symptom triage inference on patient input using the 4-step triage agent."""
     context_dict = {}
     if request.duration_days:
         context_dict["duration"] = f"{request.duration_days} days"
@@ -40,15 +72,12 @@ def predict_triage(request: AITriageRequest) -> AITriageResponse:
 
     triage_result = run_triage_assessment(request.symptoms, context_dict)
     
-    # RAG search for relevant clinical evidence
     rag_results, top_score = rag_engine.search(request.symptoms, top_k=3)
-    conf_level, conf_details = calculate_evidence_confidence(rag_results, request.symptoms)
 
     is_emergency = triage_result.get("is_emergency", False)
     triage_level = triage_result.get("triage_level", "ROUTINE_CONSULTATION")
     dept = triage_result.get("department", "General Medicine")
     
-    # Calculate risk level
     if is_emergency or triage_level == "EMERGENCY":
         risk_level = "critical"
     elif triage_level == "URGENT_EVALUATION":
@@ -56,7 +85,6 @@ def predict_triage(request: AITriageRequest) -> AITriageResponse:
     else:
         risk_level = "low"
 
-    # Suggested specialties ranking
     suggested = [dept]
     if dept != "General Medicine":
         suggested.append("General Medicine")
@@ -78,10 +106,77 @@ def predict_triage(request: AITriageRequest) -> AITriageResponse:
         disclaimer="This AI assessment is for informational guidance and preliminary triage only. For life-threatening emergencies, seek immediate in-person medical care."
     )
 
+
+def predict_vision_document(request: AIVisionRequest) -> AIVisionResponse:
+    """Parses prescription or lab report images via Gemini Vision or OCR fallback."""
+    result = analyze_medical_document_image(
+        image_base64_or_text=request.image_base64_or_text,
+        document_type=request.document_type
+    )
+    return AIVisionResponse(
+        analysis_engine=result.get("analysis_engine", "CarePulse Vision AI"),
+        document_type=result.get("document_type", "prescription"),
+        patient_name=result.get("patient_name", "Extracted Patient"),
+        date=result.get("date", "2026-09-01"),
+        medications=result.get("medications", []),
+        lab_results=result.get("lab_results", []),
+        clinical_summary=result.get("clinical_summary", "Document parsed successfully."),
+        disclaimer=result.get("disclaimer", "AI-extracted document summary. Physician confirmation required.")
+    )
+
+
+def predict_voice_scribe(request: AIVoiceScribeRequest) -> AIVoiceScribeResponse:
+    """Processes ambient doctor audio transcript into structured SOAP note and prescription orders."""
+    res = process_ambient_consultation_transcript(
+        consultation_transcript=request.consultation_transcript,
+        patient_id=request.patient_id
+    )
+    return AIVoiceScribeResponse(
+        scribe_status=res.get("scribe_status", "completed"),
+        patient_id=res.get("patient_id", "Anonymous"),
+        consultation_transcript=res.get("consultation_transcript", ""),
+        extracted_context=res.get("extracted_context", {}),
+        soap_note=res.get("soap_note", {}),
+        proposed_prescriptions=res.get("proposed_prescriptions", []),
+        disclaimer=res.get("disclaimer", "Ambient Voice Scribe draft note. Physician review and signature required.")
+    )
+
+
+def predict_drug_guard(request: AIDrugGuardRequest) -> AIDrugGuardResponse:
+    """Evaluates proposed prescription against patient active meds and documented allergies."""
+    res = check_drug_interactions(
+        proposed_medications=request.proposed_medications,
+        active_medications=request.active_medications,
+        allergies=request.allergies
+    )
+    return AIDrugGuardResponse(
+        is_safe=res["is_safe"],
+        overall_risk_level=res["overall_risk_level"],
+        total_alerts=res["total_alerts"],
+        alerts=res["alerts"],
+        summary=res["summary"],
+        disclaimer=res["disclaimer"]
+    )
+
+
+def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
+    """Generates RAG-grounded conversational medical guidance."""
+    msgs = [{"role": m.role, "content": m.content} for m in request.messages]
+    last_msg = msgs[-1]["content"] if msgs else ""
+    
+    rag_docs, _ = rag_engine.search(last_msg, top_k=2)
+    rag_ctx = "\n".join([f"- Document {d['document_name']}: {d.get('content', d.get('content_snippet', ''))[:200]}" for d in rag_docs])
+    
+    reply = generate_conversational_response(
+        messages=msgs,
+        patient_context_str=request.patient_context or "",
+        rag_context_str=rag_ctx
+    )
+    return AIChatResponse(reply=reply, provider="CarePulse Med AI Engine")
+
+
 def generate_soap_summary(consultation_notes: str, patient_id: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Generate structured SOAP (Subjective, Objective, Assessment, Plan) clinical notes.
-    """
+    """Generate structured SOAP clinical notes."""
     triage_result = run_triage_assessment(consultation_notes, {})
     return generate_soap_clinical_note(
         patient_text=consultation_notes,

@@ -50,13 +50,17 @@ def extract_patient_entities(text: str, current_step: int = 1) -> Dict[str, Any]
             target_match = None
             for m in all_duration_matches:
                 start_idx = m.start()
+                end_idx = m.end()
                 preceding_text = text_lower[max(0, start_idx-25):start_idx]
+                following_text = text_lower[end_idx:min(len(text_lower), end_idx+15)]
+                # Skip if this match is part of an age statement (e.g. "62 years old", "age 62 years")
+                if re.search(r'^\s*(old|of age)\b', following_text) or re.search(r'\b(age|aged|i am|im|i\'m|she is|he is)\s*$', preceding_text.strip()):
+                    continue
                 if not re.search(r'\b(every|each|per|times|frequency|every\s+\d+)\b', preceding_text):
                     target_match = m
                     break
-            if not target_match:
-                target_match = all_duration_matches[0]
-            extracted["duration"] = target_match.group(0).strip()
+            if target_match:
+                extracted["duration"] = target_match.group(0).strip()
         elif "1–3 days" in text_lower or "1-3 days" in text_lower:
             extracted["duration"] = "1-3 days"
         elif "4–7 days" in text_lower or "4-7 days" in text_lower or "about a week" in text_lower:
