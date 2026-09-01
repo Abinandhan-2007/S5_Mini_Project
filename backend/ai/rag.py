@@ -10,9 +10,14 @@ import re
 import logging
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+try:
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+except ImportError:
+    np = None
+    TfidfVectorizer = None
+    cosine_similarity = None
 
 try:
     from pypdf import PdfReader

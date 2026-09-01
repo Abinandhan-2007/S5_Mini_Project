@@ -34,6 +34,7 @@ import { useCarePulseStore } from '../../lib/store';
 import { doctorService } from '../../services/doctorService';
 import { hospitalService } from '../../services/hospitalService';
 import { isUserProfileIncomplete } from '../auth/CompleteProfileScreen';
+import { MedicationCardStack } from '../../components/prescriptions';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -388,24 +389,8 @@ export const HomeScreen: React.FC = () => {
                 </button>
               </div>
             )}
-          </div>
-
-          {/* 4. ACTIVE PRESCRIPTIONS - DYNAMIC COURSE COMPLETION & SCANNABLE CARDS */}
+                    {/* 4. ACTIVE PRESCRIPTIONS - SAMSUNG PASS CASCADING MEDICATION CARD STACK */}
           <div className="space-y-3.5">
-            {/* Header Row */}
-            <div className="flex justify-between items-center px-1">
-              <h3 className="text-xs font-black text-[#0B5A54] uppercase tracking-widest font-heading">
-                ACTIVE PRESCRIPTIONS
-              </h3>
-              <button
-                onClick={() => navigate('/prescriptions')}
-                className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <span>View All</span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#0B5A54]" />
-              </button>
-            </div>
-
             {/* Course Completion Toast Notice */}
             {completedNotice && (
               <div className="bg-emerald-500 text-white font-extrabold text-xs p-3 rounded-2xl shadow-md flex items-center gap-2 animate-in fade-in zoom-in-95">
@@ -414,74 +399,11 @@ export const HomeScreen: React.FC = () => {
               </div>
             )}
 
-            {/* Prescription Cards Stack or Empty State */}
-            {prescriptions && prescriptions.length > 0 ? (
-              <div className="space-y-4">
-                {prescriptions.slice(0, 2).map((rx) => {
-                  return (
-                    <div
-                      key={rx.id}
-                      className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 space-y-4 text-left relative overflow-hidden group"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-[#E3F3F1] text-[#0B5A54] flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                            <Pill className="w-5 h-5 text-[#0B5A54]" />
-                          </div>
-
-                          <div className="min-w-0">
-                            <h4 className="text-sm sm:text-base font-black text-[#111827] leading-tight tracking-tight group-hover:text-[#0B5A54] transition-colors">
-                              {rx.drugName}
-                            </h4>
-                          </div>
-                        </div>
-
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          ACTIVE
-                        </span>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 space-y-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-[#E3F3F1] text-[#0B5A54] text-xs font-black px-2.5 py-1 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1.5 shadow-2xs">
-                            <Pill className="w-3.5 h-3.5 text-[#0B5A54]" />
-                            <span>{rx.dosage || '1 dose'}</span>
-                          </span>
-
-                          <span className="bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>{rx.frequency || 'Daily schedule'}</span>
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
-                            <UserIcon className="w-3 h-3 text-[#0B5A54]" />
-                          </div>
-                          <span className="text-[11px] font-semibold text-slate-500">Prescribed by:</span>
-                          <span className="text-xs font-bold text-[#0B5A54]">
-                            {rx.prescriber || 'Treating Physician'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs text-left space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#E3F3F1] text-[#0B5A54] flex items-center justify-center shrink-0">
-                    <Pill className="w-5 h-5 text-[#0B5A54]" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-[#111827]">No Active Medications</h4>
-                    <p className="text-xs text-[#6B7280]">Prescriptions from your doctor visits will appear here</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <MedicationCardStack
+              prescriptions={prescriptions}
+              onViewAll={() => navigate('/prescriptions')}
+              onSelectMedication={() => navigate('/prescriptions')}
+            />
           </div>
         </div>
       </main>
