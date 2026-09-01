@@ -47,10 +47,47 @@ CONDITION_DIAGNOSIS_MAP = {
         {"condition": "Acute Gastritis / Peptic Irritation", "base_confidence": 0.74}
     ],
     "General Medicine": [
-        {"condition": "Acute Viral Syndrome / Febrile Illness", "base_confidence": 0.85},
+        {"condition": "General Clinical Consultation & Intake Evaluation", "base_confidence": 0.82},
         {"condition": "Tension Headache / Fatigue-Related Cephalea", "base_confidence": 0.78}
     ]
 }
+
+def resolve_dynamic_condition(user_text: str, dept: str) -> List[Dict[str, Any]]:
+    """Dynamically resolves primary condition impression based on specific extracted user symptoms."""
+    text_lower = user_text.lower()
+    
+    if any(k in text_lower for k in ["headache", "migraine", "temple pain", "head hurts"]):
+        return [
+            {"condition": "Tension Headache / Cephalea Evaluation", "base_confidence": 0.88},
+            {"condition": "Migraine / Vascular Headache Strain", "base_confidence": 0.75}
+        ]
+    if any(k in text_lower for k in ["throat", "sore throat", "swallowing"]):
+        return [
+            {"condition": "Acute Pharyngitis / Upper Airway Irritation", "base_confidence": 0.86},
+            {"condition": "Viral Tonsillitis / Throat Inflammation", "base_confidence": 0.76}
+        ]
+    if any(k in text_lower for k in ["fatigue", "tired", "exhausted", "low energy", "weakness"]):
+        return [
+            {"condition": "Generalized Fatigue & Physical Exhaustion", "base_confidence": 0.85},
+            {"condition": "Post-Viral Asthenia / Metabolic Strain", "base_confidence": 0.72}
+        ]
+    if any(k in text_lower for k in ["rash", "itch", "skin", "hives", "dermatitis"]):
+        return [
+            {"condition": "Dermatological Irritation / Cutaneous Sensitivity", "base_confidence": 0.84},
+            {"condition": "Allergic Contact Rash", "base_confidence": 0.74}
+        ]
+    if any(k in text_lower for k in ["fever", "fewer", "fevr", "chills", "high temp", "temperature"]):
+        return [
+            {"condition": "Acute Febrile Illness / Temperature Elevation", "base_confidence": 0.88},
+            {"condition": "Acute Viral Syndrome", "base_confidence": 0.80}
+        ]
+    if any(k in text_lower for k in ["back pain", "joint pain", "muscle", "myalgia", "body ache"]):
+        return [
+            {"condition": "Musculoskeletal Strain / Generalized Myalgia", "base_confidence": 0.85},
+            {"condition": "Acute Joint Discomfort", "base_confidence": 0.74}
+        ]
+    
+    return CONDITION_DIAGNOSIS_MAP.get(dept, CONDITION_DIAGNOSIS_MAP["General Medicine"])
 
 def run_triage_assessment(user_text: str, patient_context_dict: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -95,8 +132,8 @@ def run_triage_assessment(user_text: str, patient_context_dict: Optional[Dict[st
     if dept_scores[best_dept] == 0:
         best_dept = "General Medicine"
 
-    # 4. Generate Ranked Possibilities
-    possible_conditions = CONDITION_DIAGNOSIS_MAP.get(best_dept, CONDITION_DIAGNOSIS_MAP["General Medicine"])
+    # 4. Generate Ranked Possibilities dynamically
+    possible_conditions = resolve_dynamic_condition(user_text, best_dept)
     ranked_list = []
     for idx, item in enumerate(possible_conditions):
         prob = int(item["base_confidence"] * 100) - (idx * 10)
