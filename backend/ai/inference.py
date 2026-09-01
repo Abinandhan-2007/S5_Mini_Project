@@ -21,7 +21,7 @@ try:
     from .vision_parser import analyze_medical_document_image
     from .voice_scribe import process_ambient_consultation_transcript
     from .drug_guard import check_drug_interactions
-    from .llm import generate_conversational_response
+    from .llm import generate_conversational_response, generate_contextual_chips
     from .patient_context import extract_patient_entities
 except (ImportError, ValueError):
     try:
@@ -40,7 +40,7 @@ except (ImportError, ValueError):
         from ai.vision_parser import analyze_medical_document_image
         from ai.voice_scribe import process_ambient_consultation_transcript
         from ai.drug_guard import check_drug_interactions
-        from ai.llm import generate_conversational_response
+        from ai.llm import generate_conversational_response, generate_contextual_chips
         from ai.patient_context import extract_patient_entities
     except (ImportError, ValueError):
         from schemas import (
@@ -58,7 +58,7 @@ except (ImportError, ValueError):
         from vision_parser import analyze_medical_document_image
         from voice_scribe import process_ambient_consultation_transcript
         from drug_guard import check_drug_interactions
-        from llm import generate_conversational_response
+        from llm import generate_conversational_response, generate_contextual_chips
         from patient_context import extract_patient_entities
 
 
@@ -160,19 +160,59 @@ def predict_drug_guard(request: AIDrugGuardRequest) -> AIDrugGuardResponse:
 
 
 def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
-    """Generates RAG-grounded conversational medical guidance."""
+    """Generates RAG-grounded conversational medical guidance with dynamic triage and SOAP note."""
     msgs = [{"role": m.role, "content": m.content} for m in request.messages]
     last_msg = msgs[-1]["content"] if msgs else ""
     
-    rag_docs, _ = rag_engine.search(last_msg, top_k=2)
-    rag_ctx = "\n".join([f"- Document {d['document_name']}: {d.get('content', d.get('content_snippet', ''))[:200]}" for d in rag_docs])
+    # 1. Emergency Safety Override Check
+    triage_level, emergency_msg = evaluate_medical_triage(last_msg)
+    is_emergency = (triage_level == "EMERGENCY")
     
-    reply = generate_conversational_response(
-        messages=msgs,
-        patient_context_str=request.patient_context or "",
-        rag_context_str=rag_ctx
+    # 2. 4-Step Clinical Triage & Department Routing
+    triage_assessment = run_triage_assessment(last_msg)
+    dept = triage_assessment.get("department", "General Medicine")
+    conf_score = round(triage_assessment.get("confidence_score", 0.92) * 100.0, 1)
+    
+    if is_emergency:
+        risk_level = "critical"
+    elif triage_level == "URGENT_EVALUATION":
+        risk_level = "moderate"
+    else:
+        risk_level = "low"
+
+    # 3. RAG Knowledge Base Semantic Search
+    rag_docs, _ = rag_engine.search(last_msg, top_k=3)
+    rag_ctx = "\n".join([f"- Document {d['document_name']}: {d.get('content', d.get('content_snippet', ''))[:300]}" for d in rag_docs])
+    
+    # 4. Multi-turn Conversational LLM Synthesizer
+    if is_emergency and emergency_msg:
+        reply = emergency_msg
+        chips = ["🚨 Call 108 Emergency", "Find Nearest ER", "Emergency Alert Contact"]
+    else:
+        reply = generate_conversational_response(
+            messages=msgs,
+            patient_context_str=request.patient_context or "",
+            rag_context_str=rag_ctx
+        )
+        chips = generate_contextual_chips(last_msg, dept)
+
+    # 5. Generate structured SOAP note for clinical documentation
+    soap_note = generate_soap_clinical_note(
+        patient_text=last_msg,
+        extracted_context=triage_assessment.get("extracted_context", {}),
+        triage_info=triage_assessment
     )
-    return AIChatResponse(reply=reply, provider="CarePulse Med AI Engine")
+
+    return AIChatResponse(
+        reply=reply,
+        provider="CarePulse Med AI Engine",
+        confidence_score=conf_score,
+        risk_level=risk_level,
+        suggested_specialties=[dept],
+        quickReplyChips=chips,
+        is_emergency=is_emergency,
+        soap_note=soap_note
+    )
 
 
 def generate_soap_summary(consultation_notes: str, patient_id: Optional[str] = None) -> Dict[str, Any]:

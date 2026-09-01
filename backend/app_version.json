@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.7.3",
+  "version": "1.7.1",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "Tested installer & biometric screen separation with Ready to Install dialog",
+  "release_notes": "CarePulse v1.7.4: Fixed Health AI symptom evaluator with live conversational triage, typo tolerance, dynamic confidence scoring, interactive chips, and clinical SOAP notes.",
   "released_at": "2026-09-01"
 }

@@ -84,6 +84,21 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   quickReplyChips?: string[];
+  confidence?: number;
+  riskLevel?: 'low' | 'moderate' | 'critical';
+  specialty?: string;
+  isEmergency?: boolean;
+  soapNote?: {
+    status?: string;
+    department?: string;
+    subjective: string;
+    objective: string;
+    assessment?: string;
+    assessmentDiagnosis?: string;
+    plan: string;
+    confidence?: number;
+    riskLevel?: 'low' | 'moderate' | 'critical';
+  };
 }
 
 export interface MedicalHistoryItem {

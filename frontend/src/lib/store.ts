@@ -52,7 +52,9 @@ interface CarePulseState {
 
   // Health AI Chat
   chatMessages: ChatMessage[];
-  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  latestAssessment: any | null;
+  isAiTyping: boolean;
+  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<ChatMessage | null>;
   clearChat: () => void;
 }
 
@@ -564,49 +566,116 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   },
 
   chatMessages: INITIAL_CHAT_MESSAGES,
-  addChatMessage: (msg) => {
-    const newMsg: ChatMessage = {
+  latestAssessment: null,
+  isAiTyping: false,
+  addChatMessage: async (msg) => {
+    const userMsg: ChatMessage = {
       ...msg,
       id: `msg-${Date.now()}`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
-    set((state) => ({
-      chatMessages: [...state.chatMessages, newMsg],
-    }));
+
+    const currentHistory = get().chatMessages;
+    set({
+      chatMessages: [...currentHistory, userMsg],
+    });
 
     if (msg.sender === 'user') {
-      setTimeout(() => {
-        const userTextLower = msg.text.toLowerCase();
-        let botReply = "Thank you for sharing your symptoms. Based on your description, it is recommended to stay hydrated, rest, and monitor your condition.";
-        let chips: string[] | undefined = undefined;
-
-        if (userTextLower.includes('fever') || userTextLower.includes('chills')) {
-          botReply = "I note you have a fever. Keep yourself cool, rest, and take fluids. If your temperature exceeds 102°F (38.9°C) or lasts over 48 hours, please consult a physician immediately.";
-          chips = ['Book Doctor Visit', 'Medication guidance', 'Contact Emergency'];
-        } else if (userTextLower.includes('headache')) {
-          botReply = "Headaches can be caused by dehydration, stress, or eye strain. Ensure you take a break from screens, drink a glass of water, and rest in a dim room.";
-          chips = ['Book Telehealth', 'Pain relief tips'];
-        } else if (userTextLower.includes('shortness of breath') || userTextLower.includes('chest')) {
-          botReply = "⚠️ Severe shortness of breath or chest discomfort requires IMMEDIATE medical attention. Please call emergency services or visit the nearest ER right away.";
-          chips = ['Find Nearest ER', 'Emergency Contact'];
-        } else if (userTextLower.includes('book doctor') || userTextLower.includes('appointment')) {
-          botReply = "You can easily schedule a consultation with our verified specialists under the 'Appointments' tab!";
-          chips = ['Find Hospitals & Doctors'];
-        }
-
-        const botMsg: ChatMessage = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'bot',
-          text: botReply,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          quickReplyChips: chips,
-        };
-
-        set((state) => ({
-          chatMessages: [...state.chatMessages, botMsg],
+      set({ isAiTyping: true });
+      try {
+        const formattedHistory = [...currentHistory, userMsg].map((m) => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text,
         }));
-      }, 700);
+
+        const user = get().user;
+        const patientContext = user
+          ? `Patient Name: ${user.fullName}, Gender: ${user.gender || 'Not specified'}, Blood: ${user.bloodGroup || 'Not specified'}, Allergies: ${user.allergies || 'None'}, Conditions: ${user.preExistingConditions || 'None'}`
+          : '';
+
+        const res = await apiFetch('/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: formattedHistory,
+            patient_context: patientContext,
+          }),
+        });
+
+        if (res && res.ok) {
+          const aiData = await res.json();
+          const botMsg: ChatMessage = {
+            id: `msg-${Date.now() + 1}`,
+            sender: 'bot',
+            text: aiData.reply || "I've reviewed your symptoms. Please stay hydrated and monitor your condition.",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            quickReplyChips: aiData.quickReplyChips,
+            confidence: aiData.confidence_score ?? 88,
+            riskLevel: aiData.risk_level ?? 'low',
+            specialty: (aiData.suggested_specialties && aiData.suggested_specialties[0]) || 'General Medicine',
+            isEmergency: aiData.is_emergency ?? false,
+            soapNote: aiData.soap_note,
+          };
+
+          set((state) => ({
+            chatMessages: [...state.chatMessages, botMsg],
+            latestAssessment: aiData.soap_note ? {
+              subjective: aiData.soap_note.subjective || msg.text,
+              objective: aiData.soap_note.objective || 'Pending in-person clinical examination.',
+              assessmentDiagnosis: aiData.soap_note.assessment || `${aiData.suggested_specialties?.[0] || 'General Medicine'} Evaluation`,
+              plan: aiData.soap_note.plan || 'Schedule specialist consultation for formal assessment.',
+              confidence: aiData.confidence_score ?? 88,
+              riskLevel: aiData.risk_level ?? 'low',
+              specialty: aiData.suggested_specialties?.[0] || 'General Medicine',
+            } : state.latestAssessment,
+            isAiTyping: false,
+          }));
+          return botMsg;
+        }
+      } catch (err) {
+        console.warn('AI Chat API offline fallback note:', err);
+      }
+
+      // Offline / fallback reasoning if network unreachable
+      const userTextLower = msg.text.toLowerCase();
+      let botReply = "I've noted the symptoms you described. Could you share how many days this has been present and if anything specific triggers or relieves it?";
+      let chips: string[] = ['Check Temperature', 'Book Doctor Visit', 'Home Care Tips'];
+      let confidence = 85;
+      let riskLevel: 'low' | 'moderate' | 'critical' = 'low';
+
+      if (userTextLower.includes('fever') || userTextLower.includes('fewer') || userTextLower.includes('fevr') || userTextLower.includes('chills') || userTextLower.includes('temp')) {
+        botReply = "I hear you are dealing with an elevated temperature or fever. Stay well-hydrated with fluids and electrolytes, rest in a cool room, and monitor your readings. If temperature exceeds 102°F (38.9°C) or lasts over 48 hours, please consult a physician promptly.";
+        chips = ['Check Temperature', 'Duration: 1-2 days', 'Body aches & Chills', 'Book Doctor Visit'];
+        confidence = 88;
+      } else if (userTextLower.includes('headache') || userTextLower.includes('hedache') || userTextLower.includes('migraine')) {
+        botReply = "Headaches can stem from dehydration, tension, or eye strain. Ensure you take a break from screens, drink plenty of water, and rest in a dim room.";
+        chips = ['Throbbing pain', 'Pain relief tips', 'Book Telehealth'];
+        confidence = 86;
+      } else if (userTextLower.includes('chest') || userTextLower.includes('breath') || userTextLower.includes('emergency')) {
+        botReply = "🚨 CRITICAL SAFETY ALERT: Severe chest pain, pressure, or shortness of breath requires IMMEDIATE emergency medical attention. Please call 108 / 911 or visit the nearest ER right away.";
+        chips = ['🚨 Call 108 Emergency', 'Find Nearest ER', 'Emergency Contact'];
+        confidence = 98;
+        riskLevel = 'critical';
+      }
+
+      const botMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'bot',
+        text: botReply,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        quickReplyChips: chips,
+        confidence,
+        riskLevel,
+        isEmergency: riskLevel === 'critical',
+      };
+
+      set((state) => ({
+        chatMessages: [...state.chatMessages, botMsg],
+        isAiTyping: false,
+      }));
+      return botMsg;
     }
+    return null;
   },
-  clearChat: () => set({ chatMessages: INITIAL_CHAT_MESSAGES }),
+  clearChat: () => set({ chatMessages: INITIAL_CHAT_MESSAGES, latestAssessment: null }),
 }));

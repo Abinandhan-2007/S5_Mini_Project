@@ -62,7 +62,7 @@ def evaluate_medical_triage(user_text: str, patient_context: Optional[Dict[str, 
             return "URGENT_EVALUATION", None
 
     # 3. Routine / General check
-    if any(term in text_lower for term in ["pain", "fever", "cough", "tired", "fatigue", "nausea", "headache", "rash", "dizzy"]):
+    if any(term in text_lower for term in ["pain", "fever", "fewer", "fevr", "cough", "caugh", "tired", "fatigue", "fatig", "nausea", "headache", "hedache", "rash", "dizzy", "dizy", "throat", "stomach", "stomac", "chills", "breath"]):
         return "ROUTINE_CONSULTATION", None
 
     return "GENERAL_INFO", None

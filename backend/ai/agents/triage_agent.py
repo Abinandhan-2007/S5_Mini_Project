@@ -21,11 +21,11 @@ except (ImportError, ValueError):
         from patient_context import extract_patient_entities
 
 DEPARTMENT_SYMPTOM_MAP = {
-    "Cardiology": ["chest pain", "palpitations", "shortness of breath", "high blood pressure", "hypertension", "cholesterol", "dizziness"],
-    "Endocrinology": ["thyroid", "fatigue", "diabetes", "glucose", "weight gain", "weight loss", "tsh", "hba1c", "increased thirst"],
-    "Pulmonology": ["cough", "wheezing", "asthma", "phlegm", "mucus", "breathlessness", "bronchitis", "respiratory"],
-    "Gastroenterology": ["stomach pain", "acid reflux", "gerd", "nausea", "vomiting", "diarrhea", "constipation", "bloating", "abdominal pain"],
-    "General Medicine": ["fever", "headache", "body ache", "general weakness", "malaise", "cold", "flu", "chills", "tired"]
+    "Cardiology": ["chest pain", "palpitations", "shortness of breath", "high blood pressure", "hypertension", "cholesterol", "dizziness", "dizy"],
+    "Endocrinology": ["thyroid", "fatigue", "fatig", "diabetes", "glucose", "weight gain", "weight loss", "tsh", "hba1c", "increased thirst"],
+    "Pulmonology": ["cough", "caugh", "couph", "wheezing", "asthma", "phlegm", "mucus", "breathlessness", "bronchitis", "respiratory"],
+    "Gastroenterology": ["stomach pain", "stomac", "tummy", "acid reflux", "gerd", "nausea", "vomiting", "diarrhea", "constipation", "bloating", "abdominal pain"],
+    "General Medicine": ["fever", "fewer", "fevr", "headache", "hedache", "body ache", "general weakness", "malaise", "cold", "flu", "chills", "tired", "sore throat"]
 }
 
 CONDITION_DIAGNOSIS_MAP = {
