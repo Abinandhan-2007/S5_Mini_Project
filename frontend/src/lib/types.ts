@@ -27,13 +27,31 @@ export interface Doctor {
   staffCode?: string;
   name: string;
   specialty: string;
+  department?: string;
   hospitalId: string;
+  hospital_id?: string;
   hospitalName: string;
+  hospital_name?: string;
   photoUrl: string;
+  photo?: string;
   rating: number;
   reviewsCount: number;
+  reviews_count?: number;
   experienceYears: number;
+  experience_years?: number;
+  consultationFee?: number;
+  consultation_fee?: number;
+  phone?: string;
+  email?: string;
+  roomNumber?: string;
+  room_number?: string;
   about?: string;
+  isAvailable?: boolean;
+  is_available?: boolean;
+  availableDays?: string[];
+  available_days?: string[];
+  slotCapacities?: any[];
+  slot_capacities?: any[];
 }
 
 export interface Hospital {

@@ -40,13 +40,26 @@ export const BookAppointmentScreen: React.FC = () => {
   useEffect(() => {
     if (!doctorId) return;
     let isMounted = true;
-    doctorService.getDoctorById(doctorId).then((doc) => {
-      if (isMounted && doc) {
-        setDoctor(doc);
-      }
-    });
+
+    const fetchDoctor = () => {
+      doctorService.getDoctorById(doctorId).then((doc) => {
+        if (isMounted && doc) {
+          setDoctor(doc);
+        }
+      });
+    };
+
+    fetchDoctor();
+    const interval = setInterval(fetchDoctor, 3000);
+    const handleFocus = () => fetchDoctor();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
     return () => {
       isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
     };
   }, [doctorId]);
 
@@ -218,10 +231,21 @@ export const BookAppointmentScreen: React.FC = () => {
 
           <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="space-y-2 min-w-0 flex-1">
-              {/* Verified Tag */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200/60 text-[#0B5A54] text-[11px] font-extrabold tracking-wide">
-                <BadgeCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
-                <span>Verified Physician</span>
+              {/* Verified & Availability Tags */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200/60 text-[#0B5A54] text-[11px] font-extrabold tracking-wide">
+                  <BadgeCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
+                  <span>Verified Physician</span>
+                </div>
+                {doctor.isAvailable === false || doctor.is_available === false ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-extrabold tracking-wide">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Off-Duty
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-extrabold tracking-wide">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Available Today
+                  </span>
+                )}
               </div>
 
               {/* Doctor Name & Code */}
@@ -497,27 +521,38 @@ export const BookAppointmentScreen: React.FC = () => {
           </div>
 
           <div className="w-full sm:w-auto flex-1 max-w-md">
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={isSubmitting}
-              onClick={handleConfirmBooking}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#0B5A54] via-[#0D6D65] to-[#14B8A6] text-white font-black text-sm tracking-wide shadow-lg shadow-teal-900/20 hover:shadow-xl hover:shadow-teal-900/30 transition-all cursor-pointer font-heading flex items-center justify-center gap-2 select-none"
-            >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Processing Reservation...</span>
-                </div>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-teal-200" />
-                  <span>Confirm Appointment</span>
-                  <ChevronRight className="w-4 h-4 text-teal-200 ml-auto sm:ml-0" />
-                </>
-              )}
-            </motion.button>
+            {doctor.isAvailable === false || doctor.is_available === false ? (
+              <button
+                type="button"
+                disabled
+                className="w-full py-4 px-6 rounded-2xl bg-slate-200 text-slate-500 font-black text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-slate-300"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+                <span>Doctor is Currently Off-Duty</span>
+              </button>
+            ) : (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={isSubmitting}
+                onClick={handleConfirmBooking}
+                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#0B5A54] via-[#0D6D65] to-[#14B8A6] text-white font-black text-sm tracking-wide shadow-lg shadow-teal-900/20 hover:shadow-xl hover:shadow-teal-900/30 transition-all cursor-pointer font-heading flex items-center justify-center gap-2 select-none"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Processing Reservation...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-teal-200" />
+                    <span>Confirm Appointment</span>
+                    <ChevronRight className="w-4 h-4 text-teal-200 ml-auto sm:ml-0" />
+                  </>
+                )}
+              </motion.button>
+            )}
           </div>
         </div>
       </div>

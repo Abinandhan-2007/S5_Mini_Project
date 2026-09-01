@@ -85,19 +85,36 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
     return list.filter(Boolean);
   }, [doctor, slotCapacities, blockedSlots]);
 
+  const isDoctorOffDuty = doctor?.isAvailable === false || doctor?.is_available === false;
+
   // Filter slots to exclude any blocked slots
   const availableSlots = React.useMemo(() => {
+    if (isDoctorOffDuty) return [];
     return DEFAULT_SLOTS.filter((slot) => {
       // If slot falls in any blocked window, hide it completely
       const isBlocked = effectiveBlockedList.some((blocked) => isTimeInWindow(slot.time, blocked));
       return !isBlocked;
     });
-  }, [effectiveBlockedList]);
+  }, [effectiveBlockedList, isDoctorOffDuty]);
 
   const filteredSlots = React.useMemo(() => {
     if (activeTab === 'All') return availableSlots;
     return availableSlots.filter((s) => s.period === activeTab);
   }, [activeTab, availableSlots]);
+
+  if (isDoctorOffDuty) {
+    return (
+      <div className="p-6 text-center bg-rose-50/80 rounded-3xl border border-rose-200/90 space-y-2 shadow-xs">
+        <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-5 h-5 text-rose-600" />
+        </div>
+        <p className="text-sm font-black text-rose-900 font-heading">Specialist is Currently Off-Duty</p>
+        <p className="text-xs text-rose-700/90 max-w-sm mx-auto leading-relaxed">
+          {doctor?.name || 'This doctor'} has been marked unavailable by hospital reception. Online booking slots are temporarily closed.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3.5">

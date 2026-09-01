@@ -22,28 +22,45 @@ export const HospitalDetailScreen: React.FC = () => {
   const [doctors, setDoctors] = useState<Doctor[]>(initialDoctors);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+  const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'available' | 'offduty'>('all');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Fetch hospital and affiliated doctors from backend database
-  useEffect(() => {
+  // Live polling: Fetch hospital and affiliated doctors from backend database in real-time
+  const fetchLiveHospitalData = React.useCallback(() => {
     if (!id) return;
-    let isMounted = true;
-
     hospitalService.getHospitalById(id).then((res) => {
-      if (isMounted && res) {
+      if (res && res.hospital) {
         setHospital(res.hospital);
         if (res.doctors && res.doctors.length > 0) {
           setDoctors(res.doctors);
         }
       }
     });
+  }, [id]);
+
+  useEffect(() => {
+    fetchLiveHospitalData();
+
+    // Fast 3-second live sync interval for real-time receptionist updates
+    const interval = setInterval(fetchLiveHospitalData, 3000);
+    const handleFocus = () => fetchLiveHospitalData();
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
 
     return () => {
-      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, [id]);
+  }, [fetchLiveHospitalData]);
 
   // Extract available specialty options for this hospital
   const specialtyOptions = Array.from(new Set(doctors.map((d) => d.specialty)));
+
+  // Availability statistics
+  const availableCount = doctors.filter((d) => d.isAvailable !== false && d.is_available !== false).length;
+  const offDutyCount = doctors.length - availableCount;
 
   // Multi-select specialty toggle
   const toggleSpecialty = (spec: string) => {
@@ -58,13 +75,23 @@ export const HospitalDetailScreen: React.FC = () => {
     }
   };
 
-  // Filter doctors based on selected specialties (supports multi-selection)
+  // Filter doctors based on selected specialties AND live availability filter
   const filteredDoctors = doctors.filter((d) => {
+    const isOffDuty = d.isAvailable === false || d.is_available === false;
+    if (availabilityFilter === 'available' && isOffDuty) return false;
+    if (availabilityFilter === 'offduty' && !isOffDuty) return false;
+
     if (selectedSpecialties.length === 0) return true;
     return selectedSpecialties.some((spec) => spec.toLowerCase() === d.specialty.toLowerCase());
   });
 
   const handleSelectDoctor = (doctor: Doctor) => {
+    const isOffDuty = doctor.isAvailable === false || doctor.is_available === false;
+    if (isOffDuty) {
+      setToastMessage(`Dr. ${doctor.name} is currently off-duty / unavailable. Please choose an active specialist.`);
+      setTimeout(() => setToastMessage(null), 3500);
+      return;
+    }
     setBookingDoctor(doctor);
     navigate(`/appointments/book/${doctor.id}`);
   };
@@ -188,12 +215,80 @@ export const HospitalDetailScreen: React.FC = () => {
           </div>
         </div>
 
+        {/* TOAST ALERT NOTIFICATION */}
+        {toastMessage && (
+          <div className="fixed top-20 inset-x-4 max-w-md mx-auto z-50 animate-bounce">
+            <div className="bg-rose-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-rose-700 flex items-center gap-3 text-left">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-400 shrink-0 animate-ping" />
+              <p className="text-xs font-bold leading-tight flex-1">{toastMessage}</p>
+              <button onClick={() => setToastMessage(null)} className="text-rose-300 hover:text-white text-xs font-black">✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* Doctor Specialists Header + Live Filter */}
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black font-heading text-slate-900 tracking-tight">
+                  Hospital Specialists
+                </h2>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live Synced" />
+              </div>
+              <p className="text-xs text-slate-500 font-medium">Real-time status synced with reception</p>
+            </div>
+
+            {/* Live Availability Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/80 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setAvailabilityFilter('all')}
+                className={clsx(
+                  'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                  availabilityFilter === 'all'
+                    ? 'bg-white text-slate-900 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                )}
+              >
+                All ({doctors.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAvailabilityFilter('available')}
+                className={clsx(
+                  'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  availabilityFilter === 'available'
+                    ? 'bg-emerald-600 text-white shadow-2xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Available ({availableCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAvailabilityFilter('offduty')}
+                className={clsx(
+                  'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  availabilityFilter === 'offduty'
+                    ? 'bg-rose-600 text-white shadow-2xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                <span>Off-Duty ({offDutyCount})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Doctor Specialists List - 2-COLUMN PREMIUM CARD GRID */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-left">
           {filteredDoctors.length > 0 ? (
             filteredDoctors.map((doc) => {
-              // Turn green ONLY when selected by the user! (Default is clean white)
               const isSelected = selectedDoctorId === doc.id;
+              const isOffDuty = doc.isAvailable === false || doc.is_available === false;
 
               return (
                 <div
@@ -206,11 +301,32 @@ export const HospitalDetailScreen: React.FC = () => {
                     'rounded-3xl p-4 sm:p-5 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group flex flex-col justify-between space-y-4 border relative overflow-hidden',
                     isSelected
                       ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-md scale-[1.02]'
+                      : isOffDuty
+                      ? 'bg-slate-50/90 text-slate-600 border-dashed border-rose-200/80 hover:border-rose-300'
                       : 'bg-white text-slate-900 border-slate-200/80 hover:border-[#0B5A54]/50'
                   )}
                 >
-                  {/* Top Block: Avatar + Name + Specialty */}
+                  {/* Top Block: Avatar + Name + Specialty + Live Status */}
                   <div className="space-y-3">
+                    {/* Live Availability Pill */}
+                    <div className="flex items-center justify-between gap-1">
+                      {isOffDuty ? (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" /> Off-Duty
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Available
+                        </span>
+                      )}
+
+                      {(doc.staff_code || doc.staffCode) && (
+                        <span className="text-[9px] font-mono font-bold text-slate-400">
+                          {doc.staff_code || doc.staffCode}
+                        </span>
+                      )}
+                    </div>
+
                     {/* Avatar + Doctor Name */}
                     <div className="flex items-start gap-3">
                       <img
@@ -219,13 +335,13 @@ export const HospitalDetailScreen: React.FC = () => {
                         onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                         className={clsx(
                           'w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shrink-0 shadow-2xs group-hover:scale-105 transition-transform',
-                          isSelected ? 'ring-2 ring-teal-200' : 'ring-2 ring-slate-100'
+                          isSelected ? 'ring-2 ring-teal-200' : isOffDuty ? 'ring-2 ring-rose-200 grayscale-30' : 'ring-2 ring-slate-100'
                         )}
                       />
                       <div className="min-w-0 flex-1">
                         <h3 className={clsx(
                           'text-xs sm:text-sm font-black leading-tight tracking-tight multiline-clamp-2',
-                          isSelected ? 'text-white' : 'text-[#111827] group-hover:text-[#0B5A54] transition-colors'
+                          isSelected ? 'text-white' : isOffDuty ? 'text-slate-700' : 'text-[#111827] group-hover:text-[#0B5A54] transition-colors'
                         )}>
                           {doc.name}
                         </h3>
@@ -241,7 +357,7 @@ export const HospitalDetailScreen: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Bottom Block: Star Rating & Review Count | Circular Arrow Action */}
+                  {/* Bottom Block: Star Rating & Review Count | Action */}
                   <div className="flex items-end justify-between gap-2 pt-2">
                     <div>
                       <div className="flex items-center gap-1 text-xs font-black">
@@ -258,14 +374,20 @@ export const HospitalDetailScreen: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Circular Action Button with Arrow Icon */}
+                    {/* Action Button */}
                     <div className={clsx(
-                      'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 shadow-2xs shrink-0',
+                      'px-3 py-1.5 rounded-full flex items-center justify-center transition-all group-hover:scale-105 shadow-2xs shrink-0',
                       isSelected
                         ? 'bg-[#E3F3F1] text-[#0B5A54]'
+                        : isOffDuty
+                        ? 'bg-rose-100/80 text-rose-700 text-[10px] font-extrabold'
                         : 'bg-slate-100 text-[#0B5A54] group-hover:bg-[#0B5A54] group-hover:text-white'
                     )}>
-                      <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
+                      {isOffDuty ? (
+                        <span>Off-Duty</span>
+                      ) : (
+                        <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -273,12 +395,15 @@ export const HospitalDetailScreen: React.FC = () => {
             })
           ) : (
             <div className="col-span-full bg-white border border-[#E4E7EC] rounded-3xl p-8 text-center space-y-2">
-              <p className="text-xs font-bold text-slate-700">No specialists found for selected departments</p>
+              <p className="text-xs font-bold text-slate-700">No specialists match the selected criteria</p>
               <button
-                onClick={() => setSelectedSpecialties([])}
+                onClick={() => {
+                  setSelectedSpecialties([]);
+                  setAvailabilityFilter('all');
+                }}
                 className="text-xs font-bold text-[#0B5A54] underline cursor-pointer"
               >
-                Clear All Filters
+                Reset All Filters
               </button>
             </div>
           )}
