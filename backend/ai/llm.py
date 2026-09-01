@@ -1,7 +1,7 @@
 """
 CarePulse / Med AI Conversational LLM Engine.
 Provides multi-turn medical conversation synthesis, RAG-grounded clinician responses,
-and robust fallbacks across Gemini, Groq, OpenRouter, OpenAI, and clinical RAG dialogue engines.
+and robust fallbacks across Gemini, Groq, OpenRouter, and CarePulse multi-agent clinical rule engines.
 """
 
 import json
@@ -21,7 +21,7 @@ You are NOT a replacement for an in-person doctor. You provide informational gui
 
 TONE & GUIDELINES:
 - Empathetic, calm, professional, and clear.
-- NEVER use robotic filler like "Thank you for sharing your symptoms". React specifically to what they described.
+- NEVER use robotic filler. React specifically to what they described.
 - Ask ONE targeted follow-up question per turn to understand duration, severity, or accompanying symptoms.
 - If emergency red flags appear (chest pain, severe breathlessness, sudden weakness, very high fever), advise immediate emergency care (108 / 911 / ER).
 """
@@ -65,125 +65,11 @@ SYMPTOM_TYPO_MAP = {
     ]
 }
 
-CLINICAL_INTAKE_KNOWLEDGE = {
-    "fever": {
-        "title": "Fever & Temperature Elevation",
-        "questions": [
-            "How high has your temperature reached, and how many days has it been going on?",
-            "Are you experiencing any chills, sweating, body aches, or a sore throat alongside the fever?",
-            "Have you been able to take any fluids, and have you taken medications like Paracetamol / Acetaminophen?"
-        ],
-        "guidance": "Elevated temperature often indicates your immune system is responding to a viral or bacterial infection. Stay well-hydrated with water and electrolytes, rest in a cool environment, and log your temperature readings.",
-        "warning": "If your fever exceeds 102°F (38.9°C), persists for more than 48-72 hours, or is accompanied by a stiff neck, confusion, or difficulty breathing, please seek immediate clinical evaluation.",
-        "dept": "General Medicine"
-    },
-    "headache": {
-        "title": "Headache & Cephalea",
-        "questions": [
-            "Is the headache throbbing, dull, or sharp, and is it concentrated on one side or all over?",
-            "Does bright light, screen exposure, or loud sounds make the discomfort worse?",
-            "How long has this headache lasted, and have you had any vision changes or nausea?"
-        ],
-        "guidance": "Headaches are frequently triggered by tension, dehydration, lack of sleep, eye strain, or sinus pressure. Rest in a quiet, dimmed room, hydrate with a glass of water, and avoid prolonged blue-light screens.",
-        "warning": "If you experience a sudden 'thunderclap' severe headache, vision loss, numbness, or neck stiffness, seek emergency care immediately.",
-        "dept": "General Medicine"
-    },
-    "cough": {
-        "title": "Cough & Respiratory Tract Symptoms",
-        "questions": [
-            "Is your cough dry and scratchy, or are you bringing up clear, yellow, or greenish phlegm?",
-            "How long have you had the cough, and does it worsen at night or when lying down?",
-            "Are you having any shortness of breath, wheezing, or chest tightness?"
-        ],
-        "guidance": "Acute coughs are commonly caused by viral upper respiratory infections, post-nasal drip, or mild airway irritation. Warm liquids, honey-lemon water, steam inhalation, and throat lozenges can help soothe irritation.",
-        "warning": "If you notice blood in sputum, severe chest pain, or difficulty catching your breath, immediate medical evaluation is required.",
-        "dept": "Pulmonology"
-    },
-    "stomach": {
-        "title": "Abdominal & Gastrointestinal Discomfort",
-        "questions": [
-            "Where in your abdomen is the pain situated (upper, lower, right side, or left side)?",
-            "Is it a burning sensation, sharp cramps, or dull ache? Does eating food make it better or worse?",
-            "Have you experienced any nausea, vomiting, acid reflux, or bowel habit changes?"
-        ],
-        "guidance": "Abdominal discomfort can stem from gastritis, acid reflux, food sensitivities, or indigestion. Sip clear fluids, eat bland meals (bananas, rice, applesauce, toast), and avoid spicy, greasy, or acidic foods.",
-        "warning": "Severe localized lower right pain, vomiting blood, black tarry stools, or high fever with severe abdominal rigidity warrant emergency attention.",
-        "dept": "Gastroenterology"
-    },
-    "fatigue": {
-        "title": "Fatigue & Low Energy",
-        "questions": [
-            "How long have you been feeling this persistent fatigue, and does adequate sleep help relieve it?",
-            "Have you noticed any other symptoms such as unexplained weight shifts, hair thinning, or mood changes?",
-            "Have you had recent blood tests checking your hemoglobin (iron), vitamin D, or thyroid (TSH) levels?"
-        ],
-        "guidance": "Chronic fatigue can be related to sleep quality, stress, recovery from viral illness, anemia, or metabolic/endocrine shifts like thyroid dysfunction. Focus on regular sleep hygiene, balanced nutrition, and gentle hydration.",
-        "warning": "Consult a physician for a routine panel (CBC, Vitamin B12/D, Thyroid panel) if fatigue continues for weeks despite rest.",
-        "dept": "Endocrinology"
-    },
-    "dizziness": {
-        "title": "Dizziness & Lightheadedness",
-        "questions": [
-            "Does the dizziness feel like the room is spinning (vertigo), or more like faintness upon standing?",
-            "Have you been drinking enough fluids today, and have you eaten regular meals?",
-            "Are you having any ringing in your ears, hearing changes, or heart palpitations?"
-        ],
-        "guidance": "Lightheadedness is often caused by dehydration, low blood sugar, or standing up too quickly (orthostatic drop). Sit or lie down immediately, drink water, and rise slowly.",
-        "warning": "Sudden dizziness accompanied by chest discomfort, slurred speech, or weakness in limbs requires immediate emergency check.",
-        "dept": "General Medicine"
-    },
-    "sore_throat": {
-        "title": "Sore Throat & Pharyngitis",
-        "questions": [
-            "Is the throat pain severe enough to make swallowing difficult, and do you have a fever?",
-            "Do you notice any white patches on your tonsils or swollen tender glands in your neck?",
-            "How many days has your throat felt sore, and do you have a cough or runny nose?"
-        ],
-        "guidance": "Most sore throats are viral and resolve within 5 to 7 days. Warm saltwater gargles (1/2 tsp salt in warm water), honey, throat lozenges, and staying hydrated provide effective relief.",
-        "warning": "If you experience severe difficulty swallowing liquids, inability to open your mouth fully, or drooling, consult a doctor promptly.",
-        "dept": "General Medicine"
-    },
-    "allergies": {
-        "title": "Allergic Rhinitis & Environmental Sensitivity",
-        "questions": [
-            "Are you having sneezing fits, clear nasal discharge, or itchy watery eyes?",
-            "Have you recently been exposed to pollen, dust, animal dander, or changes in weather?",
-            "Have you tried an over-the-counter antihistamine or saline nasal spray?"
-        ],
-        "guidance": "Allergic rhinitis occurs when the immune system reacts to airborne allergens. Saline nasal rinses and avoiding known triggers can significantly reduce symptoms.",
-        "warning": "If you experience wheezing, facial swelling, or throat constriction, seek emergency care immediately for potential severe allergy.",
-        "dept": "General Medicine"
-    },
-    "chest_pain": {
-        "title": "Chest Discomfort & Cardiovascular Assessment",
-        "questions": [
-            "Can you describe the feeling — is it pressure, heaviness, burning, or sharp pain when taking a deep breath?",
-            "Does the discomfort radiate to your left arm, jaw, neck, or back?",
-            "Are you experiencing any shortness of breath, cold sweating, or nausea?"
-        ],
-        "guidance": "Chest discomfort must always be treated with high clinical caution. While it can sometimes be caused by acid reflux or muscle strain, cardiac causes must be ruled out by a medical professional.",
-        "warning": "🚨 **CRITICAL WARNING**: Crushing chest pressure, pain radiating to the arm/jaw, or sudden breathlessness is a potential medical emergency. Please call 108 / 911 immediately or proceed to the nearest Emergency Room.",
-        "dept": "Cardiology"
-    },
-    "nausea_vomiting": {
-        "title": "Gastroenteritis & Nausea",
-        "questions": [
-            "How many episodes of vomiting or diarrhea have you had, and are you able to keep sips of water down?",
-            "Did this start after consuming any particular food or beverage?",
-            "Are you experiencing any signs of dehydration such as dark urine, dry mouth, or lightheadedness?"
-        ],
-        "guidance": "Focus on preventing dehydration with oral rehydration solution (ORS) or electrolyte water taken in small, frequent sips. Avoid solid foods until vomiting subsides, then introduce simple foods like crackers or rice.",
-        "warning": "Seek medical attention if you cannot keep liquids down for over 24 hours, notice blood in vomit or stool, or feel extremely dizzy.",
-        "dept": "Gastroenterology"
-    }
-}
-
 def detect_symptom_key(text: str) -> Optional[str]:
     """Detects symptom category with fuzzy matching and typo normalization."""
     text_lower = text.lower()
     for sym_key, variants in SYMPTOM_TYPO_MAP.items():
         for variant in variants:
-            # Word boundary check or substring match for phrases
             if " " in variant:
                 if variant in text_lower:
                     return sym_key
@@ -197,28 +83,34 @@ def generate_contextual_chips(user_text: str, department: str = "General Medicin
     sym_key = detect_symptom_key(user_text)
     text_lower = user_text.lower()
 
-    if sym_key == "chest_pain" or "emergency" in text_lower or "shortness of breath" in text_lower:
+    if sym_key == "chest_pain" or "emergency" in text_lower or "breath" in text_lower:
         return ["🚨 Call 108 Emergency", "Find Nearest ER", "Emergency Alert Contact"]
 
+    if any(k in text_lower for k in ["started today", "1-2 days", "1–2 days", "3-5 days", "days", "yesterday"]):
+        return ["Chills & Shivering", "Headache & Body Aches", "Sore Throat & Cough", "No other symptoms"]
+
+    if any(k in text_lower for k in ["chill", "shiver", "body ache", "throat", "headache", "cough", "no other"]):
+        return ["Book General Physician", "Review SOAP Note", "Home Care Guidance", "Check Fever Tips"]
+
     if sym_key == "fever":
-        return ["Check Temperature", "Duration: 1-2 days", "Body aches & Chills", "Book Doctor Visit"]
+        return ["Started Today", "1–2 Days", "3–5 Days", "High Fever (>102°F)"]
 
     if sym_key == "headache":
-        return ["Throbbing pain", "Pain relief tips", "Light sensitivity", "Book Telehealth"]
+        return ["Throbbing & Pulsing", "Dull Constant Ache", "Light Sensitivity", "Pain relief tips"]
 
     if sym_key == "cough":
-        return ["Dry cough", "Cough with phlegm", "Home remedies", f"Consult {department}"]
+        return ["Dry Tickly Cough", "Cough with Phlegm", "Worse at Night", "Home Care Guide"]
 
     if sym_key == "stomach":
         return ["Acid reflux / heartburn", "Bland diet tips", "Sharp stomach cramps", f"Book {department}"]
 
     if sym_key == "fatigue":
-        return ["Check routine lab tests", "Duration > 2 weeks", "Sleep hygiene tips", f"Consult {department}"]
+        return ["Duration > 2 weeks", "Physical exhaustion", "Check routine blood panel", f"Consult {department}"]
 
     if sym_key == "allergies":
         return ["Sneezing & runny nose", "Allergy medication", "Book ENT Specialist"]
 
-    return ["Book Doctor Visit", "Check Symptoms", "Home Care Guidance", "Find Specialists"]
+    return ["Book Doctor Visit", "Check Symptoms", "Home Care Guidance", "Review SOAP Note"]
 
 
 def generate_conversational_response(
@@ -228,7 +120,7 @@ def generate_conversational_response(
 ) -> str:
     """
     Generates conversational medical guidance using available LLM API providers
-    (Gemini, Groq, OpenRouter, OpenAI) with a rich clinical RAG fallback engine.
+    (Gemini, Groq, OpenRouter, OpenAI) with a rich multi-turn clinical reasoning engine.
     """
     last_user_msg = ""
     for m in reversed(messages):
@@ -318,56 +210,120 @@ def generate_conversational_response(
         except Exception as e:
             logger.debug(f"OpenRouter/OpenAI API generation attempt note: {e}")
 
-    # 4. Advanced Clinician Reasoning & RAG-grounded Dialogue Engine (Offline Fallback)
+    # 4. Multi-Turn Clinical Dialogue Engine (Local Offline Engine)
+    user_turns = [m.get("content", "") for m in messages if m.get("role") == "user"]
+    turn_num = len(user_turns)
+    all_user_text = " ".join(user_turns).lower()
+    last_lower = last_user_msg.lower()
+
+    # Determine primary symptom context across history
     sym_key = detect_symptom_key(last_user_msg)
-    
-    # Check if user is responding to previous question (e.g. answering duration, temperature, or severity)
-    prev_user_msgs = [m.get("content", "") for m in messages if m.get("role") == "user"]
-    if not sym_key and len(prev_user_msgs) > 1:
-        for prev in reversed(prev_user_msgs[:-1]):
-            sym_key = detect_symptom_key(prev)
-            if sym_key:
+    if not sym_key:
+        sym_key = detect_symptom_key(all_user_text) or "fever"
+
+    # Emergency check
+    if any(k in last_lower for k in ["chest pain", "cannot breathe", "severe breathlessness", "unconscious"]):
+        return (
+            "🚨 **CRITICAL SAFETY ALERT**: Severe chest pain, pressure, or acute shortness of breath requires IMMEDIATE emergency medical attention. "
+            "Please call 108 / 911 or proceed to the nearest Emergency Room right away."
+        )
+
+    # TURN 1: Initial Symptom Presentation
+    if turn_num <= 1:
+        if sym_key == "fever":
+            return (
+                "I understand you are experiencing a fever. Elevated temperature is typically your body's immune response to an infection.\n\n"
+                "To evaluate this properly: **How many days have you had the fever, and have you checked your temperature with a thermometer?**"
+            )
+        elif sym_key == "headache":
+            return (
+                "I hear you have a headache. Headaches are frequently triggered by tension, dehydration, lack of sleep, or eye strain.\n\n"
+                "To evaluate this: **Is the pain throbbing, dull, or sharp, and does bright light or noise make it worse?**"
+            )
+        elif sym_key == "cough":
+            return (
+                "I understand you are dealing with a cough. Acute coughs are commonly caused by viral upper respiratory infections or airway irritation.\n\n"
+                "To help assess this: **Is it a dry tickly cough, or are you bringing up mucus or phlegm?**"
+            )
+        elif sym_key == "stomach":
+            return (
+                "I hear you are having stomach or abdominal discomfort.\n\n"
+                "To help assess this: **Where is the discomfort situated (upper or lower), and is it a burning acid sensation or sharp cramps?**"
+            )
+        elif sym_key == "fatigue":
+            return (
+                "I note you are experiencing fatigue and low energy.\n\n"
+                "To help assess this: **How long have you felt this persistent tiredness, and does a full night's sleep help you feel rested?**"
+            )
+        else:
+            return (
+                "I've noted the symptoms you described. To help determine the appropriate care pathway:\n\n"
+                "**Approximately how many days have you experienced this, and how severe is the discomfort?**"
+            )
+
+    # TURN 2: Duration / Temperature / Severity Answered
+    if turn_num == 2 or any(k in last_lower for k in ["day", "today", "yesterday", "week", "101", "102", "100", "mild", "moderate", "severe"]):
+        duration_note = "noted the timeline"
+        for d in ["started today", "1-2 days", "1–2 days", "3-5 days", "a week", "2 weeks"]:
+            if d in last_lower:
+                duration_note = f"noted the {d} duration"
                 break
 
-    if sym_key and sym_key in CLINICAL_INTAKE_KNOWLEDGE:
-        info = CLINICAL_INTAKE_KNOWLEDGE[sym_key]
-        question = info["questions"][0]
-        
-        # Select follow-up question based on conversation turn depth
-        turn_count = len(messages)
-        if turn_count >= 4:
-            question = info["questions"][1] if len(info["questions"]) > 1 else info["questions"][0]
-        if turn_count >= 6:
-            question = info["questions"][2] if len(info["questions"]) > 2 else info["questions"][0]
+        if sym_key == "fever":
+            return (
+                f"Thank you for sharing that, I have {duration_note}.\n\n"
+                "**Are you experiencing any accompanying symptoms — like body chills, headache, sore throat, or body aches?**"
+            )
+        elif sym_key == "headache":
+            return (
+                f"Thank you, I have {duration_note}.\n\n"
+                "**Are you having any nausea, dizziness, neck stiffness, or vision changes alongside the headache?**"
+            )
+        elif sym_key == "cough":
+            return (
+                f"Thank you, I have {duration_note}.\n\n"
+                "**Are you experiencing any fever, shortness of breath, or chest tightness with the cough?**"
+            )
+        else:
+            return (
+                f"Thank you, I have {duration_note}.\n\n"
+                "**Are you experiencing any other symptoms, such as fever, dizziness, or nausea?**"
+            )
 
-        response_text = (
-            f"I hear that you're experiencing {sym_key.replace('_', ' ')}. "
-            f"{info['guidance']}\n\n"
-            f"To evaluate this thoroughly: **{question}**\n\n"
-            f"ℹ️ *{info['warning']}*"
-        )
-        return response_text
-
-    # Check for general question or greeting
-    text_lower = last_user_msg.lower()
-    if any(g in text_lower for g in ["hi", "hello", "hey", "good morning", "good evening", "namaste"]):
+    # TURN 3+: Full Clinical Impression & Synthesis
+    if sym_key == "fever":
         return (
-            "Hello! 👋 I'm CarePulse AI, your virtual clinical assistant. "
-            "How are you feeling today? You can describe any symptoms you are experiencing "
-            "(such as fever, headache, cough, stomach pain, or fatigue) or tap one of the options below to begin an evaluation."
+            "Thank you for providing those details. Based on your fever and accompanying symptoms, this is consistent with an **Acute Febrile Syndrome** (likely viral in origin).\n\n"
+            "**Recommended Care Steps:**\n"
+            "• **Hydration**: Drink plenty of water, electrolyte fluids, and clear broths.\n"
+            "• **Rest**: Allow your body adequate bed rest in a cool, well-ventilated room.\n"
+            "• **Temperature Monitoring**: Check and log your temperature twice daily.\n"
+            "• **Clinical Evaluation**: Consult a General Physician if your fever exceeds 102°F (38.9°C) or lasts beyond 48 hours.\n\n"
+            "You can review your generated **SOAP Clinical Note** above or schedule a consultation with our verified **General Medicine** specialists."
         )
-
-    if any(q in text_lower for q in ["who are you", "what can you do", "help"]):
+    elif sym_key == "headache":
         return (
-            "I'm CarePulse AI, designed to assist you with symptom evaluation, clinical department routing, "
-            "and health guidance. Please describe what you are currently feeling, including how long it has been going on."
+            "Thank you for the details. Based on your symptoms, this is consistent with a **Tension-Type Headache or Fatigue-Related Cephalea**.\n\n"
+            "**Recommended Care Steps:**\n"
+            "• Rest in a quiet, dimly lit room and take a screen break.\n"
+            "• Hydrate with a full glass of water.\n"
+            "• Apply a cool compress to your forehead or temples.\n"
+            "• Consult a physician if pain becomes sudden and severe.\n\n"
+            "You can review your **SOAP Note** or book an appointment with our specialists."
         )
-
-    # General clinical symptom intake response
-    return (
-        "I've noted the symptoms you described. To help determine the appropriate care pathway, "
-        "could you share:\n"
-        "1. Approximately how many days or hours have you experienced this?\n"
-        "2. On a scale of 1 to 10, how severe is the discomfort?\n"
-        "3. Are you experiencing any other symptoms, such as fever, dizziness, or nausea?"
-    )
+    elif sym_key == "cough":
+        return (
+            "Thank you for the details. Your symptoms are consistent with an **Upper Respiratory Tract Infection / Bronchial Hyperreactivity**.\n\n"
+            "**Recommended Care Steps:**\n"
+            "• Sip warm liquids with honey and lemon.\n"
+            "• Use steam inhalation to soothe airway irritation.\n"
+            "• Seek prompt care if you notice wheezing, chest pain, or breathlessness.\n\n"
+            "Recommended routing: **Pulmonology or General Medicine**."
+        )
+    else:
+        return (
+            "Thank you for sharing your symptoms. Based on your report, I have synthesized your preliminary clinical intake evaluation.\n\n"
+            "**Next Recommended Steps:**\n"
+            "• Review your synthesized **SOAP Note** for a structured summary of your symptoms.\n"
+            "• Schedule a consultation with our recommended medical specialist for definitive examination."
+        )
