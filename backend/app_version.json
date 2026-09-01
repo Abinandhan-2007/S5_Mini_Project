@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.8.1",
+  "version": "1.8.3",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "CarePulse v1.8.1: Enhanced multi-turn clinical dialogue flow, natural conversational progression, cleaned up message styling, and dynamic turn-based action chips.",
+  "release_notes": "CarePulse v1.8.3: Integrated interactive cascading medication card stack for active prescriptions on Home screen and enhanced clinical RAG retrieval engine.",
   "released_at": "2026-09-01"
 }

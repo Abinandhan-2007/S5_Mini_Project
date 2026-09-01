@@ -19,10 +19,10 @@ export interface MedicationItem {
   dosage: string;
   frequency: string;
   prescriber: string;
-  hospitalName: string;
-  status: 'Active' | 'Refill Soon' | 'As Needed' | 'Completed';
-  iconType?: 'pill' | 'syringe' | 'bottle' | 'syrup' | 'inhaler';
-  nextDose: string;
+  hospitalName?: string;
+  status?: 'Active' | 'Refill Soon' | 'As Needed' | 'Completed' | string;
+  iconType?: 'pill' | 'syringe' | 'bottle' | 'syrup' | 'inhaler' | 'capsule';
+  nextDose?: string;
   totalDays?: number;
   daysCompleted?: number;
 }

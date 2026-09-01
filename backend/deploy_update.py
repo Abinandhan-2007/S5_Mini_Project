@@ -151,6 +151,14 @@ def main():
     # 4. Sync Capacitor
     run_command("npx cap sync android", FRONTEND_DIR, "Syncing Capacitor Native Bridge")
 
+    # Clean old APK outputs before build
+    for old_apk in [CACHE_APK, LOCAL_BUILD_APK]:
+        try:
+            if old_apk.exists():
+                old_apk.unlink()
+        except Exception:
+            pass
+
     # 5. Build APK with Gradle
     run_command(".\\gradlew.bat assembleDebug", ANDROID_DIR, "Compiling Android APK (Gradle)")
 
@@ -161,8 +169,13 @@ def main():
     elif LOCAL_BUILD_APK.exists():
         source_apk = LOCAL_BUILD_APK
     else:
-        print("❌ Error: Could not find generated app-debug.apk!")
-        sys.exit(1)
+        # Search anywhere in android build directory
+        found = list(ANDROID_DIR.glob("**/app-debug.apk"))
+        if found:
+            source_apk = found[0]
+        else:
+            print("❌ Error: Could not find generated app-debug.apk!")
+            sys.exit(1)
 
     # 7. Copy to target destinations
     import shutil

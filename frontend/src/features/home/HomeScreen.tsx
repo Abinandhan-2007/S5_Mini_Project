@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Lightbulb,
-  Clock,
-  Pill,
   ChevronRight,
   Ticket,
   Calendar as CalendarIcon,
@@ -389,7 +387,9 @@ export const HomeScreen: React.FC = () => {
                 </button>
               </div>
             )}
-                    {/* 4. ACTIVE PRESCRIPTIONS - SAMSUNG PASS CASCADING MEDICATION CARD STACK */}
+          </div>
+
+          {/* 4. ACTIVE PRESCRIPTIONS - SAMSUNG PASS CASCADING MEDICATION CARD STACK */}
           <div className="space-y-3.5">
             {/* Course Completion Toast Notice */}
             {completedNotice && (
