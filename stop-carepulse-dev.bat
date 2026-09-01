@@ -2,22 +2,23 @@
 setlocal EnableDelayedExpansion
 
 :: ===================================================================
-:: CarePulse - Production Android Network Services Stopper
+:: CarePulse - Development Services & Terminal Window Stopper
 :: Project Root: E:\S5_Mini_Project
 :: Finds and closes:
-::   1. CarePulse Terminal Windows (Backend, Ngrok)
+::   1. CarePulse Terminal Windows (Backend, Ngrok, Frontend)
 ::   2. Ngrok tunnel process (ngrok.exe)
 ::   3. FastAPI Backend process (listening on port 5000)
-::   4. PostgreSQL Database (Docker container / Windows Service)
+::   4. Vite React Frontend dev server process (listening on port 5173)
+::   5. PostgreSQL Database (Docker container / Windows Service)
 :: ===================================================================
 
-title CarePulse Service Stopper
+title CarePulse Dev Service Stopper
 
 set "PROJECT_DIR=%~dp0"
 if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 
 echo ===================================================================
-echo                     CAREPULSE SERVICE STOPPER                      
+echo                 CAREPULSE DEV SERVICE STOPPER                      
 echo ===================================================================
 echo.
 
@@ -26,8 +27,8 @@ set "STOPPED_COUNT=0"
 :: -------------------------------------------------------------------
 :: 1. Close CarePulse Terminal Windows (CMD instances)
 :: -------------------------------------------------------------------
-echo [1/4] Closing CarePulse terminal windows...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'cmd.exe') -and ($_.CommandLine -like '*S5_Mini_Project*' -or $_.CommandLine -like '*CAREPULSE*' -or $_.CommandLine -like '*backend/main.py*' -or $_.CommandLine -like '*ngrok*') -and $_.CommandLine -notlike '*stop-carepulse*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; Write-Host '      [OK] Closed terminal window (PID:' $_.ProcessId ')' }"
+echo [1/5] Closing CarePulse terminal windows...
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'cmd.exe') -and ($_.CommandLine -like '*S5_Mini_Project*' -or $_.CommandLine -like '*CAREPULSE*' -or $_.CommandLine -like '*backend/main.py*' -or $_.CommandLine -like '*ngrok*' -or $_.CommandLine -like '*npm run dev*') -and $_.CommandLine -notlike '*stop-carepulse*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; Write-Host '      [OK] Closed terminal window (PID:' $_.ProcessId ')' }"
 if not errorlevel 1 (
     set /a STOPPED_COUNT+=1
 )
@@ -36,7 +37,7 @@ if not errorlevel 1 (
 :: 2. Stop Ngrok Tunnel Process
 :: -------------------------------------------------------------------
 echo.
-echo [2/4] Checking and stopping ngrok.exe...
+echo [2/5] Checking and stopping ngrok.exe...
 tasklist /fi "imagename eq ngrok.exe" | findstr /i "ngrok.exe" >nul 2>&1
 if not errorlevel 1 (
     taskkill /f /im ngrok.exe >nul 2>&1
@@ -50,7 +51,7 @@ if not errorlevel 1 (
 :: 3. Stop Backend Process (Port 5000)
 :: -------------------------------------------------------------------
 echo.
-echo [3/4] Checking and stopping Backend on Port 5000...
+echo [3/5] Checking and stopping Backend on Port 5000...
 set "FOUND_5000=0"
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5000 .*LISTENING"') do (
     set "PID_5000=%%a"
@@ -66,10 +67,29 @@ if "!FOUND_5000!"=="0" (
 )
 
 :: -------------------------------------------------------------------
-:: 4. Stop Database (Docker container / PostgreSQL Service)
+:: 4. Stop Frontend Dev Server (Port 5173)
 :: -------------------------------------------------------------------
 echo.
-echo [4/4] Checking and stopping PostgreSQL Database...
+echo [4/5] Checking and stopping Frontend Dev Server on Port 5173...
+set "FOUND_5173=0"
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5173 .*LISTENING"') do (
+    set "PID_5173=%%a"
+    if not "!PID_5173!"=="0" (
+        echo       [OK] Terminating frontend process PID: !PID_5173!...
+        taskkill /f /t /pid !PID_5173! >nul 2>&1
+        set "FOUND_5173=1"
+        set /a STOPPED_COUNT+=1
+    )
+)
+if "!FOUND_5173!"=="0" (
+    echo       [--] No service was active on port 5173.
+)
+
+:: -------------------------------------------------------------------
+:: 5. Stop Database (Docker container / PostgreSQL Service)
+:: -------------------------------------------------------------------
+echo.
+echo [5/5] Checking and stopping PostgreSQL Database...
 set "DB_STOPPED=0"
 
 REM Stop Docker container if Docker is running
@@ -117,7 +137,7 @@ echo.
 echo ===================================================================
 echo                        SHUTDOWN COMPLETE                           
 echo ===================================================================
-echo All CarePulse terminal windows and background services are closed.
+echo All CarePulse dev terminal windows and services are closed.
 echo Stopped service instances: %STOPPED_COUNT%
 echo ===================================================================
 echo.

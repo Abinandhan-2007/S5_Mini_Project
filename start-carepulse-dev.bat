@@ -2,34 +2,35 @@
 setlocal EnableDelayedExpansion
 
 :: ===================================================================
-:: CarePulse - Production Android Network Services Launcher
+:: CarePulse - Local Web Development Launcher (Full Stack)
 :: Project Root: E:\S5_Mini_Project
-:: Starts the 2 terminal services required for the Android APK:
+:: Starts services with terminal windows for local browser development:
 ::   1. FastAPI Backend (Port 5000)
 ::   2. Ngrok Public Tunnel (Port 5000 -> Permanent Domain)
+::   3. Vite React Frontend Dev Server (Port 5173)
 ::
-:: NOTE: The Android APK bundles the production frontend assets directly.
-:: A live Vite dev server (npm run dev) is NOT needed for the mobile app.
-:: For local web UI development/testing, run: start-carepulse-dev.bat
+:: USE CASE: Testing UI changes in a web browser before building a new APK.
+:: NOTE: For running ONLY what the deployed Android app needs, use:
+::       start-carepulse.bat (only 2 terminals: backend + ngrok)
 :: ===================================================================
 
-title CarePulse Launcher (Android Services)
+title CarePulse Dev Launcher (Web Dev Mode)
 
-:: Dynamically resolve current directory (handles any drive or path)
+:: Dynamically resolve current directory
 set "PROJECT_DIR=%~dp0"
 if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 set "NGROK_DOMAIN=straggler-boss-unselect.ngrok-free.dev"
 set "NGROK_URL=https://straggler-boss-unselect.ngrok-free.dev"
 
 echo ===================================================================
-echo               CAREPULSE ANDROID NETWORK LAUNCHER                   
+echo               CAREPULSE LOCAL WEB DEV LAUNCHER                     
 echo ===================================================================
 echo Project Directory: %PROJECT_DIR%
 echo Public Ngrok URL:  %NGROK_URL%
 echo.
 
 :: -------------------------------------------------------------------
-:: STEP 0: Check if Backend Port 5000 is already in use
+:: STEP 0: Check if App Ports 5000 or 5173 are already in use
 :: -------------------------------------------------------------------
 set "PORT_IN_USE=0"
 
@@ -39,10 +40,16 @@ if not errorlevel 1 (
     set "PORT_IN_USE=1"
 )
 
+netstat -ano | findstr /R /C:":5173 .*LISTENING" >nul 2>&1
+if not errorlevel 1 (
+    echo [WARNING] Port 5173 is already in use (Frontend may already be running^).
+    set "PORT_IN_USE=1"
+)
+
 if "%PORT_IN_USE%"=="1" (
     echo.
-    echo Port 5000 is currently occupied.
-    echo (Tip: You can run stop-carepulse.bat first to close existing instances^).
+    echo One or more CarePulse application ports are currently occupied.
+    echo (Tip: You can run stop-carepulse-dev.bat first to close existing instances^).
     echo.
     choice /c YN /m "Do you want to continue and start services anyway? [Y/N]"
     if errorlevel 2 (
@@ -54,14 +61,13 @@ if "%PORT_IN_USE%"=="1" (
 )
 
 echo.
-echo [INFO] Starting CarePulse Services...
+echo [INFO] Starting CarePulse Development Services...
 echo.
 
 :: -------------------------------------------------------------------
 :: STEP 1: Verify PostgreSQL Background Windows Service (Port 5432)
-:: (PostgreSQL runs silently as a Windows service; no terminal required)
 :: -------------------------------------------------------------------
-echo [1/3] Checking PostgreSQL Database Service (Port 5432)...
+echo [1/4] Checking PostgreSQL Database Service (Port 5432)...
 netstat -ano | findstr /R /C:":5432 .*LISTENING" >nul 2>&1
 if not errorlevel 1 (
     echo       [OK] Database is running and listening on port 5432.
@@ -93,7 +99,7 @@ if not errorlevel 1 (
 :: STEP 2: Launch FastAPI Backend in Terminal Window 1
 :: -------------------------------------------------------------------
 echo.
-echo [2/3] Starting backend in Terminal 1 (python backend/main.py on port 5000)...
+echo [2/4] Starting backend in Terminal 1 (python backend/main.py on port 5000)...
 start "CarePulse - FastAPI Backend (Port 5000)" cmd /k "cd /d %PROJECT_DIR% && echo ======================================== && echo  CAREPULSE FASTAPI BACKEND (PORT 5000) && echo ======================================== && python backend/main.py"
 
 :: Add a short delay (4 seconds) so backend binds to port 5000 before ngrok starts
@@ -104,43 +110,39 @@ ping 127.0.0.1 -n 5 >nul
 :: STEP 3: Launch Ngrok Public Tunnel in Terminal Window 2
 :: -------------------------------------------------------------------
 echo.
-echo [3/3] Starting ngrok tunnel in Terminal 2 (tunneling port 5000 to %NGROK_DOMAIN%)...
+echo [3/4] Starting ngrok tunnel in Terminal 2 (tunneling port 5000 to %NGROK_DOMAIN%)...
 start "CarePulse - Ngrok Tunnel (Port 5000)" cmd /k "cd /d %PROJECT_DIR% && echo ======================================== && echo  CAREPULSE NGROK TUNNEL (PORT 5000) && echo ======================================== && ngrok.exe http --url=%NGROK_DOMAIN% 5000"
 
+:: Short delay (2 seconds) before starting frontend
+ping 127.0.0.1 -n 3 >nul
+
 :: -------------------------------------------------------------------
-:: STEP 4: Frontend Dev Server (OMITTED FOR MOBILE APP DEPLOYMENT)
+:: STEP 4: Launch Vite React Frontend in Terminal Window 3
 :: -------------------------------------------------------------------
-:: REM The Android mobile app has the production UI bundled directly inside the APK.
-:: REM A live Vite dev server (npm run dev) is not required for the app to work.
-:: REM For local web browser development/testing, run start-carepulse-dev.bat instead.
+echo.
+echo [4/4] Starting frontend in Terminal 3 (npm run dev -- --host on port 5173)...
+start "CarePulse - Vite Frontend (Port 5173)" cmd /k "cd /d %PROJECT_DIR%\frontend && echo ======================================== && echo  CAREPULSE VITE REACT FRONTEND && echo ======================================== && npm run dev -- --host"
 
 :: -------------------------------------------------------------------
 :: STEP 5: Final Summary Banner
 :: -------------------------------------------------------------------
 echo.
 echo ===================================================================
-echo                     CAREPULSE SERVICES STARTED                     
+echo                 CAREPULSE DEV SERVICES STARTED                     
 echo ===================================================================
 echo.
-echo  2 Active Terminal Windows Opened:
+echo  3 Terminal Windows Opened:
 echo    1. [CarePulse - FastAPI Backend (Port 5000)]
 echo    2. [CarePulse - Ngrok Tunnel (Port 5000)]
+echo    3. [CarePulse - Vite Frontend (Port 5173)]
 echo.
-echo  Status & Endpoints:
-echo    - Backend running locally:  http://localhost:5000
-echo    - Backend API Docs:         http://localhost:5000/docs
-echo    - Backend reachable from:   %NGROK_URL%
+echo  Development Links:
+echo    - Frontend Dev Server:   http://localhost:5173
+echo    - Backend Local API:     http://localhost:5000
+echo    - Backend Swagger Docs:  http://localhost:5000/docs
+echo    - Backend Public Tunnel: %NGROK_URL%
 echo.
-echo  Important Notes:
-echo    * PostgreSQL runs as a background Windows service (Port 5432).
-echo      No terminal is needed; it is set to Automatic startup so it
-echo      is always ready before the backend starts.
-echo    * The Android app works from ANY network as long as these 2
-echo      terminals stay open and this machine is on and connected to internet.
-echo    * The frontend is bundled inside the APK. If you want to test UI
-echo      changes in a browser, use: start-carepulse-dev.bat
-echo.
-echo  To shut down services cleanly, run: stop-carepulse.bat
+echo  To shut down dev services, run: stop-carepulse-dev.bat
 echo ===================================================================
 echo.
 pause
