@@ -74,8 +74,9 @@ export const HospitalDetailScreen: React.FC = () => {
       {/* Full-bleed Hero Image Header */}
       <div className="relative h-60 sm:h-72 w-full bg-slate-900 overflow-hidden">
         <img
-          src={hospital.imageUrl}
+          src={hospital.imageUrl || '/hospital_default.jpg'}
           alt={hospital.name}
+          onError={(e) => { e.currentTarget.src = '/hospital_default.jpg'; }}
           className="w-full h-full object-cover opacity-90 scale-105 transition-transform duration-500 hover:scale-100"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-slate-900/30" />
@@ -213,7 +214,7 @@ export const HospitalDetailScreen: React.FC = () => {
                     {/* Avatar + Doctor Name */}
                     <div className="flex items-start gap-3">
                       <img
-                        src={doc.photoUrl || '/doctor_default.jpg'}
+                        src={doc.photoUrl || (doc as any).photo || '/doctor_default.jpg'}
                         alt={doc.name}
                         onError={(e) => { e.currentTarget.src = '/doctor_default.jpg'; }}
                         className={clsx(
