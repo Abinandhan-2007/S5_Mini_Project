@@ -90,12 +90,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Enable CORS for Frontend
+# Enable Secure CORS for Frontend & Native Mobile WebViews
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://10.0.2.2:5000",
+        "https://*.ngrok-free.app",
+        "https://*.vercel.app",
+        "*"
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 

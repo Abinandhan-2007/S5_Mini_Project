@@ -1,6 +1,6 @@
 import React from 'react';
 import { clsx } from 'clsx';
-import { Sparkles, User as UserIcon, AlertTriangle } from 'lucide-react';
+import { Sparkles, User as UserIcon } from 'lucide-react';
 import { Chip } from './Chip';
 
 export interface ChatBubbleProps {
@@ -19,7 +19,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onChipClick,
 }) => {
   const isBot = sender === 'bot';
-  const isWarning = text.includes('⚠️') || text.toLowerCase().includes('emergency') || text.toLowerCase().includes('immediate');
 
   return (
     <div
@@ -45,19 +44,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           className={clsx(
             'p-4 text-xs leading-relaxed shadow-sm transition-all duration-200 relative overflow-hidden',
             isBot
-              ? isWarning
-                ? 'bg-amber-50 text-amber-900 border border-amber-300 rounded-2xl rounded-tl-xs'
-                : 'bg-white text-[#111827] rounded-2xl rounded-tl-xs border border-[#E4E7EC] card-left-accent'
+              ? 'bg-white text-[#111827] rounded-2xl rounded-tl-xs border border-[#E4E7EC] card-left-accent'
               : 'bg-[#0B5A54] text-white rounded-2xl rounded-tr-xs font-medium shadow-md'
           )}
         >
-          {isWarning && isBot && (
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-1">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Medical Safety Alert</span>
-            </div>
-          )}
-
           <p className="whitespace-pre-line">{text}</p>
           
           <span
