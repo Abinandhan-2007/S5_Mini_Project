@@ -1,12 +1,14 @@
 """
-CarePulse AI / Healthcare LLM RAG Model Evaluation & Accuracy Benchmark.
+CarePulse AI / Healthcare Multimodal AI Model Evaluation & Accuracy Benchmark.
 Runs quantitative accuracy evaluation across:
 1. Clinical Safety Triage Sensitivity (100% Emergency Detection)
 2. Intent Classification Precision, Recall & F1
 3. Clinical Entity & Demographics Extraction
 4. RAG Vector Search & Retrieval (Hit@1, Hit@3, MRR)
-5. Evidence Confidence Calibration
-6. Multi-Agent Department Routing
+5. Multi-Agent Department Routing
+6. Vision Document Image Scanner (Prescription & Lab Reports)
+7. Ambient Voice Consultation Scribe & SOAP Generator
+8. Real-Time Drug-Drug Interaction & Allergy Guard Alerting
 """
 
 import os
@@ -24,6 +26,9 @@ from patient_context import extract_patient_entities
 from rag import rag_engine
 from confidence import calculate_evidence_confidence
 from agents.triage_agent import run_triage_assessment
+from vision_parser import analyze_medical_document_image
+from voice_scribe import process_ambient_consultation_transcript
+from drug_guard import check_drug_interactions
 
 def print_banner(title: str):
     width = 78
@@ -163,8 +168,42 @@ def run_benchmark():
         print(f"[{status}] Expected: {rt['expected']:<22} | Routed: {dept:<22}")
     routing_acc = (routing_correct / len(ROUTING_TESTS)) * 100.0
 
+    # 6. Vision Document Scanner
+    print("\n--- 6. Prescription & Lab Report Vision Image Scanner ---")
+    rx_text = "Rx: Amoxicillin 500mg PO TID x 7 days. Paracetamol 650mg PRN."
+    v_res = analyze_medical_document_image(rx_text, "prescription")
+    v_pass = len(v_res.get("medications", [])) >= 2
+    status = "PASS" if v_pass else "FAIL"
+    print(f"[{status}] Extracted {len(v_res.get('medications', []))} prescribed drugs from document input.")
+    vision_acc = 100.0 if v_pass else 0.0
+
+    # 7. Ambient Voice Scribe
+    print("\n--- 7. Ambient Voice Consultation Scribe & SOAP Generator ---")
+    consult_audio = "Patient is a 45 year old female presenting with sharp stomach pain and heartburn for 3 days. Prescribed Omeprazole 20mg daily."
+    scribe_res = process_ambient_consultation_transcript(consult_audio)
+    soap_pass = ("subjective" in scribe_res.get("soap_note", {})) and ("plan" in scribe_res.get("soap_note", {}))
+    status = "PASS" if soap_pass else "FAIL"
+    print(f"[{status}] Generated SOAP note draft with keys: {list(scribe_res.get('soap_note', {}).keys())}")
+    scribe_acc = 100.0 if soap_pass else 0.0
+
+    # 8. Drug Safety Guard
+    print("\n--- 8. Real-Time Drug-Drug Interaction & Allergy Guard Alert ---")
+    guard_res = check_drug_interactions(
+        proposed_medications=["Ibuprofen"],
+        active_medications=["Lisinopril"],
+        allergies=["Penicillin"]
+    )
+    guard_pass = not guard_res["is_safe"] and guard_res["overall_risk_level"] == "CRITICAL_CONTRAINDICATION"
+    status = "PASS" if guard_pass else "FAIL"
+    print(f"[{status}] Caught {guard_res['total_alerts']} interaction/allergy alerts. Risk: {guard_res['overall_risk_level']}")
+    guard_acc = 100.0 if guard_pass else 0.0
+
     elapsed = time.time() - start_time
-    composite_score = (emg_sens * 0.25) + (triage_acc * 0.15) + (intent_acc * 0.15) + (ent_acc * 0.15) + (rag_acc * 0.15) + (routing_acc * 0.15)
+    composite_score = (
+        (emg_sens * 0.20) + (triage_acc * 0.10) + (intent_acc * 0.10) +
+        (ent_acc * 0.10) + (rag_acc * 0.10) + (routing_acc * 0.10) +
+        (vision_acc * 0.10) + (scribe_acc * 0.10) + (guard_acc * 0.10)
+    )
 
     print_banner("Summary Metrics")
     print(f"1. Emergency Sensitivity:          {emg_sens:.2f}% (Zero False Negatives)")
@@ -173,6 +212,9 @@ def run_benchmark():
     print(f"4. Entity Extraction Accuracy:     {ent_acc:.2f}%")
     print(f"5. RAG Top-1 Retrieval Accuracy:   {rag_acc:.2f}%")
     print(f"6. Multi-Agent Routing Accuracy:   {routing_acc:.2f}%")
+    print(f"7. Vision Scanner Extraction:      {vision_acc:.2f}%")
+    print(f"8. Ambient Voice Scribe SOAP:      {scribe_acc:.2f}%")
+    print(f"9. Drug Safety Guard Alert:        {guard_acc:.2f}%")
     print(f"\nCOMPOSITE SYSTEM ACCURACY SCORE:    {composite_score:.2f}%")
     print(f"Execution Time:                    {elapsed:.2f}s")
     print("=" * 78)
