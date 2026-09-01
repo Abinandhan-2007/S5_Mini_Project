@@ -4,11 +4,12 @@ import { motion } from 'framer-motion';
 import {
   Activity, Users, Clock, CheckCircle2, Calendar,
   LogOut, Stethoscope, Bell, User,
-  ClipboardList, TrendingUp, AlertCircle
+  ClipboardList, TrendingUp, AlertCircle, Sparkles
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
 import { LiveIndicator } from '../../components/ui/LiveIndicator';
+import { ConsultationForm } from './ConsultationForm';
 
 // Initial fallback patient queue
 const INITIAL_DOCTOR_QUEUE = [
@@ -36,6 +37,7 @@ export const DoctorDashboard: React.FC = () => {
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const navigate     = useNavigate();
   const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [activeConsultationPatient, setActiveConsultationPatient] = useState<any | null>(null);
 
   // Automatic robust background polling for Doctor queue
   const { isPolling, lastUpdated, refetch } = usePolling(
@@ -261,25 +263,31 @@ export const DoctorDashboard: React.FC = () => {
                     <span>{cfg.label}</span>
                   </span>
 
-                  {/* Doctor Action Button */}
-                  {patient.status === 'In Consultation' && (
+                  {/* Doctor Action Buttons */}
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                      onClick={() => updateTokenStatus(patient.id, 'Completed')}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95 shrink-0"
+                      onClick={() => {
+                        if (patient.status === 'Waiting') {
+                          updateTokenStatus(patient.id, 'In Consultation');
+                        }
+                        setActiveConsultationPatient(patient);
+                      }}
+                      className="px-3 py-1 bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] hover:from-[#084540] hover:to-[#109A8B] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Finish & Complete</span>
+                      <Sparkles className="w-3.5 h-3.5 text-teal-200" />
+                      <span>Cabin Scribe</span>
                     </button>
-                  )}
 
-                  {patient.status === 'Waiting' && (
-                    <button
-                      onClick={() => updateTokenStatus(patient.id, 'In Consultation')}
-                      className="px-3 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95 shrink-0"
-                    >
-                      <span>Call Into Cabin</span>
-                    </button>
-                  )}
+                    {patient.status === 'In Consultation' && (
+                      <button
+                        onClick={() => updateTokenStatus(patient.id, 'Completed')}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Complete</span>
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -295,6 +303,27 @@ export const DoctorDashboard: React.FC = () => {
           </span>
         </div>
       </main>
+
+      {/* ── Active Consultation Form / AI Scribe Modal ────────────────── */}
+      {activeConsultationPatient && (
+        <ConsultationForm
+          patient={activeConsultationPatient}
+          doctor={{
+            id: currentStaff?.id || 'doc-1',
+            name: currentStaff?.name || 'Dr. Specialist',
+            specialty: (currentStaff as any)?.specialty || 'General Medicine',
+            staffCode: currentStaff?.staff_code || currentStaff?.staffCode || 'D001101',
+          }}
+          onClose={() => setActiveConsultationPatient(null)}
+          onComplete={() => {
+            if (activeConsultationPatient?.id) {
+              updateTokenStatus(activeConsultationPatient.id, 'Completed');
+            }
+            setActiveConsultationPatient(null);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -46,10 +46,9 @@ export const UpdateAvailableModal: React.FC<UpdateAvailableModalProps> = ({
     });
 
     if (result.success) {
-      // Keep modal in installing state briefly, then dismiss
-      setTimeout(() => {
-        onDismiss();
-      }, 1500);
+      // Keep modal open on the installing state so the Android system dialog can complete
+      // without prematurely triggering the background biometric lock / login screen
+      setStatus('installing');
     } else {
       const errStr = (result.error || '').toLowerCase();
       if (
@@ -193,17 +192,39 @@ export const UpdateAvailableModal: React.FC<UpdateAvailableModalProps> = ({
             </div>
           )}
 
-          {/* STATE 3: INSTALLING - Preparing Android Package Installer */}
+          {/* STATE 3: INSTALLING - Waiting for Android Package Installer */}
           {status === 'installing' && (
-            <div className="py-6 text-center space-y-3">
+            <div className="py-4 space-y-4 text-center">
               <div className="w-14 h-14 mx-auto rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200">
-                <CheckCircle2 className="w-7 h-7 text-emerald-600 animate-bounce" />
+                <CheckCircle2 className="w-7 h-7 text-emerald-600 animate-pulse" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Launching Package Installer</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Please tap <strong>Install</strong> on the Android system dialog.
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-800">Ready to Install</h3>
+                <p className="text-xs text-slate-600 leading-relaxed px-2">
+                  The Android installer is open. Tap <strong>Update</strong> on the system screen to complete installation.
                 </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-teal-50/60 border border-teal-100 text-[11px] text-teal-800 flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+                <span>The app will automatically restart once installed</span>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  onClick={handleStartUpdate}
+                  className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#0B5A54] to-[#1FA2AC] hover:from-[#094843] hover:to-[#17858D] text-white font-bold text-xs shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowUpCircle className="w-4 h-4" />
+                  Re-open Installer Dialog
+                </button>
+
+                <button
+                  onClick={handleLater}
+                  className="w-full py-2 px-4 rounded-2xl bg-transparent hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-colors"
+                >
+                  Skip & Continue to App
+                </button>
               </div>
             </div>
           )}
