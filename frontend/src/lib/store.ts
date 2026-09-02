@@ -659,7 +659,6 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
 
       // Offline / fallback reasoning if network unreachable
       const userMessages = [...currentHistory, userMsg].filter((m) => m.sender === 'user').map((m) => m.text);
-      const userTextLower = msg.text.toLowerCase();
       const fullHistoryLower = userMessages.join(' ').toLowerCase();
       const turnCount = userMessages.length;
 

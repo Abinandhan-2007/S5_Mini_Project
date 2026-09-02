@@ -127,13 +127,13 @@ export async function apiFetch(
       } else {
         // Generous timeout for AI inference, OCR, and medicine lookups (20s), standard for others (6s)
         const isLongRequest = path.includes('/ai') || path.includes('scan') || path.includes('lookup') || path.includes('ocr') || path.includes('/chat');
-        const defaultTimeoutMs = isLongRequest ? 20000 : 12000;
-        const timeoutMs = options.signal ? undefined : defaultTimeoutMs;
-        const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+        const timeoutMs = isLongRequest ? 20000 : 12000;
+        const controller = options.signal ? null : new AbortController();
+        const timeoutId = timeoutMs && controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
         const res = await fetch(url, {
           ...options,
-          signal: options.signal || controller.signal,
+          signal: options.signal || (controller ? controller.signal : undefined),
           headers: {
             ...API_HEADERS,
             ...(options.headers as Record<string, string> | undefined),
