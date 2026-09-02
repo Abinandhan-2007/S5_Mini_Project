@@ -125,9 +125,12 @@ export async function apiFetch(
 
         throw new Error(`HTTP Error ${nativeRes.status}`);
       } else {
-        // Standard Web Browser fetch
+        // Generous timeout for AI inference, OCR, and medicine lookups (20s), standard for others (6s)
+        const isLongRequest = path.includes('/ai/') || path.includes('scan') || path.includes('lookup') || path.includes('ocr');
+        const timeoutMs = isLongRequest ? 20000 : 6000;
+
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const res = await fetch(url, {
           ...options,

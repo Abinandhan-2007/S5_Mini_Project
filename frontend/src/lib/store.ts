@@ -272,18 +272,13 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             registerPushNotifications(userData.id).catch(() => {});
             return true;
           } else if (res && (res.status === 401 || res.status === 403)) {
-            // Token is invalid/expired — purge stale credentials immediately
-            await clearPersistentUserStorage();
-            set({
-              user: null,
-              isAuthenticated: false,
-              isInitializing: false,
-              appointments: [],
-              activeAppointment: null,
-              history: [],
-              prescriptions: [],
-            });
-            return false;
+            // Token is invalid or expired — purge token only, preserve offline user session so user is never logged out on reload
+            console.warn('Background token expired or rejected. Removing expired token while preserving active user session.');
+            try {
+              localStorage.removeItem('carepulse_token');
+              localStorage.removeItem('auth_token');
+              await Preferences.remove({ key: 'auth_token' });
+            } catch {}
           }
         } catch (err) {
           console.warn('Background token refresh notice:', err);

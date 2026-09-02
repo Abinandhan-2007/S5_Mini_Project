@@ -1075,43 +1075,55 @@ def get_current_authenticated_patient(authorization: Optional[str] = Header(None
     email = payload.get("email")
 
     if database.use_pg:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT * FROM patients WHERE id::text = %s OR (email = %s AND email != '') LIMIT 1",
-                    (str(patient_id), str(email))
-                )
-                row = cur.fetchone()
-                if row:
-                    dob_str = str(row.get("dob") or "")
-                    return PatientResponse(
-                        id=str(row["id"]),
-                        fullName=row["full_name"],
-                        email=row["email"],
-                        phone=row.get("phone") or "",
-                        dob=dob_str,
-                        gender=row.get("gender") or "Not specified",
-                        bloodGroup=row.get("blood_group") or "O+",
-                        avatarUrl=row.get("avatar_url") or "",
-                        authProvider=row.get("auth_provider") or "local"
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT * FROM patients WHERE id::text = %s OR (email = %s AND email != '') LIMIT 1",
+                        (str(patient_id), str(email))
                     )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient account not found.")
-    else:
-        db = read_json_db()
-        for p in db.get("patients", []):
-            if p.get("id") == patient_id or (email and p.get("email") == email):
-                return PatientResponse(
-                    id=p["id"],
-                    fullName=p["full_name"],
-                    email=p["email"],
-                    phone=p.get("phone", ""),
-                    dob=p.get("dob", ""),
-                    gender=p.get("gender", "Female"),
-                    bloodGroup=p.get("blood_group", "O+"),
-                    avatarUrl=p.get("avatar_url", ""),
-                    authProvider=p.get("auth_provider", "local")
-                )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient account not found.")
+                    row = cur.fetchone()
+                    if row:
+                        dob_str = str(row.get("dob") or "")
+                        p_code = row.get("patient_code") or row.get("patientCode")
+                        return PatientResponse(
+                            id=str(row["id"]),
+                            patient_code=p_code,
+                            patientCode=p_code,
+                            fullName=row["full_name"],
+                            email=row["email"],
+                            phone=row.get("phone") or "",
+                            address=row.get("address") or "",
+                            dob=dob_str,
+                            gender=row.get("gender") or "Not specified",
+                            bloodGroup=row.get("blood_group") or "O+",
+                            avatarUrl=row.get("avatar_url") or "",
+                            authProvider=row.get("auth_provider") or "local"
+                        )
+        except Exception as pg_err:
+            logger.warning(f"PostgreSQL lookup error in /api/auth/me: {pg_err}")
+
+    # Fallback to local JSON database
+    db = read_json_db()
+    for p in db.get("patients", []):
+        if p.get("id") == patient_id or (email and p.get("email") == email):
+            p_code = p.get("patient_code") or p.get("patientCode")
+            return PatientResponse(
+                id=p["id"],
+                patient_code=p_code,
+                patientCode=p_code,
+                fullName=p["full_name"],
+                email=p["email"],
+                phone=p.get("phone", ""),
+                address=p.get("address", ""),
+                dob=p.get("dob", ""),
+                gender=p.get("gender", "Female"),
+                bloodGroup=p.get("blood_group", "O+"),
+                avatarUrl=p.get("avatar_url", ""),
+                authProvider=p.get("auth_provider", "local")
+            )
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient account not found.")
 
 
 @app.get("/api/patients/{patient_id}", response_model=PatientResponse)
@@ -2154,10 +2166,15 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             drugName=candidate_name,
             genericName=generic_name,
             extractedText=extracted_text,
-            purpose=info.get("purpose") or "General therapeutic medication.",
+            purpose=info.get("purpose"),
             indicationsAndUsage=info.get("indications_and_usage") or info.get("summary") or "",
             summary=info.get("summary") or "General therapeutic medication.",
-            source=info.get("source") or "OpenFDA"
+            source=info.get("source") or "OpenFDA",
+            mainUses=info.get("mainUses"),
+            howToTake=info.get("howToTake"),
+            warnings=info.get("warnings"),
+            sideEffects=info.get("sideEffects"),
+            boxedWarning=info.get("boxedWarning"),
         )
     else:
         return MedicineInfoLookupResponse(
@@ -2165,10 +2182,15 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             drugName=candidate_name,
             genericName=generic_name,
             extractedText=extracted_text,
-            purpose=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
+            purpose=None,
             indicationsAndUsage="",
             summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
-            source="Fallback"
+            source="Fallback",
+            mainUses=None,
+            howToTake=None,
+            warnings=None,
+            sideEffects=None,
+            boxedWarning=None,
         )
 
 

@@ -18,6 +18,10 @@ import {
   Search,
   ChevronRight,
   ShieldCheck,
+  ShieldAlert,
+  AlertOctagon,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { apiFetch } from '../../lib/apiFetch';
 import type { MedicineInfoLookupResponse, MedicineSearchResultItem } from '../../lib/types';
@@ -36,12 +40,30 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
     extractedText: 'AMOXICILLIN 500MG CAPSULES BP',
     source: 'OpenFDA Public Database',
     purpose:
-      'Amoxicillin is a broad-spectrum penicillin-type antibiotic used to treat a wide variety of bacterial infections. It works by inhibiting the synthesis of bacterial cell walls, stopping bacterial replication.',
+      'Broad-spectrum penicillin-class antibiotic used to treat bacterial infections by inhibiting bacterial cell wall synthesis.',
     indicationsAndUsage:
-      'Indicated for acute bacterial sinusitis, streptococcal pharyngitis/tonsillitis, otitis media, lower respiratory tract infections (bronchitis, community-acquired pneumonia), skin and skin structure infections, and urinary tract infections.',
+      'Indicated for acute bacterial sinusitis, streptococcal pharyngitis/tonsillitis, otitis media, lower respiratory tract infections, and urinary tract infections.',
     summary:
-      'Broad-spectrum penicillin antibiotic used to resolve bacterial infections of the respiratory tract, ears, throat, and urinary tract. Not effective against viral infections like colds or influenza.',
+      'Broad-spectrum penicillin antibiotic used to resolve bacterial infections of the respiratory tract, ears, throat, and urinary tract.',
     disclaimer: 'Informational reference only. Always complete the prescribed duration.',
+    mainUses: [
+      'Treatment of acute bacterial sinusitis and ear infections (otitis media).',
+      'Lower respiratory tract infections including bronchitis and community-acquired pneumonia.',
+      'Skin, soft tissue, and urinary tract bacterial infections.',
+    ],
+    howToTake: [
+      'Take with or without food at evenly spaced intervals as prescribed.',
+      'Swallow capsules whole with a full glass of water.',
+      'Complete the entire prescribed course even if symptoms improve early.',
+    ],
+    warnings: [
+      'Hypersensitivity alert: Serious anaphylactic reactions can occur in patients with penicillin allergy.',
+      'Clostridioides difficile-associated diarrhea (CDAD) reported with nearly all systemic antibacterial agents.',
+    ],
+    sideEffects: [
+      'Mild nausea, vomiting, or diarrhea.',
+      'Skin rash or itching (contact doctor immediately if hives occur).',
+    ],
   },
   Metformin: {
     status: 'FOUND',
@@ -50,12 +72,29 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
     extractedText: 'METFORMIN HYDROCHLORIDE EXTENDED RELEASE',
     source: 'OpenFDA Public Database',
     purpose:
-      'Metformin decreases hepatic glucose production, decreases intestinal absorption of glucose, and improves insulin sensitivity by increasing peripheral glucose uptake and utilization.',
+      'Biguanide antidiabetic agent that decreases hepatic glucose production and enhances peripheral insulin sensitivity.',
     indicationsAndUsage:
-      'Indicated as an adjunct to diet and exercise to improve glycemic control in adults and pediatric patients 10 years of age and older with type 2 diabetes mellitus.',
+      'Indicated as an adjunct to diet and exercise to improve glycemic control in adults and children 10 years and older with type 2 diabetes.',
     summary:
-      'First-line oral antidiabetic medicine used to regulate blood sugar levels in type 2 diabetes. Commonly taken with or after meals to reduce stomach discomfort.',
+      'First-line oral antidiabetic medicine used to regulate blood sugar levels in type 2 diabetes mellitus.',
     disclaimer: 'Informational reference only. Monitor blood glucose as directed by your physician.',
+    mainUses: [
+      'Glycemic control in type 2 diabetes mellitus as an adjunct to diet and exercise.',
+      'Reduction of hepatic gluconeogenesis and absorption of glucose from the intestine.',
+    ],
+    howToTake: [
+      'Take with meals to minimize gastrointestinal discomfort.',
+      'Do not crush, cut, or chew extended-release formulations.',
+      'Maintain adequate hydration unless restricted by your doctor.',
+    ],
+    warnings: [
+      'Black Box Warning: Lactic acidosis is a rare but serious metabolic complication; risk increases with renal impairment.',
+      'Temporarily withhold prior to iodinated radiocontrast imaging procedures.',
+    ],
+    sideEffects: [
+      'Abdominal discomfort, nausea, or diarrhea (most common during first 2 weeks).',
+      'Metallic taste in mouth or decreased vitamin B12 levels with long-term use.',
+    ],
   },
   Lisinopril: {
     status: 'FOUND',
@@ -64,12 +103,30 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
     extractedText: 'LISINOPRIL TABLETS USP 10MG',
     source: 'OpenFDA Public Database',
     purpose:
-      'Lisinopril is an angiotensin-converting enzyme (ACE) inhibitor that suppresses the renin-angiotensin-aldosterone system, leading to vasodilation, lowered blood pressure, and decreased cardiac workload.',
+      'Angiotensin-converting enzyme (ACE) inhibitor that lowers peripheral resistance and reduces cardiovascular workload.',
     indicationsAndUsage:
-      'Indicated for the treatment of hypertension (high blood pressure) to lower the risk of fatal and nonfatal cardiovascular events, adjunctive therapy for heart failure, and improving survival post-myocardial infarction (heart attack).',
+      'Indicated for hypertension, adjunctive therapy in heart failure, and improving survival post-myocardial infarction.',
     summary:
-      'Cardiovascular medication used to lower blood pressure and protect the heart and kidneys in patients with hypertension or heart failure.',
+      'Cardiovascular medication used to lower blood pressure and protect heart function.',
     disclaimer: 'Informational reference only. Do not discontinue without medical supervision.',
+    mainUses: [
+      'Hypertension management to lower cardiovascular event risks.',
+      'Adjunctive therapy for systolic heart failure.',
+      'Hemodynamic stability and survival improvement after acute myocardial infarction.',
+    ],
+    howToTake: [
+      'Take once daily with or without food at approximately the same time each day.',
+      'Monitor blood pressure routinely as instructed by your healthcare provider.',
+    ],
+    warnings: [
+      'Black Box Warning: Fetal toxicity; discontinue as soon as pregnancy is detected.',
+      'Risk of hyperkalemia: avoid potassium supplements without physician approval.',
+      'Angioedema alert: swelling of face, lips, or tongue requires emergency medical attention.',
+    ],
+    sideEffects: [
+      'Persistent dry cough (resolves upon drug discontinuation).',
+      'Dizziness, headache, or lightheadedness when standing up quickly.',
+    ],
   },
   Atorvastatin: {
     status: 'FOUND',
@@ -78,12 +135,28 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
     extractedText: 'ATORVASTATIN CALCIUM TABLETS 20MG',
     source: 'OpenFDA Public Database',
     purpose:
-      'Atorvastatin is a selective, competitive inhibitor of HMG-CoA reductase, the rate-limiting enzyme that converts HMG-CoA to mevalonate, thereby reducing cholesterol biosynthesis in the liver.',
+      'HMG-CoA reductase inhibitor that decreases liver cholesterol synthesis and clears circulating LDL particles.',
     indicationsAndUsage:
-      'Indicated as an adjunct to diet to reduce elevated total cholesterol, LDL-C, apolipoprotein B, and triglycerides in adults with primary hyperlipidemia and mixed dyslipidemia, and to reduce cardiovascular risk.',
+      'Indicated to lower elevated total cholesterol and LDL, and reduce the risk of stroke, angina, and heart attack.',
     summary:
-      'Cholesterol-lowering statin medication used to prevent plaque buildup in blood vessels, reducing the risk of heart attacks and stroke.',
+      'Statin medication used to lower blood cholesterol and protect blood vessels against cardiovascular disease.',
     disclaimer: 'Informational reference only. Routine liver enzymes may be monitored.',
+    mainUses: [
+      'Reduction of LDL-C and triglycerides in hyperlipidemia and mixed dyslipidemia.',
+      'Primary and secondary prevention of atherosclerotic cardiovascular disease.',
+    ],
+    howToTake: [
+      'Take once daily in the evening or morning, with or without food.',
+      'Avoid drinking excessive amounts of grapefruit juice while taking this medication.',
+    ],
+    warnings: [
+      'Myopathy and Rhabdomyolysis: Report unexplained muscle pain, tenderness, or weakness immediately.',
+      'Liver enzyme abnormalities: Periodic hepatic function testing recommended.',
+    ],
+    sideEffects: [
+      'Mild joint pain, dyspepsia, or diarrhea.',
+      'Occasional muscle soreness or mild headache.',
+    ],
   },
   'Dolo 650': {
     status: 'FOUND',
@@ -91,13 +164,26 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
     genericName: 'Paracetamol / Acetaminophen (650mg)',
     extractedText: 'DOLO 650 PARACETAMOL TABLETS IP',
     source: 'OpenFDA / Pharmacopeia',
-    purpose:
-      'Paracetamol produces analgesia by inhibiting prostaglandin synthesis in the central nervous system and produces antipyresis by acting on the hypothalamic heat-regulating center.',
+    purpose: 'Pain reliever and fever reducer.',
     indicationsAndUsage:
-      'Indicated for the symptomatic relief of mild to moderate pain (headaches, musculoskeletal pain, toothache, backache) and reduction of fever associated with viral fevers, flu, and post-vaccination reactions.',
+      'Indicated for the symptomatic relief of mild to moderate pain (headache, body ache) and reduction of fever.',
     summary:
-      'Trusted analgesic and antipyretic medicine for fast relief from body aches, headaches, and high temperature. Safe on the stomach when taken as directed.',
+      'Analgesic and antipyretic medicine for fast relief from body aches, headaches, and high temperature.',
     disclaimer: 'Informational reference only. Do not exceed 4,000mg per day to protect liver health.',
+    mainUses: [
+      'Relief of mild to moderate pain from headaches, toothaches, and musculoskeletal aches.',
+      'Rapid reduction of elevated body temperature and fever associated with viral infections.',
+    ],
+    howToTake: [
+      'Take 1 tablet every 4 to 6 hours as needed for symptoms.',
+      'Do not exceed 4,000 mg (4 grams) in any 24-hour period.',
+      'Allow at least 4 hours between consecutive doses.',
+    ],
+    warnings: [
+      'Liver Warning: Taking more than the maximum daily dose can cause severe liver damage.',
+      'Do not combine with other products containing paracetamol or acetaminophen.',
+    ],
+    sideEffects: null,
   },
   Cetirizine: {
     status: 'FOUND',
@@ -105,13 +191,28 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
     genericName: 'Cetirizine (10mg)',
     extractedText: 'CETIRIZINE HYDROCHLORIDE TABLETS 10MG',
     source: 'OpenFDA Public Database',
-    purpose:
-      'Cetirizine is a second-generation selective histamine H1-receptor antagonist that inhibits the release of histamine from mast cells, alleviating allergic responses without severe sedation.',
+    purpose: 'Antihistamine for allergy relief.',
     indicationsAndUsage:
-      'Indicated for the relief of symptoms associated with seasonal allergic rhinitis (hay fever), perennial allergic rhinitis, and the treatment of uncomplicated skin manifestations of chronic idiopathic urticaria (hives).',
+      'Indicated for seasonal allergic rhinitis, perennial allergic rhinitis, and chronic urticaria (hives).',
     summary:
-      'Non-drowsy antihistamine for 24-hour relief from sneezing, runny nose, itchy watery eyes, and allergic skin hives.',
+      'Second-generation antihistamine providing 24-hour relief from allergy symptoms.',
     disclaimer: 'Informational reference only. May cause mild drowsiness in sensitive individuals.',
+    mainUses: [
+      'Symptomatic relief of sneezing, runny nose, itchy or watery eyes from hay fever.',
+      'Alleviation of itchy skin rash and hives caused by allergic reactions.',
+    ],
+    howToTake: [
+      'Take one 10 mg tablet once daily with or without food.',
+      'Swallow with water, preferably in the evening if drowsiness occurs.',
+    ],
+    warnings: [
+      'Caution when driving or operating machinery until individual response is known.',
+      'Avoid concurrent alcohol consumption as it may enhance sedative effects.',
+    ],
+    sideEffects: [
+      'Mild somnolence or fatigue in a small percentage of individuals.',
+      'Dry mouth, headache, or mild dizziness.',
+    ],
   },
 };
 
@@ -127,6 +228,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isWarningsExpanded, setIsWarningsExpanded] = useState(false);
+  const [isSideEffectsExpanded, setIsSideEffectsExpanded] = useState(false);
 
   // Stop speech synthesis on unmount
   useEffect(() => {
@@ -149,8 +252,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     return () => clearInterval(timer);
   }, [isAnalyzing]);
 
-  // Voice narration for accessibility
-  const handleToggleSpeech = (textToRead: string) => {
+  // Voice narration for accessibility (reads structured sections)
+  const handleToggleSpeech = (result: MedicineInfoLookupResponse) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     if (isSpeaking) {
@@ -158,6 +261,25 @@ export const MedicineInfoLookupScreen: React.FC = () => {
       setIsSpeaking(false);
     } else {
       window.speechSynthesis.cancel();
+      const parts: string[] = [`${result.drugName}.`];
+      if (result.genericName) parts.push(`Active ingredient: ${result.genericName}.`);
+      if (result.purpose) parts.push(`Primary purpose: ${result.purpose}`);
+      if (result.mainUses && result.mainUses.length > 0) {
+        parts.push(`Main uses: ${result.mainUses.join(' ')}`);
+      }
+      if (result.howToTake && result.howToTake.length > 0) {
+        parts.push(`How to take it: ${result.howToTake.join(' ')}`);
+      }
+      if (result.boxedWarning && result.boxedWarning.length > 0) {
+        parts.push(`FDA Boxed Warning: ${result.boxedWarning.join(' ')}`);
+      }
+      if (result.warnings && result.warnings.length > 0) {
+        parts.push(`Important warnings: ${result.warnings.join(' ')}`);
+      }
+      if (result.sideEffects && result.sideEffects.length > 0) {
+        parts.push(`Common side effects: ${result.sideEffects.join(' ')}`);
+      }
+      const textToRead = parts.join(' ');
       const utterance = new SpeechSynthesisUtterance(textToRead);
       utterance.rate = 0.95;
       utterance.pitch = 1.0;
@@ -252,6 +374,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     setIsAnalyzing(true);
     setLookupResult(null);
     setErrorNotice(null);
+    setIsWarningsExpanded(false);
+    setIsSideEffectsExpanded(false);
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
@@ -590,13 +714,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
 
                     {/* Audio read-aloud button for accessibility */}
                     <button
-                      onClick={() =>
-                        handleToggleSpeech(
-                          `${lookupResult.drugName}. Primary Purpose: ${
-                            lookupResult.summary || lookupResult.purpose
-                          }. Indications: ${lookupResult.indicationsAndUsage || ''}`
-                        )
-                      }
+                      onClick={() => handleToggleSpeech(lookupResult)}
                       className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10.5px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                       title="Read aloud"
                     >
@@ -615,34 +733,178 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Primary Purpose Box with Underline Rule Header */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 border-b border-slate-200/70 pb-1.5">
-                    <FileText className="w-4 h-4 text-[#1E3A8A]" />
-                    <h3 className="text-[11.5px] sm:text-xs font-black text-slate-700 uppercase tracking-wider">
-                      Primary Purpose & Mechanism
-                    </h3>
+                {/* Primary Overview / Purpose (if available) */}
+                {(lookupResult.purpose || lookupResult.summary) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-slate-200/70 pb-1.5">
+                      <FileText className="w-4 h-4 text-[#1E3A8A]" />
+                      <h3 className="text-[11.5px] sm:text-xs font-black text-slate-700 uppercase tracking-wider">
+                        Overview & Primary Purpose
+                      </h3>
+                    </div>
+                    <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 text-xs sm:text-sm font-medium text-slate-800 leading-relaxed">
+                      <p>{lookupResult.purpose || lookupResult.summary}</p>
+                    </div>
                   </div>
-                  <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 sm:p-4.5 text-xs sm:text-sm font-medium text-slate-800 leading-relaxed space-y-2">
-                    <p>{lookupResult.summary || lookupResult.purpose}</p>
-                  </div>
-                </div>
+                )}
 
-                {/* Clinical Indications Box with Underline Rule Header */}
-                {lookupResult.indicationsAndUsage &&
-                  lookupResult.indicationsAndUsage !== lookupResult.summary && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 border-b border-slate-200/70 pb-1.5">
-                        <BookmarkCheck className="w-4 h-4 text-[#1E3A8A]" />
-                        <h3 className="text-[11.5px] sm:text-xs font-black text-slate-700 uppercase tracking-wider">
-                          Clinical Indications & Uses
+                {/* FDA Boxed Warning (Highest Priority Alert) */}
+                {lookupResult.boxedWarning && lookupResult.boxedWarning.length > 0 && (
+                  <div className="space-y-2.5 border-2 border-red-500/80 rounded-3xl p-5 bg-gradient-to-br from-red-50 via-rose-50/70 to-red-100/40 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-red-200/80 pb-2.5">
+                      <div className="flex items-center gap-2 text-red-900">
+                        <AlertOctagon className="w-5 h-5 text-red-600 animate-pulse shrink-0" />
+                        <h3 className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-red-950 font-heading">
+                          FDA Boxed Warning
                         </h3>
                       </div>
-                      <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 sm:p-4.5 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed">
-                        <p>{lookupResult.indicationsAndUsage}</p>
-                      </div>
+                      <span className="text-[9px] sm:text-[10px] font-black bg-red-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0">
+                        Black Box Warning
+                      </span>
                     </div>
-                  )}
+                    <ul className="space-y-2 pt-1">
+                      {lookupResult.boxedWarning.map((point, idx) => (
+                        <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-red-950 font-semibold leading-relaxed">
+                          <span className="w-2 h-2 rounded-full bg-red-600 mt-1.5 shrink-0" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Google AI Overview Style: Main Uses Section */}
+                {lookupResult.mainUses && lookupResult.mainUses.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-indigo-100 pb-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                      <h3 className="text-[11.5px] sm:text-xs font-black text-indigo-950 uppercase tracking-wider">
+                        Main Uses
+                      </h3>
+                    </div>
+                    <div className="bg-indigo-50/40 border border-indigo-100/80 rounded-2xl p-4 sm:p-4.5 space-y-2">
+                      <ul className="space-y-2.5">
+                        {lookupResult.mainUses.map((point, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 shrink-0" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google AI Overview Style: How to Take It Section */}
+                {lookupResult.howToTake && lookupResult.howToTake.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-emerald-100 pb-1.5">
+                      <Pill className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-[11.5px] sm:text-xs font-black text-emerald-950 uppercase tracking-wider">
+                        How to Take It
+                      </h3>
+                    </div>
+                    <div className="bg-emerald-50/40 border border-emerald-100/80 rounded-2xl p-4 sm:p-4.5 space-y-2">
+                      <ul className="space-y-2.5">
+                        {lookupResult.howToTake.map((point, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google AI Overview Style: Important Warnings (with Expandable Show More) */}
+                {lookupResult.warnings && lookupResult.warnings.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between border-b border-amber-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <h3 className="text-[11.5px] sm:text-xs font-black text-amber-950 uppercase tracking-wider">
+                          Important Warnings
+                        </h3>
+                      </div>
+                      {lookupResult.warnings.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsWarningsExpanded(!isWarningsExpanded)}
+                          className="text-[11px] font-bold text-amber-800 hover:text-amber-900 flex items-center gap-1 cursor-pointer bg-amber-100/60 px-2 py-0.5 rounded-lg transition-colors"
+                        >
+                          {isWarningsExpanded ? (
+                            <>Show Less <ChevronUp className="w-3.5 h-3.5" /></>
+                          ) : (
+                            <>+{lookupResult.warnings.length - 3} More <ChevronDown className="w-3.5 h-3.5" /></>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div className="bg-amber-50/50 border border-amber-200/70 rounded-2xl p-4 sm:p-4.5 space-y-2">
+                      <ul className="space-y-2.5">
+                        {(isWarningsExpanded ? lookupResult.warnings : lookupResult.warnings.slice(0, 3)).map((point, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-amber-950 leading-relaxed">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google AI Overview Style: Common Side Effects (with Expandable Show More) */}
+                {lookupResult.sideEffects && lookupResult.sideEffects.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between border-b border-rose-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-rose-600" />
+                        <h3 className="text-[11.5px] sm:text-xs font-black text-rose-950 uppercase tracking-wider">
+                          Common Side Effects
+                        </h3>
+                      </div>
+                      {lookupResult.sideEffects.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsSideEffectsExpanded(!isSideEffectsExpanded)}
+                          className="text-[11px] font-bold text-rose-800 hover:text-rose-900 flex items-center gap-1 cursor-pointer bg-rose-100/60 px-2 py-0.5 rounded-lg transition-colors"
+                        >
+                          {isSideEffectsExpanded ? (
+                            <>Show Less <ChevronUp className="w-3.5 h-3.5" /></>
+                          ) : (
+                            <>+{lookupResult.sideEffects.length - 3} More <ChevronDown className="w-3.5 h-3.5" /></>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div className="bg-rose-50/40 border border-rose-200/70 rounded-2xl p-4 sm:p-4.5 space-y-2">
+                      <ul className="space-y-2.5">
+                        {(isSideEffectsExpanded ? lookupResult.sideEffects : lookupResult.sideEffects.slice(0, 3)).map((point, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-rose-950 leading-relaxed">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 shrink-0" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback if NO structured sections exist at all */}
+                {!lookupResult.mainUses && !lookupResult.howToTake && !lookupResult.warnings && !lookupResult.sideEffects && lookupResult.indicationsAndUsage && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 border-b border-slate-200/70 pb-1.5">
+                      <BookmarkCheck className="w-4 h-4 text-[#1E3A8A]" />
+                      <h3 className="text-[11.5px] sm:text-xs font-black text-slate-700 uppercase tracking-wider">
+                        Clinical Indications & Uses
+                      </h3>
+                    </div>
+                    <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 sm:p-4.5 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed">
+                      <p>{lookupResult.indicationsAndUsage}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Important Clinical Advisory Banner */}
                 <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 text-amber-900 text-xs">
