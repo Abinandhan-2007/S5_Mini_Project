@@ -1,14 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, Search, Star, ChevronRight, LocateFixed, Loader2, X, Bell } from 'lucide-react';
+import {
+  MapPin,
+  Search,
+  Star,
+  ChevronRight,
+  LocateFixed,
+  Loader2,
+  X,
+  Bell,
+  Building2,
+  Heart,
+  Stethoscope,
+  Baby,
+  Activity,
+  ArrowUpDown,
+  ChevronDown,
+  Check,
+  ArrowDownAZ,
+  Navigation,
+  MessageSquareText,
+} from 'lucide-react';
+import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
-import { Chip } from '../../components/ui/Chip';
 import { requestNativeLocation } from '../../lib/locationService';
 import { hospitalService } from '../../services/hospitalService';
 import { doctorService } from '../../services/doctorService';
 import type { Hospital, Doctor } from '../../lib/types';
 import { MOCK_HOSPITALS, MOCK_DOCTORS } from '../../lib/mockApi';
+
+type HospitalSortOption = 'rating' | 'distance' | 'reviews' | 'name';
+
+const SORT_OPTIONS: { key: HospitalSortOption; label: string; icon: React.ReactNode }[] = [
+  {
+    key: 'rating',
+    label: 'Top Rated',
+    icon: <Star className="w-4 h-4 text-amber-500 fill-amber-500" />,
+  },
+  {
+    key: 'distance',
+    label: 'Nearest First',
+    icon: <Navigation className="w-4 h-4 text-[#0B5A54]" />,
+  },
+  {
+    key: 'reviews',
+    label: 'Most Reviewed',
+    icon: <MessageSquareText className="w-4 h-4 text-sky-600" />,
+  },
+  {
+    key: 'name',
+    label: 'Name (A to Z)',
+    icon: <ArrowDownAZ className="w-4 h-4 text-indigo-600" />,
+  },
+];
+
+const sortLabelMap: Record<HospitalSortOption, string> = {
+  rating: 'Top Rated',
+  distance: 'Nearest',
+  reviews: 'Most Reviewed',
+  name: 'Name (A-Z)',
+};
 
 export const FindHospitalsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +72,8 @@ export const FindHospitalsScreen: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('All Facilities');
   const [isLocating, setIsLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<HospitalSortOption>('rating');
+  const [isSortOpen, setIsSortOpen] = useState(false);
 
   const categories = ['All Facilities', 'Cardiology', 'General', 'Pediatrics', 'Specialty Clinic'];
 
@@ -77,118 +131,184 @@ export const FindHospitalsScreen: React.FC = () => {
     }
   };
 
-  const filteredHospitals = hospitals.filter((hosp) => {
-    const matchesCategory =
-      activeCategory === 'All Facilities' ||
-      hosp.facilityType.toLowerCase() === activeCategory.toLowerCase() ||
-      hosp.specialties.some((s) => s.toLowerCase() === activeCategory.toLowerCase());
+  const filteredHospitals = useMemo(() => {
+    const list = hospitals.filter((hosp) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
 
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return matchesCategory;
+      const matchesName = hosp.name.toLowerCase().includes(q);
+      const matchesAddress = hosp.address.toLowerCase().includes(q);
+      const matchesFacility = hosp.facilityType.toLowerCase().includes(q);
+      const matchesSpecialty = hosp.specialties.some((s) => s.toLowerCase().includes(q));
 
-    const matchesName = hosp.name.toLowerCase().includes(q);
-    const matchesAddress = hosp.address.toLowerCase().includes(q);
-    const matchesFacility = hosp.facilityType.toLowerCase().includes(q);
-    const matchesSpecialty = hosp.specialties.some((s) => s.toLowerCase().includes(q));
+      const matchesDoctor = doctors.some(
+        (doc) => (doc.hospitalId === hosp.id || hosp.id === 'hosp-1') &&
+          (doc.name.toLowerCase().includes(q) || doc.specialty.toLowerCase().includes(q))
+      );
 
-    const matchesDoctor = doctors.some(
-      (doc) => (doc.hospitalId === hosp.id || hosp.id === 'hosp-1') &&
-        (doc.name.toLowerCase().includes(q) || doc.specialty.toLowerCase().includes(q))
-    );
+      return matchesName || matchesAddress || matchesFacility || matchesSpecialty || matchesDoctor;
+    });
 
-    return matchesCategory && (matchesName || matchesAddress || matchesFacility || matchesSpecialty || matchesDoctor);
-  }).sort((a, b) => (locationStatus ? a.distanceMiles - b.distanceMiles : 0));
+    return [...list].sort((a, b) => {
+      if (sortBy === 'distance') {
+        return (a.distanceMiles || 0) - (b.distanceMiles || 0);
+      }
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'reviews') {
+        return (b.reviewsCount || 0) - (a.reviewsCount || 0);
+      }
+      return (b.rating || 0) - (a.rating || 0);
+    });
+  }, [hospitals, doctors, searchQuery, sortBy]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-5 max-w-7xl mx-auto w-full">
-        {/* Page Heading & Notification Button */}
-        <div className="flex justify-between items-center pt-1 text-left">
-          <div className="space-y-0.5">
-            <h1 className="text-xl font-black font-heading text-slate-900 tracking-tight">Find Hospitals</h1>
-            <p className="text-xs text-slate-500 font-medium">Browse verified medical facilities & top specialists</p>
-          </div>
-
-          <button
-            onClick={() => navigate('/notifications')}
-            className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0"
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4 text-[#111827]" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
-          </button>
-        </div>
-
-        {/* SEARCH BAR WITH GEOLOCATION DETECTION */}
-        <div className="space-y-2">
-          <div className="relative flex items-center bg-white border border-slate-200/90 rounded-2xl px-3.5 py-3 shadow-xs focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/15 transition-all">
-            <Search className="w-4.5 h-4.5 text-[#0B5A54] shrink-0 mr-2.5" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (locationStatus) setLocationStatus(null);
-              }}
-              placeholder="Search hospitals, doctors, specialties, city..."
-              className="w-full bg-transparent text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none placeholder:text-slate-400"
-            />
-
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="p-1 text-slate-400 hover:text-slate-600 mr-1"
-                title="Clear Search"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+    <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
+      {/* 1. LIGHTER LUMINOUS CYAN TOPBAR */}
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] px-4 sm:px-6 pt-4 pb-4 w-full shadow-sm text-left sm:rounded-t-3xl transition-all">
+        <div className="max-w-7xl mx-auto space-y-3.5">
+          {/* Top Row: Title + Notification Bell */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight">Find Hospitals</h1>
+            </div>
 
             <button
-              type="button"
-              onClick={runGeolocationDetection}
-              disabled={isLocating}
-              className="p-2 rounded-xl bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white transition-all shrink-0 active:scale-95"
-              title="Detect Current Location"
+              onClick={() => navigate('/notifications')}
+              className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
+              aria-label="Notifications"
+              title="Notifications"
             >
-              {isLocating ? <Loader2 className="w-4 h-4 animate-spin text-[#0B5A54]" /> : <LocateFixed className="w-4 h-4" />}
+              <Bell className="w-4 h-4 text-[#111827]" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
             </button>
           </div>
 
-          {locationStatus && (
-            <div className="text-[11px] font-bold text-[#0B5A54] text-left px-1 flex items-center gap-1">
-              <span>{locationStatus}</span>
+          {/* SEARCH BAR WITH GEOLOCATION DETECTION */}
+          <div className="space-y-1.5">
+            <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3.5 py-2 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all">
+              <Search className="w-4.5 h-4.5 text-[#0B5A54] shrink-0 mr-2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (locationStatus) setLocationStatus(null);
+                }}
+                placeholder="Search hospitals, doctors, specialties, city..."
+                className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-semibold focus:outline-none placeholder:text-[#9CA3AF]"
+              />
+
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-slate-400 hover:text-slate-600 mr-1 cursor-pointer"
+                  title="Clear Search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={runGeolocationDetection}
+                disabled={isLocating}
+                className="w-8 h-8 rounded-full bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white transition-all shrink-0 active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
+                title="Detect Current Location"
+              >
+                {isLocating ? <Loader2 className="w-4 h-4 animate-spin text-[#0B5A54]" /> : <LocateFixed className="w-4 h-4" />}
+              </button>
             </div>
-          )}
-        </div>
 
-        {/* Category Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 text-left">
-          {categories.map((cat) => (
-            <Chip
-              key={cat}
-              active={activeCategory === cat}
-              onClick={() => setActiveCategory(cat)}
-            >
-              {cat}
-            </Chip>
-          ))}
+            {locationStatus && (
+              <div className="text-[11px] font-bold text-teal-100 text-left px-2 flex items-center gap-1">
+                <span>{locationStatus}</span>
+              </div>
+            )}
+          </div>
         </div>
+      </header>
 
-        {/* Active Search Term Filter Header (No "4 Facilities Found" text) */}
+      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-7xl mx-auto w-full">
+
+        {/* Active Search Term Filter Header */}
         {searchQuery && (
           <div className="flex justify-between items-center text-xs font-extrabold text-[#0B5A54] px-1 pt-0.5">
             <span>Showing results for "{searchQuery}"</span>
             <button
               onClick={() => setSearchQuery('')}
-              className="text-[11px] font-bold text-slate-500 hover:text-[#0B5A54] underline"
+              className="text-[11px] font-bold text-slate-500 hover:text-[#0B5A54] underline cursor-pointer"
             >
               Clear
             </button>
           </div>
         )}
+
+        {/* TOP TOOLBAR: HOSPITAL COUNT & SORT BUTTON */}
+        <div className="flex items-center justify-between px-1 relative z-20">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-black text-slate-800 tracking-tight">
+              Hospital Facilities
+            </span>
+            <span className="text-[11px] font-bold text-slate-400">
+              ({filteredHospitals.length})
+            </span>
+          </div>
+
+          {/* Interactive Sort Dropdown Button */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsSortOpen(!isSortOpen)}
+              className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-[#0B5A54] border border-slate-200/90 px-3 py-1.5 rounded-full text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span>Sort: {sortLabelMap[sortBy]}</span>
+              <ChevronDown className={clsx('w-3.5 h-3.5 text-slate-400 transition-transform duration-200', isSortOpen && 'rotate-180')} />
+            </button>
+
+            {/* Sort Popover Dropdown */}
+            {isSortOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setIsSortOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-30 space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    Sort Hospitals By
+                  </div>
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => {
+                        setSortBy(opt.key);
+                        setIsSortOpen(false);
+                      }}
+                      className={clsx(
+                        'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer',
+                        sortBy === opt.key
+                          ? 'bg-[#E3F3F1] text-[#0B5A54]'
+                          : 'hover:bg-slate-50 text-slate-700'
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{opt.icon}</span>
+                        <span>{opt.label}</span>
+                      </span>
+                      {sortBy === opt.key && (
+                        <Check className="w-3.5 h-3.5 text-[#0B5A54] stroke-[3]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
 
         {/* ULTRA-PREMIUM HOSPITAL FACILITY CARDS - RESPONSIVE RESOLUTION GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 text-left">
@@ -197,79 +317,89 @@ export const FindHospitalsScreen: React.FC = () => {
               <div
                 key={hosp.id}
                 onClick={() => navigate(`/hospitals/${hosp.id}`)}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden group active:scale-[0.99]"
+                className="bg-white rounded-[26px] border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_-10px_rgba(11,90,84,0.14)] hover:border-[#14B8A6]/40 transition-all duration-300 cursor-pointer overflow-hidden group active:scale-[0.99] flex flex-col justify-between"
               >
-                {/* Hero Image Section */}
-                <div className="relative h-48 w-full bg-slate-900 overflow-hidden">
-                  <img
-                    src={hosp.imageUrl || '/hospital_default.jpg'}
-                    alt={hosp.name}
-                    onError={(e) => { e.currentTarget.src = '/hospital_default.jpg'; }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-90"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 via-55% to-transparent" />
+                <div>
+                  {/* Hero Image Section with Cinematic Framing */}
+                  <div className="relative h-44 w-full bg-slate-900 overflow-hidden">
+                    <img
+                      src={hosp.imageUrl || '/hospital_default.jpg'}
+                      alt={hosp.name}
+                      onError={(e) => { e.currentTarget.src = '/hospital_default.jpg'; }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent" />
 
-                  {/* Top Left Facility Badge */}
-                  <div className="absolute top-3.5 left-3.5">
-                    <span className="bg-[#0B5A54]/90 backdrop-blur-md text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border border-white/20 tracking-wider shadow-sm">
-                      {hosp.facilityType}
-                    </span>
-                  </div>
+                    {/* Top Left Facility Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-white/15 tracking-wider shadow-sm flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                        <span>{hosp.facilityType}</span>
+                      </span>
+                    </div>
 
-                  {/* Top Right Rating Glass Badge */}
-                  <div className="absolute top-3.5 right-3.5">
-                    <div className="bg-slate-950/60 backdrop-blur-md border border-white/20 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>{hosp.rating}</span>
-                      <span className="text-slate-300 font-normal text-[10px]">({hosp.reviewsCount})</span>
+                    {/* Top Right Rating Glass Badge */}
+                    <div className="absolute top-3 right-3">
+                      <div className="bg-slate-950/70 backdrop-blur-md border border-white/15 text-white px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span className="font-black">{hosp.rating}</span>
+                        <span className="text-slate-300 text-[10px]">({hosp.reviewsCount})</span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Right Distance Pill Overlay */}
+                    <div className="absolute bottom-3 right-3">
+                      <span className="bg-white/95 backdrop-blur-md text-[#0B5A54] font-black text-[10.5px] px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 border border-white/60">
+                        <MapPin className="w-3 h-3 text-[#0B5A54]" />
+                        <span>{hosp.distanceMiles} mi</span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Title & Location Overlay */}
-                  <div className="absolute bottom-3.5 left-4 right-4 text-white space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-black font-heading text-white line-clamp-1 tracking-tight drop-shadow-xs">
+                  {/* Body Content */}
+                  <div className="p-4 space-y-2.5">
+                    {/* Hospital Name & Code Row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-base font-black font-heading text-slate-900 line-clamp-1 tracking-tight group-hover:text-[#0B5A54] transition-colors">
                         {hosp.name}
                       </h3>
                       {(hosp.hospital_code || hosp.hospitalCode) && (
-                        <span className="bg-white/25 backdrop-blur-md text-teal-100 font-mono text-[10.5px] font-black px-2 py-0.5 rounded-md border border-white/30 shadow-xs">
+                        <span className="bg-slate-100 text-slate-600 font-mono text-[10px] font-black px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
                           {hosp.hospital_code || hosp.hospitalCode}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-200 font-medium">
-                      <div className="flex items-center gap-1 truncate">
-                        <MapPin className="w-3.5 h-3.5 text-teal-300 shrink-0" />
-                        <span className="truncate">{hosp.address}</span>
-                      </div>
-                      <span className="bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded-full text-[10px] text-white font-bold shrink-0">
-                        {hosp.distanceMiles} mi
-                      </span>
+
+                    {/* Address Line */}
+                    <p className="text-xs text-slate-500 font-medium truncate flex items-center gap-1">
+                      <span className="truncate">{hosp.address}</span>
+                    </p>
+
+                    {/* Specialty Chips Row */}
+                    <div className="flex gap-1.5 flex-wrap pt-1">
+                      {hosp.specialties.map((spec) => (
+                        <span
+                          key={spec}
+                          className="text-[10.5px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 group-hover:border-teal-200 group-hover:bg-teal-50/50 group-hover:text-[#0B5A54] px-2.5 py-0.5 rounded-full transition-colors"
+                        >
+                          {spec}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Specialties Tags & Full Width View Details CTA Button */}
-                <div className="p-4 bg-white space-y-3">
-                  {/* Specialty Chips Row */}
-                  <div className="flex gap-1.5 flex-wrap">
-                    {hosp.specialties.map((spec) => (
-                      <span
-                        key={spec}
-                        className="text-[11px] font-bold text-[#0B5A54] bg-[#E3F3F1] border border-[#0B5A54]/15 px-3 py-1 rounded-full"
-                      >
-                        {spec}
-                      </span>
-                    ))}
+                {/* Footer Action Strip */}
+                <div className="px-4 pb-4 pt-1 flex items-center justify-between border-t border-slate-100 mt-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#0B5A54]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>OPD Open Today</span>
                   </div>
 
-                  {/* Compact Pill View Details Button Down Below */}
-                  <div className="flex justify-end pt-0.5">
-                    <button className="bg-gradient-to-r from-[#0B5A54] via-[#0D6B64] to-[#08453F] text-white text-xs font-extrabold py-1.5 px-4 rounded-full shadow-2xs hover:shadow-md active:scale-95 transition-all flex items-center gap-1 group-hover:from-[#08453F] group-hover:to-[#0B5A54]">
-                      <span>View Details</span>
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-                  </div>
+                  <button className="bg-[#0B5A54] group-hover:bg-[#08423D] text-white text-xs font-black py-1.5 px-3.5 rounded-full shadow-2xs hover:shadow-xs active:scale-95 transition-all flex items-center gap-1">
+                    <span>View Details</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
               </div>
             ))

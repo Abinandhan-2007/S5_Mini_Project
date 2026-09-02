@@ -18,6 +18,7 @@ import {
   Stethoscope,
   X,
   SlidersHorizontal,
+  Bell,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -186,12 +187,25 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [activeTimeFilter, setActiveTimeFilter] = useState<TimeFilter>('All');
+  const [customDateFilter, setCustomDateFilter] = useState<string>('ALL');
+  const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All');
   const [isSpecialtyMenuOpen, setIsSpecialtyMenuOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(15);
+
+  const formattedDateLabel = useMemo(() => {
+    if (customDateFilter === 'ALL') return 'All Dates';
+    try {
+      const d = new Date(customDateFilter + 'T00:00:00');
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+    } catch {
+      // fallback
+    }
+    return customDateFilter;
+  }, [customDateFilter]);
 
   // Sync on mount if user is logged in
   useEffect(() => {
@@ -283,12 +297,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
     return ['All', ...Array.from(specs)];
   }, [sourceVisits]);
 
-  // Filter logic (Search query + Time filter + Specialty filter)
+  // Filter and Sort logic (Search query + Specialty filter + Date Filter + Date Sort)
   const filteredVisits = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    const now = new Date('2026-08-31T00:00:00Z'); // Fixed baseline for consistency
 
-    return sourceVisits.filter((visit) => {
+    const filtered = sourceVisits.filter((visit) => {
       // 1. Search Query Match
       if (query) {
         const matchesDoc = visit.doctorName.toLowerCase().includes(query);
@@ -307,25 +320,20 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         return false;
       }
 
-      // 3. Time Filter
-      if (activeTimeFilter !== 'All') {
-        const visitDate = new Date(visit.date);
-        const diffDays = (now.getTime() - visitDate.getTime()) / (1000 * 3600 * 24);
-
-        if (activeTimeFilter === 'This Month' && (diffDays > 31 || diffDays < 0)) {
-          return false;
-        }
-        if (activeTimeFilter === 'Last 3 Months' && (diffDays > 93 || diffDays < 0)) {
-          return false;
-        }
-        if (activeTimeFilter === 'This Year' && visitDate.getFullYear() !== 2026) {
+      // 3. Custom Date Filter
+      if (customDateFilter !== 'ALL') {
+        const visitDateStr = visit.date.split('T')[0];
+        if (visitDateStr !== customDateFilter) {
           return false;
         }
       }
 
       return true;
     });
-  }, [sourceVisits, searchQuery, selectedSpecialty, activeTimeFilter]);
+
+    // Sort by Date (chronological newest first)
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [sourceVisits, searchQuery, selectedSpecialty, customDateFilter]);
 
   // Group filtered visits by Month & Year (e.g. "August 2026", "July 2026")
   const groupedVisits = useMemo(() => {
@@ -372,15 +380,6 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   const hasMore = filteredVisits.length > visibleCount;
 
-  // Handle pull / click to refresh
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    if (user?.id) {
-      await Promise.all([syncAppointments(user.id), syncHistory(user.id)]);
-    }
-    setTimeout(() => setIsRefreshing(false), 600);
-  };
-
   const handleCardClick = (visit: VisitRecord) => {
     if (onSelectVisit) {
       onSelectVisit(visit);
@@ -391,11 +390,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   const clearAllFilters = () => {
     setSearchQuery('');
-    setActiveTimeFilter('All');
+    setCustomDateFilter('ALL');
     setSelectedSpecialty('All');
   };
 
-  const isFilterActive = searchQuery !== '' || activeTimeFilter !== 'All' || selectedSpecialty !== 'All';
+  const isFilterActive = searchQuery !== '' || customDateFilter !== 'ALL' || selectedSpecialty !== 'All';
 
   // Highlight matched substrings in search
   const highlightMatch = (text: string, query: string) => {
@@ -417,130 +416,222 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      {/* 1. EXECUTIVE CYAN HEADER */}
-      <header className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md sticky top-0 z-30 sm:rounded-t-3xl">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight leading-tight">
-              Visit History
-            </h1>
-            <p className="text-xs text-teal-50 font-medium">
-              {filteredVisits.length} {filteredVisits.length === 1 ? 'past visit' : 'past visits'} recorded
-            </p>
+    <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
+      {/* 1. LIGHTER LUMINOUS CYAN HEADER WITH EXPANDABLE UNIQUE SEARCH */}
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] text-white pt-5 pb-5 px-4 sm:px-6 shadow-sm sm:rounded-t-3xl transition-all">
+        <div className="max-w-4xl mx-auto space-y-3">
+          {/* Top Row: Title + Action Buttons */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-white drop-shadow-2xs font-heading">
+                History
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Search Trigger Button (Hidden when search bar is open) */}
+              <AnimatePresence>
+                {!isSearchOpen && (
+                  <motion.button
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    type="button"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="w-9 h-9 rounded-full bg-white text-[#111827] hover:bg-teal-50 hover:text-[#0B5A54] flex items-center justify-center transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
+                    aria-label="Search Visits"
+                    title="Search Visits"
+                  >
+                    <Search className="w-4 h-4" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Notification Bell Button */}
+              <button
+                onClick={() => navigate('/notifications')}
+                className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4 text-[#111827]" />
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Search Toggle Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsSearchOpen((prev) => !prev);
-                if (isSearchOpen) setSearchQuery('');
-              }}
-              className={clsx(
-                'w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-2xs',
-                isSearchOpen ? 'bg-white text-[#0B5A54]' : 'bg-white/15 hover:bg-white/25 text-white'
-              )}
-              title="Search Visits"
-              aria-label="Search Visits"
-            >
-              {isSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-            </button>
+          {/* UNIQUE EXPANDABLE SEARCH INTERFACE */}
+          <AnimatePresence>
+            {isSearchOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0, y: -8 }}
+                animate={{ height: 'auto', opacity: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, y: -8 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+                className="overflow-hidden pt-1 space-y-2"
+              >
+                {/* Search Bar Input Container with Close Trigger */}
+                <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-4 py-2.5 shadow-md focus-within:ring-2 focus-within:ring-white transition-all">
+                  <Search className="w-4.5 h-4.5 text-[#0B5A54] shrink-0 mr-2.5" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search doctor, hospital, diagnosis, Rx..."
+                    className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-bold focus:outline-none placeholder:text-[#94A3B8]"
+                  />
 
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className={clsx(
-                'w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-all cursor-pointer shadow-2xs',
-                isRefreshing && 'animate-spin'
-              )}
-              title="Refresh Visits"
-              aria-label="Refresh Visits"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+                  {/* Live Match Badge */}
+                  {searchQuery && (
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-teal-100/90 text-[#0B5A54] px-2 py-0.5 rounded-full mr-2 shrink-0 select-none">
+                      {filteredVisits.length} found
+                    </span>
+                  )}
 
-        {/* Inline Search Bar (Expands on search button click) */}
-        <AnimatePresence>
-          {isSearchOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-4xl mx-auto overflow-hidden pt-3"
-            >
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search doctor, specialty, hospital, or diagnosis..."
-                  className="w-full bg-white text-slate-900 text-xs font-semibold placeholder:text-slate-400 pl-10 pr-9 py-2.5 rounded-2xl shadow-inner focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all"
-                />
-                {searchQuery && (
+                  {/* Close / Collapse Search Button */}
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                    className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 ml-1 cursor-pointer transition-colors shrink-0"
+                    title="Close search"
+                    aria-label="Close search"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </header>
 
-      {/* 2. FILTER CHIPS ROW */}
-      <section className="bg-white border-b border-slate-200/80 px-4 sm:px-6 py-2.5 shadow-xs sticky top-[69px] sm:top-[77px] z-20">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-          {/* Horizontally scrollable pill-shaped chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0">
-            {(['All', 'This Month', 'Last 3 Months', 'This Year'] as TimeFilter[]).map((tab) => {
-              const isActive = activeTimeFilter === tab;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTimeFilter(tab)}
-                  className={clsx(
-                    'px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer select-none shrink-0',
-                    isActive
-                      ? 'bg-[#0B5A54] text-white shadow-xs'
-                      : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/70 border border-slate-200/60'
-                  )}
-                >
-                  {tab}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Specialty Dropdown Filter */}
-          <div className="relative shrink-0">
+      {/* 2. UNIQUE GLASSMORPHIC FILTER TOOLBAR */}
+      <section className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 shadow-xs sticky top-[73px] sm:top-[85px] z-20">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2.5">
+          {/* Left: Interactive Date Filter Pill */}
+          <div className="relative">
             <button
               type="button"
-              onClick={() => setIsSpecialtyMenuOpen((prev) => !prev)}
+              onClick={() => {
+                setIsDateMenuOpen((prev) => !prev);
+                setIsSpecialtyMenuOpen(false);
+              }}
               className={clsx(
-                'px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none border',
-                selectedSpecialty !== 'All'
-                  ? 'bg-teal-50 text-[#0B5A54] border-[#14B8A6]/50 shadow-2xs'
-                  : 'bg-slate-100/90 text-slate-600 border-slate-200/60 hover:bg-slate-200/70'
+                'px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none border shadow-2xs active:scale-95',
+                customDateFilter !== 'ALL'
+                  ? 'bg-teal-50 text-[#0B5A54] border-[#14B8A6] font-black'
+                  : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200/70'
               )}
             >
-              <SlidersHorizontal className="w-3 h-3 text-[#14B8A6]" />
-              <span className="max-w-[85px] sm:max-w-[120px] truncate">
-                {selectedSpecialty === 'All' ? 'Specialty' : selectedSpecialty}
+              <Calendar className={clsx('w-3.5 h-3.5', customDateFilter !== 'ALL' ? 'text-[#0B5A54]' : 'text-slate-500')} />
+              <span>{formattedDateLabel}</span>
+              <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform text-slate-400', isDateMenuOpen && 'rotate-180')} />
+            </button>
+
+            {/* Date Selection Popover */}
+            <AnimatePresence>
+              {isDateMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-3.5 z-40 space-y-3"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#0B5A54]" />
+                      Filter by Date
+                    </span>
+                    {customDateFilter !== 'ALL' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomDateFilter('ALL');
+                          setIsDateMenuOpen(false);
+                        }}
+                        className="text-[11px] font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Preset Quick Tabs */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomDateFilter('ALL');
+                        setIsDateMenuOpen(false);
+                      }}
+                      className={clsx(
+                        'px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-center cursor-pointer',
+                        customDateFilter === 'ALL'
+                          ? 'bg-[#0B5A54] text-white shadow-2xs font-black'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      )}
+                    >
+                      All Records
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        setCustomDateFilter(todayStr);
+                        setIsDateMenuOpen(false);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-center bg-slate-50 text-slate-600 hover:bg-slate-100 cursor-pointer"
+                    >
+                      Today
+                    </button>
+                  </div>
+
+                  {/* Specific Date Picker Input */}
+                  <div className="space-y-1 pt-1">
+                    <label className="text-[10.5px] font-bold text-slate-500 block">Or select specific day:</label>
+                    <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-[#0B5A54] transition-all">
+                      <input
+                        type="date"
+                        value={customDateFilter === 'ALL' ? '' : customDateFilter}
+                        onChange={(e) => {
+                          setCustomDateFilter(e.target.value || 'ALL');
+                          if (e.target.value) setIsDateMenuOpen(false);
+                        }}
+                        className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Right: Interactive Specialty Pill */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSpecialtyMenuOpen((prev) => !prev);
+                setIsDateMenuOpen(false);
+              }}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none border shadow-2xs active:scale-95',
+                selectedSpecialty !== 'All'
+                  ? 'bg-teal-50 text-[#0B5A54] border-[#14B8A6] font-black'
+                  : 'bg-slate-100/90 text-slate-700 border-slate-200/70 hover:bg-slate-200/70'
+              )}
+            >
+              <SlidersHorizontal className={clsx('w-3.5 h-3.5', selectedSpecialty !== 'All' ? 'text-[#0B5A54]' : 'text-slate-500')} />
+              <span className="max-w-[100px] sm:max-w-[140px] truncate">
+                {selectedSpecialty === 'All' ? 'All Specialties' : selectedSpecialty}
               </span>
-              <ChevronDown className={clsx('w-3 h-3 transition-transform', isSpecialtyMenuOpen && 'rotate-180')} />
+              <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform text-slate-400', isSpecialtyMenuOpen && 'rotate-180')} />
             </button>
 
             {/* Specialty Dropdown Popover */}
@@ -551,10 +642,22 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40"
+                  className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-40"
                 >
-                  <div className="px-3 py-1.5 border-b border-slate-100 text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
-                    Filter By Specialty
+                  <div className="px-3.5 py-1.5 border-b border-slate-100 text-[10.5px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
+                    <span>Filter Specialty</span>
+                    {selectedSpecialty !== 'All' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSpecialty('All');
+                          setIsSpecialtyMenuOpen(false);
+                        }}
+                        className="text-[10.5px] font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    )}
                   </div>
                   <div className="max-h-56 overflow-y-auto no-scrollbar py-1">
                     {allSpecialties.map((spec) => (
@@ -566,8 +669,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                           setIsSpecialtyMenuOpen(false);
                         }}
                         className={clsx(
-                          'w-full text-left px-3.5 py-2 text-xs font-bold flex items-center justify-between transition-colors hover:bg-teal-50/80',
-                          selectedSpecialty === spec ? 'text-[#0B5A54] bg-teal-50 font-black' : 'text-slate-700'
+                          'w-full text-left px-3.5 py-2 text-xs font-semibold flex items-center justify-between hover:bg-teal-50 transition-colors cursor-pointer',
+                          selectedSpecialty === spec ? 'text-[#0B5A54] font-black bg-teal-50/70' : 'text-slate-700'
                         )}
                       >
                         <span className="truncate">{spec}</span>

@@ -68,40 +68,41 @@ export const HealthAIChatScreen: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-white flex flex-col w-full relative select-none ${isInputFocused ? 'pb-20' : 'pb-36'}`}>
-      {/* HEADER WITH NOTIFICATION & BADGE */}
-      <div className="bg-white border-b border-[#E4E7EC] pt-4 pb-3.5 px-4 sticky top-0 z-30 shadow-2xs">
+    <div className={`min-h-screen bg-[#F8FAFC] flex flex-col w-full relative select-none ${isInputFocused ? 'pb-20' : 'pb-36'}`}>
+      {/* HEADER WITH NOTIFICATION & BADGE (HISTORY SCREEN CYAN/BLUE GRADIENT) */}
+      <div className="bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] text-white pt-4 pb-4 px-4 sticky top-0 z-30 shadow-sm transition-all">
         <div className="space-y-0.5">
           <div className="flex justify-between items-center">
-            <h1 className="text-base font-extrabold font-heading text-[#111827]">Health AI</h1>
+            <h1 className="text-xl sm:text-2xl font-black font-heading text-white tracking-tight drop-shadow-2xs">
+              Health AI
+            </h1>
             <div className="flex items-center gap-2">
-              <Badge variant="tint" size="sm">
-                AI Active
-              </Badge>
+              <span className="text-[10px] font-black text-white bg-white/20 border border-white/40 backdrop-blur-md px-2.5 py-0.5 rounded-full shadow-2xs tracking-wider">
+                AI ACTIVE
+              </span>
               <button
                 onClick={clearChat}
-                className="w-8 h-8 rounded-full bg-white border border-[#E4E7EC] flex items-center justify-center text-[#111827] hover:bg-gray-50 transition-all relative active:scale-95 shadow-2xs shrink-0"
+                className="w-8 h-8 rounded-full bg-white text-[#111827] hover:bg-cyan-50 hover:text-[#0B5A54] flex items-center justify-center transition-all relative active:scale-95 shadow-2xs shrink-0 cursor-pointer"
                 title="Clear Chat"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-[#111827]" />
+                <RefreshCw className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => navigate('/notifications')}
-                className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0"
+                className="w-9 h-9 rounded-full bg-white text-[#111827] hover:bg-cyan-50 hover:text-[#0B5A54] flex items-center justify-center transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
                 aria-label="Notifications"
                 title="Notifications"
               >
-                <Bell className="w-4 h-4 text-[#111827]" />
+                <Bell className="w-4 h-4" />
                 <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
               </button>
             </div>
           </div>
-          <p className="text-[11px] text-[#6B7280]">
+          <p className="text-[11px] font-medium text-cyan-50/90 tracking-wide">
             Clinical Assistant & Symptom Evaluator
           </p>
         </div>
       </div>
-      <div className="h-[1px] bg-[#E4E7EC] w-full" />
 
       {/* CHAT MESSAGES AREA */}
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-5xl mx-auto w-full">

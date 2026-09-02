@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import doctorAvatar from '../../assets/doctor_avatar.png';
-import { Home, Building2, Activity, User, Camera } from 'lucide-react';
+import { Home, Building2, Activity, User } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
@@ -9,7 +9,6 @@ import { clsx } from 'clsx';
  * Automatically detects System Dark / Light Mode preference and updates background,
  * icon, text, and active pill colors seamlessly.
  * Health AI is accessed via a prominent floating 3D mascot button above the Profile nav item.
- * Center button allows fast one-tap access to the Medicine Scanner.
  */
 export const BottomNav: React.FC = () => {
   const location = useLocation();
@@ -36,11 +35,10 @@ export const BottomNav: React.FC = () => {
   }, []);
 
   const navItems = [
-    { path: '/home', label: 'Home', icon: Home, isCenter: false },
-    { path: '/history', label: 'History', icon: Activity, isCenter: false },
-    { path: '/prescriptions/scan', label: 'Scan', icon: Camera, isCenter: true },
-    { path: '/hospitals', label: 'Hospitals', icon: Building2, isCenter: false },
-    { path: '/profile', label: 'Profile', icon: User, isCenter: false },
+    { path: '/home', label: 'Home', icon: Home },
+    { path: '/history', label: 'History', icon: Activity },
+    { path: '/hospitals', label: 'Hospitals', icon: Building2 },
+    { path: '/profile', label: 'Profile', icon: User },
   ];
 
   const isHealthAiActive = location.pathname.startsWith('/health-ai');
@@ -66,10 +64,10 @@ export const BottomNav: React.FC = () => {
           style={{
             position: 'fixed',
             bottom: '92px',
-            right: 'calc(50% - 176px)',
+            right: 'calc(50% - 180px)',
             zIndex: 50,
           }}
-          className="sm:right-[calc(50%-230px)] sm:!bottom-[100px]"
+          className="sm:right-[calc(50%-202px)] sm:!bottom-[100px]"
         >
           <button
             id="health-ai-avatar-btn"
@@ -119,7 +117,7 @@ export const BottomNav: React.FC = () => {
       {/* Main nav capsule */}
       <nav
         className={clsx(
-          'fixed bottom-5 sm:bottom-6 left-0 right-0 z-40 w-[calc(100%-1.5rem)] max-w-[380px] sm:max-w-lg mx-auto rounded-full px-2.5 py-1.5 sm:px-5 sm:py-2 backdrop-blur-2xl transition-all duration-300 select-none cursor-pointer',
+          'fixed bottom-5 sm:bottom-6 left-0 right-0 z-40 w-[calc(100%-1.5rem)] max-w-[330px] sm:max-w-[370px] mx-auto rounded-full px-2 py-1.5 backdrop-blur-2xl transition-all duration-300 select-none cursor-pointer',
           isDarkMode
             ? 'bg-slate-900/85 border border-slate-700/80 shadow-[0_16px_36px_rgba(0,0,0,0.5)] ring-1 ring-white/10'
             : 'bg-white/85 border border-white/80 shadow-[0_14px_36px_rgba(11,90,84,0.16)] ring-1 ring-black/5'
@@ -128,65 +126,21 @@ export const BottomNav: React.FC = () => {
         <div className="flex justify-between items-center w-full gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive =
-              location.pathname.startsWith(item.path) ||
-              (item.isCenter &&
-                (location.pathname.startsWith('/medicine/info-lookup') ||
-                  location.pathname.startsWith('/prescriptions/scan') ||
-                  location.pathname.startsWith('/prescriptions/info-lookup')));
-
-            if (item.isCenter) {
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className="flex-1 flex flex-col items-center justify-center -translate-y-1 sm:-translate-y-1.5 transition-all duration-200 active:scale-95 group border-0 outline-none cursor-pointer"
-                  title="Scan Medicine"
-                >
-                  <div
-                    className={clsx(
-                      'w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-md transition-all duration-200',
-                      isActive
-                        ? 'bg-gradient-to-tr from-[#0B5A54] via-[#14837A] to-[#14B8A6] text-white ring-2 ring-[#14B8A6]/60 scale-105 shadow-teal-600/40'
-                        : isDarkMode
-                        ? 'bg-gradient-to-tr from-teal-700 to-teal-500 text-white hover:scale-105 shadow-black/40'
-                        : 'bg-gradient-to-tr from-[#0B5A54] via-[#10726A] to-[#14B8A6] text-white hover:scale-105 shadow-[0_4px_12px_rgba(11,90,84,0.3)]'
-                    )}
-                  >
-                    <Camera className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-white stroke-[2.2]" />
-                  </div>
-
-                  <span
-                    className={clsx(
-                      'text-[8.5px] sm:text-[9px] mt-0.5 font-heading transition-all duration-150 tracking-tight font-black',
-                      isActive
-                        ? isDarkMode
-                          ? 'text-emerald-300'
-                          : 'text-[#0B5A54]'
-                        : isDarkMode
-                        ? 'text-slate-300 group-hover:text-white'
-                        : 'text-[#0B5A54] group-hover:text-[#084540]'
-                    )}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            }
+            const isActive = location.pathname.startsWith(item.path);
 
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 className={clsx(
-                  'flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 active:scale-95 group border-0 outline-none cursor-pointer',
+                  'flex-1 flex flex-col items-center justify-center py-1.5 px-2 rounded-full transition-all duration-300 active:scale-95 group border-0 outline-none cursor-pointer relative',
                   isActive
                     ? isDarkMode
-                      ? 'bg-[#0B5A54]/80 shadow-2xs border border-teal-500/30'
-                      : 'bg-[#E3F3F1]/90 shadow-2xs'
+                      ? 'bg-white/6 border border-white/10 text-teal-300'
+                      : 'bg-[#0B5A54]/8 border border-[#0B5A54]/12 text-[#0B5A54]'
                     : isDarkMode
-                    ? 'bg-transparent hover:bg-slate-800/60'
-                    : 'bg-transparent hover:bg-slate-50'
+                    ? 'bg-transparent text-slate-400 hover:text-slate-100 hover:bg-white/5'
+                    : 'bg-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
                 )}
               >
                 {/* Sleek Icon Container */}
@@ -196,26 +150,26 @@ export const BottomNav: React.FC = () => {
                       'w-4 h-4 sm:w-4.5 sm:h-4.5 transition-all duration-200',
                       isActive
                         ? isDarkMode
-                          ? 'text-emerald-300 stroke-[2.4] scale-105'
+                          ? 'text-teal-300 stroke-[2.4] scale-105'
                           : 'text-[#0B5A54] stroke-[2.4] scale-105'
                         : isDarkMode
-                        ? 'text-slate-400 stroke-[1.8] group-hover:text-slate-100'
-                        : 'text-slate-500 stroke-[1.8] group-hover:text-slate-900'
+                        ? 'text-slate-400 stroke-[1.8] group-hover:text-slate-200 group-hover:scale-105'
+                        : 'text-slate-500 stroke-[1.8] group-hover:text-slate-800 group-hover:scale-105'
                     )}
                   />
                 </div>
 
-                {/* Theme-Aware Text Label */}
+                {/* Theme-Aware Neutral Text Label (Uncolored) */}
                 <span
                   className={clsx(
                     'text-[8.5px] sm:text-[9px] mt-0.5 font-heading transition-all duration-150 tracking-tight truncate max-w-[54px]',
                     isActive
                       ? isDarkMode
-                        ? 'font-black text-emerald-300'
-                        : 'font-black text-[#0B5A54]'
+                        ? 'font-bold text-white'
+                        : 'font-bold text-slate-900'
                       : isDarkMode
-                      ? 'font-semibold text-slate-400 group-hover:text-slate-100'
-                      : 'font-semibold text-slate-500 group-hover:text-slate-900'
+                      ? 'font-medium text-slate-400 group-hover:text-slate-200'
+                      : 'font-medium text-slate-500 group-hover:text-slate-800'
                   )}
                 >
                   {item.label}
@@ -228,4 +182,3 @@ export const BottomNav: React.FC = () => {
     </>
   );
 };
-

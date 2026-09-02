@@ -216,81 +216,83 @@ export const NotificationsScreen: React.FC = () => {
   const categories: NotificationItem['category'][] = ['Upcoming', 'Completed'];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      {/* CLEAN EXECUTIVE APP HEADER */}
-      <div className="bg-white border-b border-slate-200/80 pt-4 pb-3.5 px-4 sm:px-6 sticky top-0 z-30 shadow-2xs text-left">
-        <div className="flex items-center justify-between gap-3">
-          {/* Left: Back Button + Title & Subtitle */}
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-teal-50 hover:text-[#0B5A54] flex items-center justify-center text-slate-800 transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer"
-              title="Go Back"
-            >
-              <ArrowLeft className="w-4.5 h-4.5" />
-            </button>
-            <div className="min-w-0 space-y-0.5">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black font-heading text-[#111827] tracking-tight truncate">
-                  Notifications
-                </h1>
-                {unreadCount > 0 && (
-                  <span className="bg-rose-500 text-white font-black text-[9.5px] px-2.5 py-0.5 rounded-full shadow-2xs animate-pulse shrink-0">
-                    {unreadCount} NEW
-                  </span>
-                )}
+    <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
+      {/* LIGHTER LUMINOUS CYAN TOPBAR */}
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] px-4 sm:px-6 pt-4 pb-4 w-full shadow-sm text-left sm:rounded-t-3xl transition-all">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Back Button + Title & Subtitle */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => navigate(-1)}
+                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer"
+                title="Go Back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base sm:text-lg font-black font-heading text-white tracking-tight truncate">
+                    Notifications
+                  </h1>
+                  {unreadCount > 0 && (
+                    <span className="bg-rose-500 text-white font-black text-[9.5px] px-2.5 py-0.5 rounded-full shadow-2xs animate-pulse shrink-0">
+                      {unreadCount} NEW
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] sm:text-xs font-semibold text-teal-100/90 truncate">
+                  CarePulse Consultations & Health Alerts
+                </p>
               </div>
-              <p className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
-                CarePulse Consultations & Health Alerts
-              </p>
+            </div>
+
+            {/* Right: Read All & Clear All Actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 border border-white/30 text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
+                  title="Mark all as read"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-rose-500 border border-white/30 text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
+                  title="Clear all notifications"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Right: Read All & Clear All Actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {unreadCount > 0 && (
+          {/* SEGMENTED FILTER CHIPS BAR */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pt-3.5">
+            {[
+              { id: 'all', label: `All (${notifications.length})` },
+              { id: 'upcoming', label: `Upcoming (${notifications.filter((n) => n.category === 'Upcoming').length})` },
+              { id: 'completed', label: `Completed (${notifications.filter((n) => n.category === 'Completed').length})` },
+            ].map((tab) => (
               <button
-                onClick={handleMarkAllAsRead}
-                className="w-8 h-8 rounded-full bg-teal-50 hover:bg-[#0B5A54] text-[#0B5A54] hover:text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
-                title="Mark all as read"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={clsx(
+                  'px-4 py-1.5 rounded-full text-xs font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer shadow-2xs select-none',
+                  activeTab === tab.id
+                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
+                    : 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
+                )}
               >
-                <CheckCheck className="w-4 h-4" />
+                {tab.label}
               </button>
-            )}
-            {notifications.length > 0 && (
-              <button
-                onClick={handleClearAll}
-                className="w-8 h-8 rounded-full bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
-                title="Clear all notifications"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+            ))}
           </div>
         </div>
-
-        {/* SEGMENTED FILTER CHIPS BAR */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pt-3">
-          {[
-            { id: 'all', label: `All (${notifications.length})` },
-            { id: 'upcoming', label: `Upcoming (${notifications.filter((n) => n.category === 'Upcoming').length})` },
-            { id: 'completed', label: `Completed (${notifications.filter((n) => n.category === 'Completed').length})` },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={clsx(
-                'px-4 py-1.5 rounded-full text-xs font-extrabold transition-all shrink-0 active:scale-95 border cursor-pointer shadow-2xs',
-                activeTab === tab.id
-                  ? 'bg-[#0B5A54] text-white border-[#0B5A54]'
-                  : 'bg-slate-100 text-slate-700 border-slate-200/80 hover:bg-slate-200 hover:border-slate-300'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      </header>
 
       {/* NOTIFICATIONS FEED CONTAINER */}
       <main className="px-4 sm:px-6 md:px-8 py-5 max-w-5xl mx-auto space-y-6 w-full text-left">
