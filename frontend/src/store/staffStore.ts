@@ -697,8 +697,17 @@ export interface StaffState {
   }) => Promise<void>;
 }
 
+const getStoredStaff = (): Staff | null => {
+  try {
+    const raw = localStorage.getItem('carepulse_staff');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const useStaffStore = create<StaffState>((set, get) => ({
-  currentStaff: {
+  currentStaff: getStoredStaff() || {
     id: 'admin-1',
     name: 'Admin',
     role: 'admin',
@@ -718,11 +727,13 @@ export const useStaffStore = create<StaffState>((set, get) => ({
 
   setStaffAuth: (staff, token) => {
     if (token) localStorage.setItem('staff_token', token);
+    if (staff) localStorage.setItem('carepulse_staff', JSON.stringify(staff));
     set({ currentStaff: staff });
   },
 
   logoutStaff: () => {
     localStorage.removeItem('staff_token');
+    localStorage.removeItem('carepulse_staff');
     set({ currentStaff: null });
   },
 

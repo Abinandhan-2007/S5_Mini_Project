@@ -42,6 +42,10 @@ export const isStaffDomain = (): boolean => {
   // 1. On native mobile app (Capacitor Android / iOS), always Patient App
   if (Capacitor.isNativePlatform()) return false;
 
+  // If a patient session exists in local storage, do NOT divert them to staff portal
+  const hasPatientSession = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
+  if (hasPatientSession) return false;
+
   // 2. Explicit subdomain checks
   const hostname = window.location.hostname.toLowerCase();
   if (hostname.startsWith('staff.') || hostname.startsWith('admin.') || hostname.startsWith('doctor.')) {
@@ -58,7 +62,7 @@ export const isStaffDomain = (): boolean => {
     return false; // Default mobile web users to Patient App
   }
 
-  // 4. On desktop web, default to Staff Portal
+  // 4. On desktop web without patient session, default to Staff Portal
   return true;
 };
 
@@ -76,12 +80,12 @@ export const AppRoutes: React.FC = () => {
         element={
           <Navigate
             to={
-              isStaffDomain()
-                ? '/staff/login'
-                : isAuthenticated
+              isAuthenticated
                 ? shouldPromptProfileCompletion(user)
                   ? '/complete-profile'
                   : '/home'
+                : isStaffDomain()
+                ? '/staff/login'
                 : '/login'
             }
             replace

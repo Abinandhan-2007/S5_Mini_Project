@@ -33,6 +33,20 @@ export const LoginScreen: React.FC = () => {
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [unregisteredIdentifier, setUnregisteredIdentifier] = useState('');
 
+  const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
+  const user = useCarePulseStore((s) => s.user);
+
+  // If already authenticated, redirect to /home immediately
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (shouldPromptProfileCompletion(user)) {
+        navigate('/complete-profile', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
   // Handle redirect messages (e.g. "Please log in to continue")
   useEffect(() => {
     if (location.state?.message) {

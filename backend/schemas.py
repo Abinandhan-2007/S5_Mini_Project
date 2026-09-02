@@ -297,10 +297,15 @@ class ScanMatchRequest(BaseModel):
 class DrugInfoSchema(BaseModel):
     drug_name: str
     found: bool
-    purpose: str
+    purpose: Optional[str] = None
     indications_and_usage: Optional[str] = ""
     summary: str
     source: str
+    mainUses: Optional[List[str]] = None
+    howToTake: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    sideEffects: Optional[List[str]] = None
+    boxedWarning: Optional[List[str]] = None
 
 class PrescriptionMatchedItem(BaseModel):
     id: str
@@ -339,10 +344,15 @@ class MedicineInfoLookupResponse(BaseModel):
     drugName: str
     genericName: Optional[str] = None
     extractedText: str
-    purpose: str
+    purpose: Optional[str] = None
     indicationsAndUsage: Optional[str] = ""
     summary: str
     source: str
+    mainUses: Optional[List[str]] = None
+    howToTake: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    sideEffects: Optional[List[str]] = None
+    boxedWarning: Optional[List[str]] = None
     disclaimer: Optional[str] = "General Information Only — This is NOT a verification against your prescriptions. For personal dosage instructions, use 'Check My Prescription'."
 
 class MedicineSearchResultItem(BaseModel):

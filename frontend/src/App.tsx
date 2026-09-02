@@ -26,7 +26,8 @@ const isStaffLanding = (): boolean => {
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
       (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
 
-    if (!isMobileBrowser && path === '/') return true;
+    const hasPatientSession = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
+    if (!isMobileBrowser && path === '/' && !hasPatientSession) return true;
   }
 
   return false;

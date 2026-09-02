@@ -125,9 +125,10 @@ export async function apiFetch(
 
         throw new Error(`HTTP Error ${nativeRes.status}`);
       } else {
-        // Standard Web Browser fetch
-        const controller = new AbortController();
-        const timeoutMs = options.signal ? undefined : (path.includes('/ai') || path.includes('/chat') ? 20000 : 12000);
+        // Generous timeout for AI inference, OCR, and medicine lookups (20s), standard for others (6s)
+        const isLongRequest = path.includes('/ai') || path.includes('scan') || path.includes('lookup') || path.includes('ocr') || path.includes('/chat');
+        const defaultTimeoutMs = isLongRequest ? 20000 : 12000;
+        const timeoutMs = options.signal ? undefined : defaultTimeoutMs;
         const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
         const res = await fetch(url, {

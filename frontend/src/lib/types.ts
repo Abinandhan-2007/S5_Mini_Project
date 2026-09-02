@@ -107,10 +107,15 @@ export interface Prescription {
 export interface DrugInfoData {
   drug_name: string;
   found: boolean;
-  purpose: string;
+  purpose?: string | null;
   indications_and_usage?: string;
   summary: string;
   source: string;
+  mainUses?: string[] | null;
+  howToTake?: string[] | null;
+  warnings?: string[] | null;
+  sideEffects?: string[] | null;
+  boxedWarning?: string[] | null;
 }
 
 export interface ScanMatchResult {
@@ -141,10 +146,15 @@ export interface MedicineInfoLookupResponse {
   drugName: string;
   genericName?: string | null;
   extractedText: string;
-  purpose: string;
+  purpose?: string | null;
   indicationsAndUsage?: string;
   summary: string;
   source: string;
+  mainUses?: string[] | null;
+  howToTake?: string[] | null;
+  warnings?: string[] | null;
+  sideEffects?: string[] | null;
+  boxedWarning?: string[] | null;
   disclaimer?: string;
 }
 

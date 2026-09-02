@@ -107,6 +107,16 @@ def search_medicines_fallback(cleaned_q: str, limit: int = 8) -> Dict[str, Any]:
     scored_matches.sort(key=lambda x: (x["similarity_score"], -len(x["name"])), reverse=True)
     results = scored_matches[:limit]
 
+    # If no exact/prefix match or zero matches, enrich with global medicines via NIH RxTerms
+    if (len(results) == 0 or (not has_exact_or_prefix and len(results) < 3)) and len(cleaned_q) >= 3:
+        existing_names = {r["name"].lower() for r in results}
+        global_drugs = fetch_global_medicines(cleaned_q, limit=limit - len(results))
+        for g in global_drugs:
+            if g["name"].lower() not in existing_names:
+                results.append(g)
+                existing_names.add(g["name"].lower())
+                has_exact_or_prefix = True
+
     # Did you mean detection: if top match is fuzzy with good similarity and no exact/prefix found
     did_you_mean = None
     if results and not has_exact_or_prefix:
@@ -118,7 +128,7 @@ def search_medicines_fallback(cleaned_q: str, limit: int = 8) -> Dict[str, Any]:
         "query": cleaned_q,
         "total": len(results),
         "did_you_mean": did_you_mean,
-        "matches": results
+        "matches": results[:limit]
     }
 
 
@@ -237,6 +247,16 @@ def search_medicines(raw_query: str, limit: int = 8) -> Dict[str, Any]:
                         "similarity_score": round(float(r["rank_score"]), 3)
                     })
 
+                # If no exact/prefix match or zero matches, enrich with global medicines via NIH RxTerms
+                if (len(matches) == 0 or (not has_exact_or_prefix and len(matches) < 3)) and len(cleaned_q) >= 3:
+                    existing_names = {m["name"].lower() for m in matches}
+                    global_drugs = fetch_global_medicines(cleaned_q, limit=limit - len(matches))
+                    for g in global_drugs:
+                        if g["name"].lower() not in existing_names:
+                            matches.append(g)
+                            existing_names.add(g["name"].lower())
+                            has_exact_or_prefix = True
+
                 # Did you mean detection
                 did_you_mean = None
                 if matches and not has_exact_or_prefix:
@@ -248,8 +268,97 @@ def search_medicines(raw_query: str, limit: int = 8) -> Dict[str, Any]:
                     "query": raw_query,
                     "total": len(matches),
                     "did_you_mean": did_you_mean,
-                    "matches": matches
+                    "matches": matches[:limit]
                 }
     except Exception as pg_err:
         logger.warning(f"PostgreSQL pg_trgm search note ({pg_err}); falling back to in-memory difflib engine.")
         return search_medicines_fallback(cleaned_q, limit=limit)
+
+
+# -------------------------------------------------------------
+# Global Medicine Resolver (NIH RxTerms / NLM Public API)
+# -------------------------------------------------------------
+GLOBAL_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+
+
+def _auto_cache_medicine_to_db(med: Dict[str, Any]):
+    """Silently saves dynamically fetched global medicines to PostgreSQL for future instant lookups."""
+    try:
+        conn = get_pg_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO medicines (id, name, generic_name, brand_names, dosage_form, strengths, category, purpose)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO NOTHING;
+                """,
+                (
+                    med["id"],
+                    med["name"],
+                    med["generic_name"],
+                    json.dumps([]),
+                    med.get("dosage_form", "Tablet"),
+                    json.dumps(med.get("strengths", [])),
+                    med.get("category", "Global Medicine"),
+                    med.get("purpose", "")
+                )
+            )
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.debug(f"Auto cache db notice: {e}")
+
+
+def fetch_global_medicines(query: str, limit: int = 6) -> List[Dict[str, Any]]:
+    """
+    Queries the National Library of Medicine (NIH RxTerms) public API
+    to suggest ANY medicine formulation in the world in real time.
+    Auto-persists newly discovered medicines into the local PostgreSQL database.
+    """
+    q = query.strip()
+    if len(q) < 3:
+        return []
+
+    cache_key = q.lower()
+    if cache_key in GLOBAL_CACHE:
+        return GLOBAL_CACHE[cache_key][:limit]
+
+    results = []
+    seen = set()
+
+    try:
+        import httpx
+        url = f"https://clinicaltables.nlm.nih.gov/api/rxterms/v3/search?terms={q}&ef=STRENGTHS_AND_FORMS&maxList={limit}"
+        r = httpx.get(url, timeout=1.8)
+        if r.status_code == 200:
+            data = r.json()
+            names = data[1] if len(data) > 1 else []
+            extra = data[2] if len(data) > 2 and data[2] else {}
+            strengths_list = extra.get("STRENGTHS_AND_FORMS", []) if isinstance(extra, dict) else []
+
+            for idx, raw_name in enumerate(names):
+                clean_name = raw_name.split("(")[0].strip() if "(" in raw_name else raw_name.strip()
+                form = raw_name.split("(")[1].replace(")", "").strip() if "(" in raw_name else "Tablet"
+                norm_key = clean_name.lower()
+                if norm_key not in seen:
+                    seen.add(norm_key)
+                    strs = strengths_list[idx] if idx < len(strengths_list) else []
+                    med_item = {
+                        "id": f"global-{norm_key.replace(' ', '-')[:40]}",
+                        "name": clean_name.title(),
+                        "generic_name": clean_name.title(),
+                        "dosage_form": form,
+                        "strengths": [s.split()[0] for s in strs[:3]] if strs else [],
+                        "category": "Global Medicine",
+                        "purpose": "Verified pharmaceutical formulation from the US National Library of Medicine.",
+                        "match_type": "prefix",
+                        "similarity_score": 0.82
+                    }
+                    results.append(med_item)
+                    _auto_cache_medicine_to_db(med_item)
+    except Exception as e:
+        logger.debug(f"NLM global medicine query notice: {e}")
+
+    GLOBAL_CACHE[cache_key] = results
+    return results[:limit]
+

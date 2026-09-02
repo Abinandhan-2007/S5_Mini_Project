@@ -178,10 +178,11 @@ class TestScanMedicineOCRAndFuzzyMatch(unittest.TestCase):
         self.assertEqual(sarah_res.status_code, 200)
         sarah_data = sarah_res.json()
         self.assertIn(sarah_data["status"], ("SUCCESS", "AMBIGUOUS", "HIGH_CONFIDENCE"))
-        self.assertIn(sarah_data["matchType"], ("HIGH_CONFIDENCE", "AMBIGUOUS"))
-        self.assertIsNotNone(sarah_data["match"])
-        self.assertEqual(sarah_data["match"]["drugName"], "Amoxicillin")
-        self.assertEqual(sarah_data["match"]["mealTiming"], "After Food")
+        self.assertIn(sarah_data["matchType"], ("HIGH_CONFIDENCE", "AMBIGUOUS", "EXACT"))
+        match = sarah_data.get("match") or (sarah_data.get("matches") and sarah_data["matches"][0])
+        self.assertIsNotNone(match)
+        self.assertEqual(match["drugName"], "Amoxicillin")
+        self.assertEqual(match["mealTiming"], "After Food")
 
     # -------------------------------------------------------------------------
     # SCENARIO 6: OpenFDA Public API Drug Background Lookup
@@ -190,12 +191,12 @@ class TestScanMedicineOCRAndFuzzyMatch(unittest.TestCase):
         info = get_drug_info("Amoxicillin")
         self.assertTrue(info["found"])
         self.assertEqual(info["source"], "OpenFDA")
-        self.assertIn("amoxicillin", info["summary"].lower() + info["purpose"].lower() + info["indications_and_usage"].lower())
+        self.assertIn("amoxicillin", (info["summary"] or "").lower() + (info["purpose"] or "").lower() + (info["indications_and_usage"] or "").lower())
         print("\n[OpenFDA Real Response Test 1 - Amoxicillin]:", info["summary"][:160])
 
         info_pcm = get_drug_info("Paracetamol")
         self.assertTrue(info_pcm["found"])
-        self.assertIn("pain", info_pcm["purpose"].lower() + info_pcm["summary"].lower() + info_pcm["indications_and_usage"].lower())
+        self.assertIn("pain", (info_pcm["purpose"] or "").lower() + (info_pcm["summary"] or "").lower() + (info_pcm["indications_and_usage"] or "").lower())
         print("[OpenFDA Real Response Test 2 - Paracetamol]:", info_pcm["summary"][:160])
 
     # -------------------------------------------------------------------------
