@@ -6,11 +6,14 @@ from dotenv import load_dotenv
 backend_dir = Path(__file__).resolve().parent
 root_dir = backend_dir.parent
 
-env_path = root_dir / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
-else:
-    load_dotenv()
+for candidate_env in [
+    root_dir / ".env",
+    backend_dir / ".env",
+    root_dir / "frontend" / ".env",
+]:
+    if candidate_env.exists():
+        load_dotenv(dotenv_path=candidate_env, override=False)
+load_dotenv()
 
 DB_USER = os.getenv("DB_USER", "carepulse_user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "carepulse_secure_password")
@@ -24,6 +27,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "carepulse_super_secret_jwt_key_2026")
 RESET_TOKEN_SECRET = os.getenv("RESET_TOKEN_SECRET", "carepulse_reset_token_secret_key_2026")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "").strip()
 MISTRAL_AGENT_ID = os.getenv("MISTRAL_AGENT_ID", "ag_01a062cbadc977cf85c1546ff60ad68e").strip()
+ALLOW_JSON_FALLBACK = os.getenv("ALLOW_JSON_FALLBACK", "false").lower() in ("true", "1", "yes")
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30

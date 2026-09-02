@@ -161,12 +161,16 @@ class RAGEngine:
                 chunk_counter += 1
 
         if self.chunk_texts:
-            self.vectorizer = TfidfVectorizer(
-                stop_words='english',
-                token_pattern=r'(?u)\b\w+\b',
-                ngram_range=(1, 2)
-            )
-            self.tfidf_matrix = self.vectorizer.fit_transform(self.chunk_texts)
+            if TfidfVectorizer is not None:
+                self.vectorizer = TfidfVectorizer(
+                    stop_words='english',
+                    token_pattern=r'(?u)\b\w+\b',
+                    ngram_range=(1, 2)
+                )
+                self.tfidf_matrix = self.vectorizer.fit_transform(self.chunk_texts)
+            else:
+                self.vectorizer = None
+                self.tfidf_matrix = None
             self.is_dirty = False
             logger.info(f"RAG Engine loaded {len(self.chunk_texts)} chunks from {data_dir}")
 
@@ -188,12 +192,16 @@ class RAGEngine:
                             "source_type": doc.source_type if doc else "Clinical Reference",
                             "section_name": c.section_name or "General"
                         })
-                    self.vectorizer = TfidfVectorizer(
-                        stop_words='english',
-                        token_pattern=r'(?u)\b\w+\b',
-                        ngram_range=(1, 2)
-                    )
-                    self.tfidf_matrix = self.vectorizer.fit_transform(self.chunk_texts)
+                    if TfidfVectorizer is not None:
+                        self.vectorizer = TfidfVectorizer(
+                            stop_words='english',
+                            token_pattern=r'(?u)\b\w+\b',
+                            ngram_range=(1, 2)
+                        )
+                        self.tfidf_matrix = self.vectorizer.fit_transform(self.chunk_texts)
+                    else:
+                        self.vectorizer = None
+                        self.tfidf_matrix = None
                     self.is_dirty = False
                     return
             except Exception as e:
@@ -204,15 +212,39 @@ class RAGEngine:
 
     def search(self, query: str, db: Optional[Any] = None, top_k: int = 4) -> Tuple[List[Dict[str, Any]], float]:
         """Search query against TF-IDF vector index with metadata enrichment."""
-        if self.is_dirty or self.vectorizer is None or self.tfidf_matrix is None:
+        if self.is_dirty or (self.vectorizer is None and TfidfVectorizer is not None) or (self.tfidf_matrix is None and TfidfVectorizer is not None):
             self.rebuild_index(db)
 
-        if not self.vectorizer or not self.chunk_texts or self.tfidf_matrix is None:
+        if not self.chunk_texts:
             return [], 0.0
 
         query_clean = query.strip()
         if not query_clean:
             return [], 0.0
+
+        # If scikit-learn is not installed, use fast keyword/token overlap search
+        if not self.vectorizer or self.tfidf_matrix is None or cosine_similarity is None or np is None:
+            query_words = set(re.findall(r'\w+', query_clean.lower()))
+            scored_chunks = []
+            for i, text in enumerate(self.chunk_texts):
+                text_words = set(re.findall(r'\w+', text.lower()))
+                overlap = len(query_words & text_words)
+                if overlap > 0:
+                    scored_chunks.append((overlap, i))
+            scored_chunks.sort(key=lambda x: x[0], reverse=True)
+            results = []
+            for score, idx in scored_chunks[:top_k]:
+                meta = self.chunk_metadata[idx] if idx < len(self.chunk_metadata) else {}
+                results.append({
+                    "chunk_id": self.chunk_ids[idx] if idx < len(self.chunk_ids) else idx,
+                    "content": self.chunk_texts[idx],
+                    "score": min(0.95, round(score * 0.15, 4)),
+                    "document_name": meta.get("document_name", "Medical Knowledge Base"),
+                    "source_type": meta.get("source_type", "Clinical Reference"),
+                    "section_name": meta.get("section_name", "General Overview")
+                })
+            top_score = results[0]["score"] if results else 0.0
+            return results, top_score
 
         try:
             query_vec = self.vectorizer.transform([query_clean])
