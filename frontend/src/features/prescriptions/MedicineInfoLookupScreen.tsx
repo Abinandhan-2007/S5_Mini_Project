@@ -12,10 +12,10 @@ import {
   HelpCircle,
   FileText,
   BookmarkCheck,
-  Search,
 } from 'lucide-react';
 import { apiFetch } from '../../lib/apiFetch';
-import type { MedicineInfoLookupResponse } from '../../lib/types';
+import type { MedicineInfoLookupResponse, MedicineSearchResultItem } from '../../lib/types';
+import { MedicineAutocompleteInput } from '../../components/medicines/MedicineAutocompleteInput';
 import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
@@ -107,7 +107,13 @@ export const MedicineInfoLookupScreen: React.FC = () => {
   };
 
   // Perform Lookup via API
-  const processLookup = async (payload: { image?: string; drugName?: string; ocrText?: string }) => {
+  const processLookup = async (payload: {
+    image?: string;
+    drugName?: string;
+    genericName?: string;
+    medicineId?: string;
+    ocrText?: string;
+  }) => {
     setIsAnalyzing(true);
     setLookupResult(null);
     setErrorNotice(null);
@@ -134,11 +140,21 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     }
   };
 
-  const handleManualSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!manualQuery.trim()) return;
     setImagePreview(null);
     processLookup({ drugName: manualQuery.trim() });
+  };
+
+  const handleSelectMedicine = (item: MedicineSearchResultItem) => {
+    setImagePreview(null);
+    setManualQuery(item.name);
+    processLookup({
+      drugName: item.name,
+      genericName: item.generic_name,
+      medicineId: item.id,
+    });
   };
 
   const handleReset = () => {
@@ -282,24 +298,29 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                 </button>
               </div>
 
-              {/* Search By Name Alternative */}
-              <div className="border-t border-slate-100 pt-4">
-                <form onSubmit={handleManualSearch} className="relative max-w-md mx-auto">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={manualQuery}
-                    onChange={(e) => setManualQuery(e.target.value)}
-                    placeholder="Or type drug name (e.g. Ibuprofen, Ciprofloxacin)..."
-                    className="w-full bg-[#F8FAFC] text-slate-800 text-xs font-semibold placeholder:text-slate-400 pl-10 pr-24 py-2.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-                  />
+              {/* Search By Name Alternative with Typo-Tolerant Autocomplete */}
+              <div className="border-t border-slate-100 pt-4 space-y-2">
+                <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider text-center">
+                  Or search medication name (typo-tolerant autocomplete)
+                </p>
+                <div className="flex items-center gap-2 max-w-md mx-auto">
+                  <div className="flex-1 min-w-0">
+                    <MedicineAutocompleteInput
+                      value={manualQuery}
+                      onChange={setManualQuery}
+                      onSelect={handleSelectMedicine}
+                      placeholder="Type name (e.g. Dolo 650, Augmentin, Paracetamol)..."
+                    />
+                  </div>
                   <button
-                    type="submit"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all cursor-pointer"
+                    type="button"
+                    onClick={() => handleManualSearch()}
+                    disabled={!manualQuery.trim()}
+                    className="px-4 py-3 rounded-2xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     Lookup
                   </button>
-                </form>
+                </div>
               </div>
             </div>
 
@@ -365,7 +386,12 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                           {lookupResult.drugName}
                         </h2>
                       </div>
-                      <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md inline-block">
+                      {lookupResult.genericName && (
+                        <p className="text-[11px] font-bold text-blue-700">
+                          Active Ingredient: {lookupResult.genericName}
+                        </p>
+                      )}
+                      <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md inline-block mt-0.5">
                         Source: {lookupResult.source}
                       </span>
                     </div>

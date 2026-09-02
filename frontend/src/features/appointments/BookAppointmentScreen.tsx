@@ -18,9 +18,6 @@ import {
   Star,
   Users,
   Clock,
-  Building2,
-  Stethoscope,
-  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarPicker } from '../../components/ui/CalendarPicker';

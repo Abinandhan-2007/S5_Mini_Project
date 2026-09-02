@@ -524,4 +524,26 @@ SELECT
     p.created_at
 FROM patients p;
 
+-- ===================================================================
+-- Medicines Catalog Table & pg_trgm GIN Trigram Indexes
+-- ===================================================================
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE IF NOT EXISTS medicines (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    generic_name VARCHAR(255) NOT NULL,
+    brand_names JSONB DEFAULT '[]'::jsonb,
+    dosage_form VARCHAR(50) DEFAULT 'Tablet',
+    strengths JSONB DEFAULT '[]'::jsonb,
+    category VARCHAR(100) DEFAULT 'General',
+    purpose TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_medicines_name_trgm ON medicines USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_medicines_generic_trgm ON medicines USING gin (generic_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_medicines_name_lower ON medicines (LOWER(name));
+
+
 

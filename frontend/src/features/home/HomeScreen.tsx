@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Lightbulb,
   ChevronRight,
   Ticket,
   Calendar as CalendarIcon,
@@ -13,9 +12,7 @@ import {
   Check,
   CheckCircle2,
   Users,
-  Camera,
-  Sparkles,
-  Scan,
+  RefreshCw,
   ArrowRight,
 } from 'lucide-react';
 

@@ -24,7 +24,7 @@ def normalize_text_key(val: str) -> str:
         return ""
     return re.sub(r"[^a-zA-Z0-9]", "", val).lower()
 
-from fastapi import FastAPI, HTTPException, status, Header, Request
+from fastapi import FastAPI, HTTPException, status, Header, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,12 +66,15 @@ from schemas import (
     DrugInfoSchema,
     MedicineInfoLookupRequest,
     MedicineInfoLookupResponse,
+    MedicineSearchResultItem,
+    MedicineSearchResponse,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
 from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr
 from services.drug_info_service import get_drug_info
+from services.medicine_search_service import search_medicines
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
@@ -2082,15 +2085,29 @@ def get_medication_drug_info(drug_name: str):
     return get_drug_info(drug_name.strip())
 
 
+@app.get("/api/medicines/search", response_model=MedicineSearchResponse)
+def search_medicines_endpoint(
+    q: str = Query(..., min_length=1, description="Partial medicine or generic name"),
+    limit: int = Query(8, ge=1, le=20, description="Max results")
+):
+    """
+    Fuzzy/Typo-Tolerant real-time medicine name search & autocomplete.
+    Matches brand names and generic substances, with ranking and typo auto-correction ('did you mean').
+    """
+    return search_medicines(q, limit=limit)
+
+
 @app.post("/api/medicine/lookup-info", response_model=MedicineInfoLookupResponse)
 def lookup_medicine_info(req: MedicineInfoLookupRequest):
     """
     Informational Medicine Purpose Lookup via OpenFDA (Open Lookup).
-    Scans ANY medicine packaging or accepts a drug name, extracting OpenFDA purpose/use
-    WITHOUT matching against or requiring any patient prescription records.
+    Scans ANY medicine packaging or accepts a drug name, extracting OpenFDA purpose/use.
+    CRITICAL: Always delegates the actual OpenFDA call to the medicine's generic active ingredient
+    (e.g. 'Paracetamol' instead of brand 'Dolo 650' or 'Crocin') ensuring reliable FDA drug label matching.
     """
     extracted_text = ""
     candidate_name = None
+    generic_name = (req.genericName or req.generic_name or "").strip() or None
 
     # 1. Direct drug name provided or OCR extraction
     if req.drugName or req.drug_name:
@@ -2107,6 +2124,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         return MedicineInfoLookupResponse(
             status="UNCLEAR_TEXT",
             drugName="",
+            genericName=None,
             extractedText=extracted_text,
             purpose="Could not identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible.",
             indicationsAndUsage="",
@@ -2114,13 +2132,27 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             source="None"
         )
 
-    # 3. Query OpenFDA for general background info
-    info = get_drug_info(candidate_name)
+    # 3. Resolve generic active ingredient for OpenFDA if not explicitly provided
+    if not generic_name:
+        search_res = search_medicines(candidate_name, limit=1)
+        if search_res.get("matches"):
+            top_match = search_res["matches"][0]
+            if top_match.get("generic_name") and top_match.get("similarity_score", 0) >= 0.40:
+                generic_name = top_match["generic_name"]
+
+    # 4. Query OpenFDA using the generic name (e.g. Paracetamol) for maximum accuracy
+    query_target = generic_name if generic_name else candidate_name
+    info = get_drug_info(query_target)
+
+    # If generic search missed, retry with brand name just in case
+    if not info.get("found") and generic_name and generic_name.lower() != candidate_name.lower():
+        info = get_drug_info(candidate_name)
 
     if info.get("found"):
         return MedicineInfoLookupResponse(
             status="FOUND",
             drugName=candidate_name,
+            genericName=generic_name,
             extractedText=extracted_text,
             purpose=info.get("purpose") or "General therapeutic medication.",
             indicationsAndUsage=info.get("indications_and_usage") or info.get("summary") or "",
@@ -2131,6 +2163,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         return MedicineInfoLookupResponse(
             status="NO_INFO_AVAILABLE",
             drugName=candidate_name,
+            genericName=generic_name,
             extractedText=extracted_text,
             purpose=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
             indicationsAndUsage="",

@@ -371,6 +371,51 @@
       "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocIfBT0HffRGLxxaqM7pxTgOnEiNqk-jmDfuIIhWo9qRpjYku5o=s96-c",
       "google_id": "109701332248440349618",
       "auth_provider": "google"
+    },
+    {
+      "id": "83164632-8e0f-4790-8b18-01da596866d3",
+      "patient_code": "P000025",
+      "patientCode": "P000025",
+      "full_name": "Isolated Patient f495297f",
+      "email": "patient_f495297f@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$0/qBkRs.1b9.ysSGS9uTV..BeL/A5o9Y2NvQeWwEzY6wDRyrL8DaC",
+      "auth_provider": "local"
+    },
+    {
+      "id": "73dec14b-d49d-4416-889f-1043b9db9b7a",
+      "patient_code": "P000026",
+      "patientCode": "P000026",
+      "full_name": "Isolated Patient 1f59faf7",
+      "email": "patient_1f59faf7@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$Al/vDcq5RoQbKMKbxTtox.0.m5b7ZZBf5b8IYMkPD3AQtBy03O/Vm",
+      "auth_provider": "local"
+    },
+    {
+      "id": "b2a607ab-5299-4acb-8641-dd41ae77a79b",
+      "patient_code": "P000027",
+      "patientCode": "P000027",
+      "full_name": "Isolated Patient 2dc29237",
+      "email": "patient_2dc29237@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$DivlYw9RWvzaDruplyJXLuEgcsIPes6Z6sCB9LUnytNgctbZ39xjW",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -1018,13 +1063,13 @@
       "name": "Emily Watson",
       "email": "rec",
       "username": "rec",
-      "password": "$2b$12$ChaRxfy9nX5c7bUTJBvEgez4kXOe6CzdI6QgoLM1AvShThDAerPQe",
+      "password": "$2b$12$vYX33gYvl1o36FQy68yzr.hI1RWX4yAbUZRmU3NJIwvvzYcFJcO5e",
       "role": "receptionist",
       "department": "Main Reception & OPD Queue",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$ChaRxfy9nX5c7bUTJBvEgez4kXOe6CzdI6QgoLM1AvShThDAerPQe",
+      "password_hash": "$2b$12$vYX33gYvl1o36FQy68yzr.hI1RWX4yAbUZRmU3NJIwvvzYcFJcO5e",
       "staff_code": "R001101",
       "staffCode": "R001101"
     },
@@ -1033,7 +1078,7 @@
       "name": "Dr. Olivia Wilson",
       "email": "doc",
       "username": "doc",
-      "password": "$2b$12$9W16PELFX6e.gLAD1XE2remKtdOaPUy9PZ1ydP3/Z7CrP1YCcriaK",
+      "password": "$2b$12$hc5qvVx2yIawzgp6Nlr41eVKpS6/oFdTs0kX5qQATmQs04YEZVThq",
       "role": "doctor",
       "specialty": "Cardiologist",
       "department": "Cardiology",
@@ -1042,7 +1087,7 @@
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$9W16PELFX6e.gLAD1XE2remKtdOaPUy9PZ1ydP3/Z7CrP1YCcriaK",
+      "password_hash": "$2b$12$hc5qvVx2yIawzgp6Nlr41eVKpS6/oFdTs0kX5qQATmQs04YEZVThq",
       "staff_code": "D001101",
       "staffCode": "D001101"
     },
@@ -1740,6 +1785,691 @@
       "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
       "notification_type": "appointment_reminder",
       "reference_id": "4285fba6-c1b0-4eb2-87db-8056960ab87a"
+    }
+  ],
+  "medicines": [
+    {
+      "id": "med-pcm-650",
+      "name": "Paracetamol 650",
+      "generic_name": "Paracetamol",
+      "brand_names": [
+        "Dolo 650",
+        "Crocin 650",
+        "Calpol 650",
+        "Pacimol 650",
+        "Pyregesic"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg",
+        "650mg",
+        "1000mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "purpose": "Relief of mild-to-moderate fever, headache, body aches, and toothache."
+    },
+    {
+      "id": "med-dolo-650",
+      "name": "Dolo 650",
+      "generic_name": "Paracetamol",
+      "brand_names": [
+        "Crocin",
+        "Calpol",
+        "Pacimol"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "purpose": "Fast-acting relief from high fever, viral body pain, and headache."
+    },
+    {
+      "id": "med-crocin-650",
+      "name": "Crocin 650",
+      "generic_name": "Paracetamol",
+      "brand_names": [
+        "Dolo",
+        "Calpol"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg",
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "purpose": "Reduces fever and temporarily relieves aches, pains, and throat soreness."
+    },
+    {
+      "id": "med-calpol-500",
+      "name": "Calpol 500",
+      "generic_name": "Paracetamol",
+      "brand_names": [
+        "Dolo",
+        "Crocin"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "250mg",
+        "500mg",
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "purpose": "Antipyretic and pain reliever for fever, cold symptoms, and immunization pain."
+    },
+    {
+      "id": "med-ibu-400",
+      "name": "Ibuprofen 400",
+      "generic_name": "Ibuprofen",
+      "brand_names": [
+        "Brufen 400",
+        "Advil",
+        "Motrin"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "200mg",
+        "400mg",
+        "600mg"
+      ],
+      "category": "NSAID Pain Reliever",
+      "purpose": "Reduces pain, swelling, and inflammation in arthritis, sprains, and dental pain."
+    },
+    {
+      "id": "med-combiflam",
+      "name": "Combiflam",
+      "generic_name": "Ibuprofen and Paracetamol",
+      "brand_names": [
+        "Flexon",
+        "Ibugesic Plus"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "400mg + 325mg"
+      ],
+      "category": "Combination NSAID",
+      "purpose": "Dual-action relief for muscular pain, joint inflammation, and fever."
+    },
+    {
+      "id": "med-meftal-spas",
+      "name": "Meftal-Spas",
+      "generic_name": "Mefenamic Acid and Dicyclomine",
+      "brand_names": [
+        "Colimex",
+        "Spasmonil"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "250mg + 10mg",
+        "500mg + 20mg"
+      ],
+      "category": "Antispasmodic & Analgesic",
+      "purpose": "Treatment of menstrual cramps, intestinal spasms, and abdominal colic."
+    },
+    {
+      "id": "med-aspirin-75",
+      "name": "Aspirin 75",
+      "generic_name": "Aspirin",
+      "brand_names": [
+        "Ecosprin 75",
+        "Disprin",
+        "Bayer"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "75mg",
+        "150mg",
+        "325mg"
+      ],
+      "category": "Antiplatelet & NSAID",
+      "purpose": "Cardiovascular protection, blood clot prevention, and minor pain relief."
+    },
+    {
+      "id": "med-ecosprin-150",
+      "name": "Ecosprin 150",
+      "generic_name": "Aspirin",
+      "brand_names": [
+        "Disprin",
+        "Loprin"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "75mg",
+        "150mg"
+      ],
+      "category": "Cardiovascular Antiplatelet",
+      "purpose": "Low-dose cardio protection against blood clots, heart attacks, and stroke."
+    },
+    {
+      "id": "med-amox-500",
+      "name": "Amoxicillin 500",
+      "generic_name": "Amoxicillin",
+      "brand_names": [
+        "Mox 500",
+        "Novamox 500",
+        "Amoxil"
+      ],
+      "dosage_form": "Capsule",
+      "strengths": [
+        "250mg",
+        "500mg"
+      ],
+      "category": "Penicillin Antibiotic",
+      "purpose": "Treatment of bacterial respiratory, throat, ear, and urinary tract infections."
+    },
+    {
+      "id": "med-augmentin-625",
+      "name": "Augmentin 625 Duo",
+      "generic_name": "Amoxicillin and Clavulanic Acid",
+      "brand_names": [
+        "Clavam 625",
+        "Moxikind-CV 625",
+        "Advent 625"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "375mg",
+        "625mg",
+        "1000mg"
+      ],
+      "category": "Broad-Spectrum Antibiotic",
+      "purpose": "Treatment of resistant bacterial infections of lungs, sinuses, skin, and urinary tract."
+    },
+    {
+      "id": "med-azithral-500",
+      "name": "Azithral 500",
+      "generic_name": "Azithromycin",
+      "brand_names": [
+        "Azee 500",
+        "Zithromax",
+        "Azimax 500"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "250mg",
+        "500mg"
+      ],
+      "category": "Macrolide Antibiotic",
+      "purpose": "Treatment of chest infections, pneumonia, sinusitis, strep throat, and skin infections."
+    },
+    {
+      "id": "med-azee-500",
+      "name": "Azee 500",
+      "generic_name": "Azithromycin",
+      "brand_names": [
+        "Azithral",
+        "Zithromax"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "250mg",
+        "500mg"
+      ],
+      "category": "Macrolide Antibiotic",
+      "purpose": "Bacterial respiratory tract infections, tonsillitis, and ear infections."
+    },
+    {
+      "id": "med-cifran-500",
+      "name": "Cifran 500",
+      "generic_name": "Ciprofloxacin",
+      "brand_names": [
+        "Ciplox 500",
+        "Cipro"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "250mg",
+        "500mg"
+      ],
+      "category": "Fluoroquinolone Antibiotic",
+      "purpose": "Treatment of severe bacterial urinary tract infections (UTIs) and infectious diarrhea."
+    },
+    {
+      "id": "med-doxy-100",
+      "name": "Doxycycline 100",
+      "generic_name": "Doxycycline",
+      "brand_names": [
+        "Doxt-SL",
+        "Doryx",
+        "Vibramycin"
+      ],
+      "dosage_form": "Capsule",
+      "strengths": [
+        "100mg"
+      ],
+      "category": "Tetracycline Antibiotic",
+      "purpose": "Treatment of bacterial acne, tick-borne infections, bronchitis, and traveler's diarrhea."
+    },
+    {
+      "id": "med-cefixime-200",
+      "name": "Cefixime 200",
+      "generic_name": "Cefixime",
+      "brand_names": [
+        "Taxim-O 200",
+        "Zifi 200",
+        "Suprax"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "100mg",
+        "200mg"
+      ],
+      "category": "Cephalosporin Antibiotic",
+      "purpose": "Oral third-generation cephalosporin for typhoid fever, ENT, and respiratory infections."
+    },
+    {
+      "id": "med-cetirizine-10",
+      "name": "Cetirizine 10",
+      "generic_name": "Cetirizine",
+      "brand_names": [
+        "Cetzine",
+        "Zyrtec",
+        "Okacet",
+        "Alerdice"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "5mg",
+        "10mg"
+      ],
+      "category": "Antihistamine",
+      "purpose": "Allergy relief for runny nose, sneezing, itchy watery eyes, and hives."
+    },
+    {
+      "id": "med-cetzine-10",
+      "name": "Cetzine 10",
+      "generic_name": "Cetirizine",
+      "brand_names": [
+        "Zyrtec",
+        "Okacet"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "10mg"
+      ],
+      "category": "Antihistamine",
+      "purpose": "Relief of allergic rhinitis, seasonal allergies, and itchy skin rashes."
+    },
+    {
+      "id": "med-allegra-120",
+      "name": "Allegra 120",
+      "generic_name": "Fexofenadine",
+      "brand_names": [
+        "Fexova",
+        "Telfast"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "60mg",
+        "120mg",
+        "180mg"
+      ],
+      "category": "Non-Drowsy Antihistamine",
+      "purpose": "Non-sedating allergy relief for hay fever, skin allergies, and urticaria."
+    },
+    {
+      "id": "med-levocet-5",
+      "name": "Levocetirizine 5",
+      "generic_name": "Levocetirizine",
+      "brand_names": [
+        "Vozet",
+        "L-Hist",
+        "Xyzal"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "5mg"
+      ],
+      "category": "Antihistamine",
+      "purpose": "Advanced relief for chronic allergic skin conditions and indoor/outdoor allergens."
+    },
+    {
+      "id": "med-montair-lc",
+      "name": "Montair LC",
+      "generic_name": "Montelukast and Levocetirizine",
+      "brand_names": [
+        "Telekast-L",
+        "Monticope"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "10mg + 5mg"
+      ],
+      "category": "Antiallergic & Bronchodilator",
+      "purpose": "Treatment of allergic rhinitis with associated asthma or airway hyper-reactivity."
+    },
+    {
+      "id": "med-pan-40",
+      "name": "Pan 40",
+      "generic_name": "Pantoprazole",
+      "brand_names": [
+        "Pantocid 40",
+        "Pantop 40",
+        "Protonix"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "20mg",
+        "40mg"
+      ],
+      "category": "Proton Pump Inhibitor (PPI)",
+      "purpose": "Treatment of acid reflux, heartburn, GERD, and stomach ulcer prevention."
+    },
+    {
+      "id": "med-pantocid-40",
+      "name": "Pantocid 40",
+      "generic_name": "Pantoprazole",
+      "brand_names": [
+        "Pan 40",
+        "Pantodac"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "20mg",
+        "40mg"
+      ],
+      "category": "Proton Pump Inhibitor (PPI)",
+      "purpose": "Reduces gastric acid to heal gastritis, esophagitis, and peptic ulcers."
+    },
+    {
+      "id": "med-omez-20",
+      "name": "Omez 20",
+      "generic_name": "Omeprazole",
+      "brand_names": [
+        "Prilosec",
+        "Omecid 20",
+        "Omizac"
+      ],
+      "dosage_form": "Capsule",
+      "strengths": [
+        "10mg",
+        "20mg",
+        "40mg"
+      ],
+      "category": "Proton Pump Inhibitor (PPI)",
+      "purpose": "Decreases excess stomach acid for severe heartburn, acid indigestion, and ulcer care."
+    },
+    {
+      "id": "med-razo-20",
+      "name": "Razo 20",
+      "generic_name": "Rabeprazole",
+      "brand_names": [
+        "Pariet",
+        "Rabicip"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "10mg",
+        "20mg"
+      ],
+      "category": "Proton Pump Inhibitor (PPI)",
+      "purpose": "Fast-acting suppression of stomach acid secretion in acid reflux disease."
+    },
+    {
+      "id": "med-digene-gel",
+      "name": "Digene Antacid",
+      "generic_name": "Magnesium Hydroxide and Aluminium Hydroxide",
+      "brand_names": [
+        "Gelusil",
+        "Mylanta"
+      ],
+      "dosage_form": "Syrup",
+      "strengths": [
+        "Liquid 200ml",
+        "Chewable Tablet"
+      ],
+      "category": "Antacid & Antigas",
+      "purpose": "Instant neutralizing relief from acidity, heartburn, gas, and stomach bloating."
+    },
+    {
+      "id": "med-gelusil-mps",
+      "name": "Gelusil MPS",
+      "generic_name": "Aluminium Hydroxide, Dimethicone and Magnesium Hydroxide",
+      "brand_names": [
+        "Digene"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "Chewable Tablet"
+      ],
+      "category": "Antacid & Antiflatulent",
+      "purpose": "Relieves acute hyperacidity, stomach sourness, and painful gas pressure."
+    },
+    {
+      "id": "med-glycomet-500",
+      "name": "Glycomet 500",
+      "generic_name": "Metformin",
+      "brand_names": [
+        "Glucophage",
+        "Glyciphage",
+        "Riomet"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "250mg",
+        "500mg",
+        "850mg",
+        "1000mg"
+      ],
+      "category": "Oral Antidiabetic",
+      "purpose": "Blood sugar regulation in patients with type 2 diabetes mellitus."
+    },
+    {
+      "id": "med-metformin-850",
+      "name": "Metformin 850",
+      "generic_name": "Metformin",
+      "brand_names": [
+        "Glycomet",
+        "Glucophage"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg",
+        "850mg",
+        "1000mg"
+      ],
+      "category": "Oral Antidiabetic",
+      "purpose": "Improves cellular insulin sensitivity and lowers hepatic glucose production."
+    },
+    {
+      "id": "med-glimepiride-2",
+      "name": "Glimepiride 2",
+      "generic_name": "Glimepiride",
+      "brand_names": [
+        "Amaryl",
+        "Glimy",
+        "Zoryl"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "1mg",
+        "2mg",
+        "3mg",
+        "4mg"
+      ],
+      "category": "Sulfonylurea Antidiabetic",
+      "purpose": "Stimulates pancreatic insulin secretion to lower high blood glucose."
+    },
+    {
+      "id": "med-januvia-100",
+      "name": "Januvia 100",
+      "generic_name": "Sitagliptin",
+      "brand_names": [
+        "Zita",
+        "Janumet"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "25mg",
+        "50mg",
+        "100mg"
+      ],
+      "category": "DPP-4 Inhibitor",
+      "purpose": "Enhances incretin hormone levels to stabilize post-meal blood sugar."
+    },
+    {
+      "id": "med-forxiga-10",
+      "name": "Forxiga 10",
+      "generic_name": "Dapagliflozin",
+      "brand_names": [
+        "Farxiga",
+        "Oxra"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "5mg",
+        "10mg"
+      ],
+      "category": "SGLT2 Inhibitor",
+      "purpose": "Excretes excess glucose through urine, providing cardiovascular and kidney protection."
+    },
+    {
+      "id": "med-atorva-10",
+      "name": "Atorva 10",
+      "generic_name": "Atorvastatin",
+      "brand_names": [
+        "Lipitor",
+        "Atocor",
+        "Storvas"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "10mg",
+        "20mg",
+        "40mg",
+        "80mg"
+      ],
+      "category": "Statin Lipid-Lowering",
+      "purpose": "Lowers bad cholesterol (LDL) and triglycerides; reduces stroke and heart attack risk."
+    },
+    {
+      "id": "med-rosuvas-10",
+      "name": "Rosuvas 10",
+      "generic_name": "Rosuvastatin",
+      "brand_names": [
+        "Crestor",
+        "Rosulip"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "5mg",
+        "10mg",
+        "20mg"
+      ],
+      "category": "Statin Lipid-Lowering",
+      "purpose": "Potent cholesterol management and prevention of coronary atherosclerosis."
+    },
+    {
+      "id": "med-telma-40",
+      "name": "Telma 40",
+      "generic_name": "Telmisartan",
+      "brand_names": [
+        "Micardis",
+        "Telmikind"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "20mg",
+        "40mg",
+        "80mg"
+      ],
+      "category": "Angiotensin Receptor Blocker (ARB)",
+      "purpose": "Treats hypertension (high blood pressure) and protects kidney function."
+    },
+    {
+      "id": "med-amlodipine-5",
+      "name": "Amlodipine 5",
+      "generic_name": "Amlodipine",
+      "brand_names": [
+        "Norvasc",
+        "Amlong",
+        "Stamlo"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "2.5mg",
+        "5mg",
+        "10mg"
+      ],
+      "category": "Calcium Channel Blocker",
+      "purpose": "Relaxes vascular smooth muscle to lower blood pressure and control angina chest pain."
+    },
+    {
+      "id": "med-metoprolol-50",
+      "name": "Metoprolol 50",
+      "generic_name": "Metoprolol",
+      "brand_names": [
+        "Betaloc",
+        "Lopressor",
+        "Metolar"
+      ],
+      "dosage_form": "Tablet",
+      "strengths": [
+        "25mg",
+        "50mg",
+        "100mg"
+      ],
+      "category": "Beta-Blocker",
+      "purpose": "Lowers heart rate and blood pressure; treats arrhythmias and post-infarction recovery."
+    },
+    {
+      "id": "med-ascoril-d",
+      "name": "Ascoril D Plus",
+      "generic_name": "Dextromethorphan and Chlorpheniramine",
+      "brand_names": [
+        "Benadryl DR",
+        "TusQ-DX"
+      ],
+      "dosage_form": "Syrup",
+      "strengths": [
+        "100ml Syrup"
+      ],
+      "category": "Cough Suppressant",
+      "purpose": "Symptomatic relief of dry hacking cough, throat tickle, and throat irritation."
+    },
+    {
+      "id": "med-benadryl",
+      "name": "Benadryl Cough Formula",
+      "generic_name": "Diphenhydramine and Ammonium Chloride",
+      "brand_names": [
+        "Cofsil"
+      ],
+      "dosage_form": "Syrup",
+      "strengths": [
+        "100ml Syrup"
+      ],
+      "category": "Cough Expectorant",
+      "purpose": "Relieves chest congestion, thins mucous, and soothes irritating coughs."
+    },
+    {
+      "id": "med-asthalin-inhaler",
+      "name": "Asthalin Inhaler",
+      "generic_name": "Salbutamol",
+      "brand_names": [
+        "Ventolin",
+        "Albuterol"
+      ],
+      "dosage_form": "Inhaler",
+      "strengths": [
+        "100mcg/puff"
+      ],
+      "category": "Bronchodilator",
+      "purpose": "Rapid rescue bronchodilator for acute asthma attacks, wheezing, and COPD flare-ups."
+    },
+    {
+      "id": "med-budecort-200",
+      "name": "Budecort 200",
+      "generic_name": "Budesonide",
+      "brand_names": [
+        "Pulmicort"
+      ],
+      "dosage_form": "Inhaler",
+      "strengths": [
+        "100mcg",
+        "200mcg"
+      ],
+      "category": "Inhaled Corticosteroid",
+      "purpose": "Daily maintenance controller inhaler to prevent bronchial inflammation and asthma symptoms."
     }
   ]
 }

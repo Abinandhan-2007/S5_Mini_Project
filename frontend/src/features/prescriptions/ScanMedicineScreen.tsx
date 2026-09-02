@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
 import { apiFetch } from '../../lib/apiFetch';
-import type { ScanMatchResponse, ScanMatchResult, DrugInfoData } from '../../lib/types';
+import type { ScanMatchResponse, ScanMatchResult, DrugInfoData, MedicineSearchResultItem } from '../../lib/types';
+import { MedicineAutocompleteInput } from '../../components/medicines/MedicineAutocompleteInput';
 import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
@@ -42,6 +43,7 @@ export const ScanMedicineScreen: React.FC = () => {
   const [candidateDrugInfo, setCandidateDrugInfo] = useState<DrugInfoData | null>(null);
   const [isLoadingDrugInfo, setIsLoadingDrugInfo] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [editableQuery, setEditableQuery] = useState('');
   const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
 
   // Sync prescriptions on mount
@@ -149,6 +151,8 @@ export const ScanMedicineScreen: React.FC = () => {
       if (res.ok) {
         const data: ScanMatchResponse = await res.json();
         setScanResult(data);
+        const prefill = data.match?.drugName || data.extractedText || '';
+        setEditableQuery(prefill);
       } else {
         const errData = await res.json().catch(() => ({}));
         setErrorNotice(errData?.detail || 'Failed to process image. Please try again.');
@@ -202,12 +206,63 @@ export const ScanMedicineScreen: React.FC = () => {
     }
   };
 
+  // When user refines or confirms a near-miss medication from autocomplete
+  const handleSelectFromAutocomplete = (item: MedicineSearchResultItem) => {
+    setEditableQuery(item.name);
+
+    // Cross-reference against active prescriptions
+    const matchedPrescription = prescriptions.find((p) => {
+      const pName = (p.drugName || '').toLowerCase();
+      const sName = item.name.toLowerCase();
+      const sGen = (item.generic_name || '').toLowerCase();
+      return (
+        pName.includes(sName) ||
+        sName.includes(pName) ||
+        pName.includes(sGen) ||
+        sGen.includes(pName)
+      );
+    });
+
+    if (matchedPrescription) {
+      const confirmedCandidate: ScanMatchResult = {
+        id: matchedPrescription.id,
+        drugName: matchedPrescription.drugName,
+        dosage: matchedPrescription.dosage,
+        frequency: matchedPrescription.frequency,
+        mealTiming: matchedPrescription.mealTiming ?? undefined,
+        prescriber: matchedPrescription.prescriber,
+        confidence: 0.95,
+      };
+
+      setScanResult({
+        status: 'SUCCESS',
+        matchType: 'HIGH_CONFIDENCE',
+        confidence: 0.95,
+        message: 'Verified from your active prescriptions.',
+        extractedText: item.name,
+        match: confirmedCandidate,
+      });
+
+      handleSelectCandidate(confirmedCandidate);
+    } else {
+      setSelectedCandidate(null);
+      setScanResult({
+        status: 'NO_MATCH',
+        matchType: 'NO_MATCH',
+        confidence: 0.0,
+        message: `"${item.name}" was selected, but it does not match any of your active prescriptions.`,
+        extractedText: item.name,
+      });
+    }
+  };
+
   const handleResetScan = () => {
     setImagePreview(null);
     setScanResult(null);
     setSelectedCandidate(null);
     setCandidateDrugInfo(null);
     setErrorNotice(null);
+    setEditableQuery('');
   };
 
   return (
@@ -579,6 +634,27 @@ export const ScanMedicineScreen: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Typo-Tolerant Near-Miss Autocomplete Correction */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-2 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Near-Miss OCR? Refine Tablet Name:</span>
+                    </span>
+                    {scanResult.extractedText && (
+                      <span className="text-[10.5px] text-slate-400 font-mono">
+                        OCR: "{scanResult.extractedText.slice(0, 16)}"
+                      </span>
+                    )}
+                  </div>
+                  <MedicineAutocompleteInput
+                    value={editableQuery}
+                    onChange={setEditableQuery}
+                    onSelect={handleSelectFromAutocomplete}
+                    placeholder="Type to search and confirm medicine..."
+                  />
+                </div>
+
                 {/* If user hasn't selected a candidate yet -> show candidate list */}
                 {!selectedCandidate ? (
                   <div className="space-y-2.5 text-left">
@@ -777,6 +853,22 @@ export const ScanMedicineScreen: React.FC = () => {
                     </p>
                   </div>
                 )}
+
+                {/* Search & Correct Medication Name */}
+                <div className="bg-[#F8FAFC] border border-slate-200/90 rounded-2xl p-4 space-y-2 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Was the packaging text misread? Try typing its name:</span>
+                    </span>
+                  </div>
+                  <MedicineAutocompleteInput
+                    value={editableQuery}
+                    onChange={setEditableQuery}
+                    onSelect={handleSelectFromAutocomplete}
+                    placeholder="Search by tablet name (e.g. Amoxicillin, Paracetamol)..."
+                  />
+                </div>
 
                 {/* Action Buttons */}
                 <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">

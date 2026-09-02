@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "CarePulse v1.9.1: Native Android Camera & Gallery permissions, strict OpenFDA active drug search, and active prescription verification filter.",
+  "release_notes": "CarePulse v1.9.2: Executive UI overhaul across Home, Booking & BottomNav, interactive HistoryScreen timeline, Doctor Consultation & Diagnosis entry, and Receptionist Desk date sorting.",
   "released_at": "2026-09-02"
 }

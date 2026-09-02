@@ -171,8 +171,6 @@ export const DEFAULT_MOCK_VISITS: VisitRecord[] = [
   },
 ];
 
-type TimeFilter = 'All' | 'This Month' | 'Last 3 Months' | 'This Year';
-
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   visits: propVisits,
   onSelectVisit,

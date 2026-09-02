@@ -4,7 +4,6 @@ import { ShieldAlert, Send, Sparkles, RefreshCw, ClipboardCheck, Bell, AlertTria
 
 import { BottomNav } from '../../components/ui/BottomNav';
 import { ChatBubble } from '../../components/ui/ChatBubble';
-import { Badge } from '../../components/ui/Badge';
 import { ConfidenceBadge } from '../../components/ui/ConfidenceBadge';
 import { useCarePulseStore } from '../../lib/store';
 

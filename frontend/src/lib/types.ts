@@ -82,8 +82,8 @@ export interface Appointment {
   hospitalName: string;
   date: string; // ISO date string e.g. "2026-08-10"
   timeSlot: string; // e.g. "10:30 AM"
-  type: 'In-Person' | 'Telehealth';
-  status: 'Upcoming' | 'Completed' | 'Cancelled';
+  type: 'In-Person' | 'Telehealth' | 'Follow-up';
+  status: 'Upcoming' | 'Completed' | 'Cancelled' | 'Scheduled' | 'Confirmed' | 'In-Progress';
   daysLeftText?: string;
 }
 
@@ -139,12 +139,32 @@ export interface ScanMatchResponse {
 export interface MedicineInfoLookupResponse {
   status: 'FOUND' | 'UNCLEAR_TEXT' | 'NO_INFO_AVAILABLE';
   drugName: string;
+  genericName?: string | null;
   extractedText: string;
   purpose: string;
   indicationsAndUsage?: string;
   summary: string;
   source: string;
   disclaimer?: string;
+}
+
+export interface MedicineSearchResultItem {
+  id: string;
+  name: string;
+  generic_name: string;
+  dosage_form?: string;
+  strengths?: string[];
+  category?: string;
+  purpose?: string;
+  match_type: 'exact' | 'prefix' | 'contains' | 'fuzzy';
+  similarity_score: number;
+}
+
+export interface MedicineSearchResponse {
+  query: string;
+  total: number;
+  did_you_mean?: string | null;
+  matches: MedicineSearchResultItem[];
 }
 
 
@@ -185,7 +205,7 @@ export interface MedicalHistoryItem {
   hospitalName: string;
   diagnosis: string;
   prescriptionDetails: string;
-  status: 'Completed' | 'Follow-up Required' | 'Upcoming' | 'Cancelled';
+  status: 'Completed' | 'Follow-up Required' | 'Upcoming' | 'Cancelled' | 'Scheduled' | 'Confirmed' | 'In-Progress';
   specialtyIcon?: 'heart' | 'stethoscope' | 'bandage' | 'bone' | 'eye' | 'calendar';
 }
 

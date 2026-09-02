@@ -9,11 +9,6 @@ import {
   Loader2,
   X,
   Bell,
-  Building2,
-  Heart,
-  Stethoscope,
-  Baby,
-  Activity,
   ArrowUpDown,
   ChevronDown,
   Check,
@@ -69,13 +64,10 @@ export const FindHospitalsScreen: React.FC = () => {
   const [hospitals, setHospitals] = useState<Hospital[]>(MOCK_HOSPITALS);
   const [doctors, setDoctors] = useState<Doctor[]>(MOCK_DOCTORS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All Facilities');
   const [isLocating, setIsLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<HospitalSortOption>('rating');
   const [isSortOpen, setIsSortOpen] = useState(false);
-
-  const categories = ['All Facilities', 'Cardiology', 'General', 'Pediatrics', 'Specialty Clinic'];
 
   // Load hospitals & doctors from database
   useEffect(() => {

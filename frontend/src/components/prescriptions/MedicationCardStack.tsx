@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, type PanInfo } from 'framer-motion';
 import {
   Pill,
@@ -8,7 +7,6 @@ import {
   Building2,
   Calendar,
   ChevronRight,
-  Camera,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -360,7 +358,6 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   onSelectMedication,
   onMarkTaken,
 }) => {
-  const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const [takenSlotsMap, setTakenSlotsMap] = useState<
     Record<string, { date: string; slots: Record<string, string> }>

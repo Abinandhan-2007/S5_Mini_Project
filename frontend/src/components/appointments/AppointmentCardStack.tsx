@@ -5,9 +5,6 @@ import {
   User as UserIcon,
   Building2,
   Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  Layers,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Avatar } from '../ui/Avatar';
@@ -73,7 +70,7 @@ export const SAMPLE_APPOINTMENTS: Appointment[] = [
 export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
   appointments = [],
   onViewDetails,
-  onScheduleNew,
+  onScheduleNew: _onScheduleNew,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);

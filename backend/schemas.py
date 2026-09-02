@@ -329,16 +329,39 @@ class MedicineInfoLookupRequest(BaseModel):
     ocr_text: Optional[str] = None
     drugName: Optional[str] = None
     drug_name: Optional[str] = None
+    genericName: Optional[str] = None
+    generic_name: Optional[str] = None
+    medicineId: Optional[str] = None
+    medicine_id: Optional[str] = None
 
 class MedicineInfoLookupResponse(BaseModel):
     status: str  # FOUND, UNCLEAR_TEXT, NO_INFO_AVAILABLE
     drugName: str
+    genericName: Optional[str] = None
     extractedText: str
     purpose: str
     indicationsAndUsage: Optional[str] = ""
     summary: str
     source: str
     disclaimer: Optional[str] = "General Information Only — This is NOT a verification against your prescriptions. For personal dosage instructions, use 'Check My Prescription'."
+
+class MedicineSearchResultItem(BaseModel):
+    id: str
+    name: str
+    generic_name: str
+    dosage_form: Optional[str] = "Tablet"
+    strengths: List[str] = []
+    category: Optional[str] = "General"
+    purpose: Optional[str] = ""
+    match_type: str = "fuzzy"  # exact, prefix, contains, fuzzy
+    similarity_score: float = 0.0
+
+class MedicineSearchResponse(BaseModel):
+    query: str
+    total: int
+    did_you_mean: Optional[str] = None
+    matches: List[MedicineSearchResultItem] = []
+
 
 
 
