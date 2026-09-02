@@ -60,10 +60,16 @@ from schemas import (
     DeviceTokenRequest,
     AppointmentCancelRequest,
     TokenStatusUpdate,
+    ScanMatchRequest,
+    ScanMatchResponse,
+    PrescriptionMatchedItem,
+    DrugInfoSchema,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
+from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription
+from services.drug_info_service import get_drug_info
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
@@ -1907,7 +1913,7 @@ def get_patient_prescriptions(patient_id: str):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, patient_id, drug_name, dosage, frequency, prescriber, icon_type, created_at
+                    SELECT id, patient_id, drug_name, dosage, frequency, meal_timing, prescriber, icon_type, created_at
                     FROM prescriptions
                     WHERE patient_id::text = %s
                     ORDER BY created_at DESC
@@ -1923,6 +1929,7 @@ def get_patient_prescriptions(patient_id: str):
                         "drugName": r["drug_name"],
                         "dosage": r.get("dosage") or "",
                         "frequency": r.get("frequency") or "",
+                        "mealTiming": r.get("meal_timing") or "As directed",
                         "prescriber": r.get("prescriber") or "Treating Physician",
                         "iconType": r.get("icon_type") or "pill",
                         "createdAt": str(r.get("created_at") or "")
@@ -1938,6 +1945,7 @@ def get_patient_prescriptions(patient_id: str):
                 "drugName": r.get("drug_name") or r.get("drugName"),
                 "dosage": r.get("dosage", ""),
                 "frequency": r.get("frequency", ""),
+                "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
                 "prescriber": r.get("prescriber", "Treating Physician"),
                 "iconType": r.get("icon_type") or r.get("iconType", "pill"),
                 "createdAt": str(r.get("created_at", ""))
@@ -1945,6 +1953,117 @@ def get_patient_prescriptions(patient_id: str):
             for r in rx_list
             if (r.get("patient_id") or r.get("patientId")) and str(r.get("patient_id") or r.get("patientId")).strip() == str(patient_id).strip()
         ]
+
+
+@app.post("/api/prescriptions/scan-match", response_model=ScanMatchResponse)
+def scan_and_match_prescription(
+    req: ScanMatchRequest,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Patient Safety Scan: Extracts packaging text via offline OCR (Tesseract)
+    and fuzzy matches against ONLY the authenticated patient's own prescription records.
+    If matched with high confidence, fetches supplementary OpenFDA medication purpose/use.
+    """
+    # 1. Authoritative patient identification & scoping
+    patient_id = None
+    if authorization:
+        payload = decode_patient_jwt(authorization)
+        if payload:
+            patient_id = payload.get("patient_id") or payload.get("sub")
+    if not patient_id and (req.patientId or req.patient_id):
+        patient_id = (req.patientId or req.patient_id).strip()
+
+    if not patient_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please provide a valid patient session or patient ID."
+        )
+
+    # 2. Retrieve ONLY this patient's stored prescriptions (Strict Isolation)
+    patient_rx_list = []
+    if database.use_pg:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, patient_id, drug_name, dosage, frequency, meal_timing, prescriber, icon_type
+                    FROM prescriptions
+                    WHERE patient_id::text = %s
+                    ORDER BY created_at DESC
+                    """,
+                    (str(patient_id).strip(),)
+                )
+                rows = cur.fetchall()
+                for r in rows:
+                    patient_rx_list.append({
+                        "id": str(r["id"]),
+                        "patient_id": str(r["patient_id"]),
+                        "drug_name": r["drug_name"],
+                        "dosage": r.get("dosage") or "",
+                        "frequency": r.get("frequency") or "",
+                        "meal_timing": r.get("meal_timing") or "As directed",
+                        "prescriber": r.get("prescriber") or "Treating Physician",
+                        "icon_type": r.get("icon_type") or "pill"
+                    })
+    else:
+        db = read_json_db()
+        for r in db.get("prescriptions", []):
+            r_pid = str(r.get("patient_id") or r.get("patientId") or "").strip()
+            if r_pid == str(patient_id).strip():
+                patient_rx_list.append({
+                    "id": str(r.get("id")),
+                    "patient_id": r_pid,
+                    "drug_name": r.get("drug_name") or r.get("drugName") or "",
+                    "dosage": r.get("dosage") or "",
+                    "frequency": r.get("frequency") or "",
+                    "meal_timing": r.get("meal_timing") or r.get("mealTiming") or "As directed",
+                    "prescriber": r.get("prescriber") or "Treating Physician",
+                    "icon_type": r.get("icon_type") or r.get("iconType") or "pill"
+                })
+
+    # 3. OCR Text Extraction
+    extracted_text = ""
+    if req.ocrText or req.ocr_text:
+        extracted_text = (req.ocrText or req.ocr_text).strip()
+    elif req.image:
+        extracted_text = extract_text_from_image(req.image)
+
+    # 4. Fuzzy Matching against patient's prescriptions
+    match_result = fuzzy_match_prescription(extracted_text, patient_rx_list)
+
+    # 5. For HIGH_CONFIDENCE match, fetch OpenFDA drug background (supplementary)
+    drug_info_data = None
+    if match_result.get("match_type") == "HIGH_CONFIDENCE" and match_result.get("match"):
+        matched_drug = match_result["match"]["drugName"]
+        try:
+            drug_info_data = get_drug_info(matched_drug)
+            match_result["match"]["drugInfo"] = drug_info_data
+        except Exception as e:
+            logger.warning(f"Error fetching OpenFDA drug info: {e}")
+
+    return ScanMatchResponse(
+        status=match_result.get("status", "NO_MATCH"),
+        matchType=match_result.get("match_type", "NO_MATCH"),
+        confidence=match_result.get("confidence", 0.0),
+        message=match_result.get("message", ""),
+        extractedText=match_result.get("extracted_text", ""),
+        match=match_result.get("match"),
+        matches=match_result.get("matches") or [],
+        drugInfo=drug_info_data
+    )
+
+
+@app.get("/api/prescriptions/drug-info", response_model=DrugInfoSchema)
+def get_medication_drug_info(drug_name: str):
+    """
+    Public OpenFDA drug background informational endpoint.
+    Retrieves purpose, indications & usage with safe fallbacks and caching.
+    """
+    if not drug_name or not drug_name.strip():
+        raise HTTPException(status_code=400, detail="drug_name parameter is required.")
+    return get_drug_info(drug_name.strip())
+
 
 
 @app.get("/api/consultations/patient/{patient_id}")

@@ -92,9 +92,45 @@ export interface Prescription {
   drugName: string;
   dosage: string;
   frequency: string;
+  mealTiming?: string | null;
   prescriber: string;
   iconType: 'pill' | 'syrup' | 'capsule';
+  patientId?: string;
+  createdAt?: string;
 }
+
+export interface DrugInfoData {
+  drug_name: string;
+  found: boolean;
+  purpose: string;
+  indications_and_usage?: string;
+  summary: string;
+  source: string;
+}
+
+export interface ScanMatchResult {
+  id: string;
+  drugName: string;
+  dosage: string;
+  frequency: string;
+  mealTiming?: string;
+  prescriber?: string;
+  iconType?: string;
+  confidence: number;
+  drugInfo?: DrugInfoData | null;
+}
+
+export interface ScanMatchResponse {
+  status: 'SUCCESS' | 'AMBIGUOUS' | 'NO_MATCH' | 'UNREADABLE';
+  matchType: 'HIGH_CONFIDENCE' | 'AMBIGUOUS' | 'NO_MATCH';
+  confidence: number;
+  message: string;
+  extractedText: string;
+  match?: ScanMatchResult | null;
+  matches?: ScanMatchResult[];
+  drugInfo?: DrugInfoData | null;
+}
+
 
 export interface ChatMessage {
   id: string;

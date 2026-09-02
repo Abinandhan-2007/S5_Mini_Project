@@ -237,6 +237,81 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$NOcHrituzYGpHC7sppOze.MC6aS5qk9onSSDopvEqbrp9WIdgWrSy",
       "auth_provider": "local"
+    },
+    {
+      "id": "8c06dc0b-6762-498b-9be5-ffd698ae86e7",
+      "patient_code": "P000017",
+      "patientCode": "P000017",
+      "full_name": "Test New Patient df62c220",
+      "email": "patient_df62c220@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$eSa3fZRUjbtktwbszpWDkuFt.fq7qXtZaIHcJwWX2Vkxl6WeEaT7u",
+      "auth_provider": "local"
+    },
+    {
+      "id": "cfa53df8-6922-42cd-a094-ecb74a1f18bb",
+      "patient_code": "P000018",
+      "patientCode": "P000018",
+      "full_name": "Isolated Patient 220c1a1d",
+      "email": "patient_220c1a1d@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$KxnHIefhRqEO/GZFPYuREuxTPQdGhlCDEOGa79TCdHio.QJGhr7O.",
+      "auth_provider": "local"
+    },
+    {
+      "id": "b2608cb8-3a03-47bf-afcd-be9737d70cba",
+      "patient_code": "P000019",
+      "patientCode": "P000019",
+      "full_name": "Isolated Patient eebdb717",
+      "email": "patient_eebdb717@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$lMOz9NuKIbCWQG3QMb7uD.M2YJkIviMiAntAiT2rOibs2v3QBd28y",
+      "auth_provider": "local"
+    },
+    {
+      "id": "7b0016e2-212c-4e8d-959a-00d623540196",
+      "patient_code": "P000020",
+      "patientCode": "P000020",
+      "full_name": "Test New Patient fac0d170",
+      "email": "patient_fac0d170@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$iG450rYCH5IPUwpplJ5cM.SJE2/JO5CJ/63lQBXRihpALWEggD3gK",
+      "auth_provider": "local"
+    },
+    {
+      "id": "9346345f-feb6-4bf7-997c-6752b56ed01c",
+      "patient_code": "P000021",
+      "patientCode": "P000021",
+      "full_name": "Isolated Patient fef1bac6",
+      "email": "patient_fef1bac6@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$hVNQH1va5R7WFH3JEuvfYO3JgRqoYhJSwZ6A7QNkPi1.LsCrnu4WW",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -831,13 +906,13 @@
       "name": "Emily Watson",
       "email": "rec",
       "username": "rec",
-      "password": "$2b$12$.kssNPdCpVgTWnqC1DIS6.24S9Z5s879OHwY0lhTjI0YcZUXpcGAm",
+      "password": "$2b$12$S4alYKUpx4caBgCudJ.c3uGyb363I7XeGi0aofOrBXUW5/pf5ExUi",
       "role": "receptionist",
       "department": "Main Reception & OPD Queue",
       "hospital_id": "hosp-1",
       "hospitalId": "hosp-1",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
-      "password_hash": "$2b$12$.kssNPdCpVgTWnqC1DIS6.24S9Z5s879OHwY0lhTjI0YcZUXpcGAm",
+      "password_hash": "$2b$12$S4alYKUpx4caBgCudJ.c3uGyb363I7XeGi0aofOrBXUW5/pf5ExUi",
       "staff_code": "R001101",
       "staffCode": "R001101"
     },
@@ -1324,6 +1399,52 @@
       "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
       "assignedDoctorsCount": 2,
       "joinDate": "2026-08-17"
+    }
+  ],
+  "prescriptions": [
+    {
+      "id": "rx-amox-001",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Amoxicillin",
+      "dosage": "500mg",
+      "frequency": "Three times daily",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Olivia Wilson",
+      "icon_type": "capsule",
+      "created_at": "2026-08-15 10:30:00"
+    },
+    {
+      "id": "rx-cet-002",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Cetirizine",
+      "dosage": "10mg",
+      "frequency": "Once daily at bedtime",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Olivia Wilson",
+      "icon_type": "pill",
+      "created_at": "2026-08-16 11:00:00"
+    },
+    {
+      "id": "rx-pcm-003",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Paracetamol",
+      "dosage": "650mg",
+      "frequency": "As needed for fever",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Marilyn Stanton",
+      "icon_type": "pill",
+      "created_at": "2026-08-17 09:15:00"
+    },
+    {
+      "id": "rx-met-004",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Metformin",
+      "dosage": "500mg",
+      "frequency": "Twice daily",
+      "meal_timing": "With Food",
+      "prescriber": "Dr. Johan Janson",
+      "icon_type": "pill",
+      "created_at": "2026-08-18 14:20:00"
     }
   ]
 }

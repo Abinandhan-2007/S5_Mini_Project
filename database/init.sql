@@ -290,10 +290,12 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     drug_name VARCHAR(255) NOT NULL,
     dosage VARCHAR(100),
     frequency VARCHAR(100),
+    meal_timing VARCHAR(50) DEFAULT NULL,
     prescriber VARCHAR(255),
     icon_type VARCHAR(20) DEFAULT 'pill',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS meal_timing VARCHAR(50) DEFAULT NULL;
 CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_id ON prescriptions(patient_id);
 
 -- Receptionist Desks Table
@@ -382,6 +384,14 @@ VALUES (
     'In-Person',
     'Upcoming'
 ) ON CONFLICT DO NOTHING;
+
+INSERT INTO prescriptions (patient_id, drug_name, dosage, frequency, meal_timing, prescriber, icon_type)
+VALUES
+    ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Amoxicillin', '500mg', 'Three times daily', 'After Food', 'Dr. Olivia Wilson', 'capsule'),
+    ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Cetirizine', '10mg', 'Once daily at bedtime', 'After Food', 'Dr. Olivia Wilson', 'pill'),
+    ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Paracetamol', '650mg', 'As needed for pain/fever', 'After Food', 'Dr. Marilyn Stanton', 'pill'),
+    ('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', 'Metformin', '500mg', 'Twice daily', 'With Food', 'Dr. Johan Janson', 'pill')
+ON CONFLICT DO NOTHING;
 
 -- Password Reset OTPs Table (Firebase / PostgreSQL Integration)
 CREATE TABLE IF NOT EXISTS password_reset_otps (

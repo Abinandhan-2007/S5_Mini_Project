@@ -8,6 +8,9 @@ import {
   Search,
   Bell,
   Plus,
+  Camera,
+  Utensils,
+  Sparkles,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -22,6 +25,7 @@ export interface PrescribedMedicine {
   dosage: string;
   instructions: string;
   duration: string;
+  mealTiming?: string;
 }
 
 export interface DoctorPrescriptionGroup {
@@ -69,6 +73,7 @@ export const PrescriptionsScreen: React.FC = () => {
           dosage: rx.dosage || 'As directed',
           instructions: rx.frequency || 'Follow doctor advice',
           duration: 'Standard Course',
+          mealTiming: rx.mealTiming || undefined,
         });
       });
 
@@ -150,14 +155,25 @@ export const PrescriptionsScreen: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={() => navigate('/notifications')}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"
-            aria-label="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-300 ring-2 ring-[#1FA2AC]" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/prescriptions/scan')}
+              className="px-3 py-1.5 rounded-full bg-white text-[#0B5A54] hover:bg-teal-50 text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              title="Scan Medicine with Camera"
+            >
+              <Camera className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span className="hidden sm:inline">Scan Medicine</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/notifications')}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-300 ring-2 ring-[#1FA2AC]" />
+            </button>
+          </div>
         </div>
 
         {/* Search Pill Input */}
@@ -177,6 +193,34 @@ export const PrescriptionsScreen: React.FC = () => {
 
       {/* MAIN CONTENT AREA */}
       <main className="px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-5xl mx-auto w-full">
+        {/* SCAN MEDICINE SAFETY HERO BANNER */}
+        <div className="bg-gradient-to-r from-[#0B5A54] via-[#14837A] to-[#0B5A54] rounded-3xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 text-left min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+              <Camera className="w-6 h-6 text-white" />
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black tracking-tight">Unsure about a loose pill or strip?</h3>
+                <span className="bg-amber-300 text-teal-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+                  Safety Tool
+                </span>
+              </div>
+              <p className="text-xs text-teal-100 font-medium leading-snug">
+                Scan your tablet packaging with your camera to identify correct food timing and dosage.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/prescriptions/scan')}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white text-[#0B5A54] hover:bg-teal-50 text-xs font-black shadow-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#14B8A6]" />
+            <span>Scan Medicine</span>
+          </button>
+        </div>
+
         {/* Filter Chips Bar */}
         {dynamicGroups.length > 0 && (
           <div className="flex items-center justify-between gap-2">
@@ -298,7 +342,7 @@ export const PrescriptionsScreen: React.FC = () => {
                   {grp.medicines.map((med) => (
                     <div
                       key={med.id}
-                      className="bg-[#F8FAFC] rounded-2xl p-3.5 border border-slate-100 flex items-center justify-between gap-3 hover:bg-[#F1F5F9] transition-colors"
+                      className="bg-[#F8FAFC] rounded-2xl p-3.5 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#F1F5F9] transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-[#0B5A54] flex items-center justify-center shrink-0 shadow-2xs">
@@ -314,9 +358,17 @@ export const PrescriptionsScreen: React.FC = () => {
                         </div>
                       </div>
 
-                      <span className="text-[10px] font-extrabold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-xl shrink-0">
-                        {med.duration}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                        {med.mealTiming && (
+                          <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] border border-[#14B8A6]/30 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                            <Utensils className="w-3 h-3" />
+                            <span>{med.mealTiming}</span>
+                          </span>
+                        )}
+                        <span className="text-[10px] font-extrabold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-xl">
+                          {med.duration}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

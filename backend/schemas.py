@@ -287,5 +287,42 @@ class DeviceTokenRequest(BaseModel):
 class AppointmentCancelRequest(BaseModel):
     reason: Optional[str] = "Patient requested cancellation"
 
+class ScanMatchRequest(BaseModel):
+    image: Optional[str] = None
+    ocrText: Optional[str] = None
+    ocr_text: Optional[str] = None
+    patientId: Optional[str] = None
+    patient_id: Optional[str] = None
+
+class DrugInfoSchema(BaseModel):
+    drug_name: str
+    found: bool
+    purpose: str
+    indications_and_usage: Optional[str] = ""
+    summary: str
+    source: str
+
+class PrescriptionMatchedItem(BaseModel):
+    id: str
+    drugName: str
+    dosage: str
+    frequency: str
+    mealTiming: Optional[str] = "As directed"
+    prescriber: Optional[str] = "Treating Physician"
+    iconType: Optional[str] = "pill"
+    confidence: float
+    drugInfo: Optional[DrugInfoSchema] = None
+
+class ScanMatchResponse(BaseModel):
+    status: str
+    matchType: str
+    confidence: float
+    message: str
+    extractedText: str
+    match: Optional[PrescriptionMatchedItem] = None
+    matches: List[PrescriptionMatchedItem] = []
+    drugInfo: Optional[DrugInfoSchema] = None
+
+
 
 

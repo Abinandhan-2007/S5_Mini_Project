@@ -18,6 +18,10 @@ import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
+import { ScanMedicineScreen } from '../features/prescriptions/ScanMedicineScreen';
+
+
+
 import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
 import { DoctorLayout } from '../portals/doctor/DoctorLayout';
 import { AdminLayout } from '../portals/admin/AdminLayout';
@@ -222,6 +226,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <PageTransition>
               <PrescriptionsScreen />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/prescriptions/scan"
+          element={
+            <PageTransition>
+              <ScanMedicineScreen />
             </PageTransition>
           }
         />
