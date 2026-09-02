@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "CarePulse v1.9.2: Executive UI overhaul across Home, Booking & BottomNav, interactive HistoryScreen timeline, Doctor Consultation & Diagnosis entry, and Receptionist Desk date sorting.",
+  "release_notes": "CarePulse v1.9.3: Real-time fuzzy medicine name search and autocomplete with typo tolerance ('Did you mean?'), pg_trgm GIN indexing, and OpenFDA generic delegation.",
   "released_at": "2026-09-02"
 }
