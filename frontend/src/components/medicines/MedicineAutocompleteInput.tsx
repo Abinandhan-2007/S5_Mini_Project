@@ -12,6 +12,8 @@ interface MedicineAutocompleteInputProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
+  inputClassName?: string;
+  pill?: boolean;
 }
 
 export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps> = ({
@@ -22,6 +24,8 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
   disabled = false,
   autoFocus = false,
   className,
+  inputClassName,
+  pill = false,
 }) => {
   const [results, setResults] = useState<MedicineSearchResultItem[]>([]);
   const [didYouMean, setDidYouMean] = useState<string | null>(null);
@@ -170,7 +174,13 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}
-          className="w-full bg-[#F8FAFC] text-slate-800 text-xs sm:text-[13px] font-semibold placeholder:text-slate-400 pl-10 pr-20 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all shadow-2xs"
+          className={clsx(
+            'w-full text-slate-800 text-xs sm:text-[13px] font-semibold placeholder:text-slate-400 pl-10 pr-20 py-3 transition-all',
+            pill
+              ? 'rounded-full bg-[#F1F5F9]/80 border border-slate-200/90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white focus:ring-2 focus:ring-blue-500/30'
+              : 'rounded-2xl bg-[#F8FAFC] border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white shadow-2xs',
+            inputClassName
+          )}
         />
 
         {/* Loading Spinner or Clear Button */}

@@ -17,7 +17,6 @@ import {
   Info,
   ChevronRight,
   ShieldCheck,
-  Shield,
   AlertOctagon,
 } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
@@ -25,6 +24,7 @@ import { apiFetch } from '../../lib/apiFetch';
 import type { ScanMatchResponse, ScanMatchResult, DrugInfoData, MedicineSearchResultItem } from '../../lib/types';
 import { MedicineAutocompleteInput } from '../../components/medicines/MedicineAutocompleteInput';
 import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
+import { MedicineModeSelector } from '../../components/prescriptions/MedicineModeSelector';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 
@@ -266,7 +266,7 @@ export const ScanMedicineScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 w-full select-none">
+    <div className="min-h-screen bg-[#F8F9FC] pb-10 w-full select-none font-sans text-slate-800">
       {/* Hidden File Input Fallback */}
       <input
         type="file"
@@ -276,65 +276,47 @@ export const ScanMedicineScreen: React.FC = () => {
         className="hidden"
       />
 
-      {/* HEADER */}
-      <header className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] text-white pt-4 pb-6 px-4 shadow-md sticky top-0 z-30 sm:rounded-t-3xl">
+      {/* DISTINCT DEEP INDIGO-BLUE GRADIENT HEADER (#1E3A8A → #3B5FE0) */}
+      <header className="bg-gradient-to-r from-[#1E3A8A] via-[#2A4DC7] to-[#3B5FE0] text-white py-3 sm:py-3.5 px-4 shadow-sm sticky top-0 z-30 shrink-0">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
+          {/* Back Button + Title */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/home')}
-              className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
+              className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25 border border-white/20 flex items-center justify-center text-white transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
               title="Back to Home"
+              aria-label="Back to Home"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 text-white" />
             </button>
+
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-base font-black tracking-tight leading-tight">Scan Medicine</h1>
-                <span className="bg-white/20 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider">
-                  Safety Tool
-                </span>
-              </div>
-              <p className="text-[11px] text-teal-50 font-medium">
-                Photo identifier for missing dosage labels
-              </p>
+              <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight font-heading text-white">
+                Medicine Info
+              </h1>
             </div>
           </div>
 
           {imagePreview && !isAnalyzing && (
             <button
               onClick={handleResetScan}
-              className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retake</span>
+              <span>Reset</span>
             </button>
           )}
         </div>
       </header>
 
       {/* MAIN CONTAINER */}
-      <main className="px-4 py-5 max-w-2xl mx-auto space-y-4">
-        {/* MODE SELECTOR */}
-        <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-2xl">
-          <button
-            className="py-2.5 px-3 rounded-xl bg-white text-[#0B5A54] text-xs font-black shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <Shield className="w-3.5 h-3.5 text-[#0B5A54]" />
-            <span>Check My Prescription</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/medicine/info-lookup')}
-            className="py-2.5 px-3 rounded-xl text-slate-600 hover:text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Info className="w-3.5 h-3.5 text-blue-600" />
-            <span>What Is This For?</span>
-          </button>
-        </div>
+      <main className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+        {/* UNIFIED FLOATING SEGMENTED CONTROL */}
+        <MedicineModeSelector activeMode="prescription" />
 
         {/* Error Notice if any */}
         {errorNotice && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold p-3.5 rounded-2xl flex items-center gap-2.5">
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold p-3.5 rounded-2xl flex items-center gap-2.5 shadow-xs">
             <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorNotice}</span>
           </div>
@@ -353,20 +335,20 @@ export const ScanMedicineScreen: React.FC = () => {
                 <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading">
                   Identify Your Tablet Strip or Box
                 </h2>
-                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+                <p className="text-xs sm:text-[13px] text-slate-600 max-w-md mx-auto leading-relaxed">
                   Lost your medicine packaging or unsure whether to take your pill before or after food?
                   Take a photo of the tablet foil or box to safely match with your doctor's prescriptions.
                 </p>
               </div>
 
               {/* Step instructions */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
                 <div className="bg-[#F8FAFC] border border-slate-100 p-3 rounded-2xl space-y-1">
                   <div className="w-6 h-6 rounded-lg bg-teal-100 text-[#0B5A54] text-xs font-black flex items-center justify-center">
                     1
                   </div>
                   <h4 className="text-[11px] font-black text-slate-800">Clear Lighting</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                     Ensure packaging text is well-lit without blinding foil reflections.
                   </p>
                 </div>
@@ -376,7 +358,7 @@ export const ScanMedicineScreen: React.FC = () => {
                     2
                   </div>
                   <h4 className="text-[11px] font-black text-slate-800">Show Drug Name</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                     Position the printed brand or generic medicine name in focus.
                   </p>
                 </div>
@@ -386,7 +368,7 @@ export const ScanMedicineScreen: React.FC = () => {
                     3
                   </div>
                   <h4 className="text-[11px] font-black text-slate-800">Safety Check</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                     Cross-references strictly against your own active prescriptions.
                   </p>
                 </div>
@@ -394,21 +376,21 @@ export const ScanMedicineScreen: React.FC = () => {
 
               {/* Zero Active Prescription Banner */}
               {prescriptions.length === 0 && (
-                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 space-y-2.5 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3.5 space-y-2 text-center">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-4.5 h-4.5 text-amber-600" />
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-xs sm:text-sm font-black text-slate-900 font-heading">
+                  <div className="space-y-0.5">
+                    <h3 className="text-xs font-black text-slate-900 font-heading">
                       No Active Prescriptions on File
                     </h3>
-                    <p className="text-[11px] text-slate-600 max-w-sm mx-auto leading-relaxed">
+                    <p className="text-[11px] text-slate-600 max-w-sm mx-auto leading-normal">
                       You currently have no active doctor prescriptions to safety-check against. To find out what an unfamiliar medicine is used for, please use <strong>"What Is This For?"</strong>.
                     </p>
                   </div>
                   <button
                     onClick={() => navigate('/medicine/info-lookup')}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
+                    className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1 mx-auto"
                   >
                     <Info className="w-3.5 h-3.5 text-blue-100" />
                     <span>Switch to "What Is This For?"</span>
@@ -417,18 +399,18 @@ export const ScanMedicineScreen: React.FC = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   onClick={handleStartCamera}
-                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                  className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-gradient-to-r from-[#0F766E] to-[#14B8A6] hover:from-[#0D655E] hover:to-[#0F9488] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer border border-teal-400/20"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-4 h-4 text-white" />
                   <span>Take Photo with Camera</span>
                 </button>
 
                 <button
                   onClick={handleOpenGallery}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border-[1.5px] border-slate-300 hover:border-slate-400 shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                 >
                   <Upload className="w-4 h-4 text-slate-500" />
                   <span>Choose from Gallery</span>
@@ -436,14 +418,17 @@ export const ScanMedicineScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Safety Notice Footer */}
-            <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 text-left">
-              <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <p className="text-xs font-extrabold text-amber-900">Safety Verification First</p>
-                <p className="text-[11px] text-amber-800 leading-snug">
-                  This safety scanner matches exclusively against your verified doctor consultations.
-                  Unrecognized medications will always trigger an explicit warning.
+            {/* Rebuilt Doctor-Verified Safety Banner */}
+            <div className="bg-gradient-to-r from-emerald-50/90 via-[#F0FDF4] to-teal-50/90 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 text-left shadow-2xs">
+              <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-600/25">
+                <ShieldCheck className="w-4 h-4 text-white" />
+              </div>
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <p className="text-xs sm:text-[13px] font-black text-emerald-950 tracking-tight">
+                  Doctor-Verified Safety Check
+                </p>
+                <p className="text-[11px] sm:text-xs text-emerald-800/90 leading-snug">
+                  Matches strictly against your active prescriptions to confirm correct dosage and food timing.
                 </p>
               </div>
             </div>
