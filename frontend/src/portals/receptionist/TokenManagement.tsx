@@ -10,7 +10,6 @@ import {
   Phone,
   Stethoscope,
   Users,
-  Layers,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -117,7 +116,7 @@ const normalizeDateToISO = (rawDate?: string): string => {
       const day = String(d.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
-  } catch {}
+  } catch { }
 
   return rawDate;
 };
@@ -142,7 +141,7 @@ const formatDisplayDate = (isoOrFormatted?: string): string => {
         day: 'numeric',
       });
     }
-  } catch {}
+  } catch { }
   return isoOrFormatted;
 };
 
@@ -158,10 +157,11 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   // Filter & Sort States
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Waiting' | 'In Consultation' | 'Completed'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Waiting' | 'Checked In' | 'In Consultation' | 'Completed'>('ALL');
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>(getTodayISODate(0));
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<TokenSortOption>('TIME_ASC');
+  const [activeDivision, setActiveDivision] = useState<'ONLINE' | 'OFFLINE' | 'ALL'>('ONLINE');
   const [showSlotToggleConfirm, setShowSlotToggleConfirm] = useState(false);
   const [tokenToCancel, setTokenToCancel] = useState<TokenQueueItem | null>(null);
 
@@ -351,9 +351,9 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   const onlineBookedPatients = useMemo(() => filteredTokens.filter(isOnlineToken), [filteredTokens]);
   const offlineBookedPatients = useMemo(() => filteredTokens.filter((t) => !isOnlineToken(t)), [filteredTokens]);
 
-  // Waiting tokens in view
+  // Waiting or Checked In tokens in view
   const waitingTokensInView = useMemo(() => {
-    return filteredTokens.filter((t) => t.status === 'Waiting');
+    return filteredTokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In');
   }, [filteredTokens]);
 
   // Check if the currently active selected slot timing is blocked in Patient App
@@ -413,6 +413,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 
   // Render a Single Patient Card
   const renderPatientCard = (token: TokenQueueItem, isOnline: boolean) => {
+    const isCheckedIn = token.status === 'Checked In';
     const isConsulting = token.status === 'In Consultation';
     const isCompleted = token.status === 'Completed';
     const doc = doctors.find((d) => d.id === token.doctorId);
@@ -420,35 +421,34 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     return (
       <div
         key={token.id}
-        className={`group p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 transition-all duration-200 relative shadow-2xs hover:shadow-sm w-full min-w-0 ${
-          isConsulting
-            ? 'bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/20'
-            : isCompleted
-            ? 'bg-slate-50/80 opacity-75'
-            : isOnline
-            ? 'bg-white hover:bg-purple-50/15 hover:border-purple-200'
-            : 'bg-white hover:bg-amber-50/15 hover:border-amber-200'
-        }`}
+        className={`group p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 relative shadow-2xs hover:shadow-sm w-full min-w-0 ${isCheckedIn
+            ? 'bg-gradient-to-br from-teal-50/50 via-white to-emerald-50/30 border-teal-300/80 ring-1 ring-teal-500/20 shadow-xs'
+            : isConsulting
+              ? 'bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/20 border-teal-300/80'
+              : isCompleted
+                ? 'bg-slate-50/80 border-slate-200/90 opacity-75'
+                : isOnline
+                  ? 'bg-white border-slate-200/90 hover:bg-purple-50/15 hover:border-purple-200'
+                  : 'bg-white border-slate-200/90 hover:bg-amber-50/15 hover:border-amber-200'
+          }`}
       >
         {/* Card Header Bar */}
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <span
-              className={`px-2.5 py-0.5 rounded-lg font-mono text-xs font-black tracking-wide ${
-                isOnline
+              className={`px-2.5 py-0.5 rounded-lg font-mono text-xs font-black tracking-wide ${isOnline
                   ? 'bg-purple-100/90 text-purple-950 border border-purple-300/80'
                   : 'bg-amber-100/90 text-amber-950 border border-amber-300/80'
-              }`}
+                }`}
             >
               {token.tokenNumber}
             </span>
 
             <span
-              className={`inline-flex items-center gap-1 text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                isOnline
+              className={`inline-flex items-center gap-1 text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${isOnline
                   ? 'bg-purple-50 text-purple-700 border-purple-200'
                   : 'bg-amber-50 text-amber-800 border-amber-200'
-              }`}
+                }`}
             >
               {isOnline ? (
                 <>
@@ -470,43 +470,50 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
             )}
           </div>
 
-          {/* Status Badge */}
-          <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border transition-all ${
-              isConsulting
-                ? 'bg-teal-100 text-[#0B5A54] border-teal-300'
-                : isCompleted
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-800 border-amber-200'
-            }`}
-          >
-            {isConsulting ? (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-                <span>In Consultation</span>
-              </>
-            ) : isCompleted ? (
-              <>
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                <span>Completed</span>
-              </>
-            ) : (
-              <>
-                <Clock className="w-2.5 h-2.5 text-amber-600" />
-                <span>Waiting</span>
-              </>
-            )}
-          </span>
+          {/* Status Badge - Hidden for Walk-Ins when Waiting */}
+          {(isOnline || isCheckedIn || isConsulting || isCompleted) && (
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border transition-all ${isCheckedIn
+                  ? 'bg-teal-50 text-[#0B5A54] border-teal-300 shadow-2xs'
+                  : isConsulting
+                    ? 'bg-teal-100 text-[#0B5A54] border-teal-300'
+                    : isCompleted
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}
+            >
+              {isCheckedIn ? (
+                <>
+                  <UserCheck className="w-3 h-3 text-[#0B5A54]" />
+                  <span>Checked In</span>
+                </>
+              ) : isConsulting ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                  <span>In Consultation</span>
+                </>
+              ) : isCompleted ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>Completed</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-2.5 h-2.5 text-amber-600" />
+                  <span>Waiting</span>
+                </>
+              )}
+            </span>
+          )}
         </div>
 
         {/* Patient Profile Details */}
         <div className="mt-3 flex items-start gap-3">
           <div
-            className={`w-9 h-9 rounded-xl text-white font-black text-xs flex items-center justify-center shadow-2xs shrink-0 font-heading ${
-              isOnline
+            className={`w-9 h-9 rounded-xl text-white font-black text-xs flex items-center justify-center shadow-2xs shrink-0 font-heading ${isOnline
                 ? 'bg-gradient-to-br from-purple-700 to-indigo-800'
                 : 'bg-gradient-to-br from-[#0B5A54] to-teal-800'
-            }`}
+              }`}
           >
             {token.patientName.charAt(0)}
           </div>
@@ -524,11 +531,16 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 )}
               </div>
 
-              {token.arrivalTime && (
+              {isCheckedIn && (token.checkInTime || token.arrivalTime) ? (
+                <span className="text-[10.5px] text-[#0B5A54] bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md font-bold shrink-0 flex items-center gap-1 shadow-2xs">
+                  <Clock className="w-2.5 h-2.5 text-[#14B8A6]" />
+                  <span>Check-in: {token.checkInTime || token.arrivalTime}</span>
+                </span>
+              ) : token.arrivalTime ? (
                 <span className="text-[10.5px] text-slate-500 font-semibold shrink-0">
                   • Arrived: {token.arrivalTime}
                 </span>
-              )}
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-semibold">
@@ -577,45 +589,60 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           </div>
         </div>
 
-        {/* Card Actions */}
-        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div>
-            {!isCompleted && (
-              <button
-                onClick={() => setTokenToCancel(token)}
-                className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs border border-rose-200 shadow-2xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {!isConsulting && !isCompleted ? (
+        {/* Card Actions - Check-in exclusively for Online App Bookings (Walk-ins are already in hospital) */}
+        {isOnline ? (
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+            {!isCheckedIn && !isConsulting && !isCompleted ? (
               <button
                 onClick={() => {
-                  updateTokenStatus(token.id, 'In Consultation');
+                  const now = new Date();
+                  let hours = now.getHours();
+                  const minutes = now.getMinutes().toString().padStart(2, '0');
+                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                  hours = hours % 12;
+                  hours = hours ? hours : 12;
+                  const checkInTime = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+
+                  updateTokenStatus(token.id, 'Checked In', { checkInTime });
                   playHospitalChime();
-                  const speechText = `Token ${token.tokenNumber.replace('#', '')}. ${token.patientName}. Admitted to ${doc?.roomNumber || 'Cabin'}.`;
+                  const speechText = `Token ${token.tokenNumber.replace('#', '')}. ${token.patientName} checked in at ${checkInTime}.`;
                   speakAnnouncement(speechText);
-                  onShowToast?.(`Token ${token.tokenNumber} admitted to ${doc?.roomNumber || 'Cabin'}.`);
+                  onShowToast?.(`Patient ${token.patientName} (${token.tokenNumber}) checked in at ${checkInTime}!`);
                 }}
-                className="px-3.5 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center gap-1"
+                className="w-full sm:w-auto px-4 py-2 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                title="Check In Patient"
               >
                 <UserCheck className="w-3.5 h-3.5" />
-                <span>Call Patient</span>
+                <span>Check-in</span>
               </button>
+            ) : isCheckedIn ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#0B5A54] bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 shadow-2xs">
+                <Check className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>Checked In</span>
+              </span>
             ) : isConsulting ? (
-              <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+              <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
                 In Session
               </span>
             ) : (
-              <span className="text-[10.5px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">
+              <span className="text-[10.5px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl">
                 ✓ Finished
               </span>
             )}
           </div>
-        </div>
+        ) : isConsulting ? (
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end">
+            <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+              In Session
+            </span>
+          </div>
+        ) : isCompleted ? (
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end">
+            <span className="text-[10.5px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl">
+              ✓ Finished
+            </span>
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -639,30 +666,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 Synchronized live arrival tokens with split online vs offline lanes and broadcast summons.
               </p>
             </div>
-          </div>
-
-          {/* TOP SEARCH BAR */}
-          <div className="relative w-full md:w-80 lg:w-96 group shrink-0">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center pointer-events-none group-focus-within:bg-[#0B5A54] group-focus-within:text-white transition-colors duration-200 shadow-2xs">
-              <Search className="w-3.5 h-3.5" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search patient, phone, token (#TOK-001)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-9 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200/90 focus:border-[#0B5A54] rounded-2xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-3 focus:ring-[#0B5A54]/15 shadow-2xs transition-all duration-200"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] font-black transition-all cursor-pointer hover:scale-110"
-                title="Clear search"
-              >
-                ✕
-              </button>
-            )}
           </div>
         </div>
 
@@ -706,11 +709,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 setSelectedDoctorId('ALL');
                 setSelectedTimeSlot('ALL');
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                selectedDoctorId === 'ALL'
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${selectedDoctorId === 'ALL'
                   ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs ring-2 ring-teal-500/20'
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
+                }`}
             >
               <Users className="w-3.5 h-3.5" />
               <span>All Physicians ({doctors.length})</span>
@@ -730,16 +732,14 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                     setSelectedDoctorId(doc.id);
                     setSelectedTimeSlot('ALL');
                   }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                    isSelected
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${isSelected
                       ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs ring-2 ring-teal-500/20'
                       : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9.5px] font-black shrink-0 ${
-                      isSelected ? 'bg-teal-300 text-teal-950' : 'bg-teal-50 text-[#0B5A54]'
-                    }`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9.5px] font-black shrink-0 ${isSelected ? 'bg-teal-300 text-teal-950' : 'bg-teal-50 text-[#0B5A54]'
+                      }`}
                   >
                     {doc.name.replace('Dr. ', '').charAt(0)}
                   </div>
@@ -747,20 +747,18 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   <span>{doc.name}</span>
 
                   <span
-                    className={`text-[9.5px] px-1.5 py-0.2 rounded font-semibold ${
-                      isSelected ? 'bg-teal-800/80 text-teal-100' : 'bg-slate-100 text-slate-500'
-                    }`}
+                    className={`text-[9.5px] px-1.5 py-0.2 rounded font-semibold ${isSelected ? 'bg-teal-800/80 text-teal-100' : 'bg-slate-100 text-slate-500'
+                      }`}
                   >
                     {doc.specialty}
                   </span>
 
                   {docWaitingTokens > 0 && (
                     <span
-                      className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${
-                        isSelected
+                      className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${isSelected
                           ? 'bg-amber-400 text-slate-950 font-mono'
                           : 'bg-amber-100 text-amber-900 border border-amber-200'
-                      }`}
+                        }`}
                     >
                       {docWaitingTokens}
                     </span>
@@ -809,20 +807,18 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
             {/* "All Time Slots" Master Card */}
             <button
               onClick={() => setSelectedTimeSlot('ALL')}
-              className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${
-                selectedTimeSlot === 'ALL'
+              className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${selectedTimeSlot === 'ALL'
                   ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-md ring-2 ring-teal-500/25'
                   : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
-              }`}
+                }`}
             >
               <div>
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <span
-                    className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      selectedTimeSlot === 'ALL'
+                    className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${selectedTimeSlot === 'ALL'
                         ? 'bg-white/20 text-white'
                         : 'bg-slate-100 text-slate-600'
-                    }`}
+                      }`}
                   >
                     Full Schedule
                   </span>
@@ -838,11 +834,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   Total Queue:
                 </span>
                 <span
-                  className={`font-mono px-1.5 py-0.2 rounded font-black ${
-                    selectedTimeSlot === 'ALL'
+                  className={`font-mono px-1.5 py-0.2 rounded font-black ${selectedTimeSlot === 'ALL'
                       ? 'bg-white text-[#0B5A54]'
                       : 'bg-slate-100 text-slate-900'
-                  }`}
+                    }`}
                 >
                   {filteredTokens.length}
                 </span>
@@ -865,24 +860,22 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 <button
                   key={slotTime}
                   onClick={() => setSelectedTimeSlot(slotTime)}
-                  className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${
-                    isSelected
+                  className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${isSelected
                       ? 'bg-gradient-to-br from-teal-50 via-white to-emerald-50/70 border-teal-500 ring-2 ring-teal-500/30 shadow-xs'
                       : 'bg-white hover:bg-slate-50 border-slate-200 shadow-2xs'
-                  }`}
+                    }`}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <span
-                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                          metrics.isBlocked
+                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${metrics.isBlocked
                             ? 'bg-rose-100 text-rose-800 border border-rose-200'
                             : hasActiveConsultation
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            : isSelected
-                            ? 'bg-[#0B5A54] text-white'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : isSelected
+                                ? 'bg-[#0B5A54] text-white'
+                                : 'bg-slate-100 text-slate-600'
+                          }`}
                       >
                         {metrics.isBlocked ? (
                           '🚫 Blocked'
@@ -906,9 +899,8 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                     </div>
 
                     <h4
-                      className={`font-black text-xs truncate font-mono ${
-                        isSelected ? 'text-[#0B5A54]' : 'text-slate-900'
-                      }`}
+                      className={`font-black text-xs truncate font-mono ${isSelected ? 'text-[#0B5A54]' : 'text-slate-900'
+                        }`}
                     >
                       {slotTime}
                     </h4>
@@ -965,11 +957,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDateFilter(getTodayISODate(0))}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none flex items-center gap-1.5 ${
-                  selectedDateFilter === getTodayISODate(0)
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none flex items-center gap-1.5 ${selectedDateFilter === getTodayISODate(0)
                     ? 'bg-[#0B5A54] text-white shadow-xs font-black'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 <span className={`w-2 h-2 rounded-full ${selectedDateFilter === getTodayISODate(0) ? 'bg-emerald-300' : 'bg-slate-300'}`} />
                 <span>Today ({formatDisplayDate(getTodayISODate(0))})</span>
@@ -978,11 +969,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDateFilter(getTodayISODate(1))}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-                  selectedDateFilter === getTodayISODate(1)
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${selectedDateFilter === getTodayISODate(1)
                     ? 'bg-[#0B5A54] text-white shadow-xs font-black'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 Tomorrow
               </button>
@@ -990,11 +980,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDateFilter('ALL')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-                  selectedDateFilter === 'ALL'
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${selectedDateFilter === 'ALL'
                     ? 'bg-[#0B5A54] text-white shadow-xs font-black'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 All Dates
               </button>
@@ -1047,15 +1036,14 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
             <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">
               Status:
             </span>
-            {(['ALL', 'Waiting', 'In Consultation', 'Completed'] as const).map((st) => (
+            {(['ALL', 'Waiting', 'Checked In', 'In Consultation', 'Completed'] as const).map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  statusFilter === st
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${statusFilter === st
                     ? 'bg-slate-900 text-white shadow-2xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                }`}
+                  }`}
               >
                 {st === 'ALL' ? 'All Statuses' : st}
               </button>
@@ -1067,10 +1055,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           5. CURRENT SELECTION OVERVIEW STRIP
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all select-none">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#0B5A54] shrink-0 shadow-2xs">
-            <Layers className="w-4.5 h-4.5 stroke-[2.2]" />
+          <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-[#0B5A54] shrink-0 shadow-2xs">
+            <Clock className="w-5 h-5 stroke-[2.2] text-[#0B5A54]" />
           </div>
           <div>
             <div className="flex items-center gap-1.5 text-[11px]">
@@ -1108,11 +1096,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           {selectedTimeSlot !== 'ALL' ? (
             <button
               onClick={handleToggleBlockCurrentSlot}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-95 border ${
-                !isCurrentSlotBlocked
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-95 border ${!isCurrentSlotBlocked
                   ? 'bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 border-emerald-200'
                   : 'bg-rose-50 hover:bg-rose-100/80 text-rose-800 border-rose-200'
-              }`}
+                }`}
               title={
                 !isCurrentSlotBlocked
                   ? 'Slot is Currently Available. Click to mark Not Available.'
@@ -1126,14 +1113,12 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
 
               {/* Interactive Toggle Switch */}
               <div
-                className={`w-7 h-4 rounded-full transition-colors relative flex items-center px-0.5 ${
-                  !isCurrentSlotBlocked ? 'bg-emerald-600' : 'bg-slate-300'
-                }`}
+                className={`w-7 h-4 rounded-full transition-colors relative flex items-center px-0.5 ${!isCurrentSlotBlocked ? 'bg-emerald-600' : 'bg-slate-300'
+                  }`}
               >
                 <div
-                  className={`w-3 h-3 rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out transform ${
-                    !isCurrentSlotBlocked ? 'translate-x-3' : 'translate-x-0'
-                  }`}
+                  className={`w-3 h-3 rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out transform ${!isCurrentSlotBlocked ? 'translate-x-3' : 'translate-x-0'
+                    }`}
                 />
               </div>
             </button>
@@ -1151,94 +1136,262 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          6. SPLIT TWO COLUMNS: ONLINE QUEUE VS OFFLINE WALK-IN QUEUE
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 items-start w-full min-w-0 max-w-full">
-        {/* ── COLUMN 1: ONLINE APP BOOKINGS (MOBILE APP QUEUE) ── */}
-        <div className="space-y-3 w-full min-w-0">
-          <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                <Smartphone className="w-4 h-4" />
-              </div>
-              <h3 className="text-sm font-black text-purple-950 font-heading truncate">
-                Online App Bookings
-              </h3>
-            </div>
-
-            <span className="px-2.5 py-1 bg-white text-purple-950 font-mono font-black text-xs rounded-xl border border-purple-200 shadow-2xs shrink-0">
-              {onlineBookedPatients.length} Active
-            </span>
-          </div>
-
-          {/* List of Online Patients */}
-          {onlineBookedPatients.length === 0 ? (
-            <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-purple-200 space-y-2 shadow-2xs">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-400 mx-auto flex items-center justify-center">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Online App Bookings</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs mx-auto">
-                  {selectedTimeSlot !== 'ALL'
-                    ? `No digital appointments booked for the ${selectedTimeSlot} slot.`
-                    : 'No digital patient appointments in queue.'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3 w-full min-w-0">
-              {onlineBookedPatients.map((item) => renderPatientCard(item, true))}
-            </div>
-          )}
-        </div>
-
-        {/* ── COLUMN 2: OFFLINE WALK-IN DESK REGISTRATIONS ── */}
-        <div className="space-y-3 w-full min-w-0">
-          <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <h3 className="text-sm font-black text-amber-950 font-heading truncate">
-                Offline Walk-In Desk Queue
-              </h3>
-            </div>
-
-            <span className="px-2.5 py-1 bg-white text-amber-950 font-mono font-black text-xs rounded-xl border border-amber-200 shadow-2xs shrink-0">
-              {offlineBookedPatients.length} Active
-            </span>
-          </div>
-
-          {/* List of Offline Walk-In Patients */}
-          {offlineBookedPatients.length === 0 ? (
-            <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-amber-200 space-y-2 shadow-2xs">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Walk-In Patients</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs mx-auto">
-                  {selectedTimeSlot !== 'ALL'
-                    ? `No in-person walk-in patients registered for the ${selectedTimeSlot} slot.`
-                    : 'No same-day walk-in patients registered at the front desk.'}
-                </p>
-              </div>
-              <button
-                onClick={onOpenNewAppointment}
-                className="mt-1.5 inline-flex items-center gap-1 px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-lg text-xs shadow-2xs transition-all hover:scale-105 cursor-pointer"
+      <div className="space-y-4">
+        {/* Division Switcher (Centered) & Search Bar (Right-Aligned) Row */}
+        <div className="relative flex flex-col md:flex-row items-center justify-center w-full py-1 min-h-[44px] gap-3">
+          {/* Centered Division Switcher Tabs (Matching Reference) */}
+          <div className="inline-flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-full border border-slate-200/80 shadow-inner z-10">
+            {/* Division 1: Online App Bookings */}
+            <button
+              type="button"
+              onClick={() => setActiveDivision('ONLINE')}
+              className={`px-5 sm:px-6 py-2 rounded-full text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${activeDivision === 'ONLINE'
+                  ? 'bg-white text-purple-950 shadow-xs font-black scale-[1.01]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                }`}
+            >
+              <Smartphone className={`w-3.5 h-3.5 ${activeDivision === 'ONLINE' ? 'text-purple-600' : 'text-slate-500'}`} />
+              <span>Online App Bookings</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${activeDivision === 'ONLINE' ? 'bg-purple-100 text-purple-900' : 'bg-slate-200 text-slate-700'
+                  }`}
               >
-                <Building2 className="w-3 h-3" />
-                <span>Register Walk-In Patient</span>
+                {onlineBookedPatients.length}
+              </span>
+            </button>
+
+            {/* Division 2: Offline Walk-In Desk Queue */}
+            <button
+              type="button"
+              onClick={() => setActiveDivision('OFFLINE')}
+              className={`px-5 sm:px-6 py-2 rounded-full text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${activeDivision === 'OFFLINE'
+                  ? 'bg-white text-amber-950 shadow-xs font-black scale-[1.01]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                }`}
+            >
+              <Building2 className={`w-3.5 h-3.5 ${activeDivision === 'OFFLINE' ? 'text-amber-600' : 'text-slate-500'}`} />
+              <span>Offline Walk-In Desk</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${activeDivision === 'OFFLINE' ? 'bg-amber-100 text-amber-900' : 'bg-slate-200 text-slate-700'
+                  }`}
+              >
+                {offlineBookedPatients.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Search Bar Right-Aligned on Desktop / Stacks on Mobile */}
+          <div className="relative w-full sm:w-72 md:w-80 group md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center pointer-events-none group-focus-within:bg-[#0B5A54] group-focus-within:text-white transition-colors duration-200 shadow-2xs">
+              <Search className="w-3 h-3" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search patient, phone, token (#TOK-001)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-8 py-2 bg-white hover:bg-slate-50/60 focus:bg-white border border-slate-200/90 focus:border-[#0B5A54] rounded-full text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/15 shadow-2xs transition-all duration-200"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[9px] font-black transition-all cursor-pointer hover:scale-110"
+                title="Clear search"
+              >
+                ✕
               </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {offlineBookedPatients.map((item) => renderPatientCard(item, false))}
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {/* ── DIVISION CONTENT DISPLAY ── */}
+        {activeDivision === 'ONLINE' && (
+          /* ONLINE APP BOOKINGS DIVISION */
+          <div className="space-y-3 w-full min-w-0">
+            <div className="bg-purple-50/80 border border-purple-200/80 rounded-2xl px-4 py-3 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-purple-950 font-heading truncate">
+                    Online App Bookings Division
+                  </h3>
+                  <p className="text-[11px] text-purple-700 font-medium">
+                    Remote digital mobile appointments scheduled by patients.
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-3 py-1 bg-white text-purple-950 font-mono font-black text-xs rounded-xl border border-purple-200 shadow-2xs shrink-0">
+                {onlineBookedPatients.length} Active
+              </span>
+            </div>
+
+            {/* List of Online Patients */}
+            {onlineBookedPatients.length === 0 ? (
+              <div className="p-10 text-center bg-white rounded-3xl border border-dashed border-purple-200 space-y-2 shadow-2xs">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-400 mx-auto flex items-center justify-center">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Online App Bookings</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs mx-auto">
+                    {selectedTimeSlot !== 'ALL'
+                      ? `No digital appointments booked for the ${selectedTimeSlot} slot.`
+                      : 'No digital patient appointments in queue.'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 w-full min-w-0">
+                {onlineBookedPatients.map((item) => renderPatientCard(item, true))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeDivision === 'OFFLINE' && (
+          /* OFFLINE WALK-IN DESK DIVISION */
+          <div className="space-y-3 w-full min-w-0">
+            <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl px-4 py-3 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-950 font-heading truncate">
+                    Offline Walk-In Desk Division
+                  </h3>
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    Same-day physical arrival queue registered at the front desk.
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-3 py-1 bg-white text-amber-950 font-mono font-black text-xs rounded-xl border border-amber-200 shadow-2xs shrink-0">
+                {offlineBookedPatients.length} Active
+              </span>
+            </div>
+
+            {/* List of Offline Walk-In Patients */}
+            {offlineBookedPatients.length === 0 ? (
+              <div className="p-10 text-center bg-white rounded-3xl border border-dashed border-amber-200 space-y-2 shadow-2xs">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Walk-In Patients</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs mx-auto">
+                    {selectedTimeSlot !== 'ALL'
+                      ? `No in-person walk-in patients registered for the ${selectedTimeSlot} slot.`
+                      : 'No same-day walk-in patients registered at the front desk.'}
+                  </p>
+                </div>
+                <button
+                  onClick={onOpenNewAppointment}
+                  className="mt-1.5 inline-flex items-center gap-1 px-3.5 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-2xs transition-all hover:scale-105 cursor-pointer"
+                >
+                  <Building2 className="w-3 h-3" />
+                  <span>Register Walk-In Patient</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 w-full min-w-0">
+                {offlineBookedPatients.map((item) => renderPatientCard(item, false))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeDivision === 'ALL' && (
+          /* DUAL SIDE-BY-SIDE VIEW */
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 items-start w-full min-w-0 max-w-full">
+            {/* COLUMN 1: ONLINE */}
+            <div className="space-y-3 w-full min-w-0">
+              <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black text-purple-950 font-heading truncate">
+                    Online App Bookings
+                  </h3>
+                </div>
+
+                <span className="px-2.5 py-1 bg-white text-purple-950 font-mono font-black text-xs rounded-xl border border-purple-200 shadow-2xs shrink-0">
+                  {onlineBookedPatients.length} Active
+                </span>
+              </div>
+
+              {onlineBookedPatients.length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-purple-200 space-y-2 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-400 mx-auto flex items-center justify-center">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Online App Bookings</h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs mx-auto">
+                      {selectedTimeSlot !== 'ALL'
+                        ? `No digital appointments booked for the ${selectedTimeSlot} slot.`
+                        : 'No digital patient appointments in queue.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 w-full min-w-0">
+                  {onlineBookedPatients.map((item) => renderPatientCard(item, true))}
+                </div>
+              )}
+            </div>
+
+            {/* COLUMN 2: OFFLINE WALK-IN */}
+            <div className="space-y-3 w-full min-w-0">
+              <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black text-amber-950 font-heading truncate">
+                    Offline Walk-In Desk Queue
+                  </h3>
+                </div>
+
+                <span className="px-2.5 py-1 bg-white text-amber-950 font-mono font-black text-xs rounded-xl border border-amber-200 shadow-2xs shrink-0">
+                  {offlineBookedPatients.length} Active
+                </span>
+              </div>
+
+              {offlineBookedPatients.length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-amber-200 space-y-2 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs sm:text-sm">No Walk-In Patients</h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs mx-auto">
+                      {selectedTimeSlot !== 'ALL'
+                        ? `No in-person walk-in patients registered for the ${selectedTimeSlot} slot.`
+                        : 'No same-day walk-in patients registered at the front desk.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={onOpenNewAppointment}
+                    className="mt-1.5 inline-flex items-center gap-1 px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-lg text-xs shadow-2xs transition-all hover:scale-105 cursor-pointer"
+                  >
+                    <Building2 className="w-3 h-3" />
+                    <span>Register Walk-In Patient</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {offlineBookedPatients.map((item) => renderPatientCard(item, false))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -1248,11 +1401,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
             <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-xs border ${
-                !isCurrentSlotBlocked
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-xs border ${!isCurrentSlotBlocked
                   ? 'bg-rose-50 border-rose-200/80 text-rose-600'
                   : 'bg-emerald-50 border-emerald-200/80 text-emerald-600'
-              }`}
+                }`}
             >
               <AlertTriangle className="w-7 h-7" />
             </div>
@@ -1292,11 +1444,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   setShowSlotToggleConfirm(false);
                   await executeToggleBlockCurrentSlot();
                 }}
-                className={`w-full py-3 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95 ${
-                  !isCurrentSlotBlocked
+                className={`w-full py-3 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95 ${!isCurrentSlotBlocked
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-[#0B5A54] hover:bg-[#084540]'
-                }`}
+                  }`}
               >
                 Confirm {!isCurrentSlotBlocked ? 'Not Available' : 'Available'}
               </button>

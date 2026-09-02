@@ -1,5 +1,7 @@
 /* Base styling resets */
-html, body, #root {
+html,
+body,
+#root {
   min-height: 100%;
   width: 100%;
   max-width: 100vw;
@@ -10,10 +12,12 @@ html, body, #root {
 }
 
 /* Global scrollbar hiding while preserving scroll functionality */
-html, body {
+html,
+body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   display: none;
@@ -23,8 +27,11 @@ body::-webkit-scrollbar {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 /* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

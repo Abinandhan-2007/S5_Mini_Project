@@ -133,7 +133,7 @@ export const ReceptionistLayout: React.FC = () => {
 
   const staffDisplayName = currentStaff?.name || profile.name || 'Reception Desk';
 
-  const waitingCount = tokens.filter((t) => t.status === 'Waiting').length;
+  const waitingCount = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In').length;
   const activeDoctorsCount = doctors.filter((d) => d.isAvailable).length;
 
   // Categorized Navigation Sections
