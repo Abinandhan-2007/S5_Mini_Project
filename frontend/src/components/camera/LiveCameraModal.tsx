@@ -8,6 +8,8 @@ import {
   Zap,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { Camera as CapCamera } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 export interface LiveCameraModalProps {
   isOpen: boolean;
@@ -49,6 +51,17 @@ export const LiveCameraModal: React.FC<LiveCameraModalProps> = ({
     }
 
     try {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const status = await CapCamera.checkPermissions();
+          if (status.camera !== 'granted') {
+            await CapCamera.requestPermissions({ permissions: ['camera'] });
+          }
+        } catch (e) {
+          console.warn('Native camera permission check error:', e);
+        }
+      }
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access is not supported in this browser environment.');
       }

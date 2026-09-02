@@ -121,8 +121,8 @@ export interface ScanMatchResult {
 }
 
 export interface ScanMatchResponse {
-  status: 'SUCCESS' | 'AMBIGUOUS' | 'NO_MATCH' | 'UNREADABLE';
-  matchType: 'HIGH_CONFIDENCE' | 'AMBIGUOUS' | 'NO_MATCH';
+  status: 'SUCCESS' | 'AMBIGUOUS' | 'NO_MATCH' | 'UNREADABLE' | 'NO_ACTIVE_PRESCRIPTION';
+  matchType: 'HIGH_CONFIDENCE' | 'AMBIGUOUS' | 'NO_MATCH' | 'NO_ACTIVE_PRESCRIPTION';
   confidence: number;
   message: string;
   extractedText: string;

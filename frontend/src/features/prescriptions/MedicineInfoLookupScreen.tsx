@@ -17,6 +17,8 @@ import {
 import { apiFetch } from '../../lib/apiFetch';
 import type { MedicineInfoLookupResponse } from '../../lib/types';
 import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
+import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 export const MedicineInfoLookupScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -29,11 +31,61 @@ export const MedicineInfoLookupScreen: React.FC = () => {
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
 
-  // Start in-app live camera viewfinder
-  const handleStartCamera = () => {
+  // Start native camera on mobile device, or live in-app camera viewfinder on web
+  const handleStartCamera = async () => {
     setErrorNotice(null);
-    setIsLiveCameraOpen(true);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await CapCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Camera,
+        });
+
+        if (photo.base64String) {
+          const fullBase64 = `data:image/${photo.format || 'jpeg'};base64,${photo.base64String}`;
+          setImagePreview(fullBase64);
+          processLookup({ image: fullBase64 });
+        }
+      } catch (err: any) {
+        if (err?.message !== 'User cancelled photos app') {
+          console.warn('Native camera error, fallback to viewfinder:', err);
+          setIsLiveCameraOpen(true);
+        }
+      }
+    } else {
+      setIsLiveCameraOpen(true);
+    }
   };
+
+  // Open photo gallery (native on mobile, file picker on web)
+  const handleOpenGallery = async () => {
+    setErrorNotice(null);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await CapCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Photos,
+        });
+
+        if (photo.base64String) {
+          const fullBase64 = `data:image/${photo.format || 'jpeg'};base64,${photo.base64String}`;
+          setImagePreview(fullBase64);
+          processLookup({ image: fullBase64 });
+        }
+      } catch (err: any) {
+        if (err?.message !== 'User cancelled photos app') {
+          fileInputRef.current?.click();
+        }
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
 
 
   // File Picker
@@ -104,7 +156,6 @@ export const MedicineInfoLookupScreen: React.FC = () => {
         ref={fileInputRef}
         onChange={handleFileChange}
         accept="image/*"
-        capture="environment"
         className="hidden"
       />
 
@@ -223,11 +274,11 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleOpenGallery}
                   className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                 >
                   <Upload className="w-4 h-4 text-slate-500" />
-                  <span>Upload Photo</span>
+                  <span>Choose from Gallery</span>
                 </button>
               </div>
 
@@ -439,7 +490,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
           setImagePreview(img);
           processLookup({ image: img });
         }}
-        onOpenGallery={() => fileInputRef.current?.click()}
+        onOpenGallery={handleOpenGallery}
         title="What Is This Medicine For?"
         themeColor="blue"
       />

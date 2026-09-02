@@ -1982,7 +1982,7 @@ def scan_and_match_prescription(
             detail="Authentication required. Please provide a valid patient session or patient ID."
         )
 
-    # 2. Retrieve ONLY this patient's stored prescriptions (Strict Isolation)
+    # 2. Retrieve ONLY this patient's stored ACTIVE prescriptions (Exclude history / completed / discontinued)
     patient_rx_list = []
     if database.use_pg:
         with get_pg_connection() as conn:
@@ -1992,6 +1992,7 @@ def scan_and_match_prescription(
                     SELECT id, patient_id, drug_name, dosage, frequency, meal_timing, prescriber, icon_type
                     FROM prescriptions
                     WHERE patient_id::text = %s
+                      AND (status IS NULL OR LOWER(status) = 'active')
                     ORDER BY created_at DESC
                     """,
                     (str(patient_id).strip(),)
@@ -2012,7 +2013,8 @@ def scan_and_match_prescription(
         db = read_json_db()
         for r in db.get("prescriptions", []):
             r_pid = str(r.get("patient_id") or r.get("patientId") or "").strip()
-            if r_pid == str(patient_id).strip():
+            r_status = (r.get("status") or "Active").strip().lower()
+            if r_pid == str(patient_id).strip() and r_status == "active":
                 patient_rx_list.append({
                     "id": str(r.get("id")),
                     "patient_id": r_pid,
@@ -2024,6 +2026,19 @@ def scan_and_match_prescription(
                     "icon_type": r.get("icon_type") or r.get("iconType") or "pill"
                 })
 
+    # Guard: If patient currently has no active prescriptions, return clear notice rather than false mismatch
+    if not patient_rx_list:
+        return ScanMatchResponse(
+            status="NO_ACTIVE_PRESCRIPTION",
+            matchType="NO_ACTIVE_PRESCRIPTION",
+            confidence=0.0,
+            message="You currently do not have any active doctor prescriptions on record to verify against. Please consult your physician or use 'What Is This For?' to look up general medicine purpose.",
+            extractedText="",
+            match=None,
+            matches=[],
+            drugInfo=None
+        )
+
     # 3. OCR Text Extraction
     extracted_text = ""
     if req.ocrText or req.ocr_text:
@@ -2031,7 +2046,7 @@ def scan_and_match_prescription(
     elif req.image:
         extracted_text = extract_text_from_image(req.image)
 
-    # 4. Fuzzy Matching against patient's prescriptions
+    # 4. Fuzzy Matching against patient's active prescriptions only
     match_result = fuzzy_match_prescription(extracted_text, patient_rx_list)
 
     # 5. For HIGH_CONFIDENCE match, fetch OpenFDA drug background (supplementary)

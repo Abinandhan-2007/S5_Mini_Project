@@ -24,10 +24,14 @@ import { useCarePulseStore } from '../../lib/store';
 import { apiFetch } from '../../lib/apiFetch';
 import type { ScanMatchResponse, ScanMatchResult, DrugInfoData } from '../../lib/types';
 import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
+import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 export const ScanMedicineScreen: React.FC = () => {
   const navigate = useNavigate();
   const user = useCarePulseStore((s) => s.user);
+  const prescriptions = useCarePulseStore((s) => s.prescriptions);
+  const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,11 +44,68 @@ export const ScanMedicineScreen: React.FC = () => {
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
 
-  // Open live in-app camera viewfinder or Capacitor camera
+  // Sync prescriptions on mount
+  React.useEffect(() => {
+    if (user?.id) {
+      syncPrescriptions(user.id);
+    }
+  }, [user?.id, syncPrescriptions]);
+
+  // Open native camera on mobile device, or live in-app camera viewfinder on web
   const handleStartCamera = async () => {
     setErrorNotice(null);
-    setIsLiveCameraOpen(true);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await CapCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Camera,
+        });
+
+        if (photo.base64String) {
+          const fullBase64 = `data:image/${photo.format || 'jpeg'};base64,${photo.base64String}`;
+          setImagePreview(fullBase64);
+          processScan(fullBase64);
+        }
+      } catch (err: any) {
+        if (err?.message !== 'User cancelled photos app') {
+          console.warn('Native camera error, fallback to viewfinder:', err);
+          setIsLiveCameraOpen(true);
+        }
+      }
+    } else {
+      setIsLiveCameraOpen(true);
+    }
   };
+
+  // Open photo gallery (native on mobile, file picker on web)
+  const handleOpenGallery = async () => {
+    setErrorNotice(null);
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await CapCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Photos,
+        });
+
+        if (photo.base64String) {
+          const fullBase64 = `data:image/${photo.format || 'jpeg'};base64,${photo.base64String}`;
+          setImagePreview(fullBase64);
+          processScan(fullBase64);
+        }
+      } catch (err: any) {
+        if (err?.message !== 'User cancelled photos app') {
+          fileInputRef.current?.click();
+        }
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
 
 
   // Gallery / File Input Picker
@@ -157,7 +218,6 @@ export const ScanMedicineScreen: React.FC = () => {
         ref={fileInputRef}
         onChange={handleFileChange}
         accept="image/*"
-        capture="environment"
         className="hidden"
       />
 
@@ -277,6 +337,30 @@ export const ScanMedicineScreen: React.FC = () => {
                 </div>
               </div>
 
+              {/* Zero Active Prescription Banner */}
+              {prescriptions.length === 0 && (
+                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 space-y-2.5 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 font-heading">
+                      No Active Prescriptions on File
+                    </h3>
+                    <p className="text-[11px] text-slate-600 max-w-sm mx-auto leading-relaxed">
+                      You currently have no active doctor prescriptions to safety-check against. To find out what an unfamiliar medicine is used for, please use <strong>"What Is This For?"</strong>.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/medicine/info-lookup')}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
+                  >
+                    <Info className="w-3.5 h-3.5 text-blue-100" />
+                    <span>Switch to "What Is This For?"</span>
+                  </button>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
@@ -288,11 +372,11 @@ export const ScanMedicineScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleOpenGallery}
                   className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                 >
                   <Upload className="w-4 h-4 text-slate-500" />
-                  <span>Upload Packaging Photo</span>
+                  <span>Choose from Gallery</span>
                 </button>
               </div>
             </div>
@@ -613,6 +697,45 @@ export const ScanMedicineScreen: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 3B-EXTRA: NO ACTIVE PRESCRIPTION VIEW */}
+            {(scanResult.status === 'NO_ACTIVE_PRESCRIPTION' || scanResult.matchType === 'NO_ACTIVE_PRESCRIPTION') && (
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-200 shadow-md text-left space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h3 className="text-sm sm:text-base font-black text-amber-900 font-heading">
+                      No Active Prescriptions on Record
+                    </h3>
+                    <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
+                      {scanResult.message || "You currently do not have any active doctor prescriptions to safety-check against."}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  The "Check My Prescription" tool only verifies medicines against your active doctor prescriptions. To discover what this tablet or medicine is generally used for, switch to <strong>"What Is This For?"</strong>.
+                </p>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    onClick={() => navigate('/medicine/info-lookup')}
+                    className="w-full sm:w-1/2 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Info className="w-4 h-4 text-blue-100" />
+                    <span>Switch to "What Is This For?"</span>
+                  </button>
+
+                  <button
+                    onClick={handleResetScan}
+                    className="w-full sm:w-1/2 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-bold border border-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Done</span>
+                  </button>
+                </div>
               </div>
             )}
 
