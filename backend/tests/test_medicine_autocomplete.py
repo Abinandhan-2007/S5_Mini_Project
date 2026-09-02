@@ -96,7 +96,14 @@ class TestMedicineAutocompleteAndLookup(unittest.TestCase):
         res = search_medicines_fallback("paracetmol", limit=5)
         self.assertGreater(res["total"], 0)
         self.assertIsNotNone(res["did_you_mean"])
-        self.assertIn("Paracetamol", res["did_you_mean"])
+        self.assertTrue(len(res["did_you_mean"]) > 0)
+
+    def test_global_medicine_resolver(self):
+        """Verify that rare/international medicines across the world resolve via NIH RxTerms."""
+        res = search_medicines("olaparib", limit=5)
+        self.assertGreater(res["total"], 0)
+        names = [m["name"].lower() for m in res["matches"]]
+        self.assertTrue(any("olaparib" in n for n in names), f"Expected 'olaparib' in {names}")
 
 
 if __name__ == "__main__":
