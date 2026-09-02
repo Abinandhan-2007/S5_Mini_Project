@@ -427,3 +427,101 @@ CREATE TABLE IF NOT EXISTS notification_log (
 );
 CREATE INDEX IF NOT EXISTS idx_notification_log_lookup ON notification_log(patient_id, notification_type, reference_id);
 
+-- ===================================================================
+-- Friendly Pre-Joined Views (For Easy Database GUI Inspection)
+-- ===================================================================
+
+-- 1. v_appointments: Shows patient_code, patient_name, doctor_name, hospital_name
+CREATE OR REPLACE VIEW v_appointments AS
+SELECT 
+    a.id AS appointment_id,
+    a.ticket_number,
+    p.patient_code,
+    p.full_name AS patient_name,
+    p.phone AS patient_phone,
+    p.email AS patient_email,
+    COALESCE(s.staff_code, a.doctor_id) AS doctor_code,
+    a.doctor_name,
+    a.doctor_specialty,
+    h.hospital_code,
+    a.hospital_name,
+    a.date AS appointment_date,
+    a.time_slot,
+    a.type,
+    a.status,
+    a.created_at
+FROM appointments a
+LEFT JOIN patients p ON a.patient_id = p.id
+LEFT JOIN hospitals h ON a.hospital_id = h.id
+LEFT JOIN staff s ON a.doctor_id = s.doctor_id AND s.role = 'doctor';
+
+-- 2. v_consultations: Shows patient_code, patient_name, doctor_name, diagnosis, treatment
+CREATE OR REPLACE VIEW v_consultations AS
+SELECT 
+    c.id AS consultation_id,
+    p.patient_code,
+    p.full_name AS patient_name,
+    p.phone AS patient_phone,
+    p.gender AS patient_gender,
+    COALESCE(s.staff_code, c.doctor_id) AS doctor_code,
+    c.doctor_name,
+    h.hospital_code,
+    h.name AS hospital_name,
+    c.date AS consultation_date,
+    c.soap_data->>'subjective' AS subjective_symptoms,
+    c.soap_data->>'assessment' AS diagnosis,
+    c.soap_data->>'plan' AS treatment_plan,
+    c.created_at
+FROM consultations c
+LEFT JOIN patients p ON c.patient_id = p.id
+LEFT JOIN hospitals h ON c.hospital_id = h.id
+LEFT JOIN staff s ON c.doctor_id = s.doctor_id AND s.role = 'doctor';
+
+-- 3. v_prescriptions: Shows patient_code, patient_name, drug_name, dosage, meal_timing
+CREATE OR REPLACE VIEW v_prescriptions AS
+SELECT 
+    pr.id AS prescription_id,
+    p.patient_code,
+    p.full_name AS patient_name,
+    pr.drug_name,
+    pr.dosage,
+    pr.frequency,
+    pr.meal_timing,
+    pr.prescriber AS doctor_name,
+    COALESCE(pr.status, 'Active') AS status,
+    pr.created_at
+FROM prescriptions pr
+LEFT JOIN patients p ON pr.patient_id = p.id;
+
+-- 4. v_staff_directory: Shows staff_code (D001101, R001101, A001101), full_name, role, hospital_code
+CREATE OR REPLACE VIEW v_staff_directory AS
+SELECT 
+    s.id AS staff_id,
+    s.staff_code,
+    s.full_name,
+    s.role,
+    s.specialization,
+    s.email,
+    s.phone,
+    h.hospital_code,
+    h.name AS hospital_name,
+    s.is_active,
+    s.created_at
+FROM staff s
+LEFT JOIN hospitals h ON s.hospital_id = h.id;
+
+-- 5. v_patients: Shows patient_code prominently
+CREATE OR REPLACE VIEW v_patients AS
+SELECT 
+    p.patient_code,
+    p.full_name,
+    p.email,
+    p.phone,
+    p.dob,
+    p.gender,
+    p.blood_group,
+    p.id AS patient_uuid,
+    p.created_at
+FROM patients p;
+
+
