@@ -12,10 +12,9 @@ AI_BASE_DIR = Path(__file__).resolve().parent
 MODELS_DIR = AI_BASE_DIR / "models"
 
 # AI Provider API Keys
-GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "")
+MISTRAL_AGENT_ID: str = os.getenv("MISTRAL_AGENT_ID", "ag_01a062cbadc977cf85c1546ff60ad68e")
+
 
 # Model Hyperparameters & Thresholds
 DEFAULT_TRIAGE_MODEL: str = os.getenv("CAREPULSE_TRIAGE_MODEL", "gemini-1.5-flash")

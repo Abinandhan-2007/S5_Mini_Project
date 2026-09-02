@@ -165,7 +165,7 @@ export const HealthAIChatScreen: React.FC = () => {
         {isAiTyping && (
           <div className="flex items-center gap-2 text-xs font-semibold text-[#0B5A54] pl-2 animate-pulse">
             <Sparkles className="w-4 h-4 text-[#14B8A6]" />
-            <span>AI Care Assistant is evaluating symptoms...</span>
+            <span>Health AI is analyzing your symptoms...</span>
           </div>
         )}
 

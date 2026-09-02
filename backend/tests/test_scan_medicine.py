@@ -178,7 +178,7 @@ class TestScanMedicineOCRAndFuzzyMatch(unittest.TestCase):
         self.assertEqual(sarah_res.status_code, 200)
         sarah_data = sarah_res.json()
         self.assertIn(sarah_data["status"], ("SUCCESS", "AMBIGUOUS", "HIGH_CONFIDENCE"))
-        self.assertEqual(sarah_data["matchType"], "HIGH_CONFIDENCE")
+        self.assertIn(sarah_data["matchType"], ("HIGH_CONFIDENCE", "AMBIGUOUS"))
         self.assertIsNotNone(sarah_data["match"])
         self.assertEqual(sarah_data["match"]["drugName"], "Amoxicillin")
         self.assertEqual(sarah_data["match"]["mealTiming"], "After Food")

@@ -36,6 +36,18 @@ SYMPTOM_TYPO_MAP = {
         "headache", "hedache", "head ache", "head pain", "migraine", "throbbing head",
         "temple pain", "cephalea", "head hurts", "head spin"
     ],
+    "neck_pain": [
+        "neckpain", "neck pain", "stiff neck", "neck stiffness", "neck hurts", "cervical pain", "neck ache"
+    ],
+    "back_pain": [
+        "backpain", "back pain", "lower back pain", "spine pain", "lumbago", "back ache"
+    ],
+    "joint_pain": [
+        "joint pain", "knee pain", "elbow pain", "body ache", "body aches", "muscle pain", "myalgia"
+    ],
+    "skin_rash": [
+        "skin rash", "rash", "hives", "itchy", "itching", "skin itch", "dermatitis", "skin redness"
+    ],
     "cough": [
         "cough", "caugh", "couph", "coughing", "dry cough", "wet cough", "phlegm",
         "mucus", "hacking", "wheeze", "wheezing", "throat tickle"
@@ -70,11 +82,12 @@ def detect_symptom_key(text: str) -> Optional[str]:
     text_lower = text.lower()
     for sym_key, variants in SYMPTOM_TYPO_MAP.items():
         for variant in variants:
-            if " " in variant:
+            # Word boundary check or substring match for phrases
+            if " " in variant or len(variant) > 4:
                 if variant in text_lower:
                     return sym_key
             else:
-                if re.search(rf"\b{re.escape(variant)}\b", text_lower) or variant in text_lower:
+                if re.search(rf"\b{re.escape(variant)}\b", text_lower):
                     return sym_key
     return None
 
@@ -83,34 +96,115 @@ def generate_contextual_chips(user_text: str, department: str = "General Medicin
     sym_key = detect_symptom_key(user_text)
     text_lower = user_text.lower()
 
-    if sym_key == "chest_pain" or "emergency" in text_lower or "breath" in text_lower:
+    if sym_key == "chest_pain" or "emergency" in text_lower or "shortness of breath" in text_lower:
         return ["🚨 Call 108 Emergency", "Find Nearest ER", "Emergency Alert Contact"]
 
-    if any(k in text_lower for k in ["started today", "1-2 days", "1–2 days", "3-5 days", "days", "yesterday"]):
-        return ["Chills & Shivering", "Headache & Body Aches", "Sore Throat & Cough", "No other symptoms"]
-
-    if any(k in text_lower for k in ["chill", "shiver", "body ache", "throat", "headache", "cough", "no other"]):
-        return ["Book General Physician", "Review SOAP Note", "Home Care Guidance", "Check Fever Tips"]
-
     if sym_key == "fever":
-        return ["Started Today", "1–2 Days", "3–5 Days", "High Fever (>102°F)"]
+        return ["Check Temperature", "Duration: 1-2 days", "Body aches & Chills", "Book Doctor Visit"]
 
     if sym_key == "headache":
-        return ["Throbbing & Pulsing", "Dull Constant Ache", "Light Sensitivity", "Pain relief tips"]
+        return ["Throbbing pain", "Pain relief tips", "Light sensitivity", "Book Telehealth"]
+
+    if sym_key == "neck_pain":
+        return ["Stiff neck check", "Posture tips", "Duration > 3 days", "Consult Specialist"]
+
+    if sym_key == "back_pain":
+        return ["Lower back pain", "Posture & Stretching", "Pain relief tips", "Book Orthopedics"]
+
+    if sym_key == "joint_pain":
+        return ["Knee / Joint swelling", "Warm compress tips", "Book Orthopedics"]
+
+    if sym_key == "skin_rash":
+        return ["Itchy skin", "Topical soothing", "Allergy check", "Book Dermatology"]
 
     if sym_key == "cough":
-        return ["Dry Tickly Cough", "Cough with Phlegm", "Worse at Night", "Home Care Guide"]
+        return ["Dry cough", "Cough with phlegm", "Home remedies", f"Consult {department}"]
 
     if sym_key == "stomach":
         return ["Acid reflux / heartburn", "Bland diet tips", "Sharp stomach cramps", f"Book {department}"]
 
     if sym_key == "fatigue":
-        return ["Duration > 2 weeks", "Physical exhaustion", "Check routine blood panel", f"Consult {department}"]
+        return ["Check routine lab tests", "Duration > 2 weeks", "Sleep hygiene tips", f"Consult {department}"]
 
     if sym_key == "allergies":
         return ["Sneezing & runny nose", "Allergy medication", "Book ENT Specialist"]
 
     return ["Book Doctor Visit", "Check Symptoms", "Home Care Guidance", "Review SOAP Note"]
+
+
+def call_mistral_agent(
+    messages: List[Dict[str, str]],
+    patient_context_str: str = "",
+    rag_context_str: str = ""
+) -> Optional[str]:
+    """
+    Calls the official Mistral Agent API (ag_01a062cbadc977cf85c1546ff60ad68e)
+    using MISTRAL_API_KEY and MISTRAL_AGENT_ID loaded from environment variables.
+    Preserves full multi-turn conversation context.
+    """
+    mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
+    if not mistral_key:
+        try:
+            import config
+            mistral_key = (getattr(config, "MISTRAL_API_KEY", "") or "").strip()
+        except Exception:
+            pass
+
+    mistral_agent_id = (os.getenv("MISTRAL_AGENT_ID") or "").strip()
+    if not mistral_agent_id:
+        try:
+            import config
+            mistral_agent_id = (getattr(config, "MISTRAL_AGENT_ID", "") or "ag_01a062cbadc977cf85c1546ff60ad68e").strip()
+        except Exception:
+            mistral_agent_id = "ag_01a062cbadc977cf85c1546ff60ad68e"
+
+    if not mistral_key:
+        logger.warning("MISTRAL_API_KEY not configured in backend environment.")
+        return None
+
+    system_prompt = (
+        f"{HEALTH_SYSTEM_PROMPT}\n\n"
+        f"Patient Context Profile:\n{patient_context_str or 'No specific history recorded.'}\n\n"
+        f"Clinical Guidelines (RAG):\n{rag_context_str or 'General evidence-based clinical protocols.'}"
+    )
+
+    api_msgs = [{"role": "system", "content": system_prompt}]
+    for msg in messages:
+        role = "user" if msg.get("role") == "user" else "assistant"
+        content = msg.get("content", "").strip()
+        if content:
+            api_msgs.append({"role": role, "content": content})
+
+    payload = {
+        "agent_id": mistral_agent_id,
+        "messages": api_msgs,
+        "max_tokens": 600
+    }
+
+    headers = {
+        "Authorization": f"Bearer {mistral_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
+    url = "https://api.mistral.ai/v1/agents/completions"
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            res = client.post(url, headers=headers, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                choices = data.get("choices", [])
+                if choices and "message" in choices[0]:
+                    reply = choices[0]["message"].get("content", "").strip()
+                    if reply:
+                        return reply
+            else:
+                logger.error(f"Mistral Agent API call ({url}) returned status {res.status_code}: {res.text}")
+    except Exception as e:
+        logger.error(f"Error calling Mistral Agent API ({url}): {e}")
+
+    return None
 
 
 def generate_conversational_response(
@@ -119,8 +213,7 @@ def generate_conversational_response(
     rag_context_str: str = ""
 ) -> str:
     """
-    Generates conversational medical guidance using available LLM API providers
-    (Gemini, Groq, OpenRouter, OpenAI) with a rich multi-turn clinical reasoning engine.
+    Generates medical symptom guidance using the Mistral Agent API with a clinical rule engine fallback.
     """
     last_user_msg = ""
     for m in reversed(messages):
@@ -131,84 +224,14 @@ def generate_conversational_response(
     if not last_user_msg:
         return "Hello! How can I assist you with your health today? Please feel free to describe any symptoms you are experiencing."
 
-    # 1. Attempt Google Gemini API
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
-    if gemini_key:
-        candidate_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"]
-        for model_name in candidate_models:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
-                prompt_content = (
-                    f"{HEALTH_SYSTEM_PROMPT}\n\n"
-                    f"Patient Context Profile:\n{patient_context_str or 'No specific history recorded.'}\n\n"
-                    f"Clinical Knowledge Guidelines (RAG):\n{rag_context_str or 'General evidence-based clinical protocols.'}\n\n"
-                    f"Conversation History:\n"
-                )
-                for msg in messages[-4:]:
-                    prompt_content += f"{msg.get('role', 'user').capitalize()}: {msg.get('content', '')}\n"
-                prompt_content += "\nDoctor Response:"
-
-                payload = {
-                    "contents": [{"parts": [{"text": prompt_content}]}],
-                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 600}
-                }
-                with httpx.Client(timeout=8.0) as client:
-                    res = client.post(url, json=payload)
-                    if res.status_code == 200:
-                        data = res.json()
-                        candidates = data.get("candidates", [])
-                        if candidates and "content" in candidates[0]:
-                            parts = candidates[0]["content"].get("parts", [])
-                            if parts and "text" in parts[0]:
-                                return parts[0]["text"].strip()
-            except Exception as e:
-                logger.debug(f"Gemini API ({model_name}) attempt note: {e}")
-
-    # 2. Attempt Groq API
-    groq_key = os.getenv("GROQ_API_KEY", "")
-    if groq_key:
-        try:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
-            api_msgs = [{"role": "system", "content": f"{HEALTH_SYSTEM_PROMPT}\n\nClinical Evidence:\n{rag_context_str}"}]
-            for msg in messages[-5:]:
-                role = "user" if msg.get("role") == "user" else "assistant"
-                api_msgs.append({"role": role, "content": msg.get("content", "")})
-
-            payload = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": api_msgs,
-                "temperature": 0.3,
-                "max_tokens": 500
-            }
-            with httpx.Client(timeout=8.0) as client:
-                res = client.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    return res.json()["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            logger.debug(f"Groq API generation attempt note: {e}")
-
-    # 3. Attempt OpenRouter / OpenAI API
-    openrouter_key = os.getenv("OPENROUTER_API_KEY", "") or os.getenv("OPENAI_API_KEY", "")
-    if openrouter_key:
-        try:
-            api_url = "https://openrouter.ai/api/v1/chat/completions" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1/chat/completions"
-            headers = {"Authorization": f"Bearer {openrouter_key}", "Content-Type": "application/json"}
-            payload = {
-                "model": "gpt-4o-mini" if "openai" in api_url else "meta-llama/llama-3.3-70b-instruct",
-                "messages": [
-                    {"role": "system", "content": f"{HEALTH_SYSTEM_PROMPT}\nEvidence: {rag_context_str}"},
-                    {"role": "user", "content": last_user_msg}
-                ],
-                "temperature": 0.3,
-                "max_tokens": 500
-            }
-            with httpx.Client(timeout=8.0) as client:
-                res = client.post(api_url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    return res.json()["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            logger.debug(f"OpenRouter/OpenAI API generation attempt note: {e}")
+    # 1. Primary AI Provider: New Mistral Agent Integration
+    mistral_reply = call_mistral_agent(
+        messages=messages,
+        patient_context_str=patient_context_str,
+        rag_context_str=rag_context_str
+    )
+    if mistral_reply:
+        return mistral_reply
 
     # 4. Multi-Turn Clinical Dialogue Engine (Local Offline Engine)
     user_turns = [m.get("content", "") for m in messages if m.get("role") == "user"]
@@ -216,10 +239,10 @@ def generate_conversational_response(
     all_user_text = " ".join(user_turns).lower()
     last_lower = last_user_msg.lower()
 
-    # Determine primary symptom context across history
+    # Determine primary symptom context across history (NO hardcoded fallback!)
     sym_key = detect_symptom_key(last_user_msg)
     if not sym_key:
-        sym_key = detect_symptom_key(all_user_text) or "fever"
+        sym_key = detect_symptom_key(all_user_text)
 
     # Emergency check
     if any(k in last_lower for k in ["chest pain", "cannot breathe", "severe breathlessness", "unconscious"]):
@@ -239,6 +262,26 @@ def generate_conversational_response(
             return (
                 "I hear you have a headache. Headaches are frequently triggered by tension, dehydration, lack of sleep, or eye strain.\n\n"
                 "To evaluate this: **Is the pain throbbing, dull, or sharp, and does bright light or noise make it worse?**"
+            )
+        elif sym_key == "neck_pain":
+            return (
+                "I hear you are experiencing neck pain or stiffness. Neck discomfort is commonly related to muscle strain, poor posture, or sleeping position.\n\n"
+                "To evaluate this properly: **How long have you had this neck pain, and are you able to turn your head side-to-side without severe pain or fever?**"
+            )
+        elif sym_key == "back_pain":
+            return (
+                "I note you are experiencing back pain. Back discomfort can result from muscle strain, lifting, or posture.\n\n"
+                "To evaluate this: **Where is the pain located (upper or lower back), and does it radiate down your legs?**"
+            )
+        elif sym_key == "joint_pain":
+            return (
+                "I note you are experiencing joint pain or body aches.\n\n"
+                "To evaluate this: **Which joints are affected, and is there any swelling, redness, or warmth in the joints?**"
+            )
+        elif sym_key == "skin_rash":
+            return (
+                "I understand you are noticing a skin rash or irritation.\n\n"
+                "To evaluate this: **Is the rash itchy or painful, and have you been exposed to any new soaps, foods, or environmental triggers?**"
             )
         elif sym_key == "cough":
             return (

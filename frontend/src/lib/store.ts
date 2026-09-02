@@ -598,21 +598,42 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
           ? `Patient Name: ${user.fullName}, Gender: ${user.gender || 'Not specified'}, Blood: ${user.bloodGroup || 'Not specified'}, Allergies: ${user.allergies || 'None'}, Conditions: ${user.preExistingConditions || 'None'}`
           : '';
 
-        const res = await apiFetch('/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: formattedHistory,
-            patient_context: patientContext,
-          }),
-        });
+        let res: Response | null = null;
+        try {
+          res = await apiFetch('/health-assistant/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: formattedHistory,
+              patient_context: patientContext,
+            }),
+          });
+        } catch {
+          res = null;
+        }
+
+        if (!res || !res.ok) {
+          try {
+            res = await apiFetch('/ai/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: formattedHistory,
+                patient_context: patientContext,
+              }),
+            });
+          } catch {
+            res = null;
+          }
+        }
 
         if (res && res.ok) {
           const aiData = await res.json();
+          const replyText = aiData.reply || aiData.response || "I've reviewed your symptoms. Please stay hydrated and monitor your condition.";
           const botMsg: ChatMessage = {
             id: `msg-${Date.now() + 1}`,
             sender: 'bot',
-            text: aiData.reply || "I've reviewed your symptoms. Please stay hydrated and monitor your condition.",
+            text: replyText,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             quickReplyChips: aiData.quickReplyChips,
             confidence: aiData.confidence_score ?? 88,
@@ -638,30 +659,108 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
           return botMsg;
         }
       } catch (err) {
-        console.warn('AI Chat API offline fallback note:', err);
+        console.warn('Health AI Chat API error:', err);
       }
 
       // Offline / fallback reasoning if network unreachable
+      const userMessages = [...currentHistory, userMsg].filter((m) => m.sender === 'user').map((m) => m.text);
       const userTextLower = msg.text.toLowerCase();
-      let botReply = "I've noted the symptoms you described. Could you share how many days this has been present and if anything specific triggers or relieves it?";
-      let chips: string[] = ['Check Temperature', 'Book Doctor Visit', 'Home Care Tips'];
+      const fullHistoryLower = userMessages.join(' ').toLowerCase();
+      const turnCount = userMessages.length;
+
+      let botReply = "I've noted the symptoms you described. To help evaluate this, could you share how long this has been present and if anything specific relieves it?";
+      let chips: string[] = ['Book Doctor Visit', 'Check Symptoms', 'Home Care Guidance', 'Review SOAP Note'];
       let confidence = 85;
       let riskLevel: 'low' | 'moderate' | 'critical' = 'low';
+      let specialty = 'General Medicine';
+      let topCondition = 'General Health Intake Evaluation';
 
-      if (userTextLower.includes('fever') || userTextLower.includes('fewer') || userTextLower.includes('fevr') || userTextLower.includes('chills') || userTextLower.includes('temp')) {
-        botReply = "I hear you are dealing with an elevated temperature or fever. Stay well-hydrated with fluids and electrolytes, rest in a cool room, and monitor your readings. If temperature exceeds 102°F (38.9°C) or lasts over 48 hours, please consult a physician promptly.";
-        chips = ['Check Temperature', 'Duration: 1-2 days', 'Body aches & Chills', 'Book Doctor Visit'];
-        confidence = 88;
-      } else if (userTextLower.includes('headache') || userTextLower.includes('hedache') || userTextLower.includes('migraine')) {
-        botReply = "Headaches can stem from dehydration, tension, or eye strain. Ensure you take a break from screens, drink plenty of water, and rest in a dim room.";
-        chips = ['Throbbing pain', 'Pain relief tips', 'Book Telehealth'];
-        confidence = 86;
-      } else if (userTextLower.includes('chest') || userTextLower.includes('breath') || userTextLower.includes('emergency')) {
+      if (fullHistoryLower.includes('chest') || fullHistoryLower.includes('breath') || fullHistoryLower.includes('emergency')) {
         botReply = "🚨 CRITICAL SAFETY ALERT: Severe chest pain, pressure, or shortness of breath requires IMMEDIATE emergency medical attention. Please call 108 / 911 or visit the nearest ER right away.";
         chips = ['🚨 Call 108 Emergency', 'Find Nearest ER', 'Emergency Contact'];
         confidence = 98;
         riskLevel = 'critical';
+        specialty = 'Cardiology';
+        topCondition = 'Acute Critical Emergency (Immediate Hospital Attention Required)';
+      } else if (fullHistoryLower.includes('fever') || fullHistoryLower.includes('fewer') || fullHistoryLower.includes('fevr') || fullHistoryLower.includes('chills') || fullHistoryLower.includes('temp')) {
+        specialty = 'General Medicine';
+        topCondition = 'Acute Febrile Illness / Temperature Elevation';
+        if (turnCount > 1) {
+          botReply = "Thank you for providing those details. Based on your symptoms, this is consistent with an Acute Febrile Illness. Recommended care steps: Stay well-hydrated, rest in a cool room, and monitor your temperature. Consult a physician if your fever exceeds 102°F or persists beyond 48 hours.";
+          chips = ['Book Doctor Visit', 'Review SOAP Note', 'Home Care Guidance'];
+        } else {
+          botReply = "I hear you are dealing with an elevated temperature or fever. Stay well-hydrated with fluids and electrolytes, rest in a cool room, and monitor your readings. How many days have you had this fever?";
+          chips = ['Check Temperature', 'Duration: 1-2 days', 'Body aches & Chills', 'Book Doctor Visit'];
+        }
+        confidence = 88;
+      } else if (fullHistoryLower.includes('headache') || fullHistoryLower.includes('hedache') || fullHistoryLower.includes('migraine')) {
+        specialty = 'General Medicine';
+        topCondition = 'Tension Headache / Cephalea Evaluation';
+        if (turnCount > 1) {
+          botReply = "Thank you for the update. Headaches often correlate with tension, dehydration, or eye strain. Ensure adequate hydration, rest in a quiet dim room, and take a screen break. If pain is severe or sudden, seek medical evaluation.";
+          chips = ['Book Doctor Visit', 'Review SOAP Note', 'Home Care Guidance'];
+        } else {
+          botReply = "Headaches can stem from dehydration, tension, or eye strain. Is the pain throbbing or dull, and does bright light or noise make it worse?";
+          chips = ['Throbbing pain', 'Pain relief tips', 'Book Telehealth'];
+        }
+        confidence = 86;
+      } else if (fullHistoryLower.includes('cough') || fullHistoryLower.includes('phlegm') || fullHistoryLower.includes('mucus')) {
+        specialty = 'Pulmonology';
+        topCondition = 'Acute Upper Respiratory Tract Infection';
+        if (turnCount > 1) {
+          botReply = "Thank you for sharing. Your symptoms are consistent with an upper respiratory infection. Stay hydrated, sip warm fluids with honey, and use steam inhalation to soothe airway irritation. Consult a doctor if shortness of breath occurs.";
+          chips = ['Book Doctor Visit', 'Review SOAP Note', 'Consult Pulmonology'];
+        } else {
+          botReply = "I understand you are dealing with a cough. Is it a dry tickly cough, or are you bringing up mucus or phlegm?";
+          chips = ['Dry cough', 'Cough with phlegm', 'Home remedies', 'Consult Pulmonology'];
+        }
+        confidence = 86;
+      } else if (fullHistoryLower.includes('neck') || fullHistoryLower.includes('cervical') || fullHistoryLower.includes('neckpain')) {
+        specialty = 'General Medicine';
+        topCondition = 'Cervical Strain / Postural Discomfort';
+        if (turnCount > 1) {
+          botReply = "Thank you for the details. Neck pain is frequently linked to muscle strain or sleeping posture. Gentle stretching, warm compresses, and maintaining good ergonomic posture can help. Seek medical attention if pain radiates or fever develops.";
+          chips = ['Stiff neck check', 'Posture tips', 'Consult Specialist'];
+        } else {
+          botReply = "I hear you are experiencing neck pain or stiffness. How long have you had this neck pain, and can you turn your head side-to-side without severe discomfort?";
+          chips = ['Stiff neck check', 'Posture tips', 'Duration > 3 days', 'Consult Specialist'];
+        }
+        confidence = 86;
+      } else if (fullHistoryLower.includes('back') || fullHistoryLower.includes('lumbago')) {
+        specialty = 'Orthopedics';
+        topCondition = 'Musculoskeletal Lumbar Strain';
+        if (turnCount > 1) {
+          botReply = "Thank you for the update. Back discomfort typically responds to rest, gentle stretching, avoiding heavy lifting, and applying heat or cold packs. Consult an orthopedist if pain radiates down your leg or worsens.";
+          chips = ['Posture & Stretching', 'Book Orthopedics', 'Review SOAP Note'];
+        } else {
+          botReply = "I note you are experiencing back discomfort. Is the pain located in your upper or lower back, and does it radiate down your legs?";
+          chips = ['Lower back pain', 'Posture & Stretching', 'Pain relief tips', 'Book Orthopedics'];
+        }
+        confidence = 85;
+      } else if (fullHistoryLower.includes('stomach') || fullHistoryLower.includes('acid') || fullHistoryLower.includes('reflux') || fullHistoryLower.includes('belly')) {
+        specialty = 'Gastroenterology';
+        topCondition = 'Dyspepsia / Acid Reflux Evaluation';
+        if (turnCount > 1) {
+          botReply = "Thank you for providing those details. For abdominal discomfort or acid reflux, eat smaller bland meals, avoid lying down immediately after eating, and stay hydrated. Consult a gastroenterologist if pain is sharp or persistent.";
+          chips = ['Bland diet tips', 'Book Gastroenterology', 'Review SOAP Note'];
+        } else {
+          botReply = "I hear you are having stomach or abdominal discomfort. Where is the discomfort located, and is it a burning acid sensation or sharp cramps?";
+          chips = ['Acid reflux / heartburn', 'Bland diet tips', 'Sharp stomach cramps', 'Book Gastroenterology'];
+        }
+        confidence = 86;
+      } else if (turnCount > 1) {
+        botReply = "Thank you for providing those details. I have synthesized your clinical intake profile based on your symptoms. Please review your generated SOAP Note or schedule a consultation with our general medicine specialists for formal examination.";
+        chips = ['Book Doctor Visit', 'Review SOAP Note', 'Check Symptoms'];
       }
+
+      const soapDraft = {
+        status: 'draft_pending_physician_review',
+        department: specialty,
+        subjective: `Patient reports primary complaint of ${msg.text}.`,
+        objective: 'Vital Signs: Pending triage desk recording.',
+        assessment: `1. Primary Clinical Impression: ${topCondition}.\n2. Recommended Referral: ${specialty}.`,
+        plan: `1. Schedule clinical evaluation with ${specialty}.\n2. Monitor symptoms and seek emergency care if red flags develop.`
+      };
 
       const botMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
@@ -671,11 +770,22 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         quickReplyChips: chips,
         confidence,
         riskLevel,
+        specialty,
         isEmergency: riskLevel === 'critical',
+        soapNote: soapDraft
       };
 
       set((state) => ({
         chatMessages: [...state.chatMessages, botMsg],
+        latestAssessment: {
+          subjective: soapDraft.subjective,
+          objective: soapDraft.objective,
+          assessmentDiagnosis: soapDraft.assessment,
+          plan: soapDraft.plan,
+          confidence,
+          riskLevel,
+          specialty
+        },
         isAiTyping: false,
       }));
       return botMsg;

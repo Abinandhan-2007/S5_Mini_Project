@@ -91,13 +91,19 @@ class AIChatRequest(BaseModel):
 
 class AIChatResponse(BaseModel):
     reply: str = Field(..., description="AI clinician response")
-    provider: str = Field("CarePulse Med AI Engine", description="Active response provider")
+    response: Optional[str] = Field(None, description="Alias for reply for standardized response format")
+    disclaimer: str = Field(
+        "This is a preliminary AI-based assessment and is not a confirmed medical diagnosis.",
+        description="Standard medical safety disclaimer"
+    )
+    provider: str = Field("CarePulse Mistral AI Engine", description="Active response provider")
     confidence_score: Optional[float] = Field(92.0, description="Model confidence percentage")
     risk_level: Optional[str] = Field("low", description="Triage risk tier: low, moderate, or critical")
     suggested_specialties: Optional[List[str]] = Field(default_factory=list, description="Suggested medical specialties")
     quickReplyChips: Optional[List[str]] = Field(default_factory=list, description="Contextual quick reply suggestions")
     is_emergency: Optional[bool] = Field(False, description="Emergency escalation flag")
     soap_note: Optional[Dict[str, Any]] = Field(None, description="Synthesized SOAP clinical summary")
+
 
 
 class AIRagSearchRequest(BaseModel):

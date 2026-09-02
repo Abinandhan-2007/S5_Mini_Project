@@ -141,10 +141,16 @@ async def check_medication_guard(request: AIDrugGuardRequest):
     status_code=status.HTTP_200_OK,
     summary="RAG Conversational Clinician Chat Assistant"
 )
+@router.post(
+    "/health-assistant/chat",
+    response_model=AIChatResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Mistral Health Assistant Chat API"
+)
 async def chat_medical_assistant(request: AIChatRequest):
     """
-    POST /api/ai/chat
-    Provides multi-turn conversational health guidance grounded in clinical knowledge base guidelines.
+    POST /api/ai/chat or POST /api/ai/health-assistant/chat
+    Provides multi-turn conversational health guidance powered by Mistral Agent API.
     """
     try:
         return predict_rag_chat(request)

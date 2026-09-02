@@ -136,6 +136,14 @@ app.include_router(admin_router)
 app.include_router(staff_auth_router)
 app.include_router(doctor_router)
 
+from routes.ai_routes import chat_medical_assistant
+from ai.schemas import AIChatRequest, AIChatResponse
+
+@app.post("/api/health-assistant/chat", response_model=AIChatResponse, tags=["AI Clinical Services"])
+async def health_assistant_chat_direct(request: AIChatRequest):
+    return await chat_medical_assistant(request)
+
+
 @app.get("/api/health")
 def health_check():
     db_status = "connected"

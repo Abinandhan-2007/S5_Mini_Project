@@ -22,6 +22,9 @@ PORT = int(os.getenv("PORT", "5000"))
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 JWT_SECRET = os.getenv("JWT_SECRET", "carepulse_super_secret_jwt_key_2026")
 RESET_TOKEN_SECRET = os.getenv("RESET_TOKEN_SECRET", "carepulse_reset_token_secret_key_2026")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "").strip()
+MISTRAL_AGENT_ID = os.getenv("MISTRAL_AGENT_ID", "ag_01a062cbadc977cf85c1546ff60ad68e").strip()
+
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 

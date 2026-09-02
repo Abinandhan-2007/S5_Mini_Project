@@ -205,7 +205,9 @@ def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
 
     return AIChatResponse(
         reply=reply,
-        provider="CarePulse Med AI Engine",
+        response=reply,
+        disclaimer="This is a preliminary AI-based assessment and is not a confirmed medical diagnosis.",
+        provider="CarePulse Mistral AI Engine",
         confidence_score=conf_score,
         risk_level=risk_level,
         suggested_specialties=[dept],

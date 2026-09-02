@@ -127,7 +127,8 @@ export async function apiFetch(
       } else {
         // Standard Web Browser fetch
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutMs = options.signal ? undefined : (path.includes('/ai') || path.includes('/chat') ? 20000 : 12000);
+        const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
         const res = await fetch(url, {
           ...options,
@@ -137,7 +138,7 @@ export async function apiFetch(
             ...(options.headers as Record<string, string> | undefined),
           },
         });
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
 
         // Verify that the response is NOT an HTML SPA fallback
         const contentType = res.headers.get('content-type') || '';
