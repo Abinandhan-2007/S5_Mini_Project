@@ -1,8 +1,15 @@
+// src/portals/doctor/PatientList.tsx
 import React from 'react';
+import { DoctorQueue, type DoctorQueueProps } from './DoctorQueue';
 
-// TODO: Implement Doctor's patient list with history links and search
-const PatientList: React.FC = () => {
-  return <div>TODO: PatientList</div>;
+export const PatientList: React.FC<Partial<DoctorQueueProps>> = (props) => {
+  return (
+    <DoctorQueue
+      queue={props.queue || []}
+      onSelectPatient={props.onSelectPatient || (() => {})}
+      onCallPatient={props.onCallPatient || (() => {})}
+    />
+  );
 };
 
 export default PatientList;

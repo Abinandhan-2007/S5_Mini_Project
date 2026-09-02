@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Smartphone,
   UserPlus,
+  UserCheck,
   X,
   Printer,
   Layers,
@@ -97,16 +98,15 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   const tokens = useStaffStore((s) => s.tokens);
   const doctors = useStaffStore((s) => s.doctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
-  const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'ONLINE' | 'OFFLINE' | 'COMPLETED' | 'ALL'>('ONLINE');
+  const [activeTab, setActiveTab] = useState<'ONLINE' | 'OFFLINE' | 'CHECKED_IN' | 'COMPLETED' | 'ALL'>('ALL');
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('ALL');
   const [selectedSlotFilter, setSelectedSlotFilter] = useState('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
 
-  // Date Filter & Sort by Date State (Default to Current Date / Today)
-  const [selectedDateFilter, setSelectedDateFilter] = useState<string>(getTodayISODate(0));
+  // Date Filter & Sort by Date State (Default to 'ALL' to show all patient bookings)
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<SortByOption>('TIME_ASC');
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
 
@@ -135,6 +135,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
           activeTab === 'ALL' ||
           (activeTab === 'ONLINE' && isOnline) ||
           (activeTab === 'OFFLINE' && !isOnline) ||
+          (activeTab === 'CHECKED_IN' && item.status === 'Checked In') ||
           (activeTab === 'COMPLETED' && item.status === 'Completed');
 
         const matchesDoctor = selectedDoctorFilter === 'ALL' || item.doctorId === selectedDoctorFilter;
@@ -205,6 +206,12 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
     return isOffline && matchesDate;
   }).length;
 
+  const checkedInCount = tokens.filter((t) => {
+    const isChecked = t.status === 'Checked In';
+    const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
+    return isChecked && matchesDate;
+  }).length;
+
   const completedCount = tokens.filter((t) => {
     const isCompleted = t.status === 'Completed';
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
@@ -221,10 +228,12 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
 
   const getStatusBadge = (status: TokenStatus) => {
     switch (status) {
+      case 'Checked In':
+        return 'bg-teal-50 text-[#0B5A54] border-teal-300 font-extrabold shadow-2xs';
       case 'Completed':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'In Consultation':
-        return 'bg-teal-50 text-[#0B5A54] border-teal-200';
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'Cancelled':
         return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'Skipped':
@@ -236,11 +245,11 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
 
   const resetAllFilters = () => {
     setSearchQuery('');
-    setActiveTab('ONLINE');
+    setActiveTab('ALL');
     setSelectedDoctorFilter('ALL');
     setSelectedSlotFilter('ALL');
     setSelectedStatusFilter('ALL');
-    setSelectedDateFilter(getTodayISODate(0));
+    setSelectedDateFilter('ALL');
     setSortBy('TIME_ASC');
   };
 
@@ -249,7 +258,8 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
     selectedDoctorFilter !== 'ALL' ||
     selectedSlotFilter !== 'ALL' ||
     selectedStatusFilter !== 'ALL' ||
-    selectedDateFilter !== getTodayISODate(0);
+    selectedDateFilter !== 'ALL' ||
+    activeTab !== 'ALL';
 
   return (
     <div className="space-y-6 pb-12 text-left">
@@ -282,6 +292,18 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
             >
               <UserPlus className="w-3.5 h-3.5 text-amber-300" />
               <span>Walk-Ins ({offlineTokensCount})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('CHECKED_IN')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'CHECKED_IN'
+                  ? 'bg-[#0B5A54] text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5 text-teal-300" />
+              <span>Checked In ({checkedInCount})</span>
             </button>
 
             <button
@@ -497,6 +519,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
             >
               <option value="ALL">All Statuses</option>
               <option value="Waiting">Waiting</option>
+              <option value="Checked In">Checked In</option>
               <option value="In Consultation">In Consultation</option>
               <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
@@ -585,13 +608,23 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                       </span>
                     </div>
 
-                    <span
-                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadge(
-                        item.status
-                      )}`}
-                    >
-                      {item.status}
-                    </span>
+                    {(isOnline || item.status !== 'Waiting') && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadge(
+                            item.status
+                          )}`}
+                        >
+                          {item.status}
+                        </span>
+                        {item.status === 'Checked In' && (
+                          <span className="text-[9.5px] font-extrabold text-[#0B5A54] bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
+                            <Clock className="w-2.5 h-2.5 text-[#14B8A6]" />
+                            <span>Check-in: {item.checkInTime || item.arrivalTime || 'Just now'}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Patient Info */}
@@ -662,7 +695,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                   </div>
                 </div>
 
-                {/* Actions */}
+                {/* Card Footer */}
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                   <button
                     onClick={() => handlePrintSlip(item)}
@@ -672,30 +705,6 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                     <Printer className="w-3.5 h-3.5" />
                     <span>Slip</span>
                   </button>
-
-                  <div className="flex items-center gap-1.5">
-                    {item.status === 'Waiting' && (
-                      <button
-                        onClick={() => {
-                          updateTokenStatus(item.id, 'In Consultation');
-                          onShowToast?.(`Token ${item.tokenNumber} summoned into consultation.`);
-                        }}
-                        className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
-                      >
-                        Call In
-                      </button>
-                    )}
-                    {item.status === 'In Consultation' && (
-                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 font-bold rounded-xl text-[11px] border border-emerald-200">
-                        In Session
-                      </span>
-                    )}
-                    {item.status === 'Completed' && (
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-600 font-bold rounded-xl text-[11px] border border-slate-200">
-                        Done
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
             );
@@ -772,35 +781,33 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                       </td>
 
                       <td className="p-4">
-                        <span
-                          className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadge(
-                            item.status
-                          )}`}
-                        >
-                          {item.status}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span
+                            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadge(
+                              item.status
+                            )}`}
+                          >
+                            {item.status}
+                          </span>
+                          {item.status === 'Checked In' && (
+                            <span className="text-[9.5px] font-bold text-[#0B5A54] bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-[#14B8A6]" />
+                              <span>{item.checkInTime || item.arrivalTime || 'Checked In'}</span>
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handlePrintSlip(item)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer flex items-center gap-1"
                             title="Print Slip"
                           >
                             <Printer className="w-3.5 h-3.5" />
+                            <span>Slip</span>
                           </button>
-                          {item.status === 'Waiting' && (
-                            <button
-                              onClick={() => {
-                                updateTokenStatus(item.id, 'In Consultation');
-                                onShowToast?.(`Token ${item.tokenNumber} called in.`);
-                              }}
-                              className="px-3 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-lg text-xs"
-                            >
-                              Call In
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>

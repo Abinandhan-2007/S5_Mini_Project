@@ -19,16 +19,14 @@ export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ acti
             navigate('/prescriptions/scan');
           }
         }}
-        className={`py-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-full text-[11.5px] sm:text-[13px] font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${
-          activeMode === 'prescription'
+        className={`py-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-full text-[11.5px] sm:text-[13px] font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${activeMode === 'prescription'
             ? 'bg-white text-[#0F766E] shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-100 font-black'
             : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
-        }`}
+          }`}
       >
         <Shield
-          className={`w-4 h-4 shrink-0 ${
-            activeMode === 'prescription' ? 'text-[#0F766E]' : 'text-[#0F766E]/80'
-          }`}
+          className={`w-4 h-4 shrink-0 ${activeMode === 'prescription' ? 'text-[#0F766E]' : 'text-[#0F766E]/80'
+            }`}
         />
         <span>Check My Prescription</span>
       </button>
@@ -41,16 +39,14 @@ export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ acti
             navigate('/medicine/info-lookup');
           }
         }}
-        className={`py-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-full text-[11.5px] sm:text-[13px] font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${
-          activeMode === 'info'
+        className={`py-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-full text-[11.5px] sm:text-[13px] font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${activeMode === 'info'
             ? 'bg-white text-[#1E3A8A] shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-100 font-black'
             : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
-        }`}
+          }`}
       >
         <Info
-          className={`w-4 h-4 shrink-0 ${
-            activeMode === 'info' ? 'text-[#1E3A8A]' : 'text-blue-600'
-          }`}
+          className={`w-4 h-4 shrink-0 ${activeMode === 'info' ? 'text-[#1E3A8A]' : 'text-blue-600'
+            }`}
         />
         <span>What Is This For?</span>
       </button>

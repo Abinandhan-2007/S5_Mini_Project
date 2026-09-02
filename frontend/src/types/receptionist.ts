@@ -37,7 +37,7 @@ export interface DoctorRecord {
 }
 
 
-export type TokenStatus = 'Waiting' | 'In Consultation' | 'Completed' | 'Skipped' | 'Cancelled';
+export type TokenStatus = 'Waiting' | 'Checked In' | 'In Consultation' | 'Completed' | 'Skipped' | 'Cancelled';
 
 export interface TokenQueueItem {
   id: string;
@@ -53,6 +53,7 @@ export interface TokenQueueItem {
   timeSlot: string; // e.g. "10:00 AM - 11:00 AM"
   status: TokenStatus;
   arrivalTime: string;
+  checkInTime?: string;
   issueTime: string;
   type: 'In-Person' | 'Walk-In' | 'Video Call';
   date?: string; // e.g. "13 Aug 2026"

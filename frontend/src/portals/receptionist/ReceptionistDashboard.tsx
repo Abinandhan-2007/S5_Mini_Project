@@ -6,6 +6,7 @@ import {
   Stethoscope,
   Plus,
   Clock,
+  Check,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -114,7 +115,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   const [cabinSearchQuery, setCabinSearchQuery] = useState<string>('');
 
   // Token categories
-  const waitingTokens = tokens.filter((t) => t.status === 'Waiting');
+  const waitingTokens = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In');
   const inConsultationTokens = tokens.filter((t) => t.status === 'In Consultation');
   const completedTokens = tokens.filter((t) => t.status === 'Completed');
   const onlineTokens = tokens.filter((t) => t.type !== 'Walk-In');
@@ -721,18 +722,26 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                     <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 font-black text-xs flex items-center justify-center font-mono group-hover:bg-teal-50 group-hover:text-[#0B5A54] transition-colors">
                       {idx + 1}
                     </span>
-                    <span className="px-3 py-1 bg-amber-50 text-amber-900 font-mono font-black text-xs rounded-xl border border-amber-200">
+                    <span className="px-3 py-1 bg-teal-50 text-[#0B5A54] font-mono font-black text-xs rounded-xl border border-teal-200">
                       {item.tokenNumber}
                     </span>
                   </div>
 
-                  <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                    item.type === 'Walk-In'
-                      ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                      : 'bg-purple-50 text-purple-700 border border-purple-200'
-                  }`}>
-                    {item.type === 'Walk-In' ? 'Walk-In' : 'Online'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {item.status === 'Checked In' && (
+                      <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>Checked In</span>
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                      item.type === 'Walk-In'
+                        ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                        : 'bg-purple-50 text-purple-700 border border-purple-200'
+                    }`}>
+                      {item.type === 'Walk-In' ? 'Walk-In' : 'Online'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-0.5">

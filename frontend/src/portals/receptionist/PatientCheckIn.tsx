@@ -96,7 +96,7 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     };
 
     setCheckedInList([newCheckedInRecord, ...checkedInList]);
-    updateTokenStatus(selectedToken.id, 'Waiting');
+    updateTokenStatus(selectedToken.id, 'Checked In');
     onShowToast?.(
       `Patient ${selectedToken.patientName} checked in successfully! Vitals logged for ${selectedToken.doctorName}.`
     );

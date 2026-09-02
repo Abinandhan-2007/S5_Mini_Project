@@ -26,6 +26,7 @@ import { MedicineInfoLookupScreen } from '../features/prescriptions/MedicineInfo
 
 import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
 import { DoctorLayout } from '../portals/doctor/DoctorLayout';
+import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { AdminLayout } from '../portals/admin/AdminLayout';
 import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
@@ -286,7 +287,11 @@ export const AppRoutes: React.FC = () => {
       />
       <Route
         path="/doctor/login"
-        element={<Navigate to="/staff/login" replace />}
+        element={
+          <PageTransition>
+            <DoctorLogin />
+          </PageTransition>
+        }
       />
 
       {/* Admin Portal Routes */}
