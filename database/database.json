@@ -292,7 +292,7 @@
       "phone": "",
       "address": "",
       "dob": "",
-      "gender": "Not specified",
+      "gender": "Not practical",
       "blood_group": "O+",
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$iG450rYCH5IPUwpplJ5cM.SJE2/JO5CJ/63lQBXRihpALWEggD3gK",
@@ -357,6 +357,20 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$FwPG.5Ih1QkFiKzasNpZDu7UJAcMZNxYEfs1tcHzKDljOPkXzKudy",
       "auth_provider": "local"
+    },
+    {
+      "id": "8d7378a7-303f-49e6-a536-0ec7610ff57c",
+      "patient_code": "PAT-000001",
+      "patientCode": "PAT-000001",
+      "full_name": "SIVANAGU E",
+      "email": "sivanague.it24@bitsathy.ac.in",
+      "phone": "",
+      "dob": "1995-07-24",
+      "gender": "Not specified",
+      "bloodGroup": "O+",
+      "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocIfBT0HffRGLxxaqM7pxTgOnEiNqk-jmDfuIIhWo9qRpjYku5o=s96-c",
+      "google_id": "109701332248440349618",
+      "auth_provider": "google"
     }
   ],
   "consultations": [
@@ -462,7 +476,34 @@
       "soap_embedding": []
     }
   ],
-  "appointments": [],
+  "appointments": [
+    {
+      "id": "0555cf17-25fa-4cb5-b623-30c7e1f26808",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "patientId": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "patient_name": "SIVANAGU E",
+      "patientName": "SIVANAGU E",
+      "ticket_number": "TK-482",
+      "ticketNumber": "TK-482",
+      "doctor_id": "doc-4",
+      "doctorId": "doc-4",
+      "doctor_name": "Dr. Ethan Reynolds",
+      "doctorName": "Dr. Ethan Reynolds",
+      "doctor_specialty": "Neurologist",
+      "doctorSpecialty": "Neurologist",
+      "doctor_photo": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
+      "doctorPhoto": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
+      "hospital_name": "Metropolitan General Hospital",
+      "hospitalName": "Metropolitan General Hospital",
+      "date": "2026-09-01",
+      "time_slot": "02:00 PM",
+      "timeSlot": "02:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    }
+  ],
   "hospitals": [
     {
       "id": "hosp-1",
@@ -1490,6 +1531,182 @@
       "prescriber": "Dr. Johan Janson",
       "icon_type": "pill",
       "created_at": "2026-08-18 14:20:00"
+    },
+    {
+      "id": "rx-db-1",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Amoxicillin Trihydrate",
+      "dosage": "500 mg",
+      "frequency": "1 capsule • Twice daily after meals",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Elena Rostova",
+      "icon_type": "capsule",
+      "created_at": "2026-07-24T10:00:00Z"
+    },
+    {
+      "id": "rx-db-2",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Lisinopril Oral",
+      "dosage": "10 mg",
+      "frequency": "1 tablet • Daily every morning",
+      "meal_timing": "Before Food",
+      "prescriber": "Dr. Alex Morgan",
+      "icon_type": "pill",
+      "created_at": "2026-07-18T09:30:00Z"
+    },
+    {
+      "id": "rx-db-3",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Metformin Hydrochloride",
+      "dosage": "500 mg",
+      "frequency": "1 tablet • 3 times daily with meals",
+      "meal_timing": "With Food",
+      "prescriber": "Dr. Johan Janson",
+      "icon_type": "pill",
+      "created_at": "2026-08-02T14:15:00Z"
+    },
+    {
+      "id": "rx-db-4",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Atorvastatin Calcium",
+      "dosage": "20 mg",
+      "frequency": "1 tablet • Nightly before bedtime",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Michael Chen",
+      "icon_type": "pill",
+      "created_at": "2026-06-30T20:00:00Z"
+    },
+    {
+      "id": "rx-db-5",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Salbutamol Inhaler",
+      "dosage": "100 mcg",
+      "frequency": "2 puffs • As needed for shortness of breath",
+      "meal_timing": "Anytime",
+      "prescriber": "Dr. Arlene McCoy",
+      "icon_type": "inhaler",
+      "created_at": "2026-05-12T11:00:00Z"
+    },
+    {
+      "id": "rx-db-6",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Azithromycin",
+      "dosage": "250 mg",
+      "frequency": "1 tablet • Daily every morning",
+      "meal_timing": "Before Food",
+      "prescriber": "Dr. Eleanor Pena",
+      "icon_type": "capsule",
+      "created_at": "2026-08-10T08:30:00Z"
+    },
+    {
+      "id": "rx-db-7",
+      "patient_id": "bbe117ea-6804-4dd3-8784-df0249ef2458",
+      "drug_name": "Amoxicillin Trihydrate",
+      "dosage": "500 mg",
+      "frequency": "1 capsule • Twice daily after meals",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Elena Rostova",
+      "icon_type": "capsule",
+      "created_at": "2026-07-24T10:00:00Z"
+    },
+    {
+      "id": "rx-db-8",
+      "patient_id": "bbe117ea-6804-4dd3-8784-df0249ef2458",
+      "drug_name": "Lisinopril Oral",
+      "dosage": "10 mg",
+      "frequency": "1 tablet • Daily every morning",
+      "meal_timing": "Before Food",
+      "prescriber": "Dr. Alex Morgan",
+      "icon_type": "pill",
+      "created_at": "2026-07-18T09:30:00Z"
+    },
+    {
+      "id": "rx-db-9",
+      "patient_id": "bbe117ea-6804-4dd3-8784-df0249ef2458",
+      "drug_name": "Metformin Hydrochloride",
+      "dosage": "500 mg",
+      "frequency": "1 tablet • 3 times daily with meals",
+      "meal_timing": "With Food",
+      "prescriber": "Dr. Johan Janson",
+      "icon_type": "pill",
+      "created_at": "2026-08-02T14:15:00Z"
+    },
+    {
+      "id": "rx-db-10",
+      "patient_id": "bbe117ea-6804-4dd3-8784-df0249ef2458",
+      "drug_name": "Atorvastatin Calcium",
+      "dosage": "20 mg",
+      "frequency": "1 tablet • Nightly before bedtime",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Michael Chen",
+      "icon_type": "pill",
+      "created_at": "2026-06-30T20:00:00Z"
+    },
+    {
+      "id": "rx-db-11",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "drug_name": "Amoxicillin Trihydrate",
+      "dosage": "500 mg",
+      "frequency": "1 capsule • Twice daily after meals",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Elena Rostova",
+      "icon_type": "capsule",
+      "created_at": "2026-07-24T10:00:00Z"
+    },
+    {
+      "id": "rx-db-12",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "drug_name": "Lisinopril Oral",
+      "dosage": "10 mg",
+      "frequency": "1 tablet • Daily every morning",
+      "meal_timing": "Before Food",
+      "prescriber": "Dr. Alex Morgan",
+      "icon_type": "pill",
+      "created_at": "2026-07-18T09:30:00Z"
+    },
+    {
+      "id": "rx-db-13",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "drug_name": "Metformin Hydrochloride",
+      "dosage": "500 mg",
+      "frequency": "1 tablet • 3 times daily with meals",
+      "meal_timing": "With Food",
+      "prescriber": "Dr. Johan Janson",
+      "icon_type": "pill",
+      "created_at": "2026-08-02T14:15:00Z"
+    },
+    {
+      "id": "rx-db-14",
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "drug_name": "Atorvastatin Calcium",
+      "dosage": "20 mg",
+      "frequency": "1 tablet • Nightly before bedtime",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Michael Chen",
+      "icon_type": "pill",
+      "created_at": "2026-06-30T20:00:00Z"
+    },
+    {
+      "id": "rx-db-15",
+      "patient_id": "625ace2c-d76d-430a-92e3-12f12dcabc53",
+      "drug_name": "Amoxicillin Trihydrate",
+      "dosage": "500 mg",
+      "frequency": "1 capsule • Twice daily after meals",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Elena Rostova",
+      "icon_type": "capsule",
+      "created_at": "2026-07-24T10:00:00Z"
+    },
+    {
+      "id": "rx-db-16",
+      "patient_id": "625ace2c-d76d-430a-92e3-12f12dcabc53",
+      "drug_name": "Lisinopril Oral",
+      "dosage": "10 mg",
+      "frequency": "1 tablet • Daily every morning",
+      "meal_timing": "Before Food",
+      "prescriber": "Dr. Alex Morgan",
+      "icon_type": "pill",
+      "created_at": "2026-07-18T09:30:00Z"
     }
   ]
 }

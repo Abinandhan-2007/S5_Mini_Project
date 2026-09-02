@@ -9,7 +9,6 @@ import {
   Filter,
   CheckCircle,
   Bell,
-  Activity,
   Plus,
   Calendar,
   Building2,
@@ -21,7 +20,6 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { Chip } from '../../components/ui/Chip';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { usePolling } from '../../lib/usePolling';
 import { useCarePulseStore } from '../../lib/store';
 import type { MedicalHistoryItem } from '../../lib/types';
@@ -76,7 +74,7 @@ export const MedicalHistoryScreen: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Background Live Sync Polling
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  usePolling(
     async () => {
       if (user?.id) {
         await Promise.all([syncHistory(user.id), syncAppointments(user.id)]);
@@ -119,13 +117,15 @@ export const MedicalHistoryScreen: React.FC = () => {
           apt.status === 'Upcoming'
             ? `Confirmed OPD Consultation (${apt.ticketNumber || 'Ticket'}) - Ready for digital check-in.`
             : apt.status === 'Cancelled'
-            ? `Appointment Cancelled (${apt.ticketNumber || 'Ticket'})`
-            : `Clinical Consultation Completed (${apt.ticketNumber || 'Ticket'})`,
+              ? `Appointment Cancelled (${apt.ticketNumber || 'Ticket'})`
+              : `Clinical Consultation Completed (${apt.ticketNumber || 'Ticket'})`,
         prescriptionDetails: `Status: ${apt.status || 'Upcoming'} • Ticket: ${apt.ticketNumber || '#CP-0000'}`,
         status: apt.status || 'Upcoming',
         specialtyIcon: 'stethoscope',
         ticketNumber: apt.ticketNumber,
-        doctorPhoto: apt.doctorPhoto || '/doctor_default.jpg',
+        doctorPhoto:
+          apt.doctorPhoto ||
+          'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
         isAppointment: true,
       });
     });
@@ -135,7 +135,8 @@ export const MedicalHistoryScreen: React.FC = () => {
       if (!records.some((r) => r.id === h.id)) {
         records.push({
           ...h,
-          doctorPhoto: h.doctorPhoto || '/doctor_default.jpg',
+          doctorPhoto:
+            'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
           isAppointment: false,
         });
       }
@@ -178,23 +179,11 @@ export const MedicalHistoryScreen: React.FC = () => {
       {/* EXECUTIVE CYAN TOP HEADER */}
       <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] text-white pt-4 pb-5 px-4 shadow-md sticky top-0 z-30 sm:rounded-t-3xl">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight leading-tight">History Record</h1>
-              <p className="text-[11px] text-teal-50 font-medium">Scheduled visits, consultations & clinical records</p>
-            </div>
+          <div>
+            <h1 className="text-base font-black tracking-tight leading-tight">History Record</h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <LiveIndicator
-              lastUpdated={lastUpdated}
-              isPolling={isPolling}
-              onRefresh={refetch}
-              label="Live"
-            />
             <button
               onClick={() => navigate('/notifications')}
               className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"
@@ -301,13 +290,12 @@ export const MedicalHistoryScreen: React.FC = () => {
                               {item.ticketNumber || '#CP-VISIT'}
                             </span>
                             <span
-                              className={`text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${
-                                isUpcoming
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
-                                  : isCancelled
+                              className={`text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${isUpcoming
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                                : isCancelled
                                   ? 'bg-rose-50 text-rose-800 border-rose-200/80'
                                   : 'bg-slate-100 text-slate-700 border-slate-200/80'
-                              }`}
+                                }`}
                             >
                               {item.status || 'Upcoming'}
                             </span>
@@ -337,9 +325,8 @@ export const MedicalHistoryScreen: React.FC = () => {
                         title={isExpanded ? 'Collapse' : 'Expand'}
                       >
                         <ChevronDown
-                          className={`w-4 h-4 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
+                          className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''
+                            }`}
                         />
                       </button>
                     </div>
@@ -449,7 +436,7 @@ export const MedicalHistoryScreen: React.FC = () => {
           /* EMPTY STATE */
           <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E4E7EC] shadow-xs text-center space-y-5 my-4">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-[#E3F3F1] border border-[#14B8A6]/20 flex items-center justify-center mx-auto text-[#0B5A54] shadow-sm">
-              <Activity className="w-8 h-8 sm:w-10 sm:h-10 text-[#0B5A54]" />
+              <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-[#0B5A54]" />
             </div>
 
             <div className="max-w-md mx-auto space-y-2">

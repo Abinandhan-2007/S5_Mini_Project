@@ -122,60 +122,15 @@ def staff_login(request: StaffLoginRequest):
             detail="Both email and password are required for staff login."
         )
 
+    # 1. Check PostgreSQL staff table if available
     found_staff = None
-    stored_password = None
-
-    # Receptionist: ONLY rec / rec123
-    if raw_email == "rec" and raw_password == "rec123":
-        found_staff = {
-            "id": "rec-101",
-            "name": "Emily Watson",
-            "email": "rec",
-            "username": "rec",
-            "role": "receptionist",
-            "department": "Main Reception & OPD Queue",
-            "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
-            "hospital_id": "hosp-1",
-            "hospitalId": "hosp-1",
-            "is_active": True,
-            "password": "rec123",
-            "password_hash": "rec123"
-        }
-        stored_password = raw_password
-
-    # Doctor: ONLY doc / doc123
-    elif raw_email == "doc" and raw_password == "doc123":
-        found_staff = {
-            "id": "doc-1",
-            "doctor_id": "doc-1",
-            "doctorId": "doc-1",
-            "name": "Dr. Olivia Wilson",
-            "email": "doc",
-            "username": "doc",
-            "role": "doctor",
-            "department": "Cardiology",
-            "avatarUrl": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
-            "hospital_id": "hosp-1",
-            "hospitalId": "hosp-1",
-            "is_active": True,
-            "password": "doc123",
-            "password_hash": "doc123"
-        }
-        stored_password = raw_password
-
-    # Admin: admin / admin123
-    elif raw_email in ["admin@carepulse.com", "admin"] and raw_password in ["admin123", "admin", "Admin@123"]:
-        found_staff = dict(DEFAULT_ADMIN)
-        stored_password = raw_password
-
-    # Check PostgreSQL staff table if available (admin or explicitly configured staff only)
-    if not found_staff and database.use_pg:
+    if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT id, full_name, email, password_hash, role, specialization, avatar_url, hospital_id, doctor_id, is_active, staff_code 
+                        SELECT id, full_name, email, password_hash, role, specialization, avatar_url, hospital_id, doctor_id, is_active 
                         FROM staff 
                         WHERE LOWER(TRIM(email)) = %s 
                         LIMIT 1
@@ -184,37 +139,28 @@ def staff_login(request: StaffLoginRequest):
                     )
                     row = cur.fetchone()
                     if row:
-                        candidate = dict(row)
-                        candidate_role = candidate.get("role")
-                        # For receptionist and doctor, strictly enforce rec and doc identifiers
-                        if candidate_role == "receptionist" and raw_email != "rec":
-                            pass
-                        elif candidate_role == "doctor" and raw_email != "doc":
-                            pass
-                        else:
-                            found_staff = candidate
-                            if "full_name" in found_staff and not found_staff.get("name"):
-                                found_staff["name"] = found_staff["full_name"]
-                            if "specialization" in found_staff and not found_staff.get("department"):
-                                found_staff["department"] = found_staff["specialization"]
+                        found_staff = dict(row)
+                        # Normalize key names
+                        if "full_name" in found_staff and not found_staff.get("name"):
+                            found_staff["name"] = found_staff["full_name"]
+                        if "specialization" in found_staff and not found_staff.get("department"):
+                            found_staff["department"] = found_staff["specialization"]
         except Exception as e:
             logger.warning(f"Note on PostgreSQL staff query fallback: {e}")
 
-    # Check JSON database staff collection
+    # 2. Check JSON database staff collection
     if not found_staff:
         db = read_json_db()
         staff_list = db.get("staff", [])
         for s in staff_list:
             s_email = (s.get("email") or "").strip().lower()
-            s_username = (s.get("username") or "").strip().lower()
-            s_role = s.get("role")
-            if s_role == "receptionist" and raw_email != "rec":
-                continue
-            if s_role == "doctor" and raw_email != "doc":
-                continue
-            if s_email == raw_email or s_username == raw_email or (raw_email == "admin" and s_role == "admin"):
+            if s_email == raw_email or (raw_email == "admin" and s.get("role") == "admin"):
                 found_staff = dict(s)
                 break
+
+    # 3. Default fallback for initial Admin access
+    if not found_staff and (raw_email in ["admin@carepulse.com", "admin"]):
+        found_staff = dict(DEFAULT_ADMIN)
 
     if not found_staff:
         raise HTTPException(
@@ -267,18 +213,8 @@ def staff_login(request: StaffLoginRequest):
         except Exception as e:
             logger.warning(f"Could not sync staff hospital_id: {e}")
 
-    stf_code = found_staff.get("staff_code") or found_staff.get("staffCode")
-    if not stf_code and role == "admin":
-        stf_code = "A001101"
-    elif not stf_code and role == "receptionist":
-        stf_code = "R001101"
-    elif not stf_code and role == "doctor":
-        stf_code = "D001101"
-
     staff_profile = {
         "id": str(found_staff.get("id")),
-        "staff_code": stf_code,
-        "staffCode": stf_code,
         "name": found_staff.get("name") or found_staff.get("full_name") or "Staff Member",
         "email": found_staff.get("email"),
         "role": role,

@@ -4,20 +4,21 @@ import { motion } from 'framer-motion';
 import {
   Activity, Users, Clock, CheckCircle2, Calendar,
   LogOut, Stethoscope, Bell, User,
-  ClipboardList, TrendingUp, AlertCircle
+  ClipboardList, TrendingUp, AlertCircle, FileText
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
 import { LiveIndicator } from '../../components/ui/LiveIndicator';
+import { ConsultationForm } from './ConsultationForm';
 
 // Initial fallback patient queue
 const INITIAL_DOCTOR_QUEUE = [
-  { id: 'tok-1', tokenNumber: '#CP-001', name: 'Sarah Jenkins', age: 31, issue: 'Chest discomfort', slot: '09:00 AM', status: 'In Consultation', type: 'In-Person' },
+  { id: 'tok-1', tokenNumber: '#CP-001', name: 'Sarah Jenkins', age: 31, issue: 'Chest discomfort', slot: '09:00 AM', status: 'In Consultation', type: 'In-Person', diagnosis: 'Mild Atypical Chest Pain - ECG Normal' },
   { id: 'tok-2', tokenNumber: '#CP-002', name: 'Robert Chen', age: 45, issue: 'Follow-up ECG', slot: '09:30 AM', status: 'Waiting', type: 'Walk-In' },
   { id: 'tok-3', tokenNumber: '#CP-003', name: 'Anita Sharma', age: 28, issue: 'Routine check-up', slot: '10:00 AM', status: 'Waiting', type: 'Online' },
   { id: 'tok-4', tokenNumber: '#CP-004', name: 'Michael Scott', age: 52, issue: 'Blood pressure review', slot: '10:30 AM', status: 'Pending', type: 'In-Person' },
   { id: 'tok-5', tokenNumber: '#CP-005', name: 'Priya Nair', age: 37, issue: 'Post-op follow-up', slot: '11:00 AM', status: 'Pending', type: 'Online' },
-  { id: 'tok-6', tokenNumber: '#CP-006', name: 'James Wong', age: 61, issue: 'Cardiac stress test results', slot: '11:30 AM', status: 'Done', type: 'In-Person' },
+  { id: 'tok-6', tokenNumber: '#CP-006', name: 'James Wong', age: 61, issue: 'Cardiac stress test results', slot: '11:30 AM', status: 'Done', type: 'In-Person', diagnosis: 'Ischemic Heart Disease - Stable' },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -36,6 +37,8 @@ export const DoctorDashboard: React.FC = () => {
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const navigate     = useNavigate();
   const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [consultingPatient, setConsultingPatient] = useState<any | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Automatic robust background polling for Doctor queue
   const { isPolling, lastUpdated, refetch } = usePolling(
@@ -64,10 +67,16 @@ export const DoctorDashboard: React.FC = () => {
       tokenNumber: t.tokenNumber || `#TOK-${idx + 1}`,
       name: t.patientName || 'Walk-in Patient',
       age: t.age || 32,
+      bloodGroup: t.bloodGroup || 'O+',
       issue: t.healthIssue || `${t.doctorSpecialty || 'General'} Consultation`,
       slot: t.timeSlot || '10:00 AM',
       status: t.status === 'Completed' ? 'Done' : t.status,
       type: t.type || 'In-Person',
+      diagnosis: t.diagnosis || '',
+      assessment: t.assessment || '',
+      clinicalNotes: t.clinicalNotes || '',
+      prescriptions: t.prescriptions || [],
+      prescriptionDetails: t.prescriptionDetails || '',
     }));
   }, [rawTokens, currentStaff?.id]);
 
@@ -88,6 +97,21 @@ export const DoctorDashboard: React.FC = () => {
   const handleLogout = () => {
     logoutStaff();
     navigate('/staff/login');
+  };
+
+  const handleSaveConsultation = async (consultationData: {
+    diagnosis: string;
+    assessment: string;
+    clinicalNotes: string;
+    prescriptionDetails: string;
+    prescriptions: string[];
+    followUpDays?: number;
+  }) => {
+    if (!consultingPatient) return;
+    await updateTokenStatus(consultingPatient.id, 'Completed', consultationData);
+    setToastMsg(`✅ Assessment & Diagnosis saved for ${consultingPatient.name}: ${consultationData.diagnosis}`);
+    setConsultingPatient(null);
+    setTimeout(() => setToastMsg(null), 4000);
   };
 
   return (
@@ -262,24 +286,41 @@ export const DoctorDashboard: React.FC = () => {
                   </span>
 
                   {/* Doctor Action Button */}
-                  {patient.status === 'In Consultation' && (
-                    <button
-                      onClick={() => updateTokenStatus(patient.id, 'Completed')}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95 shrink-0"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Finish & Complete</span>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {patient.status === 'In Consultation' && (
+                      <button
+                        onClick={() => setConsultingPatient(patient)}
+                        className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-teal-200" />
+                        <span>Enter Diagnosis & Rx</span>
+                      </button>
+                    )}
 
-                  {patient.status === 'Waiting' && (
-                    <button
-                      onClick={() => updateTokenStatus(patient.id, 'In Consultation')}
-                      className="px-3 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95 shrink-0"
-                    >
-                      <span>Call Into Cabin</span>
-                    </button>
-                  )}
+                    {patient.status === 'Waiting' && (
+                      <button
+                        onClick={() => {
+                          updateTokenStatus(patient.id, 'In Consultation');
+                          setConsultingPatient({ ...patient, status: 'In Consultation' });
+                        }}
+                        className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                      >
+                        <Stethoscope className="w-3.5 h-3.5" />
+                        <span>Call & Examine</span>
+                      </button>
+                    )}
+
+                    {(patient.status === 'Done' || patient.status === 'Completed') && (
+                      <button
+                        onClick={() => setConsultingPatient(patient)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
+                        title="View or Edit Clinical Assessment"
+                      >
+                        <FileText className="w-3 h-3 text-slate-500" />
+                        <span>{patient.diagnosis ? 'View Diagnosis' : 'Add Diagnosis'}</span>
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -295,6 +336,25 @@ export const DoctorDashboard: React.FC = () => {
           </span>
         </div>
       </main>
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Clinical Assessment & Diagnosis Entry Modal */}
+      {consultingPatient && (
+        <ConsultationForm
+          patient={consultingPatient}
+          doctorName={currentStaff?.name || 'Dr. Olivia Wilson'}
+          doctorSpecialty={(currentStaff as any)?.specialty || 'Cardiologist'}
+          onSave={handleSaveConsultation}
+          onClose={() => setConsultingPatient(null)}
+        />
+      )}
     </div>
   );
 };

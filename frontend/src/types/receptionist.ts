@@ -60,6 +60,11 @@ export interface TokenQueueItem {
   bloodGroup?: string;
   address?: string;
   healthIssue?: string;
+  diagnosis?: string;
+  assessment?: string;
+  clinicalNotes?: string;
+  prescriptions?: string[];
+  prescriptionDetails?: string;
 }
 
 

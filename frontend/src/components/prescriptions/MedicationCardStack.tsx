@@ -7,9 +7,6 @@ import {
   User as UserIcon,
   Building2,
   Calendar,
-  Sun,
-  Moon,
-  Sunrise,
   ChevronRight,
   Camera,
 } from 'lucide-react';
@@ -37,91 +34,103 @@ export interface MedicationCardStackProps {
   onMarkTaken?: (med: MedicationItem, isTaken: boolean) => void;
 }
 
-// 5 curated vibrant Samsung Pass gradient themes
+// 6 curated light hospital-themed palettes matching CarePulse branding
 const WALLET_CARD_THEMES = [
   {
-    name: 'Cobalt Blue & Cyan',
-    gradient: 'bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#38BDF8]',
-    border: 'border-white/20',
-    shadow: 'shadow-[0_16px_36px_-6px_rgba(29,78,216,0.38)]',
-    titleColor: 'text-white',
-    subtext: 'text-sky-100',
-    footerBorder: 'border-white/20',
-    footerText: 'text-sky-100',
-    progressBg: 'bg-black/25',
-    progressFill: 'bg-white',
-    btnBg: 'bg-white text-blue-950 hover:bg-sky-50',
-    tagBg: 'bg-white/20 text-white',
+    name: 'CarePulse Hospital Teal',
+    gradient: 'bg-gradient-to-br from-[#E0F3F1] via-[#E8F8F5] to-[#CEEFEA]',
+    border: 'border-[#14B8A6]/45',
+    shadow: 'shadow-[0_16px_36px_-6px_rgba(11,90,84,0.18)]',
+    titleColor: 'text-[#0B5A54]',
+    subtext: 'text-[#0D6E66]',
+    accentColor: 'text-[#0B5A54]',
+    tagBg: 'bg-white/90 text-[#0B5A54] border-[#14B8A6]/35 shadow-2xs',
+    progressBg: 'bg-white/80 border-teal-200/80',
+    progressFill: 'bg-gradient-to-r from-[#0B5A54] via-[#0D7B73] to-[#14B8A6]',
+    footerBorder: 'border-[#0B5A54]/15',
+    footerText: 'text-slate-600',
+    btnBg: 'bg-white text-slate-800 border-[#14B8A6]/30 hover:bg-teal-50 hover:border-[#14B8A6]',
+    btnTakenBg: 'bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] text-white border-[#0B5A54]',
   },
   {
-    name: 'Emerald Green & Mint Lime',
-    gradient: 'bg-gradient-to-r from-[#047857] via-[#059669] to-[#34D399]',
-    border: 'border-white/20',
-    shadow: 'shadow-[0_16px_36px_-6px_rgba(4,120,87,0.38)]',
-    titleColor: 'text-white',
-    subtext: 'text-emerald-100',
-    footerBorder: 'border-white/20',
-    footerText: 'text-emerald-100',
-    progressBg: 'bg-black/25',
-    progressFill: 'bg-white',
-    btnBg: 'bg-white text-emerald-950 hover:bg-emerald-50',
-    tagBg: 'bg-white/20 text-white',
+    name: 'Clinical Azure Sky',
+    gradient: 'bg-gradient-to-br from-[#E0F2FE] via-[#EAF5FD] to-[#BAE6FD]',
+    border: 'border-sky-300',
+    shadow: 'shadow-[0_16px_36px_-6px_rgba(2,132,199,0.18)]',
+    titleColor: 'text-[#0369A1]',
+    subtext: 'text-[#0284C7]',
+    accentColor: 'text-[#0284C7]',
+    tagBg: 'bg-white/90 text-[#0369A1] border-sky-300 shadow-2xs',
+    progressBg: 'bg-white/80 border-sky-200',
+    progressFill: 'bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#38BDF8]',
+    footerBorder: 'border-sky-200',
+    footerText: 'text-slate-600',
+    btnBg: 'bg-white text-slate-800 border-sky-300 hover:bg-sky-50 hover:border-sky-400',
+    btnTakenBg: 'bg-gradient-to-r from-[#0369A1] to-[#0284C7] text-white border-[#0369A1]',
   },
   {
-    name: 'Royal Violet & Amethyst',
-    gradient: 'bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#A78BFA]',
-    border: 'border-white/20',
-    shadow: 'shadow-[0_16px_36px_-6px_rgba(109,40,217,0.38)]',
-    titleColor: 'text-white',
-    subtext: 'text-purple-100',
-    footerBorder: 'border-white/20',
-    footerText: 'text-purple-100',
-    progressBg: 'bg-black/25',
-    progressFill: 'bg-white',
-    btnBg: 'bg-white text-purple-950 hover:bg-purple-50',
-    tagBg: 'bg-white/20 text-white',
+    name: 'Emerald Healing Mint',
+    gradient: 'bg-gradient-to-br from-[#DCFCE7] via-[#EAFBF0] to-[#BBF7D0]',
+    border: 'border-emerald-300',
+    shadow: 'shadow-[0_16px_36px_-6px_rgba(5,150,105,0.18)]',
+    titleColor: 'text-[#047857]',
+    subtext: 'text-[#059669]',
+    accentColor: 'text-[#047857]',
+    tagBg: 'bg-white/90 text-[#047857] border-emerald-300 shadow-2xs',
+    progressBg: 'bg-white/80 border-emerald-200',
+    progressFill: 'bg-gradient-to-r from-[#047857] via-[#059669] to-[#34D399]',
+    footerBorder: 'border-emerald-200',
+    footerText: 'text-slate-600',
+    btnBg: 'bg-white text-slate-800 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400',
+    btnTakenBg: 'bg-gradient-to-r from-[#047857] to-[#059669] text-white border-[#047857]',
   },
   {
-    name: 'Ocean Azure & Cornflower',
-    gradient: 'bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#38BDF8]',
-    border: 'border-white/20',
-    shadow: 'shadow-[0_16px_36px_-6px_rgba(2,132,199,0.38)]',
-    titleColor: 'text-white',
-    subtext: 'text-sky-100',
-    footerBorder: 'border-white/20',
-    footerText: 'text-sky-100',
-    progressBg: 'bg-black/25',
-    progressFill: 'bg-white',
-    btnBg: 'bg-white text-sky-950 hover:bg-sky-50',
-    tagBg: 'bg-white/20 text-white',
+    name: 'Lavender Clinical Care',
+    gradient: 'bg-gradient-to-br from-[#EDE9FE] via-[#F4F1FD] to-[#DDD6FE]',
+    border: 'border-purple-300',
+    shadow: 'shadow-[0_16px_36px_-6px_rgba(109,40,217,0.18)]',
+    titleColor: 'text-[#5B21B6]',
+    subtext: 'text-[#7C3AED]',
+    accentColor: 'text-[#6D28D9]',
+    tagBg: 'bg-white/90 text-[#5B21B6] border-purple-300 shadow-2xs',
+    progressBg: 'bg-white/80 border-purple-200',
+    progressFill: 'bg-gradient-to-r from-[#5B21B6] via-[#7C3AED] to-[#A78BFA]',
+    footerBorder: 'border-purple-200',
+    footerText: 'text-slate-600',
+    btnBg: 'bg-white text-slate-800 border-purple-300 hover:bg-purple-50 hover:border-purple-400',
+    btnTakenBg: 'bg-gradient-to-r from-[#5B21B6] to-[#7C3AED] text-white border-[#5B21B6]',
   },
   {
-    name: 'Magenta Berry & Fuchsia',
-    gradient: 'bg-gradient-to-r from-[#9D174D] via-[#DB2777] to-[#F472B6]',
-    border: 'border-white/20',
-    shadow: 'shadow-[0_16px_36px_-6px_rgba(157,23,77,0.38)]',
-    titleColor: 'text-white',
-    subtext: 'text-pink-100',
-    footerBorder: 'border-white/20',
-    footerText: 'text-pink-100',
-    progressBg: 'bg-black/25',
-    progressFill: 'bg-white',
-    btnBg: 'bg-white text-pink-950 hover:bg-pink-50',
-    tagBg: 'bg-white/20 text-white',
+    name: 'Warm Amber Wellness',
+    gradient: 'bg-gradient-to-br from-[#FEF3C7] via-[#FFF8DE] to-[#FDE68A]',
+    border: 'border-amber-300',
+    shadow: 'shadow-[0_16px_36px_-6px_rgba(217,119,6,0.18)]',
+    titleColor: 'text-[#92400E]',
+    subtext: 'text-[#B45309]',
+    accentColor: 'text-[#B45309]',
+    tagBg: 'bg-white/90 text-[#92400E] border-amber-300 shadow-2xs',
+    progressBg: 'bg-white/80 border-amber-200',
+    progressFill: 'bg-gradient-to-r from-[#92400E] via-[#D97706] to-[#FBBF24]',
+    footerBorder: 'border-amber-200',
+    footerText: 'text-slate-600',
+    btnBg: 'bg-white text-slate-800 border-amber-300 hover:bg-amber-50 hover:border-amber-400',
+    btnTakenBg: 'bg-gradient-to-r from-[#92400E] to-[#D97706] text-white border-[#92400E]',
   },
   {
-    name: 'Sunset Coral & Amber',
-    gradient: 'bg-gradient-to-r from-[#C2410C] via-[#EA580C] to-[#FB923C]',
-    border: 'border-white/20',
-    shadow: 'shadow-[0_16px_36px_-6px_rgba(194,65,12,0.38)]',
-    titleColor: 'text-white',
-    subtext: 'text-amber-100',
-    footerBorder: 'border-white/20',
-    footerText: 'text-amber-100',
-    progressBg: 'bg-black/25',
-    progressFill: 'bg-white',
-    btnBg: 'bg-white text-orange-950 hover:bg-amber-50',
-    tagBg: 'bg-white/20 text-white',
+    name: 'Soft Rose Vitality',
+    gradient: 'bg-gradient-to-br from-[#FFE4E6] via-[#FFF0F2] to-[#FECDD3]',
+    border: 'border-rose-300',
+    shadow: 'shadow-[0_16px_36px_-6px_rgba(225,29,72,0.18)]',
+    titleColor: 'text-[#9F1239]',
+    subtext: 'text-[#BE123C]',
+    accentColor: 'text-[#BE123C]',
+    tagBg: 'bg-white/90 text-[#9F1239] border-rose-300 shadow-2xs',
+    progressBg: 'bg-white/80 border-rose-200',
+    progressFill: 'bg-gradient-to-r from-[#9F1239] via-[#E11D48] to-[#FB7185]',
+    footerBorder: 'border-rose-200',
+    footerText: 'text-slate-600',
+    btnBg: 'bg-white text-slate-800 border-rose-300 hover:bg-rose-50 hover:border-rose-400',
+    btnTakenBg: 'bg-gradient-to-r from-[#9F1239] to-[#E11D48] text-white border-[#9F1239]',
   },
 ];
 
@@ -136,8 +145,8 @@ const SPRING_TRANSITION = {
 const MAX_VISIBLE_PEEK = 3;
 const BASE_CARD_HEIGHT = 300;
 
-// Storage key prefix for daily dose tracking
-const DOSE_STORAGE_PREFIX = 'carepulse_singlestack_dose_';
+// Storage key prefix for daily dose tracking (fresh clean start with all doses untaken)
+const DOSE_STORAGE_PREFIX = 'carepulse_med_dose_v3_';
 
 // Helper to get today's calendar date in YYYY-MM-DD format
 const getTodayDateKey = () => new Date().toISOString().split('T')[0];
@@ -148,6 +157,58 @@ interface DoseSlot {
   timeHint: string;
   iconName: 'sunrise' | 'sun' | 'moon';
 }
+
+interface SlotThemeConfig {
+  emoji: string;
+  label: string;
+  unrecorded: string;
+  taken: string;
+}
+
+// Tailored distinct borderless light color themes based on morning, afternoon, evening, and night
+const TIME_SLOT_THEMES: Record<string, SlotThemeConfig> = {
+  morning: {
+    emoji: '🌅',
+    label: 'Morning',
+    // Soft morning golden amber (borderless)
+    unrecorded: 'bg-amber-100/80 text-amber-950 hover:bg-amber-200/80 shadow-2xs border-0 outline-none',
+    taken: 'bg-amber-200 text-amber-950 shadow-xs border-0 outline-none',
+  },
+  afternoon: {
+    emoji: '☀️',
+    label: 'Afternoon',
+    // Soft solar orange (borderless)
+    unrecorded: 'bg-orange-100/80 text-orange-950 hover:bg-orange-200/80 shadow-2xs border-0 outline-none',
+    taken: 'bg-orange-200 text-orange-950 shadow-xs border-0 outline-none',
+  },
+  evening: {
+    emoji: '🌇',
+    label: 'Evening',
+    // Soft dusk rose (borderless)
+    unrecorded: 'bg-rose-100/80 text-rose-950 hover:bg-rose-200/80 shadow-2xs border-0 outline-none',
+    taken: 'bg-rose-200 text-rose-950 shadow-xs border-0 outline-none',
+  },
+  night: {
+    emoji: '🌙',
+    label: 'Night',
+    // Soft calming indigo / lavender (borderless)
+    unrecorded: 'bg-indigo-100/80 text-indigo-950 hover:bg-indigo-200/80 shadow-2xs border-0 outline-none',
+    taken: 'bg-indigo-200 text-indigo-950 shadow-xs border-0 outline-none',
+  },
+  bedtime: {
+    emoji: '🌙',
+    label: 'Bedtime',
+    // Soft calming indigo / lavender (borderless)
+    unrecorded: 'bg-indigo-100/80 text-indigo-950 hover:bg-indigo-200/80 shadow-2xs border-0 outline-none',
+    taken: 'bg-indigo-200 text-indigo-950 shadow-xs border-0 outline-none',
+  },
+  daily: {
+    emoji: '☀️',
+    label: 'Daily',
+    unrecorded: 'bg-teal-100/80 text-teal-950 hover:bg-teal-200/80 shadow-2xs border-0 outline-none',
+    taken: 'bg-teal-200 text-teal-950 shadow-xs border-0 outline-none',
+  },
+};
 
 // Parses frequency criteria to determine daily dosage schedule (1x, 2x, 3x, or 4x per day)
 const getDoseSlotsForMed = (frequencyStr = '', dosageStr = ''): DoseSlot[] => {
@@ -200,6 +261,88 @@ const getDoseSlotsForMed = (frequencyStr = '', dosageStr = ''): DoseSlot[] => {
   ];
 };
 
+// Curated diverse default sample medication stack cards
+const DEFAULT_SAMPLE_PRESCRIPTIONS: MedicationItem[] = [
+  {
+    id: 'rx-sample-1',
+    drugName: 'Amoxicillin Trihydrate',
+    dosage: '500 mg',
+    frequency: '1 capsule • Twice daily after meals',
+    prescriber: 'Dr. Elena Rostova',
+    hospitalName: 'Metropolitan General Hospital',
+    status: 'Active',
+    iconType: 'capsule',
+    nextDose: 'Today at 8:00 PM',
+    totalDays: 10,
+    daysCompleted: 4,
+  },
+  {
+    id: 'rx-sample-2',
+    drugName: 'Lisinopril Oral',
+    dosage: '10 mg',
+    frequency: '1 tablet • Daily every morning',
+    prescriber: 'Dr. Alex Morgan',
+    hospitalName: 'St. Jude Heart & Medical Center',
+    status: 'Active',
+    iconType: 'pill',
+    nextDose: 'Tomorrow 8:00 AM',
+    totalDays: 30,
+    daysCompleted: 18,
+  },
+  {
+    id: 'rx-sample-3',
+    drugName: 'Metformin Hydrochloride',
+    dosage: '500 mg',
+    frequency: '1 tablet • 3 times daily with meals',
+    prescriber: 'Dr. Johan Janson',
+    hospitalName: 'St. Jude Heart & Medical Center',
+    status: 'Active',
+    iconType: 'pill',
+    nextDose: 'Today at 2:00 PM',
+    totalDays: 14,
+    daysCompleted: 8,
+  },
+  {
+    id: 'rx-sample-4',
+    drugName: 'Atorvastatin Calcium',
+    dosage: '20 mg',
+    frequency: '1 tablet • Nightly before bedtime',
+    prescriber: 'Dr. Michael Chen',
+    hospitalName: 'City General Hospital',
+    status: 'Active',
+    iconType: 'pill',
+    nextDose: 'Tonight at 10:00 PM',
+    totalDays: 30,
+    daysCompleted: 22,
+  },
+  {
+    id: 'rx-sample-5',
+    drugName: 'Salbutamol Inhaler',
+    dosage: '100 mcg',
+    frequency: '2 puffs • As needed for shortness of breath',
+    prescriber: 'Dr. Arlene McCoy',
+    hospitalName: 'Cedar Skin & Wellness Clinic',
+    status: 'Refill Soon',
+    iconType: 'inhaler',
+    nextDose: 'As needed',
+    totalDays: 14,
+    daysCompleted: 12,
+  },
+  {
+    id: 'rx-sample-6',
+    drugName: 'Azithromycin',
+    dosage: '250 mg',
+    frequency: '1 tablet • Daily every morning',
+    prescriber: 'Dr. Eleanor Pena',
+    hospitalName: 'CarePulse Central Hospital',
+    status: 'Active',
+    iconType: 'capsule',
+    nextDose: 'Tomorrow 9:00 AM',
+    totalDays: 5,
+    daysCompleted: 3,
+  },
+];
+
 // Default prescribed course lengths per medication index
 const DEFAULT_COURSE_DAYS = [
   { total: 10, completed: 4 },
@@ -207,6 +350,7 @@ const DEFAULT_COURSE_DAYS = [
   { total: 30, completed: 18 },
   { total: 7, completed: 5 },
   { total: 14, completed: 8 },
+  { total: 5, completed: 3 },
 ];
 
 export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
@@ -223,8 +367,11 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   >({});
   const isScrollingRef = useRef(false);
 
+  // Use passed prescriptions, or fallback to rich sample stack cards
+  const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : DEFAULT_SAMPLE_PRESCRIPTIONS;
+
   // Normalize data with resilient fallbacks and prescribed course days
-  const normalizedMeds: MedicationItem[] = prescriptions.map((p, idx) => {
+  const normalizedMeds: MedicationItem[] = sourceList.map((p, idx) => {
     const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
     return {
       id: p.id || `rx-${idx}`,
@@ -235,7 +382,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       frequency: p.frequency || (idx === 1 || idx === 3 ? '1 capsule • 3 times daily for 7 days' : idx === 0 ? '1 tablet • Twice daily after meals' : '1 tablet • Daily every morning'),
       prescriber: p.prescriber || 'Treating Physician',
       hospitalName: p.hospitalName || 'CarePulse Medical Center',
-      status: p.status || (idx === 1 ? 'Refill Soon' : 'Active'),
+      status: p.status || (idx === 4 ? 'Refill Soon' : 'Active'),
       iconType: p.iconType || 'pill',
       nextDose: p.nextDose || (idx === 0 ? 'Today at 8:00 PM' : 'Tomorrow 9:00 AM'),
       totalDays: p.totalDays || courseDefaults.total,
@@ -268,17 +415,27 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     setTakenSlotsMap(loadedMap);
   }, [prescriptions.length]);
 
-  // Handle taking a specific dose slot (e.g. Morning, Afternoon, Night)
+  // Handle toggling a dose slot (Record dose or Untake/Reset to not taken)
   const handleTakeSlotDose = (med: MedicationItem, slotId: string) => {
     const today = getTodayDateKey();
     const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     setTakenSlotsMap((prev) => {
       const currentMedEntry = prev[med.id]?.date === today ? prev[med.id] : { date: today, slots: {} };
-      const updatedSlots = {
-        ...currentMedEntry.slots,
-        [slotId]: nowTimeStr,
-      };
+      const isAlreadyTaken = Boolean(currentMedEntry.slots[slotId]);
+
+      let updatedSlots: Record<string, string>;
+      if (isAlreadyTaken) {
+        // Toggle OFF: Untake / reset to pending (not taken)
+        updatedSlots = { ...currentMedEntry.slots };
+        delete updatedSlots[slotId];
+      } else {
+        // Toggle ON: Record dose with current timestamp
+        updatedSlots = {
+          ...currentMedEntry.slots,
+          [slotId]: nowTimeStr,
+        };
+      }
 
       const updatedRecord = { date: today, slots: updatedSlots };
       try {
@@ -501,12 +658,12 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                     theme.border,
                     theme.shadow,
                     isTopCard
-                      ? 'cursor-grab active:cursor-grabbing shadow-xl ring-2 ring-white/30'
-                      : 'cursor-pointer hover:-translate-y-1 hover:brightness-105 shadow-md'
+                      ? 'cursor-grab active:cursor-grabbing ring-2 ring-[#0B5A54]/20 shadow-xl'
+                      : 'cursor-pointer hover:-translate-y-1 hover:brightness-98 shadow-md'
                   )}
                 >
-                  {/* Soft top-light gloss overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/15 pointer-events-none rounded-3xl" />
+                  {/* Subtle clean medical light gloss overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-black/5 pointer-events-none rounded-3xl" />
 
                   {/* 1. Header Row (Drug Name & Schedule Summary) */}
                   <div className="relative z-10 flex items-start justify-between gap-3">
@@ -514,17 +671,17 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <h4 className={clsx('text-base sm:text-lg font-black tracking-tight leading-tight truncate', theme.titleColor)}>
                         {med.drugName}
                       </h4>
-                      <p className={clsx('text-xs sm:text-[13px] font-bold tracking-wide truncate', theme.subtext)}>
+                      <p className={clsx('text-xs sm:text-[13px] font-extrabold tracking-wide truncate', theme.subtext)}>
                         {med.dosage}
                       </p>
-                      {/* ENLARGED, CRISP SOLID WHITE FREQUENCY INSTRUCTION */}
-                      <p className="text-xs sm:text-sm font-extrabold tracking-wide truncate text-white drop-shadow-xs">
+                      {/* Crisp dark frequency instruction */}
+                      <p className="text-xs sm:text-sm font-bold tracking-wide truncate text-slate-700">
                         {med.frequency}
                       </p>
                     </div>
 
                     <div className="shrink-0 flex items-center gap-1.5 pt-0.5">
-                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/25 text-white border border-white/30">
+                      <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
                         {completedSlotsCount}/{doseSlots.length} doses
                       </span>
                     </div>
@@ -541,17 +698,17 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       {/* Course Progress Bar */}
                       <div className={clsx('pt-3 border-t', theme.footerBorder)}>
                         <div className="flex items-center justify-between text-xs sm:text-[13.5px] mb-2">
-                          <div className="flex items-center gap-1.5 text-white font-black">
-                            <Calendar className="w-4 h-4 text-white/90" />
+                          <div className="flex items-center gap-1.5 text-slate-800 font-extrabold">
+                            <Calendar className={clsx('w-4 h-4', theme.accentColor)} />
                             <span>Day {effectiveCompleted} of {baseTotal} Days Prescribed</span>
                           </div>
-                          <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/25 text-white border border-white/30">
+                          <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
                             {progressPercent}% Done
                           </span>
                         </div>
 
                         {/* Progress Bar Track */}
-                        <div className={clsx('w-full h-2.5 rounded-full overflow-hidden p-0.5 border border-white/20', theme.progressBg)}>
+                        <div className={clsx('w-full h-2.5 rounded-full overflow-hidden p-0.5 border shadow-inner', theme.progressBg)}>
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${progressPercent}%` }}
@@ -564,11 +721,11 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       {/* Daily Dose Slots (Comfortable size with clear typography) */}
                       <div className={clsx('pt-2.5 border-t', theme.footerBorder)}>
                         <div className="flex items-center justify-between text-xs sm:text-[13px] mb-2">
-                          <span className="font-bold text-white/95 flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-white/85" />
+                          <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                            <Clock className={clsx('w-4 h-4', theme.accentColor)} />
                             <span>Today's Dosage Schedule:</span>
                           </span>
-                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
+                          <span className={clsx('text-[11px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
                             {allDosesTakenToday ? 'All doses taken today' : `${completedSlotsCount} of ${doseSlots.length} taken`}
                           </span>
                         </div>
@@ -577,40 +734,36 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                           {doseSlots.map((slot) => {
                             const isSlotTaken = Boolean(todaySlots[slot.id]);
                             const slotTime = todaySlots[slot.id];
+                            const slotTheme = TIME_SLOT_THEMES[slot.id] || TIME_SLOT_THEMES.daily;
 
                             return (
                               <button
                                 key={slot.id}
                                 type="button"
-                                disabled={isSlotTaken || isCourseFinished}
+                                disabled={isCourseFinished}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleTakeSlotDose(med, slot.id);
                                 }}
                                 className={clsx(
-                                  'px-2.5 py-2 sm:py-2.5 rounded-2xl flex items-center justify-between gap-1.5 transition-all shadow-md min-w-0',
-                                  isSlotTaken
-                                    ? 'bg-emerald-500 text-white cursor-not-allowed border border-emerald-400'
-                                    : isCourseFinished
-                                      ? 'bg-white/40 text-white/60 cursor-not-allowed'
-                                      : clsx(theme.btnBg, 'active:scale-95 cursor-pointer')
+                                  'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold active:scale-95 cursor-pointer',
+                                  isCourseFinished
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
+                                    : isSlotTaken
+                                      ? slotTheme.taken
+                                      : slotTheme.unrecorded
                                 )}
-                                title={isSlotTaken ? `Dose recorded at ${slotTime}` : `Click to record ${slot.label} dose`}
+                                title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Click to unmark)` : `Click to record ${slotTheme.label} dose`}
                               >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  {slot.iconName === 'sunrise' ? (
-                                    <Sunrise className={clsx('w-4 h-4 shrink-0', isSlotTaken ? 'text-white' : 'text-amber-500')} />
-                                  ) : slot.iconName === 'moon' ? (
-                                    <Moon className={clsx('w-4 h-4 shrink-0', isSlotTaken ? 'text-white' : 'text-indigo-500')} />
-                                  ) : (
-                                    <Sun className={clsx('w-4 h-4 shrink-0', isSlotTaken ? 'text-white' : 'text-amber-500')} />
-                                  )}
-                                  <span className="text-xs sm:text-[13px] font-black leading-none truncate">{slot.label}</span>
-                                </div>
-
-                                <span className="text-[10px] sm:text-[10.5px] font-mono shrink-0 font-extrabold opacity-95">
-                                  {isSlotTaken ? `✓ ${slotTime}` : slot.timeHint}
+                                <span className="text-base sm:text-lg leading-none shrink-0 select-none" role="img" aria-label={slotTheme.label}>
+                                  {slotTheme.emoji}
                                 </span>
+
+                                {isSlotTaken && (
+                                  <span className="text-[11px] sm:text-xs font-black font-mono shrink-0 truncate">
+                                    ✓ {slotTime}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -618,15 +771,15 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       </div>
 
                       {/* Prescriber & Hospital Strip */}
-                      <div className={clsx('pt-2 border-t flex items-center justify-between gap-2 text-xs sm:text-[12.5px] text-white/95 font-medium', theme.footerBorder)}>
+                      <div className={clsx('pt-2 border-t flex items-center justify-between gap-2 text-xs sm:text-[12.5px] font-medium', theme.footerBorder, theme.footerText)}>
                         <div className="flex items-center gap-1.5 truncate">
-                          <Building2 className="w-4 h-4 text-white/85 shrink-0" />
-                          <span className="truncate font-semibold">{med.hospitalName}</span>
+                          <Building2 className={clsx('w-4 h-4 shrink-0', theme.accentColor)} />
+                          <span className="truncate font-bold text-slate-700">{med.hospitalName}</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 truncate text-xs">
-                          <UserIcon className="w-3.5 h-3.5 text-white/85 shrink-0" />
-                          <span className="truncate">{med.prescriber}</span>
+                          <UserIcon className={clsx('w-3.5 h-3.5 shrink-0', theme.accentColor)} />
+                          <span className="truncate font-semibold text-slate-700">{med.prescriber}</span>
                         </div>
                       </div>
                     </motion.div>

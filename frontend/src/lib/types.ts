@@ -94,8 +94,13 @@ export interface Prescription {
   frequency: string;
   mealTiming?: string | null;
   prescriber: string;
-  iconType: 'pill' | 'syrup' | 'capsule';
+  iconType?: 'pill' | 'syrup' | 'capsule' | 'inhaler' | 'bottle' | 'syringe';
   patientId?: string;
+  hospitalName?: string;
+  status?: string;
+  totalDays?: number;
+  daysCompleted?: number;
+  nextDose?: string;
   createdAt?: string;
 }
 

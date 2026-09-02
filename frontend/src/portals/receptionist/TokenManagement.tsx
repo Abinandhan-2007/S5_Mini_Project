@@ -16,6 +16,9 @@ import {
   ChevronRight,
   AlertTriangle,
   Building2,
+  Calendar,
+  ArrowUpDown,
+  RotateCcw,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { TokenQueueItem } from '../../types/receptionist';
@@ -79,6 +82,70 @@ const speakAnnouncement = (text: string) => {
   }
 };
 
+export type TokenSortOption =
+  | 'TIME_ASC'
+  | 'TIME_DESC'
+  | 'DATE_DESC'
+  | 'DATE_ASC'
+  | 'TOKEN_ASC'
+  | 'NAME_ASC';
+
+const getTodayISODate = (offsetDays = 0): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateToISO = (rawDate?: string): string => {
+  if (!rawDate) return getTodayISODate(0);
+  if (rawDate === 'Today') return getTodayISODate(0);
+  if (rawDate === 'Tomorrow') return getTodayISODate(1);
+  if (rawDate === 'Yesterday') return getTodayISODate(-1);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return rawDate;
+  }
+
+  try {
+    const d = new Date(rawDate);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch {}
+
+  return rawDate;
+};
+
+const formatDisplayDate = (isoOrFormatted?: string): string => {
+  if (!isoOrFormatted) return 'Today';
+  const iso = normalizeDateToISO(isoOrFormatted);
+  const todayIso = getTodayISODate(0);
+  const tomorrowIso = getTodayISODate(1);
+  const yesterdayIso = getTodayISODate(-1);
+
+  if (iso === todayIso) return 'Today';
+  if (iso === tomorrowIso) return 'Tomorrow';
+  if (iso === yesterdayIso) return 'Yesterday';
+
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  } catch {}
+  return isoOrFormatted;
+};
+
 export const TokenManagement: React.FC<TokenManagementProps> = ({
   onShowToast,
   onOpenNewAppointment,
@@ -88,11 +155,13 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const updateSlotCapacity = useStaffStore((s) => s.updateSlotCapacity);
 
-  // Filter States
+  // Filter & Sort States
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Waiting' | 'In Consultation' | 'Completed'>('ALL');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>(getTodayISODate(0));
+  const [sortBy, setSortBy] = useState<TokenSortOption>('TIME_ASC');
   const [showSlotToggleConfirm, setShowSlotToggleConfirm] = useState(false);
   const [tokenToCancel, setTokenToCancel] = useState<TokenQueueItem | null>(null);
 
@@ -192,7 +261,8 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         if (t.status === 'Cancelled') return false;
         const matchesDoc = selectedDoctorId === 'ALL' || t.doctorId === selectedDoctorId;
         const matchesSlot = isSlotMatching(t.timeSlot, slotTime);
-        return matchesDoc && matchesSlot;
+        const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
+        return matchesDoc && matchesSlot && matchesDate;
       });
 
       const onlineCount = relevantTokens.filter(isOnlineToken).length;
@@ -218,35 +288,64 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     });
 
     return map;
-  }, [availableTimeSlots, tokens, selectedDoctorId, activeDoctor]);
+  }, [availableTimeSlots, tokens, selectedDoctorId, selectedDateFilter, activeDoctor]);
 
-  // Filtered Tokens
+  // Filtered & Sorted Tokens
   const filteredTokens = useMemo(() => {
-    return tokens.filter((t) => {
-      if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
-      if (statusFilter === 'ALL' && t.status === 'Cancelled') return false;
+    return tokens
+      .filter((t) => {
+        if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
+        if (statusFilter === 'ALL' && t.status === 'Cancelled') return false;
 
-      const matchesDoc = selectedDoctorId === 'ALL' || t.doctorId === selectedDoctorId;
-      if (!matchesDoc) return false;
+        const matchesDoc = selectedDoctorId === 'ALL' || t.doctorId === selectedDoctorId;
+        if (!matchesDoc) return false;
 
-      const matchesSlot = selectedTimeSlot === 'ALL' || isSlotMatching(t.timeSlot, selectedTimeSlot);
-      if (!matchesSlot) return false;
+        const matchesSlot = selectedTimeSlot === 'ALL' || isSlotMatching(t.timeSlot, selectedTimeSlot);
+        if (!matchesSlot) return false;
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const numMatch = (t.tokenNumber || '').toLowerCase().includes(q);
-        const nameMatch = (t.patientName || '').toLowerCase().includes(q);
-        const ticketMatch = (t.ticketNumber || '').toLowerCase().includes(q);
-        const phoneMatch = (t.patientPhone || '').includes(q);
-        const docMatch = (t.doctorName || '').toLowerCase().includes(q);
-        if (!numMatch && !nameMatch && !ticketMatch && !phoneMatch && !docMatch) {
-          return false;
+        // Date matching (defaults to Today, or ALL)
+        const itemIsoDate = normalizeDateToISO(t.date);
+        const matchesDate = selectedDateFilter === 'ALL' || itemIsoDate === selectedDateFilter;
+        if (!matchesDate) return false;
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const numMatch = (t.tokenNumber || '').toLowerCase().includes(q);
+          const nameMatch = (t.patientName || '').toLowerCase().includes(q);
+          const ticketMatch = (t.ticketNumber || '').toLowerCase().includes(q);
+          const phoneMatch = (t.patientPhone || '').includes(q);
+          const docMatch = (t.doctorName || '').toLowerCase().includes(q);
+          if (!numMatch && !nameMatch && !ticketMatch && !phoneMatch && !docMatch) {
+            return false;
+          }
         }
-      }
 
-      return true;
-    });
-  }, [tokens, selectedDoctorId, selectedTimeSlot, statusFilter, searchQuery]);
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'DATE_DESC') {
+          const dateComp = normalizeDateToISO(b.date).localeCompare(normalizeDateToISO(a.date));
+          if (dateComp !== 0) return dateComp;
+          return a.timeSlot.localeCompare(b.timeSlot);
+        }
+        if (sortBy === 'DATE_ASC') {
+          const dateComp = normalizeDateToISO(a.date).localeCompare(normalizeDateToISO(b.date));
+          if (dateComp !== 0) return dateComp;
+          return a.timeSlot.localeCompare(b.timeSlot);
+        }
+        if (sortBy === 'TIME_DESC') {
+          return b.timeSlot.localeCompare(a.timeSlot);
+        }
+        if (sortBy === 'TOKEN_ASC') {
+          return a.tokenNumber.localeCompare(b.tokenNumber);
+        }
+        if (sortBy === 'NAME_ASC') {
+          return a.patientName.localeCompare(b.patientName);
+        }
+        // Default TIME_ASC
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
+  }, [tokens, selectedDoctorId, selectedTimeSlot, statusFilter, selectedDateFilter, sortBy, searchQuery]);
 
   // Split into Online & Offline Queues
   const onlineBookedPatients = useMemo(() => filteredTokens.filter(isOnlineToken), [filteredTokens]);
@@ -321,7 +420,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     return (
       <div
         key={token.id}
-        className={`group p-4 sm:p-4.5 rounded-2xl border border-slate-200/90 transition-all duration-200 relative shadow-2xs hover:shadow-sm ${
+        className={`group p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 transition-all duration-200 relative shadow-2xs hover:shadow-sm w-full min-w-0 ${
           isConsulting
             ? 'bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/20'
             : isCompleted
@@ -454,7 +553,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           </div>
         </div>
 
-        {/* Doctor & Location Info */}
+        {/* Doctor, Date & Location Info */}
         <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 text-xs text-slate-600">
           <div className="flex items-center gap-1.5 min-w-0">
             <Stethoscope className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
@@ -466,9 +565,15 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded text-slate-700 text-[10.5px] font-bold">
-            <Clock className="w-2.5 h-2.5 text-slate-400" />
-            <span className="font-mono">{token.timeSlot}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1 font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10.5px]">
+              <Calendar className="w-3 h-3 text-[#14B8A6]" />
+              <span>{formatDisplayDate(token.date)}</span>
+            </span>
+            <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded text-slate-700 text-[10.5px] font-bold">
+              <Clock className="w-2.5 h-2.5 text-slate-400" />
+              <span className="font-mono">{token.timeSlot}</span>
+            </div>
           </div>
         </div>
 
@@ -518,22 +623,46 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   return (
     <div className="space-y-4 sm:space-y-5 pb-8 text-left w-full max-w-full overflow-x-hidden">
       {/* ══════════════════════════════════════════════════════════════════
-          1. TOP COMMAND DECK & SUMMARY HEADER
+          1. TOP COMMAND DECK & SEARCH HEADER
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 border border-slate-200/90 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-          <div className="flex items-center gap-3">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4 w-full min-w-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-sm shrink-0">
               <Ticket className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading truncate">
                 Live Token & Slot Management Desk
               </h1>
-              <p className="text-xs text-slate-500 font-medium hidden sm:block">
+              <p className="text-xs text-slate-500 font-medium hidden sm:block truncate">
                 Synchronized live arrival tokens with split online vs offline lanes and broadcast summons.
               </p>
             </div>
+          </div>
+
+          {/* TOP SEARCH BAR */}
+          <div className="relative w-full md:w-80 lg:w-96 group shrink-0">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center pointer-events-none group-focus-within:bg-[#0B5A54] group-focus-within:text-white transition-colors duration-200 shadow-2xs">
+              <Search className="w-3.5 h-3.5" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search patient, phone, token (#TOK-001)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-9 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200/90 focus:border-[#0B5A54] rounded-2xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-3 focus:ring-[#0B5A54]/15 shadow-2xs transition-all duration-200"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] font-black transition-all cursor-pointer hover:scale-110"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
@@ -822,18 +951,107 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            4. SEARCH & STATUS FILTER TOOLBAR
+            4. DATE FILTER, STATUS FILTER & SORT TOOLBAR
         ══════════════════════════════════════════════════════════════════ */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        <div className="space-y-2.5 pt-2 border-t border-slate-100 w-full min-w-0">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-slate-50/80 p-2.5 sm:p-3 rounded-2xl border border-slate-200/70 w-full min-w-0">
+            {/* Quick Date Pills + Date Input */}
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#0B5A54] shrink-0 mr-1">
+                <Calendar className="w-4 h-4 text-[#14B8A6]" />
+                <span>Date:</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDateFilter(getTodayISODate(0))}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                  selectedDateFilter === getTodayISODate(0)
+                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${selectedDateFilter === getTodayISODate(0) ? 'bg-emerald-300' : 'bg-slate-300'}`} />
+                <span>Today ({formatDisplayDate(getTodayISODate(0))})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDateFilter(getTodayISODate(1))}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                  selectedDateFilter === getTodayISODate(1)
+                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                Tomorrow
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDateFilter('ALL')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                  selectedDateFilter === 'ALL'
+                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                All Dates
+              </button>
+
+              {/* Custom Date Input */}
+              <input
+                type="date"
+                value={selectedDateFilter === 'ALL' ? '' : selectedDateFilter}
+                onChange={(e) => setSelectedDateFilter(e.target.value || 'ALL')}
+                className="px-2 py-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer shadow-2xs"
+                title="Choose custom date"
+              />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
+              <div className="flex items-center gap-1 text-xs font-black text-slate-600 shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>Sort:</span>
+              </div>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as TokenSortOption)}
+                className="px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] shadow-2xs cursor-pointer"
+              >
+                <option value="TIME_ASC">Time Slot (Earliest First)</option>
+                <option value="TIME_DESC">Time Slot (Latest First)</option>
+                <option value="DATE_DESC">Date (Newest First)</option>
+                <option value="DATE_ASC">Date (Oldest First)</option>
+                <option value="TOKEN_ASC">Token Number (#001 First)</option>
+                <option value="NAME_ASC">Patient Name (A → Z)</option>
+              </select>
+
+              {selectedDateFilter !== getTodayISODate(0) && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDateFilter(getTodayISODate(0))}
+                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  title="Reset Date to Today"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Status Filter Chips Row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar w-full min-w-0">
             <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">
-              Filter:
+              Status:
             </span>
             {(['ALL', 'Waiting', 'In Consultation', 'Completed'] as const).map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   statusFilter === st
                     ? 'bg-slate-900 text-white shadow-2xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
@@ -842,29 +1060,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 {st === 'ALL' ? 'All Statuses' : st}
               </button>
             ))}
-          </div>
-
-          {/* Premium Search Input */}
-          <div className="relative w-full sm:w-80 md:w-96 group">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-teal-50 text-[#0B5A54] flex items-center justify-center pointer-events-none group-focus-within:bg-[#0B5A54] group-focus-within:text-white transition-colors duration-200 shadow-2xs">
-              <Search className="w-3.5 h-3.5" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search patient, phone, token (#TOK-001)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-9 py-2 bg-slate-50/80 hover:bg-white focus:bg-white border border-slate-200/90 focus:border-[#0B5A54] rounded-2xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-3 focus:ring-[#0B5A54]/15 shadow-2xs transition-all duration-200"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] font-black transition-all cursor-pointer hover:scale-110"
-                title="Clear search"
-              >
-                ✕
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -959,15 +1154,15 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           6. SPLIT TWO COLUMNS: ONLINE QUEUE VS OFFLINE WALK-IN QUEUE
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start w-full max-w-full">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 items-start w-full min-w-0 max-w-full">
         {/* ── COLUMN 1: ONLINE APP BOOKINGS (MOBILE APP QUEUE) ── */}
-        <div className="space-y-3 w-full">
+        <div className="space-y-3 w-full min-w-0">
           <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
                 <Smartphone className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-black text-purple-950 font-heading">
+              <h3 className="text-sm font-black text-purple-950 font-heading truncate">
                 Online App Bookings
               </h3>
             </div>
@@ -993,20 +1188,20 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 w-full min-w-0">
               {onlineBookedPatients.map((item) => renderPatientCard(item, true))}
             </div>
           )}
         </div>
 
         {/* ── COLUMN 2: OFFLINE WALK-IN DESK REGISTRATIONS ── */}
-        <div className="space-y-3 w-full">
+        <div className="space-y-3 w-full min-w-0">
           <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
                 <Building2 className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-black text-amber-950 font-heading">
+              <h3 className="text-sm font-black text-amber-950 font-heading truncate">
                 Offline Walk-In Desk Queue
               </h3>
             </div>

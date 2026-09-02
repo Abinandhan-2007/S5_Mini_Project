@@ -11,7 +11,7 @@ import { FindHospitalsScreen } from '../features/hospitals/FindHospitalsScreen';
 import { HospitalDetailScreen } from '../features/hospitals/HospitalDetailScreen';
 import { BookAppointmentScreen } from '../features/appointments/BookAppointmentScreen';
 import { AppointmentDetailScreen } from '../features/appointments/AppointmentDetailScreen';
-import { MedicalHistoryScreen } from '../features/history/MedicalHistoryScreen';
+import { HistoryScreen } from '../features/history/HistoryScreen';
 
 
 import { ProfileScreen } from '../features/profile/ProfileScreen';
@@ -195,7 +195,7 @@ export const AppRoutes: React.FC = () => {
           path="/history"
           element={
             <PageTransition>
-              <MedicalHistoryScreen />
+              <HistoryScreen />
             </PageTransition>
           }
         />

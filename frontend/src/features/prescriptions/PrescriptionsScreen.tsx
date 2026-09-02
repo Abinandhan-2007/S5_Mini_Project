@@ -18,6 +18,8 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
+import { MedicationCardStack } from '../../components/prescriptions';
+import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
 
 export interface PrescribedMedicine {
   id: string;
@@ -42,7 +44,7 @@ export interface DoctorPrescriptionGroup {
 export const PrescriptionsScreen: React.FC = () => {
   const navigate = useNavigate();
   const user = useCarePulseStore((s) => s.user);
-  const prescriptions = useCarePulseStore((s) => s.prescriptions);
+  const storePrescriptions = useCarePulseStore((s) => s.prescriptions);
   const history = useCarePulseStore((s) => s.history);
   const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
   const syncHistory = useCarePulseStore((s) => s.syncHistory);
@@ -57,14 +59,18 @@ export const PrescriptionsScreen: React.FC = () => {
     }
   }, [user?.id, syncPrescriptions, syncHistory]);
 
+  const effectivePrescriptions = (storePrescriptions && storePrescriptions.length > 0)
+    ? storePrescriptions
+    : MOCK_PRESCRIPTIONS;
+
   // Build dynamic prescription groups from store prescriptions & consultation history
   const dynamicGroups: DoctorPrescriptionGroup[] = React.useMemo(() => {
     const groups: DoctorPrescriptionGroup[] = [];
 
     // 1. Group direct prescriptions by prescriber/doctor
-    if (prescriptions && prescriptions.length > 0) {
+    if (effectivePrescriptions && effectivePrescriptions.length > 0) {
       const byDoctor: Record<string, PrescribedMedicine[]> = {};
-      prescriptions.forEach((rx) => {
+      effectivePrescriptions.forEach((rx) => {
         const prescriber = rx.prescriber || 'Treating Physician';
         if (!byDoctor[prescriber]) byDoctor[prescriber] = [];
         byDoctor[prescriber].push({
@@ -72,7 +78,7 @@ export const PrescriptionsScreen: React.FC = () => {
           name: rx.drugName,
           dosage: rx.dosage || 'As directed',
           instructions: rx.frequency || 'Follow doctor advice',
-          duration: 'Standard Course',
+          duration: rx.totalDays ? `${rx.totalDays} Days Course` : 'Standard Course',
           mealTiming: rx.mealTiming || undefined,
         });
       });
@@ -118,7 +124,7 @@ export const PrescriptionsScreen: React.FC = () => {
     }
 
     return groups;
-  }, [prescriptions, history]);
+  }, [effectivePrescriptions, history]);
 
   const filteredGroups = dynamicGroups.filter((grp) => {
     const q = searchQuery.toLowerCase().trim();
@@ -192,7 +198,7 @@ export const PrescriptionsScreen: React.FC = () => {
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-4 max-w-5xl mx-auto w-full">
+      <main className="px-4 sm:px-6 md:px-8 py-4 space-y-5 max-w-5xl mx-auto w-full">
         {/* SCAN MEDICINE SAFETY HERO BANNER */}
         <div className="bg-gradient-to-r from-[#0B5A54] via-[#14837A] to-[#0B5A54] rounded-3xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 text-left min-w-0">
@@ -221,9 +227,17 @@ export const PrescriptionsScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* Filter Chips Bar */}
+        {/* 1. INTERACTIVE SAMSUNG PASS CASCADING MEDICATION CARD STACK */}
+        <section className="space-y-2">
+          <MedicationCardStack
+            prescriptions={effectivePrescriptions}
+            title="DAILY DOSAGE WALLET STACK"
+          />
+        </section>
+
+        {/* 2. Filter Chips Bar & Detailed Doctor Groups */}
         {dynamicGroups.length > 0 && (
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pt-2">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveFilter('All')}
