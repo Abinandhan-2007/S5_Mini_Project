@@ -131,6 +131,18 @@ export interface ScanMatchResponse {
   drugInfo?: DrugInfoData | null;
 }
 
+export interface MedicineInfoLookupResponse {
+  status: 'FOUND' | 'UNCLEAR_TEXT' | 'NO_INFO_AVAILABLE';
+  drugName: string;
+  extractedText: string;
+  purpose: string;
+  indicationsAndUsage?: string;
+  summary: string;
+  source: string;
+  disclaimer?: string;
+}
+
+
 
 export interface ChatMessage {
   id: string;

@@ -78,6 +78,58 @@ def clean_text_for_matching(text: str) -> str:
     return re.sub(r'[^a-z0-9\s]', ' ', text.lower()).strip()
 
 
+# Common non-drug packaging words to filter out
+PACKAGING_STOP_WORDS = {
+    "tablet", "tablets", "capsule", "capsules", "syrup", "suspension", "solution",
+    "injection", "ointment", "cream", "gel", "drops", "oral", "topical", "strip",
+    "pack", "box", "bottle", "mg", "mcg", "gm", "g", "ml", "iu", "usp", "ip", "bp",
+    "ep", "pharma", "pharmaceuticals", "ltd", "pvt", "inc", "corp", "mfg", "lic",
+    "no", "batch", "exp", "expiry", "date", "mrp", "rs", "rx", "only", "contains",
+    "each", "uncoated", "film", "coated", "store", "below", "temperature", "protect",
+    "from", "light", "moisture", "keep", "out", "of", "reach", "children", "dosage",
+    "as", "directed", "by", "physician", "doctor", "warning", "schedule", "drug",
+    "prescription", "caution", "not", "to", "be", "sold", "without", "retail",
+    "medical", "practitioner", "for", "use", "net", "qty", "contents", "composition"
+}
+
+
+def extract_drug_candidate_from_ocr(ocr_text: str) -> Optional[str]:
+    """
+    Extract the most likely drug name from arbitrary OCR text on a packaging scan
+    without matching against any specific patient's prescriptions.
+    """
+    if not ocr_text or not str(ocr_text).strip():
+        return None
+
+    # Check for non-alphabetic noise
+    cleaned = clean_text_for_matching(ocr_text)
+    words = [w for w in cleaned.split() if len(w) >= 3 and not w.isdigit()]
+    if not words:
+        return None
+
+    # Import synonyms dictionary
+    try:
+        from services.drug_info_service import DRUG_SYNONYMS
+    except Exception:
+        DRUG_SYNONYMS = {}
+
+    # 1. Check for direct presence of known common drug names / synonyms
+    for word in words:
+        if word in DRUG_SYNONYMS:
+            return word.capitalize()
+
+    # 2. Filter out stop words
+    candidate_tokens = [w for w in words if w not in PACKAGING_STOP_WORDS]
+
+    if candidate_tokens:
+        # Return the most prominent candidate token (first non-stop word)
+        return candidate_tokens[0].capitalize()
+
+    # If all tokens were filtered out but valid alphabetic words existed
+    return words[0].capitalize()
+
+
+
 def compute_drug_similarity(target_drug_name: str, ocr_text: str) -> float:
     """
     Compute similarity between a target prescription drug name and OCR text.

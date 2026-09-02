@@ -19,6 +19,8 @@ import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
 import { ScanMedicineScreen } from '../features/prescriptions/ScanMedicineScreen';
+import { MedicineInfoLookupScreen } from '../features/prescriptions/MedicineInfoLookupScreen';
+
 
 
 
@@ -234,6 +236,22 @@ export const AppRoutes: React.FC = () => {
           element={
             <PageTransition>
               <ScanMedicineScreen />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/medicine/info-lookup"
+          element={
+            <PageTransition>
+              <MedicineInfoLookupScreen />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/prescriptions/info-lookup"
+          element={
+            <PageTransition>
+              <MedicineInfoLookupScreen />
             </PageTransition>
           }
         />

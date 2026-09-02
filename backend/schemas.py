@@ -323,6 +323,24 @@ class ScanMatchResponse(BaseModel):
     matches: List[PrescriptionMatchedItem] = []
     drugInfo: Optional[DrugInfoSchema] = None
 
+class MedicineInfoLookupRequest(BaseModel):
+    image: Optional[str] = None
+    ocrText: Optional[str] = None
+    ocr_text: Optional[str] = None
+    drugName: Optional[str] = None
+    drug_name: Optional[str] = None
+
+class MedicineInfoLookupResponse(BaseModel):
+    status: str  # FOUND, UNCLEAR_TEXT, NO_INFO_AVAILABLE
+    drugName: str
+    extractedText: str
+    purpose: str
+    indicationsAndUsage: Optional[str] = ""
+    summary: str
+    source: str
+    disclaimer: Optional[str] = "General Information Only — This is NOT a verification against your prescriptions. For personal dosage instructions, use 'Check My Prescription'."
+
+
 
 
 

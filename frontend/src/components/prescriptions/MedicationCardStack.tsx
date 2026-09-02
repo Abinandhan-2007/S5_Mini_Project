@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, type PanInfo } from 'framer-motion';
 import {
   Pill,
@@ -10,6 +11,7 @@ import {
   Moon,
   Sunrise,
   ChevronRight,
+  Camera,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -214,6 +216,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   onSelectMedication,
   onMarkTaken,
 }) => {
+  const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const [takenSlotsMap, setTakenSlotsMap] = useState<
     Record<string, { date: string; slots: Record<string, string> }>
@@ -349,6 +352,16 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
         {hasPrescriptions && (
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/prescriptions/scan')}
+              className="px-2.5 py-1 rounded-full bg-[#E3F3F1] hover:bg-teal-100 text-[#0B5A54] text-[11px] font-bold border border-[#14B8A6]/30 flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Scan Medicine with Camera"
+            >
+              <Camera className="w-3 h-3 text-[#0B5A54]" />
+              <span>Scan</span>
+            </button>
+
             <span className="bg-[#E3F3F1] text-[#0B5A54] font-black text-xs px-2.5 py-0.5 rounded-full border border-[#14B8A6]/25">
               {activeIndex + 1} of {totalCards}
             </span>

@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.8.8",
+  "version": "1.9.0",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "CarePulse v1.8.9: Live real-time doctor availability sync between receptionist and patient portals.",
-  "released_at": "2026-09-01"
+  "release_notes": "CarePulse v1.9.0: Added Dual-Mode Medicine Scanner (Safety Verification & Drug Info Lookup via OpenFDA), In-App Live Camera Viewfinder, Meal Timing Prescriptions, and Smart Appointment Time Slot 30-min buffer.",
+  "released_at": "2026-09-02"
 }

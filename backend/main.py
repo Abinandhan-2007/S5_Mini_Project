@@ -64,11 +64,13 @@ from schemas import (
     ScanMatchResponse,
     PrescriptionMatchedItem,
     DrugInfoSchema,
+    MedicineInfoLookupRequest,
+    MedicineInfoLookupResponse,
 )
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
-from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription
+from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr
 from services.drug_info_service import get_drug_info
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
@@ -2063,6 +2065,64 @@ def get_medication_drug_info(drug_name: str):
     if not drug_name or not drug_name.strip():
         raise HTTPException(status_code=400, detail="drug_name parameter is required.")
     return get_drug_info(drug_name.strip())
+
+
+@app.post("/api/medicine/lookup-info", response_model=MedicineInfoLookupResponse)
+def lookup_medicine_info(req: MedicineInfoLookupRequest):
+    """
+    Informational Medicine Purpose Lookup via OpenFDA (Open Lookup).
+    Scans ANY medicine packaging or accepts a drug name, extracting OpenFDA purpose/use
+    WITHOUT matching against or requiring any patient prescription records.
+    """
+    extracted_text = ""
+    candidate_name = None
+
+    # 1. Direct drug name provided or OCR extraction
+    if req.drugName or req.drug_name:
+        candidate_name = (req.drugName or req.drug_name).strip()
+    elif req.ocrText or req.ocr_text:
+        extracted_text = (req.ocrText or req.ocr_text).strip()
+        candidate_name = extract_drug_candidate_from_ocr(extracted_text)
+    elif req.image:
+        extracted_text = extract_text_from_image(req.image)
+        candidate_name = extract_drug_candidate_from_ocr(extracted_text)
+
+    # 2. Could not extract a valid drug candidate from OCR
+    if not candidate_name:
+        return MedicineInfoLookupResponse(
+            status="UNCLEAR_TEXT",
+            drugName="",
+            extractedText=extracted_text,
+            purpose="Could not identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible.",
+            indicationsAndUsage="",
+            summary="Could not identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible.",
+            source="None"
+        )
+
+    # 3. Query OpenFDA for general background info
+    info = get_drug_info(candidate_name)
+
+    if info.get("found"):
+        return MedicineInfoLookupResponse(
+            status="FOUND",
+            drugName=candidate_name,
+            extractedText=extracted_text,
+            purpose=info.get("purpose") or "General therapeutic medication.",
+            indicationsAndUsage=info.get("indications_and_usage") or info.get("summary") or "",
+            summary=info.get("summary") or "General therapeutic medication.",
+            source=info.get("source") or "OpenFDA"
+        )
+    else:
+        return MedicineInfoLookupResponse(
+            status="NO_INFO_AVAILABLE",
+            drugName=candidate_name,
+            extractedText=extracted_text,
+            purpose=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
+            indicationsAndUsage="",
+            summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
+            source="Fallback"
+        )
+
 
 
 

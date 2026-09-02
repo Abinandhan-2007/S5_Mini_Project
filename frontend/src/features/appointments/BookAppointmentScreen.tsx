@@ -14,6 +14,7 @@ import {
   Navigation,
   ChevronRight,
   Info,
+  AlertCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarPicker } from '../../components/ui/CalendarPicker';
@@ -464,6 +465,7 @@ export const BookAppointmentScreen: React.FC = () => {
               onSelectSlot={(slot) => setSelectedSlot(slot)}
               doctor={doctor}
               slotCapacities={(doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities}
+              selectedDate={selectedDate}
             />
           </div>
         </div>
@@ -529,6 +531,15 @@ export const BookAppointmentScreen: React.FC = () => {
               >
                 <X className="w-4 h-4 text-slate-400" />
                 <span>Doctor is Currently Off-Duty</span>
+              </button>
+            ) : !selectedSlot ? (
+              <button
+                type="button"
+                disabled
+                className="w-full py-4 px-6 rounded-2xl bg-slate-200 text-slate-500 font-black text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-slate-300"
+              >
+                <AlertCircle className="w-4 h-4 text-slate-400" />
+                <span>No Upcoming Slots on this Date</span>
               </button>
             ) : (
               <motion.button

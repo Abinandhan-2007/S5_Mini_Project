@@ -226,6 +226,67 @@ class TestScanMedicineOCRAndFuzzyMatch(unittest.TestCase):
             self.assertEqual(data["match"]["drugName"], "Amoxicillin")
             self.assertEqual(data["match"]["mealTiming"], "After Food")
 
+    # -------------------------------------------------------------------------
+    # SCENARIO 9: Informational Lookup - Common Drug Name via OpenFDA
+    # -------------------------------------------------------------------------
+    def test_informational_lookup_common_drug(self):
+        res = client.post(
+            "/api/medicine/lookup-info",
+            json={"ocrText": "IBUPROFEN 400mg Film Coated Tablets"}
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "FOUND")
+        self.assertEqual(data["drugName"], "Ibuprofen")
+        self.assertEqual(data["source"], "OpenFDA")
+        self.assertIn("pain", data["summary"].lower() + data["purpose"].lower())
+        print("\n[OpenFDA Informational Scan - Ibuprofen]:", data["summary"][:160])
+
+    # -------------------------------------------------------------------------
+    # SCENARIO 10: Informational Lookup - Unprescribed Drug (Open Lookup Test)
+    # -------------------------------------------------------------------------
+    def test_informational_lookup_unprescribed_drug_succeeds(self):
+        # Ciprofloxacin is NOT in this patient's prescriptions, but informational lookup must succeed!
+        res = client.post(
+            "/api/medicine/lookup-info",
+            json={"ocrText": "CIPROFLOXACIN 500mg Tablets USP"}
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "FOUND")
+        self.assertEqual(data["drugName"], "Ciprofloxacin")
+        self.assertEqual(data["source"], "OpenFDA")
+        self.assertIn("ciprofloxacin", data["summary"].lower() + data["indicationsAndUsage"].lower())
+        print("[OpenFDA Informational Scan - Ciprofloxacin (Unprescribed)]:", data["summary"][:160])
+
+    # -------------------------------------------------------------------------
+    # SCENARIO 11: Informational Lookup - Garbled / Unreadable Image
+    # -------------------------------------------------------------------------
+    def test_informational_lookup_garbled_unclear(self):
+        res = client.post(
+            "/api/medicine/lookup-info",
+            json={"ocrText": "   123456789 ??? @@@ ###   "}
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "UNCLEAR_TEXT")
+        self.assertEqual(data["drugName"], "")
+
+    # -------------------------------------------------------------------------
+    # SCENARIO 12: Informational Lookup - Unlisted Medicine Fallback
+    # -------------------------------------------------------------------------
+    def test_informational_lookup_unlisted_fallback(self):
+        res = client.post(
+            "/api/medicine/lookup-info",
+            json={"drugName": "CustomLocalGenericAyur999"}
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "NO_INFO_AVAILABLE")
+        self.assertEqual(data["source"], "Fallback")
+        self.assertIn("General information not available", data["summary"])
+
 
 if __name__ == "__main__":
     unittest.main()
+

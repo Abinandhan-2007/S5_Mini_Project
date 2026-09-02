@@ -17,12 +17,13 @@ import {
   Info,
   ChevronRight,
   ShieldCheck,
+  Shield,
   AlertOctagon,
 } from 'lucide-react';
-import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { useCarePulseStore } from '../../lib/store';
 import { apiFetch } from '../../lib/apiFetch';
 import type { ScanMatchResponse, ScanMatchResult, DrugInfoData } from '../../lib/types';
+import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
 
 export const ScanMedicineScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -37,31 +38,14 @@ export const ScanMedicineScreen: React.FC = () => {
   const [candidateDrugInfo, setCandidateDrugInfo] = useState<DrugInfoData | null>(null);
   const [isLoadingDrugInfo, setIsLoadingDrugInfo] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
 
-  // Capture photo via Capacitor Native Camera
-  const handleNativeCamera = async () => {
-    try {
-      setErrorNotice(null);
-      const photo = await CapCamera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-      });
-
-      if (photo.base64String) {
-        const fullBase64 = `data:image/${photo.format || 'jpeg'};base64,${photo.base64String}`;
-        setImagePreview(fullBase64);
-        processScan(fullBase64);
-      }
-    } catch (err: any) {
-      console.warn('Capacitor camera note:', err);
-      // User cancelled or plugin fallback -> trigger file input
-      if (err?.message !== 'User cancelled photos app') {
-        fileInputRef.current?.click();
-      }
-    }
+  // Open live in-app camera viewfinder or Capacitor camera
+  const handleStartCamera = async () => {
+    setErrorNotice(null);
+    setIsLiveCameraOpen(true);
   };
+
 
   // Gallery / File Input Picker
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,9 +166,9 @@ export const ScanMedicineScreen: React.FC = () => {
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/home')}
               className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
-              title="Back"
+              title="Back to Home"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -215,6 +199,24 @@ export const ScanMedicineScreen: React.FC = () => {
 
       {/* MAIN CONTAINER */}
       <main className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+        {/* MODE SELECTOR */}
+        <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-2xl">
+          <button
+            className="py-2.5 px-3 rounded-xl bg-white text-[#0B5A54] text-xs font-black shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Shield className="w-3.5 h-3.5 text-[#0B5A54]" />
+            <span>Check My Prescription</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/medicine/info-lookup')}
+            className="py-2.5 px-3 rounded-xl text-slate-600 hover:text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Info className="w-3.5 h-3.5 text-blue-600" />
+            <span>What Is This For?</span>
+          </button>
+        </div>
+
         {/* Error Notice if any */}
         {errorNotice && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold p-3.5 rounded-2xl flex items-center gap-2.5">
@@ -278,7 +280,7 @@ export const ScanMedicineScreen: React.FC = () => {
               {/* Action Buttons */}
               <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
-                  onClick={handleNativeCamera}
+                  onClick={handleStartCamera}
                   className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                 >
                   <Camera className="w-4 h-4" />
@@ -700,6 +702,19 @@ export const ScanMedicineScreen: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Live In-App Camera Viewfinder Modal */}
+      <LiveCameraModal
+        isOpen={isLiveCameraOpen}
+        onClose={() => setIsLiveCameraOpen(false)}
+        onCapture={(img) => {
+          setImagePreview(img);
+          processScan(img);
+        }}
+        onOpenGallery={() => fileInputRef.current?.click()}
+        title="Check My Prescription"
+        themeColor="teal"
+      />
     </div>
   );
 };
