@@ -4,10 +4,17 @@ import { apiFetch } from '../lib/apiFetch';
 export const receptionistService = {
   async getDoctors(): Promise<DoctorRecord[]> {
     try {
-      const res = await apiFetch('/receptionist/doctors', { method: 'GET' });
+      let res = await apiFetch('/receptionist/doctors', { method: 'GET' });
+      if (!res.ok) {
+        res = await apiFetch('/doctors', { method: 'GET' });
+      }
       if (res.ok) {
         const data = await res.json();
-        return data.doctors || [];
+        const docs = Array.isArray(data) ? data : (data.doctors || []);
+        return docs.map((d: any) => ({
+          ...d,
+          photo: d.photo || d.photoUrl || d.photo_url || '/doctor_default.jpg',
+        }));
       }
     } catch (e) {
       console.warn('Backend server offline, returning fallback doctor records', e);

@@ -10,7 +10,6 @@ import {
   LogOut,
   Bell,
   Search,
-  Activity,
   Menu,
   X,
   CheckCircle2,
@@ -255,8 +254,8 @@ export const ReceptionistLayout: React.FC = () => {
           {/* ── CarePulse Brand Header ── */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-800 text-white flex items-center justify-center shadow-md shadow-teal-900/15 ring-2 ring-teal-500/10 shrink-0">
-                <Activity className="w-5 h-5 text-teal-200" />
+              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-950 text-white flex items-center justify-center shadow-md shadow-teal-900/15 ring-2 ring-teal-500/10 shrink-0">
+                <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">

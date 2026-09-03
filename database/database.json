@@ -520,6 +520,51 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$1bAExD4pPEd.Q7AQS..fwuk72fjGMyD5925NfCsfpFDgtSiNFFwvq",
       "auth_provider": "local"
+    },
+    {
+      "id": "e3c9aa29-1509-483e-86d7-ff6c59d44339",
+      "patient_code": "P000034",
+      "patientCode": "P000034",
+      "full_name": "Isolated Patient 75922803",
+      "email": "patient_75922803@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$PeDzuQwLWjb.tHphoIwnWeIY9XQ4/61.IPxsnXDY61UzuNm8ULUOm",
+      "auth_provider": "local"
+    },
+    {
+      "id": "c604826d-0fa5-4344-a698-0a43bab1913c",
+      "patient_code": "P000035",
+      "patientCode": "P000035",
+      "full_name": "Isolated Patient 13e745cb",
+      "email": "patient_13e745cb@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$NbqlKdktQGWEJrjlbH1P7OtO9AkMrRMZp53DVjT4jdxDdDjdiZpou",
+      "auth_provider": "local"
+    },
+    {
+      "id": "d3723860-a0de-401f-ab38-76d9a430d591",
+      "patient_code": "P000036",
+      "patientCode": "P000036",
+      "full_name": "Isolated Patient c943f2a4",
+      "email": "patient_c943f2a4@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$1L1Zq.1ZukVFh/fmbd9mYegYJOgfxqJrqBS910UVM2KJoSjZu3t3m",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -4593,6 +4638,15 @@
         "Micardis"
       ],
       "purpose": "Blood pressure reduction and cardiovascular protection."
+    }
+  ],
+  "device_tokens": [
+    {
+      "id": "ff9ba9b1-e3b8-4e01-9e61-782a5d325d61",
+      "patient_id": "00000000-0000-0000-0000-000000000000",
+      "fcm_token": "sample_test_token_999",
+      "platform": "android",
+      "is_active": true
     }
   ]
 }

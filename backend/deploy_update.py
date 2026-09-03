@@ -112,7 +112,8 @@ def main():
     parser.add_argument("--version", type=str, help="Explicit target version (e.g. 1.2.0)")
     parser.add_argument("--bump", choices=["patch", "minor", "major"], default="patch", help="Semver bump type")
     parser.add_argument("--notes", type=str, help="Release notes for this version")
-    parser.add_argument("--broadcast", action="store_true", help="Send FCM push update broadcast to all active devices")
+    parser.add_argument("--message", "-m", type=str, help="Custom push notification message for users (e.g. 'Exciting new features!')")
+    parser.add_argument("--no-broadcast", action="store_true", help="Skip sending FCM push update notification")
     args = parser.parse_args()
 
     curr_code, curr_name = read_current_gradle_version()
@@ -201,11 +202,19 @@ def main():
     print(f"   Download URL: http://localhost:5000/downloads/CarePulse_App.apk")
     print("=" * 60)
 
-    if args.broadcast:
+    if not args.no_broadcast:
         print("\n📢 Dispatching FCM Push Notification Broadcast...")
-        broadcast_script = BACKEND_DIR / "broadcast_update.py"
-        if broadcast_script.exists():
-            subprocess.run([sys.executable, str(broadcast_script)], cwd=str(BACKEND_DIR))
+        from notifications.fcm_service import broadcast_app_update_notification
+        b_res = broadcast_app_update_notification(
+            version=new_name,
+            release_notes=release_notes,
+            custom_message=args.message,
+            download_url="http://localhost:5000/downloads/CarePulse_App.apk"
+        )
+        print(f"✅ Push Notification Broadcast Complete:")
+        print(f"   Title:          {b_res.get('title')}")
+        print(f"   Message:        {b_res.get('body')}")
+        print(f"   Dispatched to:  {b_res.get('sent')} devices ({b_res.get('failed')} failed, total: {b_res.get('total_devices')})")
 
 
 if __name__ == "__main__":

@@ -28,16 +28,28 @@ except ImportError:
 logger = logging.getLogger("carepulse.fcm")
 
 
-def register_device_token(patient_id: str, fcm_token: str, platform: str = "android") -> Dict[str, Any]:
-    """
-    Store or update an active FCM device token for a patient.
-    Idempotent: updates existing token to active and refreshes timestamp.
-    """
-    if not patient_id or not fcm_token:
-        return {"success": False, "error": "patient_id and fcm_token are required"}
+def is_valid_uuid(val: Any) -> bool:
+    if not val:
+        return False
+    try:
+        import uuid
+        uuid.UUID(str(val))
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
 
-    p_id = str(patient_id).strip()
+
+def register_device_token(patient_id: Optional[str], fcm_token: str, platform: str = "android") -> Dict[str, Any]:
+    """
+    Store or update an active FCM device token for a device/patient.
+    Idempotent: updates existing token to active, associates patient if known, and refreshes timestamp.
+    """
+    if not fcm_token:
+        return {"success": False, "error": "fcm_token is required"}
+
     token = str(fcm_token).strip()
+    p_id = str(patient_id).strip() if patient_id else None
+    p_id_sql = p_id if (p_id and is_valid_uuid(p_id)) else None
 
     if database.use_pg:
         try:
@@ -47,15 +59,19 @@ def register_device_token(patient_id: str, fcm_token: str, platform: str = "andr
                         """
                         INSERT INTO device_tokens (patient_id, fcm_token, platform, is_active, updated_at)
                         VALUES (%s, %s, %s, true, CURRENT_TIMESTAMP)
-                        ON CONFLICT (patient_id, fcm_token)
-                        DO UPDATE SET is_active = true, platform = EXCLUDED.platform, updated_at = CURRENT_TIMESTAMP
+                        ON CONFLICT (fcm_token)
+                        DO UPDATE SET 
+                            patient_id = COALESCE(EXCLUDED.patient_id, device_tokens.patient_id),
+                            is_active = true, 
+                            platform = EXCLUDED.platform, 
+                            updated_at = CURRENT_TIMESTAMP
                         RETURNING id, patient_id, fcm_token, platform, is_active
                         """,
-                        (p_id, token, platform)
+                        (p_id_sql, token, platform)
                     )
                     row = cur.fetchone()
                     conn.commit()
-                    logger.info(f"✅ Registered FCM token for patient {p_id} (platform: {platform})")
+                    logger.info(f"✅ Registered FCM token {token[:12]}... (patient: {p_id_sql or 'anonymous'}, platform: {platform})")
                     return {"success": True, "token_id": str(row["id"])}
         except Exception as e:
             logger.error(f"❌ Error registering device token in PostgreSQL: {e}")
@@ -292,4 +308,148 @@ def send_push_notification(
         "title": title,
         "body": body,
         "status": "completed"
+    }
+
+
+def get_all_active_device_tokens() -> List[Dict[str, Any]]:
+    """Retrieve all active device tokens across all registered patients and devices."""
+    if not database.use_pg:
+        try:
+            database.init_db()
+        except Exception:
+            pass
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT id, patient_id, fcm_token, platform, is_active 
+                        FROM device_tokens 
+                        WHERE is_active = true
+                        """
+                    )
+                    rows = cur.fetchall()
+                    return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(f"❌ Error fetching all active device tokens from PostgreSQL: {e}")
+            return []
+    else:
+        db = read_json_db()
+        tokens = db.get("device_tokens", [])
+        return [t for t in tokens if t.get("is_active", True)]
+
+
+def broadcast_app_update_notification(
+    version: str,
+    release_notes: Optional[str] = None,
+    custom_message: Optional[str] = None,
+    download_url: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Broadcast an FCM push notification with high priority to ALL active devices
+    announcing a new CarePulse app version update.
+    """
+    clean_version = str(version).strip()
+    title = f"🚀 New CarePulse Update! (v{clean_version})"
+    body = (
+        custom_message or
+        f"CarePulse v{clean_version} is now available with new features and performance improvements. Tap here to update!"
+    )
+
+    data_payload = {
+        "type": "app_update",
+        "version": clean_version,
+        "release_notes": str(release_notes or ""),
+        "download_url": str(download_url or ""),
+        "screen": "/home"
+    }
+
+    firebase_app = firebase_config.initialize_firebase()
+    sent_count = 0
+    failed_count = 0
+
+    # 1. Broadcast to Firebase FCM Topic ("carepulse_app_updates") for mass instant reach
+    if messaging and firebase_app:
+        try:
+            topic_message = messaging.Message(
+                notification=messaging.Notification(
+                    title=title,
+                    body=body
+                ),
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        channel_id="carepulse_alerts",
+                        sound="default",
+                        priority="high",
+                        default_sound=True,
+                        default_vibrate_timings=True,
+                        visibility="public"
+                    )
+                ),
+                data={k: str(v) for k, v in data_payload.items()},
+                topic="carepulse_app_updates"
+            )
+            topic_res = messaging.send(topic_message)
+            logger.info(f"📢 FCM Topic 'carepulse_app_updates' broadcast dispatched: {topic_res}")
+        except Exception as topic_err:
+            logger.warning(f"Note on FCM topic broadcast: {topic_err}")
+
+    # 2. Direct unicast delivery to all registered active device tokens
+    all_tokens = get_all_active_device_tokens()
+    seen_tokens = set()
+
+    for token_record in all_tokens:
+        token_str = token_record.get("fcm_token")
+        token_id = token_record.get("id")
+
+        if not token_str or token_str in seen_tokens:
+            continue
+        seen_tokens.add(token_str)
+
+        if messaging and firebase_app:
+            try:
+                msg = messaging.Message(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=body
+                    ),
+                    android=messaging.AndroidConfig(
+                        priority="high",
+                        notification=messaging.AndroidNotification(
+                            channel_id="carepulse_alerts",
+                            sound="default",
+                            priority="high",
+                            default_sound=True,
+                            default_vibrate_timings=True,
+                            visibility="public"
+                        )
+                    ),
+                    data={k: str(v) for k, v in data_payload.items()},
+                    token=token_str
+                )
+                messaging.send(msg)
+                sent_count += 1
+            except Exception as err:
+                err_str = str(err).lower()
+                logger.warning(f"⚠️ FCM send error to token {token_str[:12]}...: {err}")
+                if "unregistered" in err_str or "invalid" in err_str or "not-found" in err_str:
+                    deactivate_device_token(token_id=token_id, fcm_token=token_str)
+                failed_count += 1
+        else:
+            logger.info(f"🔔 [SIMULATED UPDATE PUSH] Token: {token_str[:12]}... | Title: '{title}' | Body: '{body}'")
+            sent_count += 1
+
+    logger.info(f"🎉 App update broadcast finished: {sent_count} sent, {failed_count} failed across {len(seen_tokens)} registered devices.")
+
+    return {
+        "success": True,
+        "version": clean_version,
+        "title": title,
+        "body": body,
+        "sent": sent_count,
+        "failed": failed_count,
+        "total_devices": len(seen_tokens)
     }

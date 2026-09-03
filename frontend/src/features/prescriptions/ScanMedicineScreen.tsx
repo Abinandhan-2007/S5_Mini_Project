@@ -28,6 +28,7 @@ import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
 import { MedicineModeSelector } from '../../components/prescriptions/MedicineModeSelector';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 export const ScanMedicineScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -53,6 +54,23 @@ export const ScanMedicineScreen: React.FC = () => {
       syncPrescriptions(user.id);
     }
   }, [user?.id, syncPrescriptions]);
+
+  // On mobile hardware back button: close camera modal if open, otherwise go directly to Home
+  React.useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const backListener = CapacitorApp.addListener('backButton', () => {
+      if (isLiveCameraOpen) {
+        setIsLiveCameraOpen(false);
+      } else {
+        navigate('/home', { replace: true });
+      }
+    });
+
+    return () => {
+      backListener.then((h) => h.remove());
+    };
+  }, [isLiveCameraOpen, navigate]);
 
   // Open native camera on mobile device, or live in-app camera viewfinder on web
   const handleStartCamera = async () => {

@@ -69,6 +69,7 @@ const NotificationNavigationListener: React.FC = () => {
 
 import { checkForAppUpdate, type AppVersionInfo } from './lib/versionChecker';
 import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
+import { registerPushNotifications } from './lib/pushNotifications';
 
 /**
  * Handles live foreground-resume APK version checking when app is already running.
@@ -100,9 +101,11 @@ const AppResumeUpdateChecker: React.FC = () => {
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('carepulse:check_update', runCheck);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('carepulse:check_update', runCheck);
     };
   }, []);
 
@@ -128,6 +131,13 @@ export const App: React.FC = () => {
       checkAuthSession();
     }
   }, [checkAuthSession]);
+
+  // Automatically register device for push notifications on native app launch
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      registerPushNotifications().catch(() => {});
+    }
+  }, []);
 
   const handleSplashComplete = (updateInfo?: AppVersionInfo | null) => {
     setShowSplash(false);

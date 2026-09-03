@@ -40,12 +40,23 @@ export const SystemNavigationHandler: React.FC = () => {
       if (currentPath === '/home' || currentPath === '/login' || currentPath === '/') {
         // Minimize app cleanly when back is pressed on Home or Login
         CapacitorApp.minimizeApp();
+      } else if (
+        currentPath === '/prescriptions/scan' ||
+        currentPath === '/medicine/info-lookup' ||
+        currentPath === '/prescriptions/info-lookup' ||
+        currentPath === '/prescriptions' ||
+        currentPath.startsWith('/prescriptions/scan') ||
+        currentPath.startsWith('/medicine/info-lookup') ||
+        currentPath.startsWith('/prescriptions/info-lookup')
+      ) {
+        // Explicit user requirement: on medicine scan / lookup pages, pressing mobile back goes to Home
+        navigate('/home', { replace: true });
       } else {
         // Step back in history for system back gestures / navigation bar buttons
         if (window.history.length > 1) {
           navigate(-1);
         } else {
-          navigate('/home');
+          navigate('/home', { replace: true });
         }
       }
     });

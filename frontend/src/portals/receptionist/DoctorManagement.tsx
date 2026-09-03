@@ -151,8 +151,11 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3.5 min-w-0">
                     <img
-                      src={doctor.photo}
+                      src={doctor.photo || '/doctor_default.jpg'}
                       alt={doctor.name}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/doctor_default.jpg';
+                      }}
                       className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-100 shadow-xs shrink-0"
                     />
                     <div className="min-w-0">
@@ -258,8 +261,11 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
                 <img
-                  src={activeDoctorInModal.photo}
+                  src={activeDoctorInModal.photo || '/doctor_default.jpg'}
                   alt={activeDoctorInModal.name}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/doctor_default.jpg';
+                  }}
                   className="w-11 h-11 rounded-xl object-cover border border-slate-200 shrink-0"
                 />
                 <div>

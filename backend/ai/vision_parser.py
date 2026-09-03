@@ -24,40 +24,70 @@ def analyze_medical_document_image(
     """
     is_base64 = image_base64_or_text.startswith("data:image/") or len(image_base64_or_text) > 500
 
-    # 1. Attempt Gemini 1.5 Flash Multimodal Vision API if key exists and base64 provided
+    prompt = (
+        "You are CarePulse Vision AI, a clinical document scanner. Analyze this medical document image.\n"
+        "Return a JSON object ONLY with the following keys:\n"
+        "{\n"
+        '  "document_type": "prescription" or "lab_report",\n'
+        '  "patient_name": "extracted name or Unknown",\n'
+        '  "date": "extracted date or Unknown",\n'
+        '  "medications": [\n'
+        '    {"name": "Drug Name", "dosage": "500mg", "frequency": "twice daily", "duration": "5 days", "instructions": "after meals"}\n'
+        '  ],\n'
+        '  "lab_results": [\n'
+        '    {"parameter": "HbA1c", "value": "7.8", "unit": "%", "reference_range": "<5.7%", "status": "HIGH", "flag": "Abnormal elevated glycated hemoglobin"}\n'
+        '  ],\n'
+        '  "clinical_summary": "Short 2-sentence summary of findings",\n'
+        '  "disclaimer": "AI-extracted document summary. Physician confirmation required."\n'
+        "}"
+    )
+
+    mime_type = "image/jpeg"
+    raw_b64 = image_base64_or_text
+    if "," in image_base64_or_text:
+        header, raw_b64 = image_base64_or_text.split(",", 1)
+        if "png" in header:
+            mime_type = "image/png"
+        elif "pdf" in header:
+            mime_type = "application/pdf"
+
+    # 1. Attempt Mistral Vision (mistral-small-latest) if MISTRAL_API_KEY configured
+    mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
+    if mistral_key and is_base64:
+        try:
+            url = "https://api.mistral.ai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {mistral_key}", "Content-Type": "application/json"}
+            data_uri = f"data:{mime_type};base64,{raw_b64}"
+            payload = {
+                "model": "mistral-small-latest",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": data_uri}
+                        ]
+                    }
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1
+            }
+            with httpx.Client(timeout=16.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    res_text = data["choices"][0]["message"]["content"]
+                    parsed_json = json.loads(res_text)
+                    parsed_json["analysis_engine"] = "Mistral Vision AI (Document Scanner)"
+                    return parsed_json
+        except Exception as e:
+            logger.warning(f"Mistral Vision API document scan note: {e}")
+
+    # 2. Attempt Gemini 1.5 Flash Multimodal Vision API if key exists and base64 provided
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     if gemini_key and is_base64:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            
-            # Format base64 payload
-            mime_type = "image/jpeg"
-            raw_b64 = image_base64_or_text
-            if "," in image_base64_or_text:
-                header, raw_b64 = image_base64_or_text.split(",", 1)
-                if "png" in header:
-                    mime_type = "image/png"
-                elif "pdf" in header:
-                    mime_type = "application/pdf"
-
-            prompt = (
-                "You are CarePulse Vision AI, a clinical document scanner. Analyze this medical document image.\n"
-                "Return a JSON object ONLY with the following keys:\n"
-                "{\n"
-                '  "document_type": "prescription" or "lab_report",\n'
-                '  "patient_name": "extracted name or Unknown",\n'
-                '  "date": "extracted date or Unknown",\n'
-                '  "medications": [\n'
-                '    {"name": "Drug Name", "dosage": "500mg", "frequency": "twice daily", "duration": "5 days", "instructions": "after meals"}\n'
-                '  ],\n'
-                '  "lab_results": [\n'
-                '    {"parameter": "HbA1c", "value": "7.8", "unit": "%", "reference_range": "<5.7%", "status": "HIGH", "flag": "Abnormal elevated glycated hemoglobin"}\n'
-                '  ],\n'
-                '  "clinical_summary": "Short 2-sentence summary of findings",\n'
-                '  "disclaimer": "AI-extracted document summary. Physician confirmation required."\n'
-                "}"
-            )
-
             payload = {
                 "contents": [
                     {

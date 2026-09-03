@@ -30,6 +30,7 @@ import { LiveCameraModal } from '../../components/camera/LiveCameraModal';
 import { MedicineModeSelector } from '../../components/prescriptions/MedicineModeSelector';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 // Rich Curated Clinical Knowledge Fallback for Instant Samples / Offline
 const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
@@ -239,6 +240,23 @@ export const MedicineInfoLookupScreen: React.FC = () => {
       }
     };
   }, []);
+
+  // On mobile hardware back button: close camera modal if open, otherwise go directly to Home
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const backListener = CapacitorApp.addListener('backButton', () => {
+      if (isLiveCameraOpen) {
+        setIsLiveCameraOpen(false);
+      } else {
+        navigate('/home', { replace: true });
+      }
+    });
+
+    return () => {
+      backListener.then((h) => h.remove());
+    };
+  }, [isLiveCameraOpen, navigate]);
 
   // Cycle analyzing step animation
   useEffect(() => {
@@ -621,28 +639,27 @@ export const MedicineInfoLookupScreen: React.FC = () => {
               </div>
 
               {/* Typo-Tolerant Autocomplete Search Input with Rounded Pill & Soft Inset Shadow */}
-              <div className="max-w-md mx-auto space-y-2 text-left">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <MedicineAutocompleteInput
-                      value={manualQuery}
-                      onChange={setManualQuery}
-                      onSelect={handleSelectMedicine}
-                      pill={true}
-                      placeholder="Type name (e.g. Amoxicillin, Dolo 650, Metformin)..."
-                      inputClassName="shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white text-xs sm:text-sm py-3 px-4 rounded-full border border-slate-200"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleManualSearch()}
-                    disabled={!manualQuery.trim()}
-                    className="px-5 py-3 rounded-full bg-gradient-to-r from-[#1E3A8A] to-[#3B5FE0] text-white text-xs sm:text-sm font-bold hover:shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-sm active:scale-95 flex items-center gap-1.5"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    <span>Lookup</span>
-                  </button>
-                </div>
+              <div className="max-w-md mx-auto text-left">
+                <MedicineAutocompleteInput
+                  value={manualQuery}
+                  onChange={setManualQuery}
+                  onSelect={handleSelectMedicine}
+                  onSubmit={() => handleManualSearch()}
+                  pill={true}
+                  placeholder="Type name (e.g. Amoxicillin, Dolo 650, Metformin)..."
+                  inputClassName="shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white text-xs sm:text-sm py-3 pl-10 pr-9 rounded-full border border-slate-200"
+                  actionButton={
+                    <button
+                      type="button"
+                      onClick={() => handleManualSearch()}
+                      disabled={!manualQuery.trim()}
+                      className="px-5 py-3 rounded-full bg-gradient-to-r from-[#1E3A8A] to-[#3B5FE0] text-white text-xs sm:text-sm font-bold hover:shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-sm active:scale-95 flex items-center gap-1.5"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      <span>Lookup</span>
+                    </button>
+                  }
+                />
               </div>
             </div>
           </div>

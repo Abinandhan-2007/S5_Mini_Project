@@ -9,7 +9,6 @@ import {
   EyeOff,
   ShieldCheck,
   AlertCircle,
-  Activity,
   ClipboardList,
   Stethoscope,
   Building2,
@@ -192,8 +191,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         {/* Top Header */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-md shadow-md">
-              <Activity className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-950 border border-white/20 flex items-center justify-center backdrop-blur-md shadow-md shrink-0">
+              <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-white font-extrabold text-lg tracking-tight font-heading block leading-none">
@@ -218,8 +217,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="relative mb-6"
           >
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-teal-400/25 to-teal-900/40 border border-white/25 backdrop-blur-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-              <Activity className="w-12 h-12 text-white drop-shadow-md" strokeWidth={2.2} />
+            <div className="w-24 h-24 rounded-3xl overflow-hidden bg-slate-950 border border-white/25 backdrop-blur-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+              <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
             </div>
             <div className="absolute inset-0 rounded-3xl bg-teal-300/20 blur-xl scale-125 pointer-events-none" />
           </motion.div>
@@ -303,8 +302,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         >
           {/* Logo on Mobile/Tablet */}
           <div className="lg:hidden flex flex-col items-center text-center space-y-2 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-[#0B5A54] flex items-center justify-center text-white shadow-md">
-              <Activity className="w-6 h-6 text-white" strokeWidth={2.5} />
+            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-md">
+              <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
             </div>
             <div className="space-y-0.5">
               <h1 className="text-xl font-black font-heading text-[#0B5A54] tracking-tight">CarePulse Staff</h1>

@@ -280,7 +280,7 @@ class DoctorResponse(BaseModel):
     slotCapacities: Optional[List[Any]] = []
 
 class DeviceTokenRequest(BaseModel):
-    patient_id: str
+    patient_id: Optional[str] = "anonymous"
     fcm_token: str
     platform: Optional[str] = "android"
 

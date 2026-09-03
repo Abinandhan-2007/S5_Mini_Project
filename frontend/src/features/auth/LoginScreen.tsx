@@ -407,8 +407,8 @@ export const LoginScreen: React.FC = () => {
       <div className="w-full max-w-sm sm:max-w-md space-y-5">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-teal flex items-center justify-center text-white shadow-xs">
-            <Activity className="w-6 h-6 text-white" />
+          <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md ring-2 ring-teal-500/20 bg-slate-950 flex items-center justify-center">
+            <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
           </div>
           <div className="space-y-0.5">
             <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-[#0B5A54] tracking-tight">CarePulse</h1>

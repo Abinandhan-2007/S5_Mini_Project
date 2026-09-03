@@ -7,10 +7,13 @@ and safety-first fuzzy matching against an authenticated patient's prescription 
 
 import io
 import re
+import os
+import json
 import base64
 import difflib
 import logging
 from typing import Dict, Any, List, Optional, Union
+import httpx
 from PIL import Image
 
 logger = logging.getLogger("carepulse.ocr")
@@ -31,44 +34,223 @@ UNREADABLE_MESSAGE = (
 )
 
 
+def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, Any]:
+    """
+    Google Lens-style Multimodal Vision AI analysis for medicine packaging (boxes, blister strips, bottles).
+    Extracts:
+    - drug_name: commercial brand name (e.g. "Dolo 650", "Augmentin 625 Duo", "Pan-D")
+    - generic_name: active pharmaceutical substance (e.g. "Paracetamol", "Amoxicillin and Clavulanate")
+    - strength: concentration/strength (e.g. "650mg", "500mg/125mg")
+    - dosage_form: form factor (e.g. "Tablet", "Capsule", "Oral Liquid", "Suspension")
+    - all_text: complete legible text on the packaging
+    - engine: the AI recognition engine used
+    """
+    empty_res = {
+        "drug_name": "",
+        "generic_name": "",
+        "strength": "",
+        "dosage_form": "",
+        "all_text": "",
+        "engine": "none",
+    }
+    if not image_input:
+        return empty_res
+
+    # 1. Normalize image input to base64 string and mime type
+    raw_b64 = ""
+    mime_type = "image/jpeg"
+    try:
+        if isinstance(image_input, str):
+            clean_str = image_input.strip()
+            if "," in clean_str:
+                header, raw_b64 = clean_str.split(",", 1)
+                header_low = header.lower()
+                if "png" in header_low:
+                    mime_type = "image/png"
+                elif "webp" in header_low:
+                    mime_type = "image/webp"
+            else:
+                raw_b64 = clean_str
+        elif isinstance(image_input, bytes):
+            raw_b64 = base64.b64encode(image_input).decode("utf-8")
+    except Exception as e:
+        logger.warning(f"Failed to prepare image for vision scan: {e}")
+        return empty_res
+
+    if not raw_b64 or len(raw_b64) < 20:
+        return empty_res
+
+    data_uri = f"data:{mime_type};base64,{raw_b64}"
+
+    system_prompt = (
+        "You are a clinical medicine packaging scanner like Google Lens. Carefully analyze this photo of a medicine box, blister strip, bottle, or tube.\n"
+        "Identify the medicine and extract:\n"
+        '1. "drug_name": The primary commercial brand name printed prominently on the packaging (e.g. "Dolo 650", "Augmentin 625 Duo", "Pan-D", "Allegra 120mg", "Metformin 500").\n'
+        '2. "generic_name": The active pharmaceutical substance or chemical composition (e.g. "Paracetamol", "Amoxicillin and Potassium Clavulanate", "Pantoprazole & Domperidone", "Cetirizine").\n'
+        '3. "strength": Strength or dosage quantity (e.g. "650 mg", "500 mg / 125 mg", "10 mg").\n'
+        '4. "dosage_form": Form factor (e.g. "Tablet", "Film Coated Tablet", "Capsule", "Oral Liquid", "Suspension", "Ointment").\n'
+        '5. "all_text": All legible text printed on the packaging (brand, generic, composition, manufacturer, batch, instructions).\n\n'
+        "Return ONLY a valid JSON object matching:\n"
+        "{\n"
+        '  "drug_name": "...",\n'
+        '  "generic_name": "...",\n'
+        '  "strength": "...",\n'
+        '  "dosage_form": "...",\n'
+        '  "all_text": "..."\n'
+        "}\n"
+        "If the image does not show any medicine packaging or is completely unreadable, return empty strings for all keys."
+    )
+
+    # 2. Priority 1: Mistral Vision (mistral-small-latest) using MISTRAL_API_KEY
+    mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
+    if not mistral_key:
+        try:
+            import config
+            mistral_key = (getattr(config, "MISTRAL_API_KEY", "") or "").strip()
+        except Exception:
+            pass
+
+    if mistral_key:
+        try:
+            url = "https://api.mistral.ai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {mistral_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "mistral-small-latest",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": system_prompt},
+                            {"type": "image_url", "image_url": data_uri}
+                        ]
+                    }
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1,
+                "max_tokens": 400
+            }
+            with httpx.Client(timeout=14.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["choices"][0]["message"]["content"].strip()
+                    parsed = json.loads(content)
+
+                    # Normalize strength / dosage_form if returned as array
+                    strength_val = parsed.get("strength")
+                    if isinstance(strength_val, list):
+                        strength_str = ", ".join(str(s) for s in strength_val)
+                    else:
+                        strength_str = str(strength_val or "").strip()
+
+                    form_val = parsed.get("dosage_form")
+                    if isinstance(form_val, list):
+                        form_str = ", ".join(str(f) for f in form_val)
+                    else:
+                        form_str = str(form_val or "").strip()
+
+                    drug_name = str(parsed.get("drug_name") or "").strip()
+                    generic_name = str(parsed.get("generic_name") or "").strip()
+                    all_text = str(parsed.get("all_text") or "").strip()
+
+                    if drug_name or generic_name or all_text:
+                        logger.info(f"Vision AI packaging recognized: drug='{drug_name}', generic='{generic_name}'")
+                        return {
+                            "drug_name": drug_name,
+                            "generic_name": generic_name,
+                            "strength": strength_str,
+                            "dosage_form": form_str,
+                            "all_text": all_text or f"{drug_name} {generic_name}",
+                            "engine": "Mistral Vision AI (Google Lens Engine)"
+                        }
+        except Exception as e:
+            logger.warning(f"Mistral Vision packaging scan note: {e}")
+
+    # 3. Priority 2: Gemini 1.5 Flash Vision (if GEMINI_API_KEY configured)
+    gemini_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+    if gemini_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+            g_payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": system_prompt},
+                            {"inlineData": {"mimeType": mime_type, "data": raw_b64}}
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "responseMimeType": "application/json"
+                }
+            }
+            with httpx.Client(timeout=14.0) as client:
+                res = client.post(url, json=g_payload)
+                if res.status_code == 200:
+                    g_data = res.json()
+                    g_text = g_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    parsed = json.loads(g_text)
+                    return {
+                        "drug_name": str(parsed.get("drug_name") or "").strip(),
+                        "generic_name": str(parsed.get("generic_name") or "").strip(),
+                        "strength": str(parsed.get("strength") or "").strip(),
+                        "dosage_form": str(parsed.get("dosage_form") or "").strip(),
+                        "all_text": str(parsed.get("all_text") or "").strip(),
+                        "engine": "Gemini 1.5 Flash Vision"
+                    }
+        except Exception as e:
+            logger.warning(f"Gemini Vision packaging scan note: {e}")
+
+    # 4. Priority 3: Local Tesseract OCR (if installed in environment)
+    try:
+        raw_bytes = base64.b64decode(raw_b64)
+        image = Image.open(io.BytesIO(raw_bytes))
+        if image.mode not in ("L", "RGB"):
+            image = image.convert("RGB")
+        import pytesseract
+        local_text = pytesseract.image_to_string(image).strip()
+        if local_text:
+            return {
+                "drug_name": extract_drug_candidate_from_ocr(local_text) or "",
+                "generic_name": "",
+                "strength": "",
+                "dosage_form": "",
+                "all_text": local_text,
+                "engine": "Local Tesseract OCR"
+            }
+    except Exception as e:
+        logger.debug(f"Local OCR packaging notice: {e}")
+
+    return empty_res
+
+
 def extract_text_from_image(image_input: Union[bytes, str]) -> str:
     """
-    Extract raw text from an image via pytesseract OCR.
+    Extract raw text from an image via Multimodal Vision AI or OCR.
     Accepts base64 encoded string or raw image bytes.
-    Fails gracefully returning '' if image is unreadable or OCR binary is not present.
+    Fails gracefully returning '' if image is unreadable.
     """
     if not image_input:
         return ""
 
-    try:
-        raw_bytes: bytes
-        if isinstance(image_input, str):
-            # Check for base64 data URI header e.g. "data:image/jpeg;base64,"
-            str_data = image_input.strip()
-            if "," in str_data:
-                header, str_data = str_data.split(",", 1)
-            raw_bytes = base64.b64decode(str_data)
-        else:
-            raw_bytes = image_input
+    vision_res = scan_medicine_packaging_vision(image_input)
+    drug_name = vision_res.get("drug_name", "")
+    generic_name = vision_res.get("generic_name", "")
+    all_text = vision_res.get("all_text", "")
 
-        if not raw_bytes or len(raw_bytes) < 10:
-            return ""
+    parts = []
+    if drug_name:
+        parts.append(drug_name)
+    if generic_name and generic_name.lower() != drug_name.lower():
+        parts.append(generic_name)
+    if all_text:
+        parts.append(all_text)
 
-        # Open image with Pillow
-        image = Image.open(io.BytesIO(raw_bytes))
-        
-        # Convert image to RGB/Grayscale for OCR clarity
-        if image.mode not in ("L", "RGB"):
-            image = image.convert("RGB")
-
-        # Import pytesseract dynamically
-        import pytesseract
-        text = pytesseract.image_to_string(image)
-        return text.strip() if text else ""
-    except Exception as e:
-        logger.warning(f"OCR text extraction notice: {e}. Handling gracefully.")
-        # If pytesseract binary is missing in environment, try string decoding or return empty
-        return ""
+    return "\n".join(parts).strip()
 
 
 def clean_text_for_matching(text: str) -> str:

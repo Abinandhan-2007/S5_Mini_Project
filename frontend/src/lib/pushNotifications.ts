@@ -4,21 +4,23 @@ import type { Token, ActionPerformed, PushNotificationSchema } from '@capacitor/
 import { apiFetch } from './apiFetch';
 
 let isPushInitialized = false;
+let currentRegisteredPatientId: string | null = null;
 
 /**
  * Register native device for Firebase Cloud Messaging (FCM) push notifications.
- * Automatically called on patient login and session restoration.
+ * Automatically called on app launch and patient login.
  * Gracefully handles web browser and permission denial scenarios without blocking user experience.
  */
-export async function registerPushNotifications(patientId: string): Promise<void> {
-  if (!patientId || patientId.trim() === '') {
-    return;
-  }
-
+export async function registerPushNotifications(patientId?: string): Promise<void> {
   // Only run native push registration on Android / iOS devices
   if (!Capacitor.isNativePlatform()) {
     return;
   }
+
+  // Resolve target patient identifier
+  const resolvedPatientId = (patientId && patientId.trim() !== '')
+    ? patientId.trim()
+    : (localStorage.getItem('carepulse_user_id') || 'device_anonymous');
 
   try {
     let permStatus = await PushNotifications.checkPermissions();
@@ -51,24 +53,24 @@ export async function registerPushNotifications(patientId: string): Promise<void
       }
     }
 
-    // Register with FCM/APNs
-    await PushNotifications.register();
-
+    // Attach listeners BEFORE calling PushNotifications.register()
     if (!isPushInitialized) {
       isPushInitialized = true;
 
       // Successfully received device FCM token
       await PushNotifications.addListener('registration', async (token: Token) => {
         try {
+          localStorage.setItem('carepulse_fcm_token', token.value);
+          const pId = currentRegisteredPatientId || resolvedPatientId;
           await apiFetch('/patient/device-token', {
             method: 'POST',
             body: JSON.stringify({
-              patient_id: patientId,
+              patient_id: pId,
               fcm_token: token.value,
               platform: Capacitor.getPlatform() || 'android',
             }),
           });
-          console.log('✅ FCM Device Token registered successfully for patient:', patientId);
+          console.log('✅ FCM Device Token registered successfully for:', pId);
         } catch (err) {
           console.warn('Failed to send device token to backend:', err);
         }
@@ -90,7 +92,12 @@ export async function registerPushNotifications(patientId: string): Promise<void
         const data = action?.notification?.data || {};
         
         let targetScreen = '/history';
-        if (data.screen) {
+        if (data.type === 'app_update') {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('carepulse:check_update'));
+          }
+          return;
+        } else if (data.screen) {
           targetScreen = data.screen;
         } else if (data.url && typeof data.url === 'string' && data.url.startsWith('/')) {
           targetScreen = data.url;
@@ -112,6 +119,24 @@ export async function registerPushNotifications(patientId: string): Promise<void
           );
         }
       });
+    }
+
+    currentRegisteredPatientId = resolvedPatientId;
+
+    // Register with FCM/APNs
+    await PushNotifications.register();
+
+    // If device already had cached FCM token in localStorage, resync it to backend
+    const cachedToken = localStorage.getItem('carepulse_fcm_token');
+    if (cachedToken) {
+      apiFetch('/patient/device-token', {
+        method: 'POST',
+        body: JSON.stringify({
+          patient_id: resolvedPatientId,
+          fcm_token: cachedToken,
+          platform: Capacitor.getPlatform() || 'android',
+        }),
+      }).catch((err) => console.warn('Resync token note:', err));
     }
   } catch (error) {
     console.warn('Push notification initialization note:', error);

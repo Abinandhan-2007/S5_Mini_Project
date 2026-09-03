@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Stethoscope,
   Lock,
   User,
   ArrowRight,
@@ -108,8 +107,8 @@ export const DoctorLogin: React.FC = () => {
           <div>
             {/* Top Brand Logo */}
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#0B5A54] to-[#14B8A6] flex items-center justify-center shadow-lg shadow-teal-900/20">
-                <Stethoscope className="w-6 h-6 text-white" />
+              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-lg shadow-teal-900/20 shrink-0">
+                <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">

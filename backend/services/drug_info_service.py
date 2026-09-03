@@ -6,7 +6,9 @@ from the public, free OpenFDA API (no API key required).
 Includes in-memory caching and fail-safe fallbacks for safety.
 """
 
+import os
 import re
+import json
 import logging
 from typing import Dict, Any, Optional
 import httpx
@@ -365,3 +367,101 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
     }
     _DRUG_INFO_CACHE[norm_name] = fallback_payload
     return fallback_payload
+
+
+def get_clinical_ai_medicine_summary(
+    drug_name: str,
+    generic_name: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Clinical AI knowledge synthesis when OpenFDA does not index regional or commercial packaging brands.
+    Provides verified clinical purpose, indications, how to take, warnings, and side effects.
+    """
+    if not drug_name or not str(drug_name).strip():
+        return {"found": False}
+
+    raw_drug = str(drug_name).strip()
+    raw_gen = str(generic_name or "").strip()
+    target_name = f"{raw_drug} ({raw_gen})" if raw_gen and raw_gen.lower() != raw_drug.lower() else raw_drug
+    cache_key = f"ai_{target_name.lower()}"
+    if cache_key in _DRUG_INFO_CACHE:
+        return _DRUG_INFO_CACHE[cache_key]
+
+    mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
+    if not mistral_key:
+        try:
+            import config
+            mistral_key = (getattr(config, "MISTRAL_API_KEY", "") or "").strip()
+        except Exception:
+            pass
+
+    if mistral_key:
+        try:
+            url = "https://api.mistral.ai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {mistral_key}",
+                "Content-Type": "application/json"
+            }
+            prompt = (
+                f"You are a clinical pharmacist AI. Provide accurate medical information for the medication: {target_name}.\n"
+                "Return ONLY a JSON object with keys:\n"
+                "{\n"
+                '  "purpose": "1-2 sentences explaining what this medicine is and its clinical mechanism",\n'
+                '  "indications_and_usage": "List of specific conditions it treats",\n'
+                '  "how_to_take": "Clear dosage timing instructions (e.g. before/after food, with full glass of water)",\n'
+                '  "warnings": "Important contraindications, warnings, and precautions",\n'
+                '  "side_effects": ["side effect 1", "side effect 2", "side effect 3", "side effect 4"]\n'
+                "}"
+            )
+            payload = {
+                "model": "mistral-small-latest",
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1,
+                "max_tokens": 400
+            }
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["choices"][0]["message"]["content"]
+                    parsed = json.loads(content)
+
+                    how_to_take = parsed.get("how_to_take")
+                    how_to_take_list = []
+                    if isinstance(how_to_take, list):
+                        how_to_take_list = [str(h).strip() for h in how_to_take if str(h).strip()]
+                    elif isinstance(how_to_take, dict):
+                        desc = f"{how_to_take.get('administration', '')} {how_to_take.get('dosage_form', '')}".strip()
+                        if desc:
+                            how_to_take_list = [desc]
+                    elif how_to_take:
+                        how_to_take_list = [str(how_to_take).strip()]
+
+                    warnings = parsed.get("warnings")
+                    warnings_list = []
+                    if isinstance(warnings, list):
+                        warnings_list = [str(w).strip() for w in warnings if str(w).strip()]
+                    elif warnings:
+                        warnings_list = [str(warnings).strip()]
+
+                    side_effects = parsed.get("side_effects") or []
+                    if isinstance(side_effects, str):
+                        side_effects = [s.strip() for s in side_effects.split(",")]
+
+                    result = {
+                        "found": True,
+                        "purpose": str(parsed.get("purpose") or "").strip(),
+                        "indications_and_usage": str(parsed.get("indications_and_usage") or "").strip(),
+                        "summary": str(parsed.get("purpose") or "").strip(),
+                        "howToTake": how_to_take_list or None,
+                        "warnings": warnings_list or None,
+                        "sideEffects": [str(s) for s in side_effects if str(s).strip()] or None,
+                        "source": "CarePulse Clinical AI (Packaging Vision)"
+                    }
+                    _DRUG_INFO_CACHE[cache_key] = result
+                    return result
+        except Exception as e:
+            logger.warning(f"Clinical AI medicine summary note: {e}")
+
+    return {"found": False}

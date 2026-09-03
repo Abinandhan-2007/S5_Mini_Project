@@ -28,6 +28,7 @@ from fastapi import FastAPI, HTTPException, status, Header, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 
 import random
@@ -72,15 +73,15 @@ from schemas import (
 from auth import verify_google_token, process_google_login, generate_patient_jwt, decode_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
-from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr
-from services.drug_info_service import get_drug_info
+from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr, scan_medicine_packaging_vision
+from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary
 from services.medicine_search_service import search_medicines
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
 from routes.doctor_routes import router as doctor_router
 from routes.ai_routes import router as ai_router
-from notifications.fcm_service import register_device_token, send_push_notification
+from notifications.fcm_service import register_device_token, send_push_notification, broadcast_app_update_notification
 from notifications.scheduler import start_scheduler, shutdown_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -1780,9 +1781,26 @@ def get_patient_appointments(patient_id: str):
 @app.post("/api/patient/device-token")
 def save_patient_device_token(req: DeviceTokenRequest):
     """Register or update patient FCM push notification device token."""
-    res = register_device_token(req.patient_id, req.fcm_token, req.platform or "android")
+    p_id = (req.patient_id or "anonymous").strip() or "anonymous"
+    res = register_device_token(p_id, req.fcm_token, req.platform or "android")
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to save device token"))
+
+    # Auto-subscribe registered token to the app updates FCM topic asynchronously in background
+    try:
+        import threading
+        from firebase_admin import messaging
+        if messaging:
+            def _async_sub():
+                try:
+                    sub_res = messaging.subscribe_to_topic([req.fcm_token], "carepulse_app_updates")
+                    logger.info(f"Subscribed token {req.fcm_token[:12]}... to carepulse_app_updates topic: {sub_res.success_count} success")
+                except Exception as ex:
+                    logger.warning(f"Note subscribing to topic: {ex}")
+            threading.Thread(target=_async_sub, daemon=True).start()
+    except Exception as e:
+        logger.warning(f"Note spawning topic subscribe thread: {e}")
+
     return {"success": True, "message": "Device token registered successfully"}
 
 
@@ -2062,12 +2080,27 @@ def scan_and_match_prescription(
             drugInfo=None
         )
 
-    # 3. OCR Text Extraction
+    # 3. Vision AI Packaging Analysis / OCR Text Extraction
     extracted_text = ""
+    candidate_drug = None
+    candidate_generic = None
     if req.ocrText or req.ocr_text:
         extracted_text = (req.ocrText or req.ocr_text).strip()
     elif req.image:
-        extracted_text = extract_text_from_image(req.image)
+        vision_res = scan_medicine_packaging_vision(req.image)
+        candidate_drug = vision_res.get("drug_name", "")
+        candidate_generic = vision_res.get("generic_name", "")
+        all_text = vision_res.get("all_text", "")
+        parts = []
+        if candidate_drug:
+            parts.append(candidate_drug)
+        if candidate_generic and candidate_generic.lower() != candidate_drug.lower():
+            parts.append(candidate_generic)
+        if all_text:
+            parts.append(all_text)
+        extracted_text = "\n".join(parts).strip()
+        if not extracted_text:
+            extracted_text = extract_text_from_image(req.image)
 
     # 4. Fuzzy Matching against patient's active prescriptions only
     match_result = fuzzy_match_prescription(extracted_text, patient_rx_list)
@@ -2120,35 +2153,40 @@ def search_medicines_endpoint(
 @app.post("/api/medicine/lookup-info", response_model=MedicineInfoLookupResponse)
 def lookup_medicine_info(req: MedicineInfoLookupRequest):
     """
-    Informational Medicine Purpose Lookup via OpenFDA (Open Lookup).
-    Scans ANY medicine packaging or accepts a drug name, extracting OpenFDA purpose/use.
-    CRITICAL: Always delegates the actual OpenFDA call to the medicine's generic active ingredient
-    (e.g. 'Paracetamol' instead of brand 'Dolo 650' or 'Crocin') ensuring reliable FDA drug label matching.
+    Google Lens-style Medicine Purpose Lookup via Multimodal Vision AI & OpenFDA.
+    Scans ANY medicine packaging (strip, box, bottle) or accepts a drug name, extracting
+    brand name, active chemical formula, and verified clinical indications/usage.
     """
     extracted_text = ""
     candidate_name = None
     generic_name = (req.genericName or req.generic_name or "").strip() or None
 
-    # 1. Direct drug name provided or OCR extraction
+    # 1. Direct drug name provided or Vision AI packaging analysis
     if req.drugName or req.drug_name:
         candidate_name = (req.drugName or req.drug_name).strip()
     elif req.ocrText or req.ocr_text:
         extracted_text = (req.ocrText or req.ocr_text).strip()
         candidate_name = extract_drug_candidate_from_ocr(extracted_text)
     elif req.image:
-        extracted_text = extract_text_from_image(req.image)
-        candidate_name = extract_drug_candidate_from_ocr(extracted_text)
+        vision_res = scan_medicine_packaging_vision(req.image)
+        candidate_name = (
+            vision_res.get("drug_name") or
+            extract_drug_candidate_from_ocr(vision_res.get("all_text", ""))
+        )
+        if not generic_name and vision_res.get("generic_name"):
+            generic_name = vision_res.get("generic_name")
+        extracted_text = vision_res.get("all_text") or f"{candidate_name or ''} {generic_name or ''}".strip()
 
-    # 2. Could not extract a valid drug candidate from OCR
+    # 2. Could not extract a valid drug candidate from packaging
     if not candidate_name:
         return MedicineInfoLookupResponse(
             status="UNCLEAR_TEXT",
             drugName="",
             genericName=None,
             extractedText=extracted_text,
-            purpose="Could not identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible.",
+            purpose="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
             indicationsAndUsage="",
-            summary="Could not identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible.",
+            summary="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
             source="None"
         )
 
@@ -2185,21 +2223,41 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             boxedWarning=info.get("boxedWarning"),
         )
     else:
-        return MedicineInfoLookupResponse(
-            status="NO_INFO_AVAILABLE",
-            drugName=candidate_name,
-            genericName=generic_name,
-            extractedText=extracted_text,
-            purpose=None,
-            indicationsAndUsage="",
-            summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
-            source="Fallback",
-            mainUses=None,
-            howToTake=None,
-            warnings=None,
-            sideEffects=None,
-            boxedWarning=None,
-        )
+        # 5. Attempt Clinical AI knowledge synthesis when packaging scan finds a real brand not in OpenFDA
+        if req.image and candidate_name:
+            ai_info = get_clinical_ai_medicine_summary(candidate_name, generic_name)
+            if ai_info.get("found"):
+                return MedicineInfoLookupResponse(
+                status="FOUND",
+                drugName=candidate_name,
+                genericName=generic_name,
+                extractedText=extracted_text,
+                purpose=ai_info.get("purpose"),
+                indicationsAndUsage=ai_info.get("indications_and_usage") or "",
+                summary=ai_info.get("summary") or "General therapeutic clinical medication.",
+                source=ai_info.get("source") or "CarePulse Clinical AI (Packaging Vision)",
+                mainUses=[ai_info.get("indications_and_usage")] if ai_info.get("indications_and_usage") else None,
+                howToTake=ai_info.get("howToTake"),
+                warnings=ai_info.get("warnings"),
+                sideEffects=ai_info.get("sideEffects"),
+                boxedWarning=None,
+            )
+        else:
+            return MedicineInfoLookupResponse(
+                status="NO_INFO_AVAILABLE",
+                drugName=candidate_name,
+                genericName=generic_name,
+                extractedText=extracted_text,
+                purpose=None,
+                indicationsAndUsage="",
+                summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
+                source="Fallback",
+                mainUses=None,
+                howToTake=None,
+                warnings=None,
+                sideEffects=None,
+                boxedWarning=None,
+            )
 
 
 
@@ -2636,6 +2694,54 @@ def get_app_version(request: Request):
         "release_notes": data.get("release_notes", ""),
         "released_at": data.get("released_at", ""),
     }
+
+
+class AppUpdateBroadcastRequest(BaseModel):
+    version: Optional[str] = None
+    message: Optional[str] = None
+    release_notes: Optional[str] = None
+
+
+@app.post("/api/app/broadcast-update")
+def trigger_app_update_broadcast(req: Optional[AppUpdateBroadcastRequest] = None, request: Request = None):
+    """
+    Broadcasts an FCM push notification with high priority announcing a new CarePulse version
+    update to all registered devices and the FCM app update topic.
+    """
+    version_file = Path(__file__).resolve().parent / "app_version.json"
+    version_str = (req.version if req and req.version else None) or "1.0.0"
+    release_notes_str = (req.release_notes if req and req.release_notes else None) or ""
+    custom_message = req.message if req and req.message else None
+
+    if version_file.exists():
+        try:
+            with open(version_file, "r", encoding="utf-8") as f:
+                v_data = json.load(f)
+                if not (req and req.version):
+                    version_str = v_data.get("version", version_str)
+                if not (req and req.release_notes):
+                    release_notes_str = v_data.get("release_notes", release_notes_str)
+        except Exception as e:
+            logger.warning(f"Note reading app_version.json for broadcast: {e}")
+
+    forwarded_proto = request.headers.get("x-forwarded-proto") if request else None
+    forwarded_host = (request.headers.get("x-forwarded-host") or request.headers.get("host")) if request else None
+    if forwarded_proto and forwarded_host:
+        base_url = f"{forwarded_proto}://{forwarded_host}"
+    elif request:
+        base_url = str(request.base_url).rstrip("/")
+    else:
+        base_url = ""
+
+    download_url = f"{base_url}/downloads/CarePulse_App.apk"
+
+    res = broadcast_app_update_notification(
+        version=version_str,
+        release_notes=release_notes_str,
+        custom_message=custom_message,
+        download_url=download_url
+    )
+    return res
 
 
 # Mount and serve built React Frontend (frontend/dist) for seamless over-the-air ngrok distribution
