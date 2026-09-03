@@ -35,3 +35,50 @@ body::-webkit-scrollbar {
   scrollbar-width: none;
   /* Firefox */
 }
+
+/* Print Isolation — Only print the clinical consultation slip */
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4 portrait;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: #111827 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-consultation-slip,
+  #printable-consultation-slip * {
+    visibility: visible;
+  }
+
+  #printable-consultation-slip {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    background: white !important;
+    border-radius: 12px !important;
+    display: block !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

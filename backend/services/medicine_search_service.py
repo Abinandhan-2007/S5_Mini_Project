@@ -39,17 +39,29 @@ def _score_candidate(query: str, name: str, generic: str, brands: List[str]) -> 
     g = generic.lower()
     brand_list = [b.lower() for b in (brands or [])]
 
-    # 1. Exact Match (Score: 1.0)
-    if q == n or q == g or any(q == b for b in brand_list):
+    # 1. Exact Match
+    if q == n:
         return (1.0, "exact")
+    if q == g:
+        return (0.98, "exact")
+    if any(q == b for b in brand_list):
+        return (0.95, "exact")
 
-    # 2. Prefix Match (Score: 0.85 - 0.95)
-    if n.startswith(q) or g.startswith(q) or any(b.startswith(q) for b in brand_list):
-        return (0.90, "prefix")
+    # 2. Prefix Match
+    if n.startswith(q):
+        return (0.92, "prefix")
+    if g.startswith(q):
+        return (0.87, "prefix")
+    if any(b.startswith(q) for b in brand_list):
+        return (0.82, "prefix")
 
-    # 3. Contains Match (Score: 0.70 - 0.84)
-    if q in n or q in g or any(q in b for b in brand_list):
-        return (0.75, "contains")
+    # 3. Contains Match
+    if q in n:
+        return (0.78, "contains")
+    if q in g:
+        return (0.72, "contains")
+    if any(q in b for b in brand_list):
+        return (0.68, "contains")
 
     # 4. Fuzzy Similarity via difflib (Score: 0.30 - 0.69)
     sim_n = difflib.SequenceMatcher(None, q, n).ratio()

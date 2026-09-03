@@ -565,6 +565,111 @@
       "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
       "password_hash": "$2b$12$1L1Zq.1ZukVFh/fmbd9mYegYJOgfxqJrqBS910UVM2KJoSjZu3t3m",
       "auth_provider": "local"
+    },
+    {
+      "id": "e3310e88-c884-40f2-8fe4-4ebf5222aa2d",
+      "patient_code": "P000037",
+      "patientCode": "P000037",
+      "full_name": "Test New Patient 47fc555a",
+      "email": "patient_47fc555a@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$5EfSta3/L32GzTp2e8fM8eL5FmObana2Mp4kXxDyPgxmOTJYNAOPK",
+      "auth_provider": "local"
+    },
+    {
+      "id": "be3f1307-1829-4d9f-8003-5f2eb5faf8b4",
+      "patient_code": "P000038",
+      "patientCode": "P000038",
+      "full_name": "Test Patient f02a85",
+      "email": "test_patient_f02a85@carepulse.com",
+      "phone": "+91 99999 f02a8",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$7TZ0LKqkT6SU6p4i9REXg.IBkt0dIfCkBwGPcDDs.qSwowv2CLbeq",
+      "auth_provider": "local"
+    },
+    {
+      "id": "bfdf00b7-4f6d-4bb4-b2b1-2bfe56986cbe",
+      "patient_code": "P000039",
+      "patientCode": "P000039",
+      "full_name": "Push Test Patient 99e3c34e",
+      "email": "pushtest_99e3c34e@example.com",
+      "phone": "+91 9595725289",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$pffi9LRJ.viqEUkgjTOoFedp0Sf9r9lGNfJ2s0LktiGPRkJGQDliS",
+      "auth_provider": "local"
+    },
+    {
+      "id": "dfcbef44-fecb-4355-a37a-40e35e886f77",
+      "patient_code": "P000040",
+      "patientCode": "P000040",
+      "full_name": "Push Test Patient 13103feb",
+      "email": "pushtest_13103feb@example.com",
+      "phone": "+91 9247618150",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$6eWbfRRP5qQTOMgYiRgTzeeD5x/6WaohulberQGohSGKUHLzSVxv2",
+      "auth_provider": "local"
+    },
+    {
+      "id": "29181411-29f0-4836-99a2-ef14800a434a",
+      "patient_code": "P000041",
+      "patientCode": "P000041",
+      "full_name": "Cancel Test 3ebb3b",
+      "email": "cancel_test_3ebb3b@example.com",
+      "phone": "+91 9737179463",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$w.y21gU2cRMKrIgc9NzpVeNa3a0OjVc44z16CG7rouKiMYVfe6vgG",
+      "auth_provider": "local"
+    },
+    {
+      "id": "b4bfdb23-ff68-4297-899d-24683fbb1dc6",
+      "patient_code": "P000042",
+      "patientCode": "P000042",
+      "full_name": "Isolated Patient e41d27b7",
+      "email": "patient_e41d27b7@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$TzPU6g2/Vdh0vx6IFGQ1N.38R4HeQ00JvVFrMppIMymTPfQ67zhXO",
+      "auth_provider": "local"
+    },
+    {
+      "id": "26515c2f-22ec-45cb-aed9-d2fe5ab7c4f0",
+      "patient_code": "P000043",
+      "patientCode": "P000043",
+      "full_name": "Test New Patient 6435d112",
+      "email": "patient_6435d112@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$gT0EvgWOcFhHoFbJrP2QQ.y5FF5U/sx6c.Jf8fISBwh/kLQa/bPba",
+      "auth_provider": "local"
     }
   ],
   "consultations": [
@@ -668,9 +773,155 @@
         "plan": "Continue current routine."
       },
       "soap_embedding": []
+    },
+    {
+      "id": "c-a65d4744ba60",
+      "patient_id": "pat-1",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "date": "2026-09-03",
+      "soap_data": {
+        "subjective": "Patient reports: General Cardiology Checkup. Symptoms presented during OPD triage.",
+        "objective": "Vitals recorded: BP 120/80 mmHg, Pulse 74 bpm, SpO2 99%, Temp 98.6\u00b0F. General physical examination unremarkable. S1/S2 heard, lungs clear.",
+        "assessment": "General Cardiology Checkup",
+        "plan": "Continue prescribed medication regimen. Maintain adequate hydration and rest. Follow up in 7 days.",
+        "vitals": {
+          "bpSys": 120,
+          "bpDia": 80,
+          "heartRate": 74,
+          "temperature": 98.6,
+          "spo2": 99,
+          "weight": 68,
+          "recordedAt": "Today 09:30 AM"
+        },
+        "prescriptions": [
+          {
+            "id": "rx-init-1",
+            "drugName": "Paracetamol 650mg",
+            "dosage": "1 Tab",
+            "frequency": "TDS (Thrice daily)",
+            "duration": "3 Days",
+            "instructions": "Take after food for fever/body ache"
+          }
+        ],
+        "chiefComplaint": "General Cardiology Checkup"
+      },
+      "soap_embedding": []
+    },
+    {
+      "id": "c-ed726b9ab255",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "date": "2026-09-05",
+      "soap_data": {
+        "subjective": "Follow up examination.",
+        "objective": "Normal vital signs.",
+        "assessment": "Healthy.",
+        "plan": "Continue current routine."
+      },
+      "soap_embedding": []
     }
   ],
   "appointments": [
+    {
+      "id": "ce407495-65ec-44c6-bd21-3866f842c3d4",
+      "patient_id": "29181411-29f0-4836-99a2-ef14800a434a",
+      "patientId": "29181411-29f0-4836-99a2-ef14800a434a",
+      "patient_name": "Cancel Test 3ebb3b",
+      "patientName": "Cancel Test 3ebb3b",
+      "ticket_number": "#CP-1604",
+      "ticketNumber": "#CP-1604",
+      "doctor_id": "doc-1",
+      "doctorId": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctorName": "Dr. Olivia Wilson",
+      "doctor_specialty": "Cardiologist",
+      "doctorSpecialty": "Cardiologist",
+      "doctor_photo": "/doctor_default.jpg",
+      "doctorPhoto": "/doctor_default.jpg",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "hospitalName": "St. Jude Heart & Medical Center",
+      "date": "2026-09-05",
+      "time_slot": "10:30 AM",
+      "timeSlot": "10:30 AM",
+      "type": "In-Person",
+      "status": "Cancelled"
+    },
+    {
+      "id": "8c032674-7af2-4c16-bfe5-379743da730a",
+      "patient_name": "Tamper Test Patient",
+      "patient_phone": "+91 91111 22222",
+      "ticket_number": "#CP-EC2C",
+      "doctor_id": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "CarePulse Central Hospital",
+      "date": "2026-09-05",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Upcoming"
+    },
+    {
+      "id": "ec7bbb38-3538-4942-aaf2-a377e2d077ea",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patientId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "patientName": "Sarah Jenkins",
+      "ticket_number": "#CP-2710",
+      "ticketNumber": "#CP-2710",
+      "doctor_id": "doc-4",
+      "doctorId": "doc-4",
+      "doctor_name": "Dr. Ethan Reynolds",
+      "doctorName": "Dr. Ethan Reynolds",
+      "doctor_specialty": "General Physician",
+      "doctorSpecialty": "General Physician",
+      "doctor_photo": "/doctor_default.jpg",
+      "doctorPhoto": "/doctor_default.jpg",
+      "hospital_id": "hosp-2",
+      "hospitalId": "hosp-2",
+      "hospital_name": "Metropolitan General Hospital",
+      "hospitalName": "Metropolitan General Hospital",
+      "date": "2026-09-02",
+      "time_slot": "02:00 PM - 03:00 PM",
+      "timeSlot": "02:00 PM - 03:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
+    {
+      "id": "4e52ae0f-47bb-405b-a00a-4fc532fd71dc",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patientId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "patient_name": "Sarah Jenkins",
+      "patientName": "Sarah Jenkins",
+      "ticket_number": "#CP-6324",
+      "ticketNumber": "#CP-6324",
+      "doctor_id": "doc-1",
+      "doctorId": "doc-1",
+      "doctor_name": "Dr. Olivia Wilson",
+      "doctorName": "Dr. Olivia Wilson",
+      "doctor_specialty": "General Physician",
+      "doctorSpecialty": "General Physician",
+      "doctor_photo": "/doctor_default.jpg",
+      "doctorPhoto": "/doctor_default.jpg",
+      "hospital_id": "hosp-1",
+      "hospitalId": "hosp-1",
+      "hospital_name": "St. Jude Heart & Medical Center",
+      "hospitalName": "St. Jude Heart & Medical Center",
+      "date": "2026-09-01",
+      "time_slot": "10:00 AM - 11:00 AM",
+      "timeSlot": "10:00 AM - 11:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming"
+    },
     {
       "id": "2106422b-c0ff-4a07-a332-0f117ee0eb45",
       "patient_name": "ABi",
@@ -960,6 +1211,29 @@
       "facility_type": "General",
       "distanceMiles": 1.0,
       "distance_miles": 1.0
+    },
+    {
+      "id": "hosp-ee901f",
+      "hospital_code": "H011",
+      "hospitalCode": "H011",
+      "name": "Apex Specialty Hospital f02a85",
+      "address": "f02a85 Healthcare Blvd, Sector 4",
+      "phone": "+91 80 4455 6677",
+      "rating": 4.8,
+      "reviewsCount": 1000,
+      "reviews_count": 1000,
+      "emergencyAvailable": true,
+      "emergency_available": true,
+      "imageUrl": "/hospital_default.jpg",
+      "image_url": "/hospital_default.jpg",
+      "specialties": [
+        "General",
+        "Emergency Care"
+      ],
+      "facilityType": "General",
+      "facility_type": "General",
+      "distanceMiles": 1.0,
+      "distance_miles": 1.0
     }
   ],
   "doctors": [
@@ -1188,7 +1462,8 @@
       "photo": "/doctor_default.jpg",
       "rating": 4.9,
       "reviews_count": 142,
-      "about": "Lead Cardiologist specializing in heart disease prevention and non-invasive cardiac imaging."
+      "about": "Lead Cardiologist specializing in heart disease prevention and non-invasive cardiac imaging.",
+      "isAvailable": true
     },
     {
       "id": "doc-2",
@@ -1683,6 +1958,96 @@
       "hospitalId": "hosp-9b5919",
       "is_active": true,
       "isActive": true
+    },
+    {
+      "id": "4e887c3e-9433-4855-838d-52a12abd3adf",
+      "staff_code": "A011101",
+      "staffCode": "A011101",
+      "full_name": "Admin Leader f02a85",
+      "name": "Admin Leader f02a85",
+      "email": "admin_f02a85@carepulse.com",
+      "role": "admin",
+      "specialization": "Hospital Administration",
+      "department": "Hospital Administration",
+      "phone": "",
+      "avatar_url": "",
+      "avatarUrl": "",
+      "hospital_id": "hosp-ee901f",
+      "hospitalId": "hosp-ee901f",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "9576f04c-3ba8-4ad5-b811-3b0ef13c2117",
+      "staff_code": "D011101",
+      "staffCode": "D011101",
+      "full_name": "Dr. First Physician f02a85",
+      "name": "Dr. First Physician f02a85",
+      "email": "doc1_f02a85@carepulse.com",
+      "role": "doctor",
+      "specialization": "Cardiology",
+      "department": "Cardiology",
+      "phone": "",
+      "avatar_url": "",
+      "avatarUrl": "",
+      "hospital_id": "hosp-ee901f",
+      "hospitalId": "hosp-ee901f",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "eb8766bb-95a2-4afd-b023-ab387850e425",
+      "staff_code": "D011102",
+      "staffCode": "D011102",
+      "full_name": "Dr. Second Physician f02a85",
+      "name": "Dr. Second Physician f02a85",
+      "email": "doc2_f02a85@carepulse.com",
+      "role": "doctor",
+      "specialization": "Neurology",
+      "department": "Neurology",
+      "phone": "",
+      "avatar_url": "",
+      "avatarUrl": "",
+      "hospital_id": "hosp-ee901f",
+      "hospitalId": "hosp-ee901f",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "38a63aa6-340c-4fcf-bd08-f88ef76d0389",
+      "staff_code": "R011101",
+      "staffCode": "R011101",
+      "full_name": "Receptionist Alpha f02a85",
+      "name": "Receptionist Alpha f02a85",
+      "email": "rec1_f02a85@carepulse.com",
+      "role": "receptionist",
+      "specialization": "Front Desk A",
+      "department": "Front Desk A",
+      "phone": "",
+      "avatar_url": "",
+      "avatarUrl": "",
+      "hospital_id": "hosp-ee901f",
+      "hospitalId": "hosp-ee901f",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "5deec184-9e84-4688-a554-3d624545cdae",
+      "staff_code": "R011102",
+      "staffCode": "R011102",
+      "full_name": "Receptionist Beta f02a85",
+      "name": "Receptionist Beta f02a85",
+      "email": "rec2_f02a85@carepulse.com",
+      "role": "receptionist",
+      "specialization": "Front Desk B",
+      "department": "Front Desk B",
+      "phone": "",
+      "avatar_url": "",
+      "avatarUrl": "",
+      "hospital_id": "hosp-ee901f",
+      "hospitalId": "hosp-ee901f",
+      "is_active": true,
+      "isActive": true
     }
   ],
   "hospital_settings": {
@@ -2089,6 +2454,11 @@
       "patient_id": "625ace2c-d76d-430a-92e3-12f12dcabc53",
       "notification_type": "med_reminder_2100_20260902",
       "reference_id": "rx-db-15"
+    },
+    {
+      "patient_id": "29181411-29f0-4836-99a2-ef14800a434a",
+      "notification_type": "appointment_reminder",
+      "reference_id": "ce407495-65ec-44c6-bd21-3866f842c3d4"
     }
   ],
   "medicines": [
@@ -4540,6 +4910,25 @@
       "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
     },
     {
+      "id": "nih-paracetamol",
+      "name": "Paracetamol",
+      "generic_name": "Paracetamol",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg",
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "brand_names": [
+        "Dolo 650",
+        "Crocin",
+        "Calpol",
+        "Panadol",
+        "Tylenol"
+      ],
+      "purpose": "Relief of mild to moderate pain and reduction of fever."
+    },
+    {
       "id": "brand-dolo-650",
       "name": "Dolo 650",
       "generic_name": "Paracetamol",
@@ -4645,6 +5034,27 @@
       "id": "ff9ba9b1-e3b8-4e01-9e61-782a5d325d61",
       "patient_id": "00000000-0000-0000-0000-000000000000",
       "fcm_token": "sample_test_token_999",
+      "platform": "android",
+      "is_active": true
+    },
+    {
+      "id": "df27d313-64cd-4833-b3e0-8d75592a4381",
+      "patient_id": "bfdf00b7-4f6d-4bb4-b2b1-2bfe56986cbe",
+      "fcm_token": "fcm_token_sample_99e3c34e",
+      "platform": "android",
+      "is_active": false
+    },
+    {
+      "id": "39eed60f-cfa8-4672-941f-1b144fbcac9a",
+      "patient_id": "dfcbef44-fecb-4355-a37a-40e35e886f77",
+      "fcm_token": "fcm_token_sample_13103feb",
+      "platform": "android",
+      "is_active": false
+    },
+    {
+      "id": "8fd27943-f7f3-4a01-8937-3b7af8fbf5c3",
+      "patient_id": "29181411-29f0-4836-99a2-ef14800a434a",
+      "fcm_token": "fcm_cancel_token_3ebb3b",
       "platform": "android",
       "is_active": true
     }

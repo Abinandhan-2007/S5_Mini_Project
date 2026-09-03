@@ -16,8 +16,8 @@ import {
   ChevronDown,
   Plus,
   Volume2,
-  ShieldCheck,
   UserPlus,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
@@ -53,6 +53,7 @@ export const ReceptionistLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ReceptionistTab>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
+  const [showLogoutWarning, setShowLogoutWarning] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -356,58 +357,15 @@ export const ReceptionistLayout: React.FC = () => {
           </nav>
         </div>
 
-        {/* ── Sidebar Footer: Live OPD Health & Receptionist Profile Card ── */}
-        <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/40 shrink-0">
-          {/* Live OPD Status Widget */}
-          <div className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-[11px] font-black text-slate-700">OPD Live Desk</span>
-            </div>
-            <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              {waitingCount} Waiting
-            </span>
-          </div>
-
-          {/* Receptionist Profile Card */}
-          <div
-            onClick={() => setActiveTab('profile')}
-            className="p-2.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer flex items-center justify-between group"
+        {/* ── Sidebar Footer: Red Logout Button ── */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/40 shrink-0">
+          <button
+            onClick={() => setShowLogoutWarning(true)}
+            className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-red-600/20 hover:shadow-md hover:shadow-red-600/30 transition-all cursor-pointer"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="relative shrink-0">
-                <img
-                  src={profile.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80'}
-                  alt={staffDisplayName}
-                  className="w-8 h-8 rounded-xl object-cover border border-slate-200 shadow-xs"
-                />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border-2 border-white rounded-full" />
-              </div>
-              <div className="truncate">
-                <p className="text-xs font-black text-slate-900 truncate font-heading group-hover:text-[#0B5A54] transition-colors">
-                  {staffDisplayName}
-                </p>
-                <p className="text-[10px] text-slate-400 font-bold truncate flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-[#0B5A54]" />
-                  Desk Administrator
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLogout();
-              }}
-              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          </div>
+            <LogOut className="w-4 h-4 text-white" />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
@@ -556,7 +514,10 @@ export const ReceptionistLayout: React.FC = () => {
                     <span>Desk Settings & Profile</span>
                   </button>
                   <button
-                    onClick={handleLogout}
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setShowLogoutWarning(true);
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -617,6 +578,64 @@ export const ReceptionistLayout: React.FC = () => {
           showToast('Walk-in patient registered and token issued successfully!');
         }}
       />
+
+      {/* ── Logout Warning Confirmation Modal ── */}
+      {showLogoutWarning && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setShowLogoutWarning(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4 relative animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close X Button */}
+            <button
+              onClick={() => setShowLogoutWarning(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Warning Icon Badge */}
+            <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 mx-auto shadow-sm shadow-red-500/10">
+              <AlertTriangle className="w-7 h-7 text-red-600" />
+            </div>
+
+            {/* Heading & Details */}
+            <div className="space-y-1.5">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 font-heading">
+                Confirm Sign Out?
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Are you sure you want to log out from the Receptionist Portal? You will need to sign in again to access the front desk operations.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutWarning(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutWarning(false);
+                  handleLogout();
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs shadow-md shadow-red-600/20 hover:shadow-lg hover:shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Yes, Log Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

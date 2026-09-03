@@ -8,8 +8,18 @@ Verifies:
 4. Fast fallback execution if pg_trgm is bypassed.
 """
 
+import sys
+import os
 import unittest
 from unittest.mock import patch, MagicMock
+
+# Ensure project root and backend dir are in sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+backend_dir = os.path.join(project_root, "backend")
+for p in [project_root, backend_dir]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 from backend.services.medicine_search_service import (
     search_medicines,
     clean_search_query,

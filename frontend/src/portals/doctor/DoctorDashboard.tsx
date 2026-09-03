@@ -9,9 +9,10 @@ import {
   Search,
   ChevronRight,
   Bell,
-  Stethoscope,
   ArrowRight,
   TrendingUp,
+  Activity,
+  XCircle,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { TriagePriority, DoctorTab } from '../../types/doctor';
@@ -33,8 +34,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 }) => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const doctors = useStaffStore((s) => s.doctors);
-  const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const announcements = useStaffStore((s) => s.announcements);
+  const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
 
   const currentDoctor = doctors.find((d) => d.id === currentStaff?.id) || doctors[0] || {
     id: 'doc-1',
@@ -46,6 +47,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(new Date().getDate());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [queueFilter, setQueueFilter] = useState<'All' | 'Waiting' | 'Urgent' | 'Completed'>('All');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -61,10 +64,38 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   // Currently Serving Patient (Active in consultation OR next in line if none)
   const nowServing = inConsultationPatients[0] || activePatient || waitingPatients[0] || null;
 
-  // Upcoming in line (excluding currently serving)
-  const upcomingQueue = useMemo(() => {
-    return waitingPatients.filter((p) => !nowServing || p.id !== nowServing.id);
-  }, [waitingPatients, nowServing]);
+  // Helper to derive priority
+  const getPriority = (token: TokenQueueItem): TriagePriority => {
+    if (token.age && (token.age < 12 || token.age >= 65)) return 'Senior-Child';
+    const issue = (token.healthIssue || (token as any).issue || '').toLowerCase();
+    if (issue.includes('chest') || issue.includes('breath') || issue.includes('severe') || issue.includes('emergency')) {
+      return 'Urgent';
+    }
+    return 'Normal';
+  };
+
+  // Filtered upcoming in line
+  const filteredUpcomingQueue = useMemo(() => {
+    return queue.filter((p) => {
+      if (nowServing && p.id === nowServing.id) return false;
+
+      // Status filter
+      if (queueFilter === 'Waiting' && p.status !== 'Waiting' && p.status !== 'Checked In') return false;
+      if (queueFilter === 'Completed' && p.status !== 'Completed' && (p.status as any) !== 'Done') return false;
+      if (queueFilter === 'Urgent' && getPriority(p) !== 'Urgent') return false;
+
+      // Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const name = (p.patientName || (p as any).name || '').toLowerCase();
+        const token = (p.tokenNumber || '').toLowerCase();
+        const issue = (p.healthIssue || (p as any).issue || '').toLowerCase();
+        return name.includes(q) || token.includes(q) || issue.includes(q);
+      }
+
+      return true;
+    });
+  }, [queue, nowServing, queueFilter, searchQuery]);
 
   // Average Consultation Time calculation (12m 30s)
   const avgConsultTime = '12m 30s';
@@ -109,38 +140,36 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     },
   ];
 
-  // Helper to derive priority
-  const getPriority = (token: TokenQueueItem): TriagePriority => {
-    if (token.age && (token.age < 12 || token.age >= 65)) return 'Senior-Child';
-    const issue = (token.healthIssue || (token as any).issue || '').toLowerCase();
-    if (issue.includes('chest') || issue.includes('breath') || issue.includes('severe')) {
-      return 'Urgent';
-    }
-    return 'Normal';
-  };
-
   // Trigger Audio Chime + TTS Call
-  const handleCallNextPatient = () => {
-    const nextPatient = waitingPatients[0];
-    if (!nextPatient) {
-      showToast('No patients currently waiting in the lobby.');
-      return;
-    }
-
+  const handleCallPatient = (patient: TokenQueueItem) => {
     playCallChime();
-    const patientName = nextPatient.patientName || (nextPatient as any).name || 'Patient';
+    const patientName = patient.patientName || (patient as any).name || 'Patient';
     const room = currentDoctor.roomNumber || 'Cabin 102';
     speakDoctorAnnouncement(
-      `Token ${nextPatient.tokenNumber}, ${patientName}, please proceed to ${room}`
+      `Token ${patient.tokenNumber}, ${patientName}, please proceed to ${room}`
     );
-
-    showToast(`Calling Next Patient: ${nextPatient.tokenNumber} (${patientName})`);
-    onSelectPatient(nextPatient);
+    showToast(`Calling: ${patient.tokenNumber} (${patientName})`);
   };
 
-  const handleToggleCabinDuty = async () => {
-    await toggleDoctorAvailability(currentDoctor.id);
-    showToast(`Cabin status changed to ${!currentDoctor.isAvailable ? 'Active' : 'Offline'}`);
+  // Accept & Open Active Consultation Workspace
+  const handleAcceptPatient = async (patient: TokenQueueItem) => {
+    try {
+      await updateTokenStatus(patient.id, 'In Consultation');
+      showToast(`Accepted consultation for ${patient.patientName || (patient as any).name}`);
+      onSelectPatient(patient);
+    } catch {
+      onSelectPatient(patient);
+    }
+  };
+
+  // Cancel / Decline Patient
+  const handleCancelPatient = async (patient: TokenQueueItem) => {
+    try {
+      await updateTokenStatus(patient.id, 'Cancelled');
+      showToast(`Patient visit cancelled (${patient.tokenNumber})`);
+    } catch {
+      showToast('Could not update status');
+    }
   };
 
   // Mini calendar generator (current week)
@@ -204,72 +233,35 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* ══════════════════════════════════════════════════════════════
-            LEFT COLUMN (8 COLS) — CABIN STATUS, NOW SERVING & QUEUE
+            LEFT COLUMN (8 COLS) — NOW SERVING & QUEUE
         ══════════════════════════════════════════════════════════════ */}
         <div className="lg:col-span-8 space-y-6">
           
-          {/* 1. Cabin Status Widget & Call Next Patient CTA */}
-          <div className="bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] rounded-3xl p-5 sm:p-6 text-white shadow-lg relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-mono text-xs font-black backdrop-blur-xs border border-white/20">
-                  {currentDoctor.roomNumber || 'Cabin 102 - 1st Floor'}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleToggleCabinDuty}
-                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all ${
-                    currentDoctor.isAvailable ? 'bg-emerald-400/30 hover:bg-emerald-400/40 text-emerald-100' : 'bg-rose-400/30 hover:bg-rose-400/40 text-rose-100'
-                  }`}
-                  title="Click to toggle cabin active/offline status"
-                >
-                  <span className={`w-2 h-2 rounded-full ${currentDoctor.isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
-                  {currentDoctor.isAvailable ? 'Cabin Active' : 'Cabin Offline'}
-                </button>
-              </div>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight">Physician Command Center</h2>
-              <p className="text-xs text-teal-100/80 mt-0.5">
-                {waitingPatients.length > 0
-                  ? `${waitingPatients.length} patient${waitingPatients.length > 1 ? 's' : ''} currently queued in OPD lobby.`
-                  : 'All queued patients attended to for this slot.'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 z-10 self-start sm:self-auto">
-              {/* Call Next Button with TTS */}
-              <button
-                type="button"
-                onClick={handleCallNextPatient}
-                className="px-5 py-3 rounded-2xl bg-white text-[#0B5A54] hover:bg-teal-50 font-black text-xs sm:text-sm shadow-xl flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-              >
-                <Volume2 className="w-4 h-4 text-[#0B5A54]" />
-                <span>Call Next Patient</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. NOW SERVING CARD (DOMINANT HIGH-CONTRAST FOCUS CARD) */}
-          <div className="bg-white rounded-3xl border-2 border-[#0B5A54]/30 shadow-md p-6 relative overflow-hidden">
+          {/* NOW SERVING CARD (DOMINANT HIGH-CONTRAST FOCUS CARD) */}
+          <div className="bg-white rounded-3xl border border-teal-500/30 shadow-md p-5 sm:p-6 relative overflow-hidden ring-1 ring-teal-500/10">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-xs font-black uppercase tracking-wider text-[#0B5A54]">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+                <span className="text-xs font-black uppercase tracking-wider text-[#0B5A54] font-heading">
                   Now Serving in Cabin
                 </span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400">Main Focus Patient</span>
+              <span className="text-[11px] font-bold text-slate-400">Clinical Focus</span>
             </div>
 
             {nowServing ? (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#0B5A54] to-[#14B8A6] text-white flex items-center justify-center font-black text-2xl shadow-md shrink-0">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#0B5A54] to-[#14B8A6] text-white flex items-center justify-center font-black text-2xl shadow-md shrink-0">
                       {(nowServing.patientName || (nowServing as any).name || 'P').charAt(0)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-heading">
                           {nowServing.patientName || (nowServing as any).name}
                         </h3>
                         {(() => {
@@ -289,8 +281,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           );
                         })()}
                       </div>
-                      <div className="flex items-center gap-2.5 text-xs text-slate-500 font-medium mt-1">
-                        <span>{nowServing.age || 32} Years</span>
+                      <div className="flex items-center gap-2.5 text-xs text-slate-500 font-medium mt-1 flex-wrap">
+                        <span>{nowServing.age || 32} Yrs • {(nowServing as any).gender || 'In-Person'}</span>
                         <span>•</span>
                         <span>Blood: <strong className="text-slate-800">{nowServing.bloodGroup || 'O+'}</strong></span>
                         <span>•</span>
@@ -299,44 +291,65 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-slate-100">
-                    <span className="inline-block px-3 py-1 bg-amber-50 text-amber-900 font-mono font-black text-sm rounded-xl border border-amber-200 shadow-2xs">
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className="inline-block px-3 py-1 bg-amber-50 text-amber-900 font-mono font-black text-xs sm:text-sm rounded-xl border border-amber-200 shadow-2xs">
                       {nowServing.tokenNumber}
                     </span>
-                    <p className="text-xs text-slate-400 font-mono mt-1">
-                      {nowServing.ticketNumber || '#CP-2026'}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleCallPatient(nowServing)}
+                      className="p-2 rounded-xl bg-slate-100 hover:bg-teal-50 hover:text-[#0B5A54] text-slate-600 transition-colors cursor-pointer"
+                      title="Re-announce token chime"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
                 {/* Chief Complaint Quote */}
-                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs">
-                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">
-                    Chief Complaint & Intake
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 text-xs">
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-0.5 font-mono">
+                    Chief Complaint & Reason for Visit
                   </span>
-                  <p className="font-semibold text-amber-950 italic">
+                  <p className="font-semibold text-amber-950 italic leading-relaxed">
                     "{nowServing.healthIssue || (nowServing as any).issue || 'Routine physician examination and clinical consultation.'}"
                   </p>
                 </div>
 
-                {/* Primary Action Button */}
+                {/* Action Buttons: Cancel and Accept */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                  <div className="text-xs text-slate-500 font-medium">
-                    Ready for SOAP documentation and digital prescription.
+                  <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Ready for SOAP documentation and digital prescription.</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onSelectPatient(nowServing)}
-                    className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#0B5A54] hover:bg-[#084843] text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Stethoscope className="w-4 h-4" />
-                    <span>Open Consultation Workspace</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    {/* Cancel / Decline Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleCancelPatient(nowServing)}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-slate-200 hover:border-rose-200 bg-white hover:bg-rose-50/80 text-slate-600 hover:text-rose-600 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 group"
+                      title="Decline or cancel this patient visit"
+                    >
+                      <XCircle className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition-colors" />
+                      <span>Cancel</span>
+                    </button>
+
+                    {/* Accept & Open Active Consultation */}
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptPatient(nowServing)}
+                      className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-black text-xs sm:text-sm shadow-sm hover:shadow-md hover:shadow-teal-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer group"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
+                      <span>Accept</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-teal-200 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="py-12 text-center text-slate-400">
+              <div className="py-10 text-center text-slate-400">
                 <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                 <p className="text-sm font-bold text-slate-700">No Patient Currently In Cabin</p>
                 <p className="text-xs text-slate-400 mt-1">Click "Call Next Patient" above to announce next in queue.</p>
@@ -344,39 +357,60 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             )}
           </div>
 
-          {/* 3. UPCOMING QUEUE STREAM (SCROLLABLE LIST) */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          {/* 3. UPCOMING QUEUE STREAM WITH SEARCH & FILTER TABS */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
               <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#0B5A54]" />
-                <h3 className="text-base font-black text-slate-900">Upcoming Patient Queue</h3>
+                <Clock className="w-4.5 h-4.5 text-[#0B5A54]" />
+                <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">Patient Queue Stream</h3>
                 <span className="px-2 py-0.5 rounded-full bg-teal-50 text-[#0B5A54] text-xs font-bold border border-teal-200">
-                  {upcomingQueue.length} Waiting
+                  {filteredUpcomingQueue.length}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => onNavigateTab('queue')}
-                className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <span>View Full Queue</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+
+              {/* Status Filter Tabs */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                {(['All', 'Waiting', 'Urgent', 'Completed'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setQueueFilter(tab)}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      queueFilter === tab
+                        ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto pr-1">
-              {upcomingQueue.length === 0 ? (
+            {/* Quick Search in Queue */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search patient name, token number, or health issue..."
+                className="w-full pl-9.5 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] font-medium"
+              />
+            </div>
+
+            <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto pr-1 no-scrollbar">
+              {filteredUpcomingQueue.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400">
-                  No further patients waiting in the current queue.
+                  No patients match your current filter.
                 </div>
               ) : (
-                upcomingQueue.map((patient, idx) => {
+                filteredUpcomingQueue.map((patient, idx) => {
                   const priority = getPriority(patient);
+                  const isCompleted = patient.status === 'Completed' || (patient.status as any) === 'Done';
                   return (
                     <div
                       key={patient.id}
-                      onClick={() => onSelectPatient(patient)}
-                      className="py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50/80 px-3 rounded-2xl transition-colors cursor-pointer group"
+                      className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/80 px-2.5 rounded-2xl transition-colors group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="w-7 h-7 rounded-xl bg-slate-100 font-mono font-bold text-xs text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
@@ -384,7 +418,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </span>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 group-hover:text-[#0B5A54] transition-colors truncate">
+                            <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 group-hover:text-[#0B5A54] transition-colors truncate font-heading">
                               {patient.patientName || (patient as any).name}
                             </h4>
                             <span
@@ -405,8 +439,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right hidden sm:block">
                           <span className="font-mono text-xs font-black text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
                             {patient.tokenNumber}
                           </span>
@@ -414,7 +448,29 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             {patient.timeSlot || (patient as any).slot || '10:00 AM'}
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#0B5A54] transition-colors" />
+
+                        {!isCompleted && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCallPatient(patient);
+                            }}
+                            className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#0B5A54] text-xs font-bold transition-colors cursor-pointer"
+                            title="Announce token"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => onSelectPatient(patient)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 group-hover:bg-[#0B5A54] text-slate-700 group-hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <span>{isCompleted ? 'View' : 'Consult'}</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   );

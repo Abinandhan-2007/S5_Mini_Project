@@ -32,6 +32,8 @@ export interface DoctorRecord {
   roomNumber: string;
   about?: string;
   isAvailable: boolean; // Available or Not Available toggle
+  availabilityReason?: string; // Reason when doctor is unavailable / on break
+  unavailableUntil?: string; // Estimated return time / duration
   availableDays: string[];
   slotCapacities: TimeSlotCapacity[];
 }

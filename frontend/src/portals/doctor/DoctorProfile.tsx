@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import {
   Stethoscope,
-  Lock,
   Save,
   CheckCircle2,
   Calendar,
-  Eye,
-  EyeOff,
+  Clock,
+  Coffee,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 
 const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const REASON_PRESETS = [
+  { label: '☕ Lunch / Meal Break', duration: '30 mins' },
+  { label: '🏥 Emergency Ward Rounds / ICU Call', duration: '45 mins' },
+  { label: '👥 Department Clinical Meeting', duration: '1 hour' },
+  { label: '🔬 Procedure / In-Patient Review', duration: '45 mins' },
+  { label: '🩺 Cabin Sanitization & Prep', duration: '15 mins' },
+  { label: '🚗 Stepped Out Temporarily', duration: '20 mins' },
+];
+
+const DURATION_PRESETS = ['15 mins', '30 mins', '45 mins', '1 hour', '2 hours', 'End of Shift'];
 
 export const DoctorProfile: React.FC = () => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
@@ -31,6 +43,8 @@ export const DoctorProfile: React.FC = () => {
     email: currentStaff?.email || 'olivia.w@carepulse.com',
     roomNumber: 'Cabin 102 - 1st Floor',
     isAvailable: true,
+    availabilityReason: '',
+    unavailableUntil: '',
     availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     about: 'Senior Consultant Interventional Cardiologist specializing in adult preventive cardiology, hypertension, and non-invasive diagnostics.',
   };
@@ -47,13 +61,9 @@ export const DoctorProfile: React.FC = () => {
     about: currentDocRecord.about || '',
     availableDays: currentDocRecord.availableDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     isAvailable: currentDocRecord.isAvailable ?? true,
+    availabilityReason: currentDocRecord.availabilityReason || '',
+    unavailableUntil: currentDocRecord.unavailableUntil || '30 mins',
   });
-
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPasswords, setShowPasswords] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -72,9 +82,11 @@ export const DoctorProfile: React.FC = () => {
         about: currentDocRecord.about || '',
         availableDays: currentDocRecord.availableDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
         isAvailable: currentDocRecord.isAvailable ?? true,
+        availabilityReason: currentDocRecord.availabilityReason || '',
+        unavailableUntil: currentDocRecord.unavailableUntil || '30 mins',
       });
     }
-  }, [currentDocRecord.id, currentDocRecord.isAvailable]);
+  }, [currentDocRecord.id, currentDocRecord.isAvailable, currentDocRecord.availabilityReason, currentDocRecord.unavailableUntil]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -107,23 +119,18 @@ export const DoctorProfile: React.FC = () => {
         about: formData.about,
         availableDays: formData.availableDays,
         isAvailable: formData.isAvailable,
+        availabilityReason: formData.isAvailable ? '' : formData.availabilityReason,
+        unavailableUntil: formData.isAvailable ? '' : formData.unavailableUntil,
       });
 
-      // Handle Password change if filled
-      if (newPassword.trim()) {
-        if (newPassword !== confirmPassword) {
-          showToast('New passwords do not match!');
-          setIsSaving(false);
-          return;
-        }
-        await updateDoctor(currentDocRecord.id, { password: newPassword });
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        showToast('Profile and Cabin Password updated successfully!');
-      } else {
-        showToast('Doctor Profile & Cabin settings saved successfully.');
-      }
+      await toggleDoctorAvailability(
+        currentDocRecord.id,
+        formData.isAvailable,
+        formData.isAvailable ? '' : formData.availabilityReason,
+        formData.isAvailable ? '' : formData.unavailableUntil
+      );
+
+      showToast('Doctor Profile & Cabin settings saved successfully.');
     } catch {
       showToast('Error updating profile settings.');
     } finally {
@@ -131,10 +138,18 @@ export const DoctorProfile: React.FC = () => {
     }
   };
 
-  const handleToggleDuty = async () => {
-    await toggleDoctorAvailability(currentDocRecord.id);
-    setFormData((prev) => ({ ...prev, isAvailable: !prev.isAvailable }));
-    showToast(`Cabin Duty Status switched to ${!formData.isAvailable ? 'Active / On-Duty' : 'Offline / Away'}`);
+  const handleSetAvailable = async () => {
+    setFormData((prev) => ({ ...prev, isAvailable: true, availabilityReason: '', unavailableUntil: '' }));
+    await toggleDoctorAvailability(currentDocRecord.id, true, '', '');
+    showToast('Cabin status set to Active & Available');
+  };
+
+  const handleSetUnavailable = async () => {
+    const reason = formData.availabilityReason || '☕ Lunch / Meal Break';
+    const duration = formData.unavailableUntil || '30 mins';
+    setFormData((prev) => ({ ...prev, isAvailable: false, availabilityReason: reason, unavailableUntil: duration }));
+    await toggleDoctorAvailability(currentDocRecord.id, false, reason, duration);
+    showToast(`Cabin status set to Not Available (${reason})`);
   };
 
   return (
@@ -149,7 +164,7 @@ export const DoctorProfile: React.FC = () => {
       )}
 
       {/* ── Top Header ────────────────────────────────────────────── */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#0B5A54] to-[#14B8A6] text-white flex items-center justify-center font-black text-2xl shadow-lg shrink-0">
             {formData.name.charAt(0) || 'D'}
@@ -161,35 +176,129 @@ export const DoctorProfile: React.FC = () => {
                 {currentStaff?.staff_code || 'D001101'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
               {formData.specialty} · {formData.department} · {formData.roomNumber}
             </p>
           </div>
         </div>
 
-        {/* On-Duty Availability Toggle Widget */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/90 flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-auto">
-          <div className="text-left sm:text-right">
+        {/* On-Duty Availability Segmented Switcher */}
+        <div className="p-2 bg-slate-50 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row sm:items-center gap-2 self-stretch md:self-auto">
+          <div className="px-2 text-left sm:text-right">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Cabin Duty Status</span>
-            <span className={`text-xs font-black ${formData.isAvailable ? 'text-emerald-700' : 'text-slate-500'}`}>
-              {formData.isAvailable ? 'Active & Receiving Patients' : 'Offline / In Procedure'}
+            <span className={`text-xs font-black ${formData.isAvailable ? 'text-emerald-700' : 'text-rose-700'}`}>
+              {formData.isAvailable ? '● Active & Available' : '○ Not Available (Away)'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleToggleDuty}
-            className={`w-12 h-6.5 rounded-full transition-colors relative p-0.5 cursor-pointer ${
-              formData.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'
-            }`}
-          >
-            <div
-              className={`w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform ${
-                formData.isAvailable ? 'translate-x-5.5' : 'translate-x-0'
+
+          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={handleSetAvailable}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                formData.isAvailable
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
               }`}
-            />
-          </button>
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Available</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSetUnavailable}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                !formData.isAvailable
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Coffee className="w-3.5 h-3.5" />
+              <span>Not Available</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* ── Absence Reason & Return Duration Configuration Box (When Not Available) ── */}
+      {!formData.isAvailable && (
+        <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-5 sm:p-6 space-y-4 animate-in fade-in duration-200 shadow-xs">
+          <div className="flex items-center gap-2 border-b border-amber-200/70 pb-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <div>
+              <h3 className="text-sm font-black text-amber-950 font-heading">
+                Doctor Absence & Cabin Status Configuration
+              </h3>
+              <p className="text-xs text-amber-800 font-medium">
+                Select or type the reason for being away. This status is broadcast to Receptionist token desk and triage monitors.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-amber-950">Quick Reason Presets</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {REASON_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      availabilityReason: preset.label,
+                      unavailableUntil: preset.duration,
+                    }))
+                  }
+                  className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                    formData.availabilityReason === preset.label
+                      ? 'bg-amber-100 border-amber-400 text-amber-950 ring-2 ring-amber-400/20 shadow-xs'
+                      : 'bg-white hover:bg-amber-50 border-amber-200 text-slate-700'
+                  }`}
+                >
+                  <span>{preset.label}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{preset.duration}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-amber-950 mb-1">Specific Absence Reason Note</label>
+              <input
+                type="text"
+                value={formData.availabilityReason}
+                onChange={(e) => setFormData({ ...formData, availabilityReason: e.target.value })}
+                placeholder="e.g. Attending emergency clinical review in Ward 4..."
+                className="w-full p-2.5 bg-white border border-amber-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-amber-950 mb-1 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Expected Return Duration</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {DURATION_PRESETS.map((dur) => (
+                  <button
+                    key={dur}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, unavailableUntil: dur })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      formData.unavailableUntil === dur
+                        ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs'
+                        : 'bg-white hover:bg-amber-50 text-slate-700 border-amber-200'
+                    }`}
+                  >
+                    {dur}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Main Form ──────────────────────────────────────────────── */}
       <form onSubmit={handleSaveProfile} className="space-y-6">
@@ -330,59 +439,6 @@ export const DoctorProfile: React.FC = () => {
                   </button>
                 );
               })}
-            </div>
-          </div>
-        </div>
-
-        {/* Password & Security */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-[#0B5A54]" />
-              <h2 className="text-sm font-black text-slate-900">Cabin Security & Password</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowPasswords(!showPasswords)}
-              className="text-xs text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1 cursor-pointer"
-            >
-              {showPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              <span>{showPasswords ? 'Hide' : 'Show'}</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Current Password</label>
-              <input
-                type={showPasswords ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">New Cabin Password</label>
-              <input
-                type={showPasswords ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Leave blank to keep"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Confirm New Password</label>
-              <input
-                type={showPasswords ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat new password"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-              />
             </div>
           </div>
         </div>

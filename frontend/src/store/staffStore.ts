@@ -685,7 +685,7 @@ export interface StaffState {
 
   // Doctor & Token Actions
   fetchDoctors: (silent?: boolean) => Promise<void>;
-  toggleDoctorAvailability: (doctorId: string) => Promise<void>;
+  toggleDoctorAvailability: (doctorId: string, isAvailable?: boolean, reason?: string, unavailableUntil?: string) => Promise<void>;
   updateDoctorSlotCapacity: (doctorId: string, timeSlot: string, availableSeats: number) => Promise<void>;
   updateSlotCapacity: (doctorId: string, timeSlot: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
   addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => void;
@@ -785,11 +785,18 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     }
   },
 
-  toggleDoctorAvailability: async (doctorId: string) => {
+  toggleDoctorAvailability: async (doctorId: string, isAvailable?: boolean, reason?: string, unavailableUntil?: string) => {
     set(state => ({
-      doctors: state.doctors.map(doc =>
-        doc.id === doctorId ? { ...doc, isAvailable: !doc.isAvailable } : doc
-      )
+      doctors: state.doctors.map(doc => {
+        if (doc.id !== doctorId) return doc;
+        const nextAvail = typeof isAvailable === 'boolean' ? isAvailable : !doc.isAvailable;
+        return {
+          ...doc,
+          isAvailable: nextAvail,
+          availabilityReason: nextAvail ? '' : (reason !== undefined ? reason : (doc.availabilityReason || 'Temporarily Away')),
+          unavailableUntil: nextAvail ? '' : (unavailableUntil !== undefined ? unavailableUntil : (doc.unavailableUntil || '')),
+        };
+      })
     }));
 
     const doc = get().doctors.find(d => d.id === doctorId);

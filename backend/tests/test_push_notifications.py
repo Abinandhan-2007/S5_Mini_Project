@@ -1,8 +1,10 @@
 # backend/tests/test_push_notifications.py
 import sys
 import uuid
+import random
 from datetime import datetime, date, timedelta
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 # Ensure backend root is on sys.path
 backend_dir = Path(__file__).resolve().parent.parent
@@ -42,7 +44,6 @@ def test_push_notification_system():
     # -------------------------------------------------------------
     print("\n--- [TEST 1] Device Token Registration & Upsert ---")
     random_suffix = uuid.uuid4().hex[:8]
-    import random
     random_phone_1 = f"+91 9{random.randint(100000000, 999999999)}"
     reg_res = client.post(
         "/api/auth/register",
@@ -197,4 +198,5 @@ def test_push_notification_system():
 
 
 if __name__ == "__main__":
-    test_push_notification_system()
+    with patch("notifications.fcm_service.messaging.send", return_value="projects/carepulse-mock/messages/123"):
+        test_push_notification_system()
