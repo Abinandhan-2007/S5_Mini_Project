@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "CarePulse v1.9.4: Enhanced system stability, real-time medicine search autocomplete optimizations, and performance improvements.",
-  "released_at": "2026-09-02"
+  "release_notes": "CarePulse v1.9.5: AI Health chat assistant & symptom checker, enhanced receptionist token queue, real-time medicine search autocomplete, patient data management, and stability updates.",
+  "released_at": "2026-09-03"
 }

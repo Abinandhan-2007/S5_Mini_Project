@@ -21,8 +21,8 @@ import os
 import sys
 if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+        sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
+        sys.stderr.reconfigure(encoding="utf-8", line_buffering=True)
     except Exception:
         pass
 import re
@@ -97,7 +97,12 @@ def run_command(cmd: str, cwd: Path, desc: str):
     result = subprocess.run(cmd, cwd=str(cwd), shell=True, text=True, capture_output=True, env=env)
     if result.returncode != 0:
         print(f"❌ {desc} failed with exit code {result.returncode}:")
-        print(result.stderr or result.stdout)
+        if result.stdout:
+            print("--- STDOUT ---")
+            print(result.stdout)
+        if result.stderr:
+            print("--- STDERR ---")
+            print(result.stderr)
         sys.exit(1)
     print(f"✅ {desc} completed successfully.")
 
