@@ -412,6 +412,33 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     setTakenSlotsMap(loadedMap);
   }, [prescriptions.length]);
 
+  // Live update when a dose is taken via notification prompt ("Yes, I Ate It")
+  useEffect(() => {
+    const handleDoseTakenEvent = (e: Event) => {
+      const custom = e as CustomEvent<{ medId: string; slotId: string; timeStr: string }>;
+      if (custom.detail) {
+        const { medId, slotId, timeStr } = custom.detail;
+        const today = getTodayDateKey();
+        setTakenSlotsMap((prev) => {
+          const currentMed = prev[medId]?.date === today ? prev[medId] : { date: today, slots: {} };
+          return {
+            ...prev,
+            [medId]: {
+              date: today,
+              slots: {
+                ...currentMed.slots,
+                [slotId]: timeStr,
+              },
+            },
+          };
+        });
+      }
+    };
+
+    window.addEventListener('carepulse:dose_taken', handleDoseTakenEvent);
+    return () => window.removeEventListener('carepulse:dose_taken', handleDoseTakenEvent);
+  }, []);
+
   // Handle toggling a dose slot (Record dose or Untake/Reset to not taken)
   const handleTakeSlotDose = (med: MedicationItem, slotId: string) => {
     const today = getTodayDateKey();

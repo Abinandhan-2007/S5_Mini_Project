@@ -21,6 +21,9 @@ import {
   AlertCircle,
   Phone,
   ShieldCheck,
+  Pill,
+  Volume2,
+  RefreshCw,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -45,6 +48,54 @@ export const ProfileScreen: React.FC = () => {
   const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
   const toggleBiometric = useCarePulseStore((s) => s.toggleBiometric);
   const [biometricNotice, setBiometricNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+
+  // App Feature ON/OFF Toggles
+  const [isMedAlertsEnabled, setIsMedAlertsEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('carepulse_med_reminders_enabled') !== 'false';
+  });
+  const [isPushNotifsEnabled, setIsPushNotifsEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('carepulse_push_notifs_enabled') !== 'false';
+  });
+  const [isAutoUpdateEnabled, setIsAutoUpdateEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('carepulse_auto_updates_enabled') !== 'false';
+  });
+  const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('carepulse_sound_enabled') !== 'false';
+  });
+  const [featureNotice, setFeatureNotice] = useState<string | null>(null);
+
+  const showFeatureToast = (msg: string) => {
+    setFeatureNotice(msg);
+    setTimeout(() => setFeatureNotice(null), 3000);
+  };
+
+  const handleToggleMedAlerts = () => {
+    const next = !isMedAlertsEnabled;
+    setIsMedAlertsEnabled(next);
+    localStorage.setItem('carepulse_med_reminders_enabled', next ? 'true' : 'false');
+    showFeatureToast(next ? '💊 Tablet eating alerts enabled' : '💊 Tablet eating alerts turned OFF');
+  };
+
+  const handleTogglePushNotifs = () => {
+    const next = !isPushNotifsEnabled;
+    setIsPushNotifsEnabled(next);
+    localStorage.setItem('carepulse_push_notifs_enabled', next ? 'true' : 'false');
+    showFeatureToast(next ? '🔔 Push notifications enabled' : '🔔 Push notifications turned OFF');
+  };
+
+  const handleToggleAutoUpdate = () => {
+    const next = !isAutoUpdateEnabled;
+    setIsAutoUpdateEnabled(next);
+    localStorage.setItem('carepulse_auto_updates_enabled', next ? 'true' : 'false');
+    showFeatureToast(next ? '🚀 Automatic update checks enabled' : '🚀 Auto update checks turned OFF');
+  };
+
+  const handleToggleSound = () => {
+    const next = !isSoundEnabled;
+    setIsSoundEnabled(next);
+    localStorage.setItem('carepulse_sound_enabled', next ? 'true' : 'false');
+    showFeatureToast(next ? '🔊 Sound alerts & chimes enabled' : '🔊 Sound alerts muted');
+  };
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -495,46 +546,251 @@ export const ProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* BIOMETRIC SECURITY TOGGLE CARD */}
+        {/* ── APP FEATURES & ON/OFF CONTROLS ── */}
         <div className="space-y-2 pt-1">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 font-heading">
-            BIOMETRIC & DEVICE SECURITY
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
+              APP FEATURES & ON/OFF CONTROLS
+            </h3>
+            <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+              Settings
+            </span>
+          </div>
 
-          <div className="bg-white border border-slate-200 shadow-2xs rounded-2xl p-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center text-[#0B5A54] shrink-0">
-                <ScanFace className="w-5 h-5 text-[#0B5A54]" />
+          {/* Toast Notice for Feature Toggles */}
+          {featureNotice && (
+            <div className="p-2.5 rounded-xl text-xs font-bold bg-slate-900 text-white shadow-md animate-in fade-in flex items-center gap-2 text-left">
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-300 shrink-0" />
+              <span>{featureNotice}</span>
+            </div>
+          )}
+
+          <Card padding="none" className="divide-y divide-slate-100 overflow-hidden shadow-2xs bg-white rounded-2xl border border-slate-200">
+            {/* 1. Tablet Eating Notifications */}
+            <div className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={clsx(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                  isMedAlertsEnabled ? "bg-teal-50 text-[#0B5A54]" : "bg-slate-100 text-slate-400"
+                )}>
+                  <Pill className="w-5 h-5" />
+                </div>
+                <div className="text-left space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black font-heading text-slate-900 truncate">
+                      Tablet Eating Alerts
+                    </h4>
+                    <span className={clsx(
+                      "text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full",
+                      isMedAlertsEnabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {isMedAlertsEnabled ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {isMedAlertsEnabled ? "Alerts with Yes/No 30-min repeat snooze" : "Turned off — manual logging only"}
+                  </p>
+                </div>
               </div>
-              <div className="text-left space-y-0.5">
-                <h4 className="text-xs font-black font-heading text-slate-900">
-                  Biometric Login (Face & Fingerprint)
-                </h4>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  {isBiometricEnabled
-                    ? 'Active — 1-touch Face ID / Fingerprint unlock'
-                    : 'Disabled — Password required on launch'}
-                </p>
-              </div>
+
+              <button
+                type="button"
+                onClick={handleToggleMedAlerts}
+                className={clsx(
+                  'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
+                  isMedAlertsEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
+                )}
+                title={isMedAlertsEnabled ? 'Turn OFF Medicine Alerts' : 'Turn ON Medicine Alerts'}
+              >
+                <div
+                  className={clsx(
+                    'w-5 h-5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-out',
+                    isMedAlertsEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleToggleBiometric}
-              className={clsx(
-                'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
-                isBiometricEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
-              )}
-              title={isBiometricEnabled ? 'Disable Biometric Login' : 'Enable Biometric Login'}
-            >
-              <div
+            {/* 2. Biometric Security App Lock */}
+            <div className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={clsx(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                  isBiometricEnabled ? "bg-teal-50 text-[#0B5A54]" : "bg-slate-100 text-slate-400"
+                )}>
+                  <ScanFace className="w-5 h-5" />
+                </div>
+                <div className="text-left space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black font-heading text-slate-900 truncate">
+                      Biometric App Lock
+                    </h4>
+                    <span className={clsx(
+                      "text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full",
+                      isBiometricEnabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {isBiometricEnabled ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {isBiometricEnabled ? "1-touch Face ID & Fingerprint unlock" : "Disabled — Password required"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleToggleBiometric}
                 className={clsx(
-                  'w-5 h-5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-out',
-                  isBiometricEnabled ? 'translate-x-5' : 'translate-x-0'
+                  'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
+                  isBiometricEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
                 )}
-              />
-            </button>
-          </div>
+                title={isBiometricEnabled ? 'Turn OFF Biometric Lock' : 'Turn ON Biometric Lock'}
+              >
+                <div
+                  className={clsx(
+                    'w-5 h-5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-out',
+                    isBiometricEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* 3. Push Notifications & Queue Alerts */}
+            <div className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={clsx(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                  isPushNotifsEnabled ? "bg-teal-50 text-[#0B5A54]" : "bg-slate-100 text-slate-400"
+                )}>
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div className="text-left space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black font-heading text-slate-900 truncate">
+                      Health & Queue Push Alerts
+                    </h4>
+                    <span className={clsx(
+                      "text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full",
+                      isPushNotifsEnabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {isPushNotifsEnabled ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {isPushNotifsEnabled ? "Live OPD token calls & doctor alerts" : "Muted — check app manually"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTogglePushNotifs}
+                className={clsx(
+                  'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
+                  isPushNotifsEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
+                )}
+                title={isPushNotifsEnabled ? 'Turn OFF Push Alerts' : 'Turn ON Push Alerts'}
+              >
+                <div
+                  className={clsx(
+                    'w-5 h-5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-out',
+                    isPushNotifsEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* 4. Automatic Update Checks */}
+            <div className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={clsx(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                  isAutoUpdateEnabled ? "bg-teal-50 text-[#0B5A54]" : "bg-slate-100 text-slate-400"
+                )}>
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div className="text-left space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black font-heading text-slate-900 truncate">
+                      Automatic Update Checks
+                    </h4>
+                    <span className={clsx(
+                      "text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full",
+                      isAutoUpdateEnabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {isAutoUpdateEnabled ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {isAutoUpdateEnabled ? "Checks for latest APK features on launch" : "Manual update check only"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleToggleAutoUpdate}
+                className={clsx(
+                  'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
+                  isAutoUpdateEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
+                )}
+                title={isAutoUpdateEnabled ? 'Turn OFF Auto Updates' : 'Turn ON Auto Updates'}
+              >
+                <div
+                  className={clsx(
+                    'w-5 h-5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-out',
+                    isAutoUpdateEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* 5. Audio Chimes & Sounds */}
+            <div className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={clsx(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                  isSoundEnabled ? "bg-teal-50 text-[#0B5A54]" : "bg-slate-100 text-slate-400"
+                )}>
+                  <Volume2 className="w-5 h-5" />
+                </div>
+                <div className="text-left space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black font-heading text-slate-900 truncate">
+                      Audio Chimes & Sounds
+                    </h4>
+                    <span className={clsx(
+                      "text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full",
+                      isSoundEnabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {isSoundEnabled ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {isSoundEnabled ? "Sound chimes on alerts & reminders" : "Muted — silent operation"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleToggleSound}
+                className={clsx(
+                  'w-11 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shadow-inner shrink-0',
+                  isSoundEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
+                )}
+                title={isSoundEnabled ? 'Turn OFF Sounds' : 'Turn ON Sounds'}
+              >
+                <div
+                  className={clsx(
+                    'w-5 h-5 rounded-full bg-white shadow-xs transition-transform duration-200 ease-out',
+                    isSoundEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
+          </Card>
 
           {biometricNotice && (
             <div

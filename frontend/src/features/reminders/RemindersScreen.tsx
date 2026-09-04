@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Pill, Plus, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Pill, Plus, CheckCircle2, Clock, Sparkles, BellRing } from 'lucide-react';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { triggerIntakePrompt } from '../../services/medicationNotificationService';
 
 interface ReminderItem {
   id: string;
@@ -49,6 +50,26 @@ export const RemindersScreen: React.FC = () => {
     },
   ]);
 
+  // Sync state when dose is marked taken via notification prompt
+  useEffect(() => {
+    const handleDoseTaken = (e: Event) => {
+      const custom = e as CustomEvent<{ medId: string; slotId: string; drugName?: string }>;
+      if (custom.detail) {
+        const drug = custom.detail.drugName?.toLowerCase() || '';
+        setReminders((prev) =>
+          prev.map((r) => {
+            if (drug && r.medicationName.toLowerCase().includes(drug.split(' ')[0])) {
+              return { ...r, taken: true };
+            }
+            return r;
+          })
+        );
+      }
+    };
+    window.addEventListener('carepulse:dose_taken', handleDoseTaken);
+    return () => window.removeEventListener('carepulse:dose_taken', handleDoseTaken);
+  }, []);
+
   const toggleTaken = (id: string) => {
     setReminders(prev =>
       prev.map(r => (r.id === id ? { ...r, taken: !r.taken } : r))
@@ -59,6 +80,20 @@ export const RemindersScreen: React.FC = () => {
     setReminders(prev =>
       prev.map(r => (r.id === id ? { ...r, active: !r.active } : r))
     );
+  };
+
+  const handleTriggerTestNotification = () => {
+    const activeMed = reminders.find((r) => !r.taken) || reminders[0];
+    triggerIntakePrompt({
+      id: `${activeMed.id}-morning`,
+      medId: activeMed.id,
+      slotId: 'morning',
+      drugName: activeMed.medicationName,
+      dosage: activeMed.dosage,
+      timeLabel: activeMed.time,
+      timingCategory: `${activeMed.timingCategory} Dose (Eating Time)`,
+      instructions: 'Take with warm water after breakfast',
+    });
   };
 
   const handleAddCustom = () => {
@@ -93,13 +128,24 @@ export const RemindersScreen: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={handleAddCustom}
-            className="p-2 rounded-xl bg-white text-[#0B5A54] hover:bg-gray-50 transition-all font-bold text-xs flex items-center gap-1 shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Pill</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleTriggerTestNotification}
+              className="p-2 px-2.5 rounded-xl bg-teal-800 text-white hover:bg-teal-900 transition-all font-bold text-xs flex items-center gap-1.5 shadow-xs"
+              title="Test Tablet Eating Notification"
+            >
+              <BellRing className="w-3.5 h-3.5 text-teal-200 animate-pulse" />
+              <span className="hidden sm:inline">Test Alert</span>
+            </button>
+
+            <button
+              onClick={handleAddCustom}
+              className="p-2 rounded-xl bg-white text-[#0B5A54] hover:bg-gray-50 transition-all font-bold text-xs flex items-center gap-1 shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Pill</span>
+            </button>
+          </div>
         </div>
       </div>
 
