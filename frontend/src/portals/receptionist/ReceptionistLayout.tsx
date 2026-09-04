@@ -255,7 +255,7 @@ export const ReceptionistLayout: React.FC = () => {
           {/* ── CarePulse Brand Header ── */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-950 text-white flex items-center justify-center shadow-md shadow-teal-900/15 ring-2 ring-teal-500/10 shrink-0">
+              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-xs shrink-0 p-1">
                 <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
               </div>
               <div className="min-w-0">

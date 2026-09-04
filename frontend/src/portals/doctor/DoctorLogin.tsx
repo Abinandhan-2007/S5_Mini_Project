@@ -107,7 +107,7 @@ export const DoctorLogin: React.FC = () => {
           <div>
             {/* Top Brand Logo */}
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-lg shadow-teal-900/20 shrink-0">
+              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-xs shrink-0 p-1">
                 <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
               </div>
               <div>

@@ -191,7 +191,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         {/* Top Header */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-950 border border-white/20 flex items-center justify-center backdrop-blur-md shadow-md shrink-0">
+            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-white/40 flex items-center justify-center backdrop-blur-md shadow-md shrink-0 p-1">
               <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
             </div>
             <div>
@@ -217,10 +217,9 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="relative mb-6"
           >
-            <div className="w-24 h-24 rounded-3xl overflow-hidden bg-slate-950 border border-white/25 backdrop-blur-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+            <div className="w-24 h-24 rounded-3xl overflow-hidden bg-white border border-white/40 backdrop-blur-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-3">
               <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="absolute inset-0 rounded-3xl bg-teal-300/20 blur-xl scale-125 pointer-events-none" />
           </motion.div>
 
           <motion.div
