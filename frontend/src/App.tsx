@@ -70,6 +70,8 @@ const NotificationNavigationListener: React.FC = () => {
 import { checkForAppUpdate, type AppVersionInfo } from './lib/versionChecker';
 import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
 import { registerPushNotifications } from './lib/pushNotifications';
+import { MedicineIntakePromptModal } from './components/prescriptions/MedicineIntakePromptModal';
+import { initMedicationNotificationService } from './services/medicationNotificationService';
 
 /**
  * Handles live foreground-resume APK version checking when app is already running.
@@ -109,7 +111,7 @@ const AppResumeUpdateChecker: React.FC = () => {
     };
   }, []);
 
-  if (!Capacitor.isNativePlatform() || !updateInfo) return null;
+  if (!updateInfo) return null;
 
   return (
     <UpdateAvailableModal
@@ -120,23 +122,23 @@ const AppResumeUpdateChecker: React.FC = () => {
 };
 
 export const App: React.FC = () => {
-  // Show splash on patient app launch / cold start. Bypass for staff portals.
-  const [showSplash, setShowSplash] = useState<boolean>(() => !isStaffLanding());
+  const [showSplash, setShowSplash] = useState(true);
   const [startupUpdateInfo, setStartupUpdateInfo] = useState<AppVersionInfo | null>(null);
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
-  // If staff portal, check auth session immediately on mount
+  // Restore session
   useEffect(() => {
     if (isStaffLanding()) {
       checkAuthSession();
     }
   }, [checkAuthSession]);
 
-  // Automatically register device for push notifications on native app launch
+  // Automatically register device for push notifications and initialize medication eating alerts
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       registerPushNotifications().catch(() => {});
     }
+    initMedicationNotificationService().catch(() => {});
   }, []);
 
   const handleSplashComplete = (updateInfo?: AppVersionInfo | null) => {
@@ -177,6 +179,7 @@ export const App: React.FC = () => {
       <NotificationNavigationListener />
       <AppResumeUpdateChecker />
       <OfflineBanner />
+      <MedicineIntakePromptModal />
       <div className="min-h-screen bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col overflow-x-hidden">
         <AppRoutes />
       </div>
