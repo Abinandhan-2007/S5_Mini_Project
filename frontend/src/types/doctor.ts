@@ -57,4 +57,5 @@ export type DoctorTab =
   | 'consultation'
   | 'queue'
   | 'emr'
-  | 'profile';
+  | 'profile'
+  | 'notifications';

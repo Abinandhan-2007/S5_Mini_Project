@@ -18,15 +18,17 @@ import {
   Coffee,
   Check,
   Radio,
+  BellRing,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { DoctorDashboard } from './DoctorDashboard';
 import { ActiveConsultation } from './ActiveConsultation';
 import { DoctorQueue } from './DoctorQueue';
 import { DoctorEMRSearch } from './DoctorEMRSearch';
 import { DoctorProfile } from './DoctorProfile';
+import { DoctorNotificationView } from './DoctorNotificationView';
+import { DoctorNotificationCenter } from './DoctorNotificationCenter';
 import type { DoctorTab } from '../../types/doctor';
 import type { TokenQueueItem } from '../../types/receptionist';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
@@ -196,11 +198,10 @@ export const DoctorLayout: React.FC = () => {
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
-  const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
   const navigate = useNavigate();
 
   // Background polling for real-time doctor queue
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  usePolling(
     async () => {
       await fetchTokens(currentStaff?.id, true);
     },
@@ -346,6 +347,13 @@ export const DoctorLayout: React.FC = () => {
           label: 'Doctor Profile & Shift',
           icon: Settings,
         },
+        {
+          id: 'notifications',
+          label: 'Notifications & Alerts',
+          icon: BellRing,
+          badge: waitingCount > 0 ? `${waitingCount} Live` : undefined,
+          badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+        },
       ],
     },
   ];
@@ -411,6 +419,11 @@ export const DoctorLayout: React.FC = () => {
         return {
           title: 'Doctor Profile & Cabin Settings',
           breadcrumb: 'Doctor Portal / Profile & Shift Configurations',
+        };
+      case 'notifications':
+        return {
+          title: 'Clinical Notifications & Live Feed',
+          breadcrumb: 'Doctor Portal / Real-Time Alerts & Queue Stream',
         };
       default:
         return {
@@ -624,14 +637,6 @@ export const DoctorLayout: React.FC = () => {
               </button>
             </div>
 
-            {/* Live Polling Sync Indicator */}
-            <LiveIndicator
-              lastUpdated={lastUpdated}
-              isPolling={isPolling}
-              onRefresh={refetch}
-              label="OPD Live"
-            />
-
             {/* Quick Call Next Action Button */}
             <button
               onClick={handleQuickCallNext}
@@ -642,36 +647,23 @@ export const DoctorLayout: React.FC = () => {
               <span className="hidden sm:inline">Call Next</span>
             </button>
 
-            {/* Notifications Dropdown */}
-            <div className="relative" ref={notifRef}>
-              <button
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 transition-all relative cursor-pointer"
-                title="Cabin Alerts"
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white" />
-              </button>
-
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-3xl border border-slate-200 shadow-2xl p-4 z-50 animate-in fade-in duration-200 text-xs">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 font-black text-slate-900 font-heading">
-                    <span>Cabin Notifications</span>
-                    <span className="text-[9px] bg-teal-50 text-[#0B5A54] font-bold px-2 py-0.5 rounded-full border border-teal-200">
-                      Live Feed
-                    </span>
-                  </div>
-                  <div className="py-2.5 space-y-2 text-slate-600">
-                    <p className="leading-relaxed">
-                      <strong className="text-slate-800">OPD Queue:</strong> {waitingCount} patient{waitingCount !== 1 ? 's' : ''} currently waiting for your cabin.
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      Hospital: {hospitalSettings?.name || 'CarePulse Central Hospital'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* ── Notification Center Navbar Trigger ── */}
+            <button
+              onClick={() => setIsNotifOpen(true)}
+              className="relative flex items-center gap-2 px-3 py-2 rounded-2xl border border-slate-200/90 hover:border-teal-300 bg-white hover:bg-teal-50/40 text-slate-700 transition-all shadow-2xs cursor-pointer group"
+              title="Open Clinical Notifications & Feed"
+            >
+              <div className="relative flex items-center justify-center">
+                <Bell className="w-4 h-4 text-slate-600 group-hover:text-[#0B5A54] transition-colors" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
+              </div>
+              <div className="hidden md:flex items-center gap-1.5 text-xs font-black text-slate-800">
+                <span>Alerts</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-teal-50 text-[#0B5A54] border border-teal-200/80 text-[10px] font-mono">
+                  {waitingCount > 0 ? `${waitingCount} Live` : 'Feed'}
+                </span>
+              </div>
+            </button>
 
             {/* Doctor Profile Dropdown */}
             <div className="relative" ref={userMenuRef}>
@@ -813,6 +805,15 @@ export const DoctorLayout: React.FC = () => {
           {activeTab === 'emr' && <DoctorEMRSearch />}
 
           {activeTab === 'profile' && <DoctorProfile />}
+
+          {activeTab === 'notifications' && (
+            <DoctorNotificationView
+              tokens={doctorQueue}
+              onSelectPatient={handleSelectPatient}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              showToast={showToast}
+            />
+          )}
         </main>
       </div>
 
@@ -997,6 +998,19 @@ export const DoctorLayout: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Premium Doctor Notification Center Navigation Bar & Drawer ── */}
+      <DoctorNotificationCenter
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+        tokens={doctorQueue}
+        onSelectPatient={(patient) => {
+          setActivePatient(patient);
+          setActiveTab('consultation');
+        }}
+        onNavigateTab={(tab) => setActiveTab(tab)}
+        showToast={showToast}
+      />
     </div>
   );
 };
