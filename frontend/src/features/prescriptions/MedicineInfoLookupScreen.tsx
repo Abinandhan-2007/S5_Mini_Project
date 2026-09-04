@@ -308,13 +308,51 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     }
   };
 
+  // Helper: Client-side downscaling and compression to ~120KB for fast 2-second AI analysis
+  const compressImageFile = (file: File, maxDim = 1024, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const src = e.target?.result as string;
+        if (!src) return resolve('');
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(src);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(src);
+        img.src = src;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Start native camera on mobile device, or live in-app camera viewfinder on web
   const handleStartCamera = async () => {
     setErrorNotice(null);
     if (Capacitor.isNativePlatform()) {
       try {
         const photo = await CapCamera.getPhoto({
-          quality: 90,
+          quality: 75,
+          width: 1024,
+          height: 1024,
+          correctOrientation: true,
           allowEditing: false,
           resultType: CameraResultType.Base64,
           source: CameraSource.Camera,
@@ -342,7 +380,10 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     if (Capacitor.isNativePlatform()) {
       try {
         const photo = await CapCamera.getPhoto({
-          quality: 90,
+          quality: 75,
+          width: 1024,
+          height: 1024,
+          correctOrientation: true,
           allowEditing: false,
           resultType: CameraResultType.Base64,
           source: CameraSource.Photos,
@@ -363,21 +404,21 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     }
   };
 
-  // File Picker
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File Picker with automatic client-side compression
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setErrorNotice(null);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      if (base64) {
-        setImagePreview(base64);
-        processLookup({ image: base64 });
+    try {
+      const compressedBase64 = await compressImageFile(file, 1024, 0.75);
+      if (compressedBase64) {
+        setImagePreview(compressedBase64);
+        processLookup({ image: compressedBase64 });
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Compression notice:', err);
+    }
     e.target.value = '';
   };
 

@@ -75,282 +75,282 @@ export const AppRoutes: React.FC = () => {
     <>
       <SystemNavigationHandler />
       <Routes>
-      {/* Root Route */}
-      <Route
-        path="/"
-        element={
-          <Navigate
-            to={
-              isAuthenticated
-                ? shouldPromptProfileCompletion(user)
-                  ? '/complete-profile'
-                  : '/home'
-                : isStaffDomain()
-                ? '/staff/login'
-                : '/login'
+        {/* Root Route */}
+        <Route
+          path="/"
+          element={
+            <Navigate
+              to={
+                isAuthenticated
+                  ? shouldPromptProfileCompletion(user)
+                    ? '/complete-profile'
+                    : '/home'
+                  : isStaffDomain()
+                    ? '/staff/login'
+                    : '/login'
+              }
+              replace
+            />
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PageTransition>
+              <LoginScreen />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PageTransition>
+              <RegisterScreen />
+            </PageTransition>
+          }
+        />
+
+        {/* Centralized Protected Authenticated Patient Routes (Guarded with Biometrics & PIN) */}
+        <Route element={<ProtectedPatientLayout />}>
+          <Route
+            path="/complete-profile"
+            element={
+              <PageTransition>
+                <CompleteProfileScreen />
+              </PageTransition>
             }
-            replace
           />
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          <PageTransition>
-            <LoginScreen />
-          </PageTransition>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PageTransition>
-            <RegisterScreen />
-          </PageTransition>
-        }
-      />
-
-      {/* Centralized Protected Authenticated Patient Routes (Guarded with Biometrics & PIN) */}
-      <Route element={<ProtectedPatientLayout />}>
-        <Route
-          path="/complete-profile"
-          element={
-            <PageTransition>
-              <CompleteProfileScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/home"
-          element={
-            <PageTransition>
-              <HomeScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/health-ai"
-          element={
-            <PageTransition>
-              <HealthAIChatScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/escalation"
-          element={
-            <PageTransition>
-              <EscalationNoticeScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/assessment-confirm"
-          element={
-            <PageTransition>
-              <AssessmentConfirmScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/schedule"
-          element={<Navigate to="/history" replace />}
-        />
-        <Route
-          path="/hospitals"
-          element={
-            <PageTransition>
-              <FindHospitalsScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/hospitals/:id"
-          element={
-            <PageTransition>
-              <HospitalDetailScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/appointments/book/:doctorId"
-          element={
-            <PageTransition>
-              <BookAppointmentScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/appointment-detail"
-          element={
-            <PageTransition>
-              <AppointmentDetailScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/appointment-detail/:id"
-          element={
-            <PageTransition>
-              <AppointmentDetailScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <PageTransition>
-              <HistoryScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/reminders"
-          element={
-            <PageTransition>
-              <RemindersScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <PageTransition>
-              <ProfileScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/notifications"
-          element={
-            <PageTransition>
-              <NotificationsScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/prescriptions"
-          element={
-            <PageTransition>
-              <PrescriptionsScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/prescriptions/scan"
-          element={
-            <PageTransition>
-              <ScanMedicineScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/medicine/info-lookup"
-          element={
-            <PageTransition>
-              <MedicineInfoLookupScreen />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/prescriptions/info-lookup"
-          element={
-            <PageTransition>
-              <MedicineInfoLookupScreen />
-            </PageTransition>
-          }
-        />
-      </Route>
-
-      {/* Receptionist Portal Routes */}
-      <Route
-        path="/receptionist"
-        element={
-          <PageTransition>
-            <ReceptionistLayout />
-          </PageTransition>
-        }
-      />
-      <Route
-        path="/receptionist/login"
-        element={<Navigate to="/staff/login" replace />}
-      />
-
-      {/* Doctor Portal Routes */}
-      <Route
-        path="/doctor"
-        element={
-          <PageTransition>
-            <DoctorLayout />
-          </PageTransition>
-        }
-      />
-      <Route
-        path="/doctor/login"
-        element={
-          <PageTransition>
-            <DoctorLogin />
-          </PageTransition>
-        }
-      />
-
-      {/* Admin Portal Routes */}
-      <Route
-        path="/admin"
-        element={
-          <PageTransition>
-            <AdminLayout />
-          </PageTransition>
-        }
-      />
-      <Route
-        path="/admin/login"
-        element={<Navigate to="/staff/login" replace />}
-      />
-
-      {/* Unified Staff Portal Routes */}
-      <Route
-        path="/staff"
-        element={
-          <PageTransition>
-            <StaffPortalLogin />
-          </PageTransition>
-        }
-      />
-      <Route
-        path="/staff/login"
-        element={
-          <PageTransition>
-            <StaffPortalLogin />
-          </PageTransition>
-        }
-      />
-      <Route
-        path="/staff-login"
-        element={
-          <PageTransition>
-            <StaffPortalLogin />
-          </PageTransition>
-        }
-      />
-
-      {/* Default Catch-all */}
-      <Route
-        path="*"
-        element={
-          <Navigate
-            to={
-              isStaffDomain()
-                ? '/staff/login'
-                : isAuthenticated
-                ? '/home'
-                : '/login'
+          <Route
+            path="/home"
+            element={
+              <PageTransition>
+                <HomeScreen />
+              </PageTransition>
             }
-            replace
           />
-        }
-      />
-    </Routes>
+          <Route
+            path="/health-ai"
+            element={
+              <PageTransition>
+                <HealthAIChatScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/escalation"
+            element={
+              <PageTransition>
+                <EscalationNoticeScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/assessment-confirm"
+            element={
+              <PageTransition>
+                <AssessmentConfirmScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/schedule"
+            element={<Navigate to="/history" replace />}
+          />
+          <Route
+            path="/hospitals"
+            element={
+              <PageTransition>
+                <FindHospitalsScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/hospitals/:id"
+            element={
+              <PageTransition>
+                <HospitalDetailScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/appointments/book/:doctorId"
+            element={
+              <PageTransition>
+                <BookAppointmentScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/appointment-detail"
+            element={
+              <PageTransition>
+                <AppointmentDetailScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/appointment-detail/:id"
+            element={
+              <PageTransition>
+                <AppointmentDetailScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <PageTransition>
+                <HistoryScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/reminders"
+            element={
+              <PageTransition>
+                <RemindersScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PageTransition>
+                <ProfileScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <PageTransition>
+                <NotificationsScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/prescriptions"
+            element={
+              <PageTransition>
+                <PrescriptionsScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/prescriptions/scan"
+            element={
+              <PageTransition>
+                <ScanMedicineScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/medicine/info-lookup"
+            element={
+              <PageTransition>
+                <MedicineInfoLookupScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/prescriptions/info-lookup"
+            element={
+              <PageTransition>
+                <MedicineInfoLookupScreen />
+              </PageTransition>
+            }
+          />
+        </Route>
+
+        {/* Receptionist Portal Routes */}
+        <Route
+          path="/receptionist"
+          element={
+            <PageTransition>
+              <ReceptionistLayout />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/receptionist/login"
+          element={<Navigate to="/staff/login" replace />}
+        />
+
+        {/* Doctor Portal Routes */}
+        <Route
+          path="/doctor"
+          element={
+            <PageTransition>
+              <DoctorLayout />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/doctor/login"
+          element={
+            <PageTransition>
+              <DoctorLogin />
+            </PageTransition>
+          }
+        />
+
+        {/* Admin Portal Routes */}
+        <Route
+          path="/admin"
+          element={
+            <PageTransition>
+              <AdminLayout />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/admin/login"
+          element={<Navigate to="/staff/login" replace />}
+        />
+
+        {/* Unified Staff Portal Routes */}
+        <Route
+          path="/staff"
+          element={
+            <PageTransition>
+              <StaffPortalLogin />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff/login"
+          element={
+            <PageTransition>
+              <StaffPortalLogin />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff-login"
+          element={
+            <PageTransition>
+              <StaffPortalLogin />
+            </PageTransition>
+          }
+        />
+
+        {/* Default Catch-all */}
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={
+                isStaffDomain()
+                  ? '/staff/login'
+                  : isAuthenticated
+                    ? '/home'
+                    : '/login'
+              }
+              replace
+            />
+          }
+        />
+      </Routes>
     </>
   );
 };

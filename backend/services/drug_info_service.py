@@ -414,17 +414,20 @@ def get_clinical_ai_medicine_summary(
                 "}"
             )
             payload = {
-                "model": "mistral-small-latest",
+                "model": "ministral-8b-latest",
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.1,
-                "max_tokens": 400
+                "max_tokens": 450
             }
-            with httpx.Client(timeout=10.0) as client:
+            with httpx.Client(timeout=12.0) as client:
                 res = client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
-                    content = data["choices"][0]["message"]["content"]
+                    content = data["choices"][0]["message"]["content"].strip()
+                    if content.startswith("```"):
+                        content = re.sub(r"^```(?:json)?\s*", "", content)
+                        content = re.sub(r"\s*```$", "", content)
                     parsed = json.loads(content)
 
                     how_to_take = parsed.get("how_to_take")

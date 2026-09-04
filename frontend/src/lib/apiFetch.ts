@@ -97,13 +97,20 @@ export async function apiFetch(
           }
         }
 
+        const isLongRequest =
+          path.includes('/ai') ||
+          path.includes('scan') ||
+          path.includes('lookup') ||
+          path.includes('ocr') ||
+          path.includes('/chat');
+
         const nativeRes = await CapacitorHttp.request({
           method,
           url,
           headers,
           data: requestData,
-          connectTimeout: 8000,
-          readTimeout: 8000,
+          connectTimeout: isLongRequest ? 15000 : 8000,
+          readTimeout: isLongRequest ? 30000 : 10000,
         });
 
         if (nativeRes.status >= 200 && nativeRes.status < 600) {

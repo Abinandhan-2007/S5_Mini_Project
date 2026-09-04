@@ -47,7 +47,7 @@ const NotificationNavigationListener: React.FC = () => {
         sessionStorage.removeItem('pending_notification_route');
         navigate(pendingRoute);
       }
-    } catch (_) {}
+    } catch (_) { }
 
     // 2. Listen for live notification tap events dispatched from Capacitor push listener
     const handleNotificationNav = (event: Event) => {
@@ -136,9 +136,9 @@ export const App: React.FC = () => {
   // Automatically register device for push notifications and initialize medication eating alerts
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      registerPushNotifications().catch(() => {});
+      registerPushNotifications().catch(() => { });
     }
-    initMedicationNotificationService().catch(() => {});
+    initMedicationNotificationService().catch(() => { });
   }, []);
 
   const handleSplashComplete = (updateInfo?: AppVersionInfo | null) => {

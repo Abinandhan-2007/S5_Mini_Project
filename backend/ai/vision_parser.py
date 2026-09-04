@@ -51,7 +51,7 @@ def analyze_medical_document_image(
         elif "pdf" in header:
             mime_type = "application/pdf"
 
-    # 1. Attempt Mistral Vision (mistral-small-latest) if MISTRAL_API_KEY configured
+    # 1. Attempt Mistral Vision (pixtral-12b-2409) if MISTRAL_API_KEY configured
     mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
     if mistral_key and is_base64:
         try:
@@ -59,7 +59,7 @@ def analyze_medical_document_image(
             headers = {"Authorization": f"Bearer {mistral_key}", "Content-Type": "application/json"}
             data_uri = f"data:{mime_type};base64,{raw_b64}"
             payload = {
-                "model": "mistral-small-latest",
+                "model": "pixtral-12b-2409",
                 "messages": [
                     {
                         "role": "user",
@@ -76,7 +76,10 @@ def analyze_medical_document_image(
                 res = client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
-                    res_text = data["choices"][0]["message"]["content"]
+                    res_text = data["choices"][0]["message"]["content"].strip()
+                    if res_text.startswith("```"):
+                        res_text = re.sub(r"^```(?:json)?\s*", "", res_text)
+                        res_text = re.sub(r"\s*```$", "", res_text)
                     parsed_json = json.loads(res_text)
                     parsed_json["analysis_engine"] = "Mistral Vision AI (Document Scanner)"
                     return parsed_json

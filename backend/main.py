@@ -2160,6 +2160,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
     extracted_text = ""
     candidate_name = None
     generic_name = (req.genericName or req.generic_name or "").strip() or None
+    vision_res: Dict[str, Any] = {}
 
     # 1. Direct drug name provided or Vision AI packaging analysis
     if req.drugName or req.drug_name:
@@ -2188,6 +2189,24 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             indicationsAndUsage="",
             summary="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
             source="None"
+        )
+
+    # 2.5 Fast-path: Single-shot Vision AI already extracted verified clinical purpose & instructions
+    if req.image and (vision_res.get("purpose") or vision_res.get("main_uses")):
+        return MedicineInfoLookupResponse(
+            status="FOUND",
+            drugName=candidate_name,
+            genericName=generic_name,
+            extractedText=extracted_text,
+            purpose=vision_res.get("purpose"),
+            indicationsAndUsage=vision_res.get("purpose") or "",
+            summary=vision_res.get("purpose") or "General therapeutic clinical medication.",
+            source=vision_res.get("engine") or "CarePulse Vision AI",
+            mainUses=vision_res.get("main_uses") if vision_res.get("main_uses") else None,
+            howToTake=vision_res.get("how_to_take") if vision_res.get("how_to_take") else None,
+            warnings=vision_res.get("warnings") if vision_res.get("warnings") else None,
+            sideEffects=vision_res.get("side_effects") if vision_res.get("side_effects") else None,
+            boxedWarning=None,
         )
 
     # 3. Resolve generic active ingredient for OpenFDA if not explicitly provided

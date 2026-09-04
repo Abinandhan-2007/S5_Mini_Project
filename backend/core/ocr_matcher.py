@@ -80,28 +80,56 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
     if not raw_b64 or len(raw_b64) < 20:
         return empty_res
 
+    # Pre-process & downscale image to max 1024px to eliminate multi-megabyte network latency
+    try:
+        raw_bytes = base64.b64decode(raw_b64)
+        img = Image.open(io.BytesIO(raw_bytes))
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        max_dim = max(img.width, img.height)
+        if max_dim > 1024:
+            ratio = 1024.0 / max_dim
+            new_size = (int(img.width * ratio), int(img.height * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            out_buf = io.BytesIO()
+            img.save(out_buf, format="JPEG", quality=75, optimize=True)
+            raw_b64 = base64.b64encode(out_buf.getvalue()).decode("utf-8")
+            mime_type = "image/jpeg"
+    except Exception as e:
+        logger.debug(f"Image pre-processing notice: {e}")
+
     data_uri = f"data:{mime_type};base64,{raw_b64}"
 
     system_prompt = (
-        "You are a clinical medicine packaging scanner like Google Lens. Carefully analyze this photo of a medicine box, blister strip, bottle, or tube.\n"
+        "You are an expert clinical medicine packaging scanner like Google Lens. Carefully analyze this photo of a medicine box, blister strip, bottle, or tube.\n"
         "Identify the medicine and extract:\n"
-        '1. "drug_name": The primary commercial brand name printed prominently on the packaging (e.g. "Dolo 650", "Augmentin 625 Duo", "Pan-D", "Allegra 120mg", "Metformin 500").\n'
+        '1. "drug_name": The commercial brand name printed prominently (e.g. "Dolo 650", "Augmentin 625 Duo", "Pan-D", "Allegra 120mg", "Metformin 500").\n'
         '2. "generic_name": The active pharmaceutical substance or chemical composition (e.g. "Paracetamol", "Amoxicillin and Potassium Clavulanate", "Pantoprazole & Domperidone", "Cetirizine").\n'
         '3. "strength": Strength or dosage quantity (e.g. "650 mg", "500 mg / 125 mg", "10 mg").\n'
         '4. "dosage_form": Form factor (e.g. "Tablet", "Film Coated Tablet", "Capsule", "Oral Liquid", "Suspension", "Ointment").\n'
-        '5. "all_text": All legible text printed on the packaging (brand, generic, composition, manufacturer, batch, instructions).\n\n'
+        '5. "all_text": All legible text printed on the packaging.\n'
+        '6. "purpose": 1-2 clear sentences explaining what this medication is used for and its therapeutic mechanism.\n'
+        '7. "main_uses": List of 2 to 4 conditions or symptoms it treats.\n'
+        '8. "how_to_take": List of 1 to 2 clear instructions on how to take it (e.g. after food with water).\n'
+        '9. "warnings": List of 1 to 3 important precautions or contraindications.\n'
+        '10. "side_effects": List of 2 to 4 common mild side effects.\n\n'
         "Return ONLY a valid JSON object matching:\n"
         "{\n"
         '  "drug_name": "...",\n'
         '  "generic_name": "...",\n'
         '  "strength": "...",\n'
         '  "dosage_form": "...",\n'
-        '  "all_text": "..."\n'
+        '  "all_text": "...",\n'
+        '  "purpose": "...",\n'
+        '  "main_uses": ["..."],\n'
+        '  "how_to_take": ["..."],\n'
+        '  "warnings": ["..."],\n'
+        '  "side_effects": ["..."]\n'
         "}\n"
-        "If the image does not show any medicine packaging or is completely unreadable, return empty strings for all keys."
+        "If the image does not show medicine packaging or is unreadable, return empty strings and empty lists."
     )
 
-    # 2. Priority 1: Mistral Vision (mistral-small-latest) using MISTRAL_API_KEY
+    # 2. Priority 1: Mistral Vision (pixtral-12b-2409) using MISTRAL_API_KEY
     mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
     if not mistral_key:
         try:
@@ -118,7 +146,7 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": "mistral-small-latest",
+                "model": "pixtral-12b-2409",
                 "messages": [
                     {
                         "role": "user",
@@ -130,13 +158,16 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
                 ],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.1,
-                "max_tokens": 400
+                "max_tokens": 600
             }
-            with httpx.Client(timeout=14.0) as client:
+            with httpx.Client(timeout=16.0) as client:
                 res = client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     content = data["choices"][0]["message"]["content"].strip()
+                    if content.startswith("```"):
+                        content = re.sub(r"^```(?:json)?\s*", "", content)
+                        content = re.sub(r"\s*```$", "", content)
                     parsed = json.loads(content)
 
                     # Normalize strength / dosage_form if returned as array
@@ -154,7 +185,30 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
 
                     drug_name = str(parsed.get("drug_name") or "").strip()
                     generic_name = str(parsed.get("generic_name") or "").strip()
-                    all_text = str(parsed.get("all_text") or "").strip()
+
+                    all_text_val = parsed.get("all_text")
+                    if isinstance(all_text_val, list):
+                        all_text = " ".join(str(t) for t in all_text_val).strip()
+                    else:
+                        all_text = str(all_text_val or "").strip()
+
+                    purpose = str(parsed.get("purpose") or "").strip()
+
+                    main_uses = parsed.get("main_uses") or []
+                    if isinstance(main_uses, str):
+                        main_uses = [u.strip() for u in main_uses.split(",") if u.strip()]
+
+                    how_to_take = parsed.get("how_to_take") or []
+                    if isinstance(how_to_take, str):
+                        how_to_take = [h.strip() for h in how_to_take.split(",") if h.strip()]
+
+                    warnings = parsed.get("warnings") or []
+                    if isinstance(warnings, str):
+                        warnings = [w.strip() for w in warnings.split(",") if w.strip()]
+
+                    side_effects = parsed.get("side_effects") or []
+                    if isinstance(side_effects, str):
+                        side_effects = [s.strip() for s in side_effects.split(",") if s.strip()]
 
                     if drug_name or generic_name or all_text:
                         logger.info(f"Vision AI packaging recognized: drug='{drug_name}', generic='{generic_name}'")
@@ -164,6 +218,11 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
                             "strength": strength_str,
                             "dosage_form": form_str,
                             "all_text": all_text or f"{drug_name} {generic_name}",
+                            "purpose": purpose,
+                            "main_uses": main_uses,
+                            "how_to_take": how_to_take,
+                            "warnings": warnings,
+                            "side_effects": side_effects,
                             "engine": "Mistral Vision AI (Google Lens Engine)"
                         }
         except Exception as e:
@@ -188,7 +247,7 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
                     "responseMimeType": "application/json"
                 }
             }
-            with httpx.Client(timeout=14.0) as client:
+            with httpx.Client(timeout=10.0) as client:
                 res = client.post(url, json=g_payload)
                 if res.status_code == 200:
                     g_data = res.json()
@@ -200,6 +259,11 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
                         "strength": str(parsed.get("strength") or "").strip(),
                         "dosage_form": str(parsed.get("dosage_form") or "").strip(),
                         "all_text": str(parsed.get("all_text") or "").strip(),
+                        "purpose": str(parsed.get("purpose") or "").strip(),
+                        "main_uses": parsed.get("main_uses") or [],
+                        "how_to_take": parsed.get("how_to_take") or [],
+                        "warnings": parsed.get("warnings") or [],
+                        "side_effects": parsed.get("side_effects") or [],
                         "engine": "Gemini 1.5 Flash Vision"
                     }
         except Exception as e:
