@@ -236,60 +236,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           <div className={`absolute -inset-4 rounded-full blur-xl transition-all duration-700 ${splashState === 'error' ? 'bg-rose-500/20' : 'bg-teal-400/20 animate-pulse'
             }`} />
 
-          {/* Glassmorphic ECG Monitor Disc */}
+          {/* Glassmorphic Caduceus Emblem Disc */}
           <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-b from-white/[0.16] to-white/[0.04] border border-white/25 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-center overflow-hidden">
             {/* Subtle Clinical Grid */}
             <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,rgba(45,212,191,0.25)_1px,transparent_1px),linear-gradient(to_bottom,rgba(45,212,191,0.25)_1px,transparent_1px)] bg-[size:12px_12px] pointer-events-none" />
 
-            {/* Edge Fade Mask */}
-            <div 
-              className="w-full h-full flex items-center overflow-hidden relative z-10"
-              style={{
-                maskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  width: '360px',
-                  flexShrink: 0,
-                  animation: 'ecgScroll 1.8s linear infinite',
-                  filter: splashState === 'error'
-                    ? 'drop-shadow(0 0 8px rgba(244,63,94,0.7))'
-                    : 'drop-shadow(0 0 10px #5EEAD4) drop-shadow(0 0 18px rgba(45,212,191,0.9))',
-                }}
-              >
-                {/* Tile A */}
-                <svg
-                  viewBox="0 0 180 48"
-                  width="180"
-                  height="48"
-                  fill="none"
-                  stroke={splashState === 'error' ? '#f87171' : '#5eead4'}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ flexShrink: 0 }}
-                >
-                  <path d="M0 24 H18 C21 18 27 18 30 24 H36 L40 32 L46 4 L52 44 L56 24 H60 C64 16 72 16 76 24 H90 C94 18 100 18 103 24 H109 L113 32 L119 4 L125 44 L129 24 H133 C137 16 145 16 149 24 H162 C165 18 171 18 174 24 H180" />
-                </svg>
-                {/* Tile B */}
-                <svg
-                  viewBox="0 0 180 48"
-                  width="180"
-                  height="48"
-                  fill="none"
-                  stroke={splashState === 'error' ? '#f87171' : '#5eead4'}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ flexShrink: 0 }}
-                >
-                  <path d="M0 24 H18 C21 18 27 18 30 24 H36 L40 32 L46 4 L52 44 L56 24 H60 C64 16 72 16 76 24 H90 C94 18 100 18 103 24 H109 L113 32 L119 4 L125 44 L129 24 H133 C137 16 145 16 149 24 H162 C165 18 171 18 174 24 H180" />
-                </svg>
-              </div>
-            </div>
+            {/* Caduceus Logo Icon */}
+            <img
+              src="/logo-icon.png"
+              alt="CarePulse Emblem"
+              className="w-20 h-20 sm:w-24 sm:h-24 object-contain relative z-10 transition-transform duration-500 hover:scale-105"
+            />
           </div>
         </motion.div>
 
