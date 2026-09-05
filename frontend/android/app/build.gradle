@@ -9,8 +9,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // 🚨 CRITICAL: MUST be incremented every time a new APK is built and distributed via the in-app updater.
         // This is what App.getInfo() reads on the device. Keep this in sync with backend/app_version.json.
-        versionCode 29
-        versionName "1.9.8"
+        versionCode 31
+        versionName "1.9.10"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

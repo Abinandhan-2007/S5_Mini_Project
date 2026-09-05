@@ -15,6 +15,7 @@ import { HistoryScreen } from '../features/history/HistoryScreen';
 
 
 import { ProfileScreen } from '../features/profile/ProfileScreen';
+import { AdvancedSettingsScreen } from '../features/profile/AdvancedSettingsScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
@@ -31,6 +32,7 @@ import { AdminLayout } from '../portals/admin/AdminLayout';
 import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
+import { SwipeNavigationHandler } from '../components/ui/SwipeNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
 
 import { Capacitor } from '@capacitor/core';
@@ -74,6 +76,7 @@ export const AppRoutes: React.FC = () => {
   return (
     <>
       <SystemNavigationHandler />
+      <SwipeNavigationHandler />
       <Routes>
         {/* Root Route */}
         <Route
@@ -219,6 +222,18 @@ export const AppRoutes: React.FC = () => {
                 <ProfileScreen />
               </PageTransition>
             }
+          />
+          <Route
+            path="/profile/advanced-settings"
+            element={
+              <PageTransition>
+                <AdvancedSettingsScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/settings/advanced"
+            element={<Navigate to="/profile/advanced-settings" replace />}
           />
           <Route
             path="/notifications"

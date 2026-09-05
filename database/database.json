@@ -2459,6 +2459,26 @@
       "patient_id": "29181411-29f0-4836-99a2-ef14800a434a",
       "notification_type": "appointment_reminder",
       "reference_id": "ce407495-65ec-44c6-bd21-3866f842c3d4"
+    },
+    {
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "notification_type": "med_reminder_1400_20260905",
+      "reference_id": "rx-amox-001"
+    },
+    {
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "notification_type": "med_reminder_1400_20260905",
+      "reference_id": "rx-db-3"
+    },
+    {
+      "patient_id": "bbe117ea-6804-4dd3-8784-df0249ef2458",
+      "notification_type": "med_reminder_1400_20260905",
+      "reference_id": "rx-db-9"
+    },
+    {
+      "patient_id": "0c11deb4-a13a-4be5-83b2-19eb43206402",
+      "notification_type": "med_reminder_1400_20260905",
+      "reference_id": "rx-db-13"
     }
   ],
   "medicines": [

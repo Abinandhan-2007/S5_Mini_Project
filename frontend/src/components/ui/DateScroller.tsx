@@ -17,13 +17,13 @@ export interface DateScrollerProps {
   onSelectDate: (dateStr: string) => void;
 }
 
-// Generate upcoming 14 days starting from today (or reference date)
-const generateUpcomingDates = (baseDate?: Date): DateOption[] => {
+// Generate upcoming 8 rolling days starting from today
+const generateUpcomingDates = (baseDate?: Date, count = 8): DateOption[] => {
   const dates: DateOption[] = [];
   const start = baseDate ? new Date(baseDate) : new Date();
   start.setHours(0, 0, 0, 0);
 
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < count; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
 
@@ -78,7 +78,7 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
               className={clsx(
                 'group relative flex flex-col items-center justify-between min-w-[70px] sm:min-w-[76px] h-[100px] p-2.5 rounded-2xl transition-all duration-200 shrink-0 border focus:outline-none cursor-pointer snap-start select-none shadow-xs',
                 isSelected
-                  ? 'bg-gradient-to-b from-[#0B5A54] via-[#0D6D65] to-[#08423D] text-white border-[#0B5A54] shadow-md shadow-teal-900/20 ring-2 ring-[#14B8A6]/40'
+                  ? 'bg-[#E3F3F1] text-[#0B5A54] border-2 border-[#0B5A54] shadow-sm'
                   : 'bg-white hover:bg-slate-50/90 text-slate-700 border-slate-200/80 hover:border-[#14B8A6]/40 shadow-xs'
               )}
             >
@@ -87,7 +87,7 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
                 <span
                   className={clsx(
                     'text-[10px] font-black tracking-wider uppercase',
-                    isSelected ? 'text-teal-200' : 'text-slate-400 group-hover:text-slate-600'
+                    isSelected ? 'text-[#0B5A54]' : 'text-slate-400 group-hover:text-slate-600'
                   )}
                 >
                   {item.isToday ? 'TODAY' : item.month}
@@ -97,7 +97,7 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
                   <span
                     className={clsx(
                       'w-1.5 h-1.5 rounded-full',
-                      isSelected ? 'bg-emerald-300 animate-pulse' : 'bg-teal-500'
+                      isSelected ? 'bg-[#0B5A54]' : 'bg-teal-500'
                     )}
                     title="Today"
                   />
@@ -108,7 +108,7 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
               <span
                 className={clsx(
                   'text-xl sm:text-2xl font-black font-heading tracking-tight -my-1',
-                  isSelected ? 'text-white drop-shadow-xs' : 'text-slate-800'
+                  isSelected ? 'text-[#0B5A54]' : 'text-slate-800'
                 )}
               >
                 {item.dayNumber}
@@ -119,17 +119,12 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
                 className={clsx(
                   'w-full py-1 rounded-xl flex items-center justify-center font-bold text-[11px] transition-colors',
                   isSelected
-                    ? 'bg-white/15 text-teal-100 font-extrabold backdrop-blur-xs'
+                    ? 'bg-[#0B5A54] text-white font-extrabold'
                     : 'bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-[#0B5A54]'
                 )}
               >
                 {item.dayNameShort}
               </div>
-
-              {/* Active Glow Bar for Selected Item */}
-              {isSelected && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-1 rounded-full bg-[#14B8A6] shadow-sm" />
-              )}
             </motion.button>
           );
         })}

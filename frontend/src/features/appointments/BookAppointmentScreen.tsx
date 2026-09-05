@@ -4,23 +4,14 @@ import {
   ArrowLeft,
   MapPin,
   Calendar as CalendarIcon,
-  ChevronDown,
   CheckCircle2,
   Ticket,
   X,
-  ShieldCheck,
   Sparkles,
-  BadgeCheck,
-  Navigation,
-  ChevronRight,
-  Info,
   AlertCircle,
-  Star,
-  Users,
-  Clock,
+  ChevronRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarPicker } from '../../components/ui/CalendarPicker';
 import { DateScroller } from '../../components/ui/DateScroller';
 import { TimeSlotGrid } from '../../components/ui/TimeSlotGrid';
 import { Button } from '../../components/ui/Button';
@@ -28,12 +19,14 @@ import { doctorService } from '../../services/doctorService';
 import type { Doctor } from '../../lib/types';
 import { MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
+import { useStaffStore } from '../../store/staffStore';
 import { apiFetch } from '../../lib/apiFetch';
 
 /**
  * Ultra-Premium Executive Book Appointment Screen
  * Features signature Cyan/Blue header, cinematic doctor showcase,
- * interactive date/time slot selector, and holographic digital pass confirmation.
+ * interactive rolling date scroller and time slot selector configured in the Receptionist portal,
+ * and holographic digital pass confirmation.
  */
 export const BookAppointmentScreen: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
@@ -41,25 +34,70 @@ export const BookAppointmentScreen: React.FC = () => {
   const appointments = useCarePulseStore((s) => s.appointments);
   const addAppointment = useCarePulseStore((s) => s.addAppointment);
   const user = useCarePulseStore((s) => s.user);
+  const staffDoctors = useStaffStore((s) => s.doctors);
 
-  const initialDoctor = MOCK_DOCTORS.find((d) => d.id === doctorId) || MOCK_DOCTORS[0];
+  const matchedStaffDoc = staffDoctors.find(
+    (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
+  );
+  const matchedMockDoc = MOCK_DOCTORS.find((d) => d.id === doctorId);
+  const initialDoctor = (matchedStaffDoc as any) || matchedMockDoc || staffDoctors[0] || MOCK_DOCTORS[0];
   const [doctor, setDoctor] = useState<Doctor>(initialDoctor);
-  const [isBioExpanded, setIsBioExpanded] = useState(false);
 
   useEffect(() => {
     if (!doctorId) return;
     let isMounted = true;
 
+    // Check staffStore immediately for real-time reactive receptionist updates
+    const staffDoc = useStaffStore.getState().doctors.find(
+      (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
+    );
+    if (staffDoc) {
+      setDoctor((prev) => ({
+        ...prev,
+        id: staffDoc.id,
+        name: staffDoc.name,
+        specialty: staffDoc.specialty,
+        department: staffDoc.department,
+        hospitalId: (staffDoc as any).hospitalId || 'hosp-1',
+        hospitalName: (staffDoc as any).hospitalName || 'St. Jude Heart & Medical Center',
+        photoUrl: staffDoc.photo || prev.photoUrl || '/doctor_default.jpg',
+        experienceYears: staffDoc.experienceYears,
+        consultationFee: staffDoc.consultationFee,
+        phone: staffDoc.phone,
+        email: staffDoc.email,
+        roomNumber: staffDoc.roomNumber,
+        isAvailable: staffDoc.isAvailable,
+        availableDays: staffDoc.availableDays,
+        slotCapacities: staffDoc.slotCapacities,
+        slot_capacities: staffDoc.slotCapacities,
+        staffCode: staffDoc.staffCode || staffDoc.staff_code,
+        staff_code: staffDoc.staffCode || staffDoc.staff_code,
+      }));
+    }
+
     const fetchDoctor = () => {
       doctorService.getDoctorById(doctorId).then((doc) => {
         if (isMounted && doc) {
-          setDoctor(doc);
+          const latestStaffDoc = useStaffStore.getState().doctors.find(
+            (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
+          );
+          if (latestStaffDoc && latestStaffDoc.slotCapacities && latestStaffDoc.slotCapacities.length > 0) {
+            setDoctor({
+              ...doc,
+              isAvailable: latestStaffDoc.isAvailable,
+              slotCapacities: latestStaffDoc.slotCapacities,
+              slot_capacities: latestStaffDoc.slotCapacities,
+              availableDays: latestStaffDoc.availableDays,
+            });
+          } else {
+            setDoctor(doc);
+          }
         }
       });
     };
 
     fetchDoctor();
-    const interval = setInterval(fetchDoctor, 4000);
+    const interval = setInterval(fetchDoctor, 3000);
     const handleFocus = () => fetchDoctor();
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
@@ -70,29 +108,16 @@ export const BookAppointmentScreen: React.FC = () => {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, [doctorId]);
+  }, [doctorId, staffDoctors]);
 
   // Appointment configurations
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [selectedSlot, setSelectedSlot] = useState<string>('02:00 PM');
+  const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
   const [bookedTicket, setBookedTicket] = useState('');
-
-  const ratingValue = doctor.rating || 4.8;
-  const reviewsCount = doctor.reviewsCount || 160;
-  const experienceYears = doctor.experienceYears || 16;
-  const patientsCount = (doctor as any).patientsCount || '2,400+';
-
-  const focusSpecialties = [
-    '🧠 Neuro-Rehabilitation',
-    '⚡ Migraines & Neuralgia',
-    '🩺 Stroke Recovery',
-    '🔬 Cognitive Health',
-  ];
 
   // Helper for human-readable date
   const formattedSelectedDate = useMemo(() => {
@@ -106,15 +131,6 @@ export const BookAppointmentScreen: React.FC = () => {
       });
     } catch {
       return selectedDate;
-    }
-  }, [selectedDate]);
-
-  const currentMonthLabel = useMemo(() => {
-    try {
-      const d = new Date(selectedDate);
-      return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    } catch {
-      return 'Feb 2026';
     }
   }, [selectedDate]);
 
@@ -202,7 +218,7 @@ export const BookAppointmentScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-36 w-full relative select-none text-left">
       {/* 1. SIGNATURE CYAN/BLUE LUMINOUS HEADER */}
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md transition-all">
+      <header className="sticky top-0 z-30 bg-[#22B3BD] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md transition-all">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -212,7 +228,7 @@ export const BookAppointmentScreen: React.FC = () => {
             <ArrowLeft className="w-4 h-4 text-white" />
           </button>
 
-          <div className="text-center flex-1 min-w-0">
+          <div className="text-center flex-1 min-w-0 pr-9">
             <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight drop-shadow-2xs truncate">
               Book Appointment
             </h1>
@@ -220,10 +236,6 @@ export const BookAppointmentScreen: React.FC = () => {
               Step 1 of 2 • Slot & Facility Confirmation
             </p>
           </div>
-
-          <span className="text-[10px] font-black text-white bg-white/20 border border-white/40 backdrop-blur-md px-2.5 py-1 rounded-full shadow-2xs tracking-wider shrink-0">
-            OPD FASTPASS
-          </span>
         </div>
       </header>
 
@@ -236,18 +248,11 @@ export const BookAppointmentScreen: React.FC = () => {
           transition={{ duration: 0.3 }}
           className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/90 relative overflow-hidden space-y-4"
         >
-          {/* Subtle Ambient Teal Mesh in Top Corner */}
-          <div className="absolute top-0 right-0 w-44 h-44 bg-gradient-to-bl from-teal-500/10 via-cyan-400/5 to-transparent rounded-bl-full pointer-events-none" />
 
           <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="space-y-2 min-w-0 flex-1">
-              {/* Verified & Availability Badges */}
+              {/* Availability Badges */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200/70 text-[#0B5A54] text-[11px] font-extrabold tracking-wide">
-                  <BadgeCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
-                  <span>Verified Specialist</span>
-                </div>
-
                 {doctor.isAvailable === false || doctor.is_available === false ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-extrabold tracking-wide">
                     <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Off-Duty
@@ -285,9 +290,6 @@ export const BookAppointmentScreen: React.FC = () => {
                 <span className="text-xs font-black text-[#0B5A54] bg-[#E3F3F1] px-3 py-1 rounded-full border border-[#14B8A6]/30">
                   🏥 OPD Hospital Visit
                 </span>
-                <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/50">
-                  ⚡ Instant Token Sync
-                </span>
               </div>
             </div>
 
@@ -309,154 +311,35 @@ export const BookAppointmentScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Hospital Location & Navigation Row */}
-          <div className="bg-slate-50/90 p-3.5 rounded-2xl border border-slate-200/80 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-teal-100/70 text-[#0B5A54] flex items-center justify-center shrink-0">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-black text-slate-800 truncate">
-                  {doctor.hospitalName || 'CarePulse Medical Center'}
-                </p>
-                <p className="text-[11px] font-medium text-slate-500 truncate">
-                  OPD Floor 3, Cabin 301 • Verified Department
-                </p>
-              </div>
+          {/* Hospital Location Row */}
+          <div className="bg-slate-50/90 p-3.5 rounded-2xl border border-slate-200/80 flex items-center gap-2.5 text-xs">
+            <div className="w-8 h-8 rounded-xl bg-teal-100/70 text-[#0B5A54] flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4" />
             </div>
-
-            <button
-              type="button"
-              onClick={() => alert(`Directions to ${doctor.hospitalName || 'Medical Facility'} opened in Maps`)}
-              className="text-[#0B5A54] font-black text-xs hover:underline flex items-center gap-1 shrink-0 cursor-pointer ml-auto sm:ml-0"
-            >
-              <span>Get Directions</span>
-              <Navigation className="w-3.5 h-3.5" />
-            </button>
+            <div className="min-w-0">
+              <p className="font-black text-slate-800 truncate">
+                {doctor.hospitalName || 'CarePulse Medical Center'}
+              </p>
+              <p className="text-[11px] font-medium text-slate-500 truncate">
+                OPD Floor 3, Cabin 301 • Verified Department
+              </p>
+            </div>
           </div>
         </motion.div>
 
-        {/* 3. METRIC STATS ROW */}
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <motion.div
-            whileHover={{ y: -2 }}
-            className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1"
-          >
-            <div className="w-8 h-8 rounded-full bg-teal-50 text-[#0B5A54] mx-auto flex items-center justify-center">
-              <Users className="w-4 h-4 text-[#0B5A54]" />
-            </div>
-            <span className="text-base sm:text-lg font-black font-heading text-slate-900 block">
-              {patientsCount}
-            </span>
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
-              Treated
-            </span>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -2 }}
-            className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1"
-          >
-            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
-              <Clock className="w-4 h-4 text-blue-600" />
-            </div>
-            <span className="text-base sm:text-lg font-black font-heading text-slate-900 block">
-              {experienceYears}+ Yrs
-            </span>
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
-              Experience
-            </span>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ y: -2 }}
-            className="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1"
-          >
-            <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-500 mx-auto flex items-center justify-center">
-              <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
-            </div>
-            <span className="text-base sm:text-lg font-black font-heading text-slate-900 block">
-              {ratingValue} ({reviewsCount})
-            </span>
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">
-              Reviews
-            </span>
-          </motion.div>
-        </div>
-
-        {/* 4. ABOUT DOCTOR & CLINICAL FOCUS */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black font-heading text-slate-900 flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-[#0B5A54]" />
-              <span>About Specialist</span>
-            </h3>
-            <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100">
-              Board Certified
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-600 font-medium leading-relaxed">
-            {doctor.about ||
-              `${doctor.name} is a senior consultant specialist at ${doctor.hospitalName || 'CarePulse Medical Center'}, providing clinical diagnosis, treatment planning, and personalized patient recovery.`}
-            {isBioExpanded && (
-              <span className="block pt-2 text-slate-500">
-                Specialized in minimally invasive clinical procedures, comprehensive health diagnostics, and ongoing patient monitoring with over {experienceYears} years of medical experience.
-              </span>
-            )}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setIsBioExpanded(!isBioExpanded)}
-            className="text-xs font-extrabold text-[#0B5A54] hover:underline cursor-pointer inline-flex items-center gap-1"
-          >
-            <span>{isBioExpanded ? 'Show Less' : 'Read Full Bio'}</span>
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isBioExpanded ? '-rotate-90' : 'rotate-90'}`} />
-          </button>
-
-          {/* Clinical Focus Badges */}
-          <div className="pt-2 border-t border-slate-100">
-            <p className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider pb-2">
-              Clinical Specializations
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {focusSpecialties.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[11px] font-bold bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-[#0B5A54] px-2.5 py-1 rounded-xl transition-colors"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 5. SELECT DATE & TIME SECTION */}
+        {/* 3. SELECT DATE & TIME SECTION (Live Receptionist Slots) */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm font-black font-heading text-slate-900 flex items-center gap-1.5">
-                <CalendarIcon className="w-4 h-4 text-[#0B5A54]" />
-                <span>Select Appointment Date</span>
-              </h3>
-              <p className="text-[11px] font-bold text-slate-400">
-                {formattedSelectedDate} • <span className="text-[#0B5A54] font-black">{selectedSlot}</span>
-              </p>
-            </div>
-
-            <button
-              onClick={() => setIsCalendarOpen(true)}
-              className="text-xs font-black text-[#0B5A54] bg-[#E3F3F1] hover:bg-[#d4ece8] px-3.5 py-1.5 rounded-2xl border border-[#14B8A6]/30 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all active:scale-95"
-            >
-              <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <span>{currentMonthLabel}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#0B5A54]" />
-            </button>
+          <div>
+            <h3 className="text-sm font-black font-heading text-slate-900 flex items-center gap-1.5">
+              <CalendarIcon className="w-4 h-4 text-[#0B5A54]" />
+              <span>Select Appointment Date</span>
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+              {formattedSelectedDate} • <span className="text-[#0B5A54] font-black">{selectedSlot || 'Select Slot'}</span>
+            </p>
           </div>
 
-          {/* Horizontal Date Scroller */}
+          {/* Horizontal Date Scroller (Rolling 8-day window) */}
           <div className="space-y-1.5">
             <div className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5">
               <span>Available Dates</span>
@@ -467,7 +350,7 @@ export const BookAppointmentScreen: React.FC = () => {
           {/* Time Slots Grid */}
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <div className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5">
-              <span>Available Time Slots (30 min)</span>
+              <span>Doctor Consultation Time Slots</span>
             </div>
             <TimeSlotGrid
               selectedSlot={selectedSlot}
@@ -476,42 +359,6 @@ export const BookAppointmentScreen: React.FC = () => {
               slotCapacities={(doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities}
               selectedDate={selectedDate}
             />
-          </div>
-        </div>
-
-        {/* 6. APPOINTMENT GUIDELINES & PATIENT CARE GUARANTEE */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs space-y-3.5">
-          <h3 className="text-sm font-black font-heading text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#0B5A54]" />
-            <span>OPD Guidelines & Token Policy</span>
-          </h3>
-
-          <div className="space-y-2.5 text-xs text-slate-600 font-medium">
-            <div className="flex justify-between items-center p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-              <span className="font-semibold text-slate-600">Consultation Category</span>
-              <span className="font-extrabold text-[#0B5A54] bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200/60">
-                In-Person Hospital Visit
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-              <span className="font-semibold text-slate-600">Queue Token Type</span>
-              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200/60">
-                Live FastPass OPD Token
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-              <span className="font-semibold text-slate-600">Hospital Check-In</span>
-              <span className="font-bold text-slate-800">
-                Reception Desk A • Ground Floor
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-emerald-50/80 border border-emerald-200/70 p-3 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <p className="text-[11px] font-medium leading-tight">
-              <span className="font-black">Patient Care Guarantee:</span> Zero cancellation fees & free rescheduling anytime prior to visit.
-            </p>
           </div>
         </div>
       </main>
@@ -556,7 +403,7 @@ export const BookAppointmentScreen: React.FC = () => {
                 whileTap={{ scale: 0.98 }}
                 disabled={isSubmitting}
                 onClick={handleConfirmBooking}
-                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#0B5A54] via-[#0D6D65] to-[#14B8A6] text-white font-black text-sm tracking-wide shadow-lg shadow-teal-900/20 hover:shadow-xl hover:shadow-teal-900/30 transition-all cursor-pointer font-heading flex items-center justify-center gap-2 select-none"
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#0B5A54] hover:bg-[#084540] text-white font-black text-sm tracking-wide shadow-md shadow-teal-900/15 hover:shadow-lg hover:shadow-teal-900/25 transition-all cursor-pointer font-heading flex items-center justify-center gap-2 select-none"
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
@@ -575,41 +422,6 @@ export const BookAppointmentScreen: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* 8. CALENDAR POPUP MODAL */}
-      <AnimatePresence>
-        {isCalendarOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-5 shadow-2xl max-w-sm w-full space-y-3 relative border border-slate-200"
-            >
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="w-4.5 h-4.5 text-[#0B5A54]" />
-                  <h3 className="text-sm font-black text-slate-900 font-heading">Choose Appointment Date</h3>
-                </div>
-                <button
-                  onClick={() => setIsCalendarOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <CalendarPicker
-                selectedDate={selectedDate}
-                onSelectDate={(d) => {
-                  setSelectedDate(d);
-                  setIsCalendarOpen(false);
-                }}
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* 9. ULTRA LUXURY SUCCESS CONFIRMATION MODAL & DIGITAL PASS */}
       <AnimatePresence>
@@ -635,7 +447,7 @@ export const BookAppointmentScreen: React.FC = () => {
               </div>
 
               {/* DIGITAL FASTPASS TICKET */}
-              <div className="bg-gradient-to-b from-slate-50 to-[#F8FAFC] border border-slate-200/90 rounded-3xl p-4 text-left space-y-3.5 shadow-xs relative">
+              <div className="bg-[#F8FAFC] border border-slate-200/90 rounded-3xl p-4 text-left space-y-3.5 shadow-xs relative">
                 <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/70">
                   <span className="text-[11px] font-black text-[#0B5A54] uppercase tracking-wider flex items-center gap-1.5">
                     <Ticket className="w-4 h-4 text-[#0B5A54]" /> CarePulse FastPass

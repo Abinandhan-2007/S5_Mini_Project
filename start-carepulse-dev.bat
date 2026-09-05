@@ -124,7 +124,14 @@ echo [4/4] Starting frontend in Terminal 3 (npm run dev -- --host on port 5173).
 start "CarePulse - Vite Frontend (Port 5173)" cmd /k "cd /d %PROJECT_DIR%\frontend && echo ======================================== && echo  CAREPULSE VITE REACT FRONTEND && echo ======================================== && npm run dev -- --host"
 
 :: -------------------------------------------------------------------
-:: STEP 5: Final Summary Banner
+:: STEP 5: Open CarePulse in Default Web Browser
+:: -------------------------------------------------------------------
+echo.
+echo [INFO] Opening CarePulse in your browser (http://localhost:5173)...
+start http://localhost:5173
+
+:: -------------------------------------------------------------------
+:: STEP 6: Final Summary Banner
 :: -------------------------------------------------------------------
 echo.
 echo ===================================================================

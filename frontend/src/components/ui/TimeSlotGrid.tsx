@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Sun, Sunrise, Sunset, AlertCircle, X, Lock } from 'lucide-react';
+import { Clock, AlertCircle, X, Lock } from 'lucide-react';
 import type { TimeSlotCapacity } from '../../types/receptionist';
 import type { Doctor } from '../../lib/types';
 
 export interface TimeSlot {
-  time: string; // e.g. "09:00 AM"
+  time: string; // e.g. "09:00 AM - 10:00 AM" or "09:00 AM"
   period: 'Morning' | 'Afternoon' | 'Evening';
 }
 
@@ -21,39 +21,40 @@ export interface TimeSlotGridProps {
 
 const DEFAULT_SLOTS: TimeSlot[] = [
   // Morning
-  { time: '09:00 AM', period: 'Morning' },
-  { time: '09:30 AM', period: 'Morning' },
-  { time: '10:00 AM', period: 'Morning' },
-  { time: '10:30 AM', period: 'Morning' },
-  { time: '11:00 AM', period: 'Morning' },
-  { time: '11:30 AM', period: 'Morning' },
+  { time: '09:00 AM - 10:00 AM', period: 'Morning' },
+  { time: '10:00 AM - 11:00 AM', period: 'Morning' },
+  { time: '11:00 AM - 12:00 PM', period: 'Morning' },
   // Afternoon
-  { time: '02:00 PM', period: 'Afternoon' },
-  { time: '02:30 PM', period: 'Afternoon' },
-  { time: '03:00 PM', period: 'Afternoon' },
-  { time: '03:30 PM', period: 'Afternoon' },
-  { time: '04:00 PM', period: 'Afternoon' },
-  { time: '04:30 PM', period: 'Afternoon' },
-  // Evening
-  { time: '05:00 PM', period: 'Evening' },
-  { time: '05:30 PM', period: 'Evening' },
-  { time: '06:00 PM', period: 'Evening' },
-  { time: '06:30 PM', period: 'Evening' },
-  { time: '07:00 PM', period: 'Evening' },
-  { time: '08:00 PM', period: 'Evening' },
+  { time: '02:00 PM - 03:00 PM', period: 'Afternoon' },
+  { time: '03:00 PM - 04:00 PM', period: 'Afternoon' },
+  { time: '04:00 PM - 05:00 PM', period: 'Afternoon' },
 ];
 
-// Helper: convert 12-hour time string like "09:30 AM" or "02:00 PM" into total minutes from start of day
-export const parseTimeToMinutes = (timeStr: string): number => {
+/**
+ * Extract starting time from a slot string (e.g. "09:00 AM - 10:00 AM" -> "09:00 AM")
+ */
+const extractStartTime = (timeSlotStr: string): string => {
+  if (!timeSlotStr) return '';
+  if (timeSlotStr.includes('-')) {
+    return timeSlotStr.split('-')[0].trim();
+  }
+  return timeSlotStr.trim();
+};
+
+/**
+ * Convert 12-hour time string like "09:30 AM" or "02:00 PM" into total minutes from start of day
+ */
+const parseTimeToMinutes = (timeStr: string): number => {
   if (!timeStr) return 0;
-  const parts = timeStr.trim().split(' ');
+  const startPart = extractStartTime(timeStr);
+  const parts = startPart.trim().split(' ');
   if (parts.length < 2) return 0;
   const [timePart, meridiem] = parts;
   const [hoursStr, minutesStr] = timePart.split(':');
   let hours = parseInt(hoursStr, 10) || 0;
   const minutes = parseInt(minutesStr, 10) || 0;
-  const isPM = meridiem.toUpperCase() === 'PM';
-  const isAM = meridiem.toUpperCase() === 'AM';
+  const isPM = meridiem?.toUpperCase() === 'PM';
+  const isAM = meridiem?.toUpperCase() === 'AM';
 
   if (isPM && hours !== 12) {
     hours += 12;
@@ -63,8 +64,24 @@ export const parseTimeToMinutes = (timeStr: string): number => {
   return hours * 60 + minutes;
 };
 
-// Helper: check if a date string represents today in local date
-export const isDateToday = (dateStr?: string): boolean => {
+/**
+ * Categorize a time slot into Morning, Afternoon, or Evening based on its starting time
+ */
+const getPeriodFromTime = (timeStr: string): 'Morning' | 'Afternoon' | 'Evening' => {
+  const minutes = parseTimeToMinutes(timeStr);
+  if (minutes < 12 * 60) {
+    return 'Morning';
+  } else if (minutes < 17 * 60) {
+    return 'Afternoon';
+  } else {
+    return 'Evening';
+  }
+};
+
+/**
+ * Helper: check if a date string represents today in local date
+ */
+const isDateToday = (dateStr?: string): boolean => {
   if (!dateStr) return true;
   const now = new Date();
   const year = now.getFullYear();
@@ -86,15 +103,16 @@ export const isDateToday = (dateStr?: string): boolean => {
   }
 };
 
-// Helper to check if a specific time falls inside a slot window (e.g. "09:00 AM" inside "09:00 AM - 10:00 AM")
+/**
+ * Helper to check if a specific time falls inside a slot window
+ */
 const isTimeInWindow = (timeStr: string, windowStr: string) => {
   if (!timeStr || !windowStr) return false;
   const cleanTime = timeStr.toLowerCase().replace(/\s+/g, '');
   const cleanWindow = windowStr.toLowerCase().replace(/\s+/g, '');
   if (cleanTime === cleanWindow) return true;
-  if (cleanWindow.includes(cleanTime)) return true;
+  if (cleanWindow.includes(cleanTime) || cleanTime.includes(cleanWindow)) return true;
 
-  // Check hour match
   const timeHour = timeStr.split(':')[0].trim();
   const timeAmPm = timeStr.slice(-2).toUpperCase();
   if (windowStr.includes(timeHour) && windowStr.includes(timeAmPm)) {
@@ -111,7 +129,6 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   blockedSlots = [],
   selectedDate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'All' | 'Morning' | 'Afternoon' | 'Evening'>('All');
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
   // Extract effective blocked slot strings
@@ -133,15 +150,69 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
 
   const isDoctorOffDuty = doctor?.isAvailable === false || doctor?.is_available === false;
 
-  // Compute all slots with their frozen/active state
+  // Resolve doctor's receptionist-configured slots or fallback slots
   const slotsWithState = React.useMemo(() => {
     if (isDoctorOffDuty) return [];
 
     const isToday = isDateToday(selectedDate);
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const minAllowedMinutes = currentMinutes + 30; // 30 minutes after current time
+    const minAllowedMinutes = currentMinutes + 30; // 30 minutes advance requirement for today
 
+    // 1. Check if doctor has receptionist-configured slot capacities
+    const rawSlots: any[] | null =
+      (slotCapacities && slotCapacities.length > 0 ? slotCapacities : null) ||
+      ((doctor as any)?.slotCapacities && (doctor as any).slotCapacities.length > 0
+        ? (doctor as any).slotCapacities
+        : null) ||
+      ((doctor as any)?.slot_capacities && (doctor as any).slot_capacities.length > 0
+        ? (doctor as any).slot_capacities
+        : null);
+
+    if (rawSlots && rawSlots.length > 0) {
+      return rawSlots.map((cap: any) => {
+        const timeStr = cap.timeSlot || cap.time_slot || '';
+        const startTime = extractStartTime(timeStr);
+        const period = getPeriodFromTime(timeStr);
+
+        const isPastOrTooSoon = isToday && parseTimeToMinutes(startTime) < minAllowedMinutes;
+        const isExplicitlyDisabled = cap.isAvailable === false || cap.is_available === false;
+        const isBlockedByList = effectiveBlockedList.some((blocked) => isTimeInWindow(timeStr, blocked));
+
+        const onlineSeatsLeft =
+          cap.onlineAvailableSeats !== undefined
+            ? cap.onlineAvailableSeats
+            : cap.availableSeats !== undefined
+            ? cap.availableSeats
+            : cap.maxSeats;
+
+        const isFull = onlineSeatsLeft !== undefined && onlineSeatsLeft <= 0;
+        const isBlocked = isExplicitlyDisabled || isBlockedByList;
+        const isFrozen = isPastOrTooSoon || isBlocked || isFull;
+
+        let statusBadge = 'Available';
+        if (isBlocked) statusBadge = 'Closed';
+        else if (isPastOrTooSoon) statusBadge = 'Passed';
+        else if (isFull) statusBadge = 'Full';
+        else if (onlineSeatsLeft !== undefined && onlineSeatsLeft > 0) {
+          statusBadge = `${onlineSeatsLeft} ${onlineSeatsLeft === 1 ? 'seat' : 'seats'}`;
+        }
+
+        return {
+          time: timeStr,
+          period,
+          isFrozen,
+          isPastOrTooSoon,
+          isBlocked,
+          isFull,
+          statusBadge,
+          availableSeats: onlineSeatsLeft,
+          maxSeats: cap.maxSeats,
+        };
+      });
+    }
+
+    // 2. Default fallback slots if no custom slots configured
     return DEFAULT_SLOTS.map((slot) => {
       const isPastOrTooSoon = isToday && parseTimeToMinutes(slot.time) < minAllowedMinutes;
       const isBlocked = effectiveBlockedList.some((blocked) => isTimeInWindow(slot.time, blocked));
@@ -152,9 +223,13 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
         isFrozen,
         isPastOrTooSoon,
         isBlocked,
+        isFull: false,
+        statusBadge: isBlocked ? 'Closed' : isPastOrTooSoon ? 'Passed' : 'Available',
+        availableSeats: 3,
+        maxSeats: 6,
       };
     });
-  }, [effectiveBlockedList, isDoctorOffDuty, selectedDate]);
+  }, [effectiveBlockedList, isDoctorOffDuty, selectedDate, slotCapacities, doctor]);
 
   // List of valid, selectable slots
   const validSelectableSlots = React.useMemo(() => {
@@ -173,17 +248,13 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
     }
   }, [validSelectableSlots, selectedSlot, onSelectSlot]);
 
-  // Filter based on selected period tab
-  const filteredSlots = React.useMemo(() => {
-    if (activeTab === 'All') return slotsWithState;
-    return slotsWithState.filter((s) => s.period === activeTab);
-  }, [activeTab, slotsWithState]);
-
   // Handle slot click
-  const handleSlotClick = (slot: typeof slotsWithState[0]) => {
+  const handleSlotClick = (slot: (typeof slotsWithState)[0]) => {
     if (slot.isFrozen) {
       if (slot.isBlocked) {
-        setNoticeMessage(`⚠️ ${slot.time} has been reserved or closed by the clinic reception.`);
+        setNoticeMessage(`⚠️ ${slot.time} has been closed or reserved by hospital reception.`);
+      } else if (slot.isFull) {
+        setNoticeMessage(`⚠️ ${slot.time} is fully booked. Please choose another time slot.`);
       } else if (slot.isPastOrTooSoon) {
         const now = new Date();
         const timeFormatted = now.toLocaleTimeString('en-US', {
@@ -192,7 +263,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
           hour12: true,
         });
         setNoticeMessage(
-          `⚠️ ${slot.time} is no longer available. Consultations must be booked at least 30 minutes in advance (current time is ${timeFormatted}). Please choose an upcoming active slot.`
+          `⚠️ ${slot.time} is no longer available. Consultations must be booked in advance (current time is ${timeFormatted}). Please choose an upcoming active slot.`
         );
       }
       return;
@@ -243,41 +314,16 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Category Filter Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/70 overflow-x-auto no-scrollbar">
-        {(['All', 'Morning', 'Afternoon', 'Evening'] as const).map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer',
-                isActive
-                  ? 'bg-white text-[#0B5A54] shadow-xs font-black'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-              )}
-            >
-              {tab === 'Morning' && <Sunrise className="w-3.5 h-3.5 text-amber-500" />}
-              {tab === 'Afternoon' && <Sun className="w-3.5 h-3.5 text-orange-500" />}
-              {tab === 'Evening' && <Sunset className="w-3.5 h-3.5 text-indigo-500" />}
-              <span>{tab}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Slots Grid with Frozen States */}
-      {filteredSlots.length === 0 ? (
+      {/* Slots Grid with Dynamic Receptionist Slots */}
+      {slotsWithState.length === 0 ? (
         <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1.5">
           <AlertCircle className="w-6 h-6 text-slate-400 mx-auto" />
-          <p className="text-xs font-bold text-slate-700">No Slots in this Category</p>
-          <p className="text-[11px] text-slate-400">Please choose another category or date.</p>
+          <p className="text-xs font-bold text-slate-700">No Slots Available</p>
+          <p className="text-[11px] text-slate-400">Please choose another date or doctor.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-          {filteredSlots.map((slot) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+          {slotsWithState.map((slot) => {
             const isSelected = selectedSlot === slot.time && !slot.isFrozen;
             const isFrozen = slot.isFrozen;
 
@@ -291,7 +337,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
                 className={clsx(
                   'relative flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition-all duration-200 border text-left focus:outline-none cursor-pointer select-none',
                   isSelected
-                    ? 'bg-gradient-to-r from-[#0B5A54] to-[#0D6D65] text-white border-[#0B5A54] shadow-md shadow-teal-900/15 ring-2 ring-[#14B8A6]/40'
+                    ? 'bg-[#E3F3F1] text-[#0B5A54] border-2 border-[#0B5A54] shadow-xs'
                     : isFrozen
                     ? 'bg-slate-100/80 hover:bg-slate-200/80 text-slate-400 border-slate-200/80 opacity-60'
                     : 'bg-white hover:bg-teal-50/40 text-slate-700 border-slate-200/80 hover:border-[#14B8A6]/40 shadow-2xs'
@@ -301,21 +347,32 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
                   <Clock
                     className={clsx(
                       'w-3.5 h-3.5 shrink-0',
-                      isSelected ? 'text-teal-200' : isFrozen ? 'text-slate-400' : 'text-slate-400'
+                      isSelected ? 'text-[#0B5A54]' : isFrozen ? 'text-slate-400' : 'text-[#0B5A54]'
                     )}
                   />
-                  <span
-                    className={clsx(
-                      'font-black font-heading truncate',
-                      isSelected ? 'text-white' : isFrozen ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'
+                  <div className="min-w-0">
+                    <span
+                      className={clsx(
+                        'font-black font-heading truncate block text-xs',
+                        isSelected
+                          ? 'text-[#0B5A54]'
+                          : isFrozen
+                          ? 'text-slate-500 line-through decoration-slate-300'
+                          : 'text-slate-800'
+                      )}
+                    >
+                      {slot.time}
+                    </span>
+                    {!isFrozen && !isSelected && slot.statusBadge && (
+                      <span className="text-[10px] text-teal-700 font-bold block">
+                        {slot.statusBadge}
+                      </span>
                     )}
-                  >
-                    {slot.time}
-                  </span>
+                  </div>
                 </div>
 
                 {isSelected && (
-                  <span className="text-[9px] font-black uppercase text-teal-100 bg-white/20 px-1.5 py-0.5 rounded-full shrink-0">
+                  <span className="text-[9.5px] font-black uppercase text-[#0B5A54] bg-[#0B5A54]/15 px-2 py-0.5 rounded-full shrink-0">
                     Selected
                   </span>
                 )}
@@ -323,7 +380,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
                 {isFrozen && (
                   <span className="text-[8.5px] font-black uppercase text-slate-500 bg-slate-200/90 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-0.5">
                     <Lock className="w-2.5 h-2.5 text-slate-400" />
-                    <span>{slot.isBlocked ? 'Closed' : 'Passed'}</span>
+                    <span>{slot.isBlocked ? 'Closed' : slot.isFull ? 'Full' : 'Passed'}</span>
                   </span>
                 )}
               </motion.button>
@@ -334,4 +391,3 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
     </div>
   );
 };
-
