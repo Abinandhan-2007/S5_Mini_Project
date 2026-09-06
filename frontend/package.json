@@ -11,7 +11,7 @@
     "server": "python ../backend/main.py",
     "db:up": "docker-compose -f ../docker-compose.yml up -d",
     "db:down": "docker-compose -f ../docker-compose.yml down",
-    "android:build": "npm run build && npx cap sync android && cd android && powershell -Command \"$env:JAVA_HOME = 'C:\\Program Files\\Android\\Android Studio\\jbr'; .\\gradlew assembleDebug\""
+    "android:build": "npm run build && npx cap sync android && cd android && powershell -Command \"$env:JAVA_HOME = 'C:\\Users\\Abina\\.jdks\\jbr-21.0.11'; .\\gradlew assembleDebug\""
   },
   "dependencies": {
     "@capacitor-community/file-opener": "^8.0.1",

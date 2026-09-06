@@ -91,9 +91,14 @@ def update_app_version_json(new_name: str, release_notes: str):
 def run_command(cmd: str, cwd: Path, desc: str):
     print(f"\n🚀 {desc}...")
     env = os.environ.copy()
-    jbr_path = Path("C:/Program Files/Android/Android Studio/jbr")
-    if jbr_path.exists() and not env.get("JAVA_HOME"):
-        env["JAVA_HOME"] = str(jbr_path)
+    compatible_jdk_candidates = [
+        Path(os.path.expanduser("~")) / ".jdks" / "jbr-21.0.11",
+        Path("C:/Program Files/Android/Android Studio/jbr"),
+    ]
+    for jdk in compatible_jdk_candidates:
+        if jdk.exists():
+            env["JAVA_HOME"] = str(jdk)
+            break
     sdk_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "Android" / "Sdk"
     if sdk_path.exists():
         if not env.get("ANDROID_HOME"):

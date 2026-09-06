@@ -1,7 +1,7 @@
 {
   "_note": "This version string MUST match android/app/build.gradle's versionName exactly, or the in-app update checker will loop forever.",
-  "version": "1.9.16",
+  "version": "1.9.18",
   "apk_filename": "CarePulse_App.apk",
-  "release_notes": "\u2022 CarePulse v1.9.16 performance updates and stability improvements.",
-  "released_at": "2026-09-05"
+  "release_notes": "\u2022 CarePulse v1.9.18 performance updates and stability improvements.",
+  "released_at": "2026-09-06"
 }
