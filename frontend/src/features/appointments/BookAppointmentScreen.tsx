@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DateScroller } from '../../components/ui/DateScroller';
-import { TimeSlotGrid } from '../../components/ui/TimeSlotGrid';
+import { TimeSlotGrid, areAllTodaySlotsCompleted } from '../../components/ui/TimeSlotGrid';
 import { Button } from '../../components/ui/Button';
 import { doctorService } from '../../services/doctorService';
 import type { Doctor } from '../../lib/types';
@@ -110,10 +110,37 @@ export const BookAppointmentScreen: React.FC = () => {
     };
   }, [doctorId, staffDoctors]);
 
-  // Appointment configurations
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  // Helpers to get local date ISO format YYYY-MM-DD
+  const getTodayIso = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const getTomorrowIso = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  // Check if today's slots are all completed/passed
+  const isTodayCompleted = useMemo(() => {
+    const caps = (doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities;
+    return areAllTodaySlotsCompleted(doctor, caps);
+  }, [doctor]);
+
+  // Appointment configurations: default to tomorrow if today is completed
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const caps = (initialDoctor as any)?.slotCapacities || (initialDoctor as any)?.slot_capacities;
+    return areAllTodaySlotsCompleted(initialDoctor, caps) ? getTomorrowIso() : getTodayIso();
+  });
+
+  // Automatically switch date to tomorrow if today's full slots are completed and today is selected
+  useEffect(() => {
+    if (isTodayCompleted && selectedDate === getTodayIso()) {
+      setSelectedDate(getTomorrowIso());
+    }
+  }, [isTodayCompleted, selectedDate]);
+
   const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
@@ -344,7 +371,11 @@ export const BookAppointmentScreen: React.FC = () => {
             <div className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5">
               <span>Available Dates</span>
             </div>
-            <DateScroller selectedDate={selectedDate} onSelectDate={(d) => setSelectedDate(d)} />
+            <DateScroller
+              selectedDate={selectedDate}
+              onSelectDate={(d) => setSelectedDate(d)}
+              hideToday={isTodayCompleted}
+            />
           </div>
 
           {/* Time Slots Grid */}

@@ -1,10 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Ordered sequence for Patient App primary tabs
-const PATIENT_TABS = ['/home', '/history', '/hospitals', '/profile'];
+// Ordered sequence for Patient App primary tabs (Home -> Hospitals -> History -> Profile)
+const PATIENT_TABS = ['/home', '/hospitals', '/history', '/profile'];
 
 // Flow map for sequential flows
 const SEQUENTIAL_NEXT_FLOWS: Record<string, string> = {
@@ -35,19 +33,18 @@ const isInsideNonSwipeableElement = (target: EventTarget | null): boolean => {
 
   let current: HTMLElement | null = target;
   while (current && current !== document.body && current !== document.documentElement) {
-    // 1. Explicit no-swipe attribute or class
+    // 1. Explicit no-swipe attribute or class, or card drag containers
     if (
       current.hasAttribute('data-no-swipe') ||
       current.classList.contains('no-swipe') ||
+      current.classList.contains('cursor-grab') ||
+      current.classList.contains('cursor-grabbing') ||
       current.classList.contains('date-scroller') ||
       current.classList.contains('no-scrollbar') ||
       current.classList.contains('overflow-x-auto') ||
       current.classList.contains('overflow-x-scroll')
     ) {
-      // Check if it actually has horizontal overflow
-      if (current.scrollWidth > current.clientWidth + 4) {
-        return true;
-      }
+      return true;
     }
 
     // 2. Interactive input, slider, canvas, map, or camera viewport
@@ -76,11 +73,6 @@ export const SwipeNavigationHandler: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [swipeIndicator, setSwipeIndicator] = useState<{
-    direction: 'prev' | 'next';
-    label: string;
-  } | null>(null);
-
   const touchStartRef = useRef<{
     x: number;
     y: number;
@@ -91,30 +83,13 @@ export const SwipeNavigationHandler: React.FC = () => {
   const locationRef = useRef(location.pathname);
   locationRef.current = location.pathname;
 
-  const showIndicator = useCallback((direction: 'prev' | 'next', label: string) => {
-    setSwipeIndicator({ direction, label });
-    // Light haptic feedback on mobile devices supporting Vibration API
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate(15);
-      } catch {}
-    }
-
-    const timer = setTimeout(() => {
-      setSwipeIndicator(null);
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleNavigatePrevious = useCallback(() => {
     const currentPath = locationRef.current;
 
-    // 1. Check patient main tabs sequence
+    // 1. Check patient main tabs sequence (Profile -> History -> Hospitals -> Home)
     const tabIndex = PATIENT_TABS.indexOf(currentPath);
     if (tabIndex > 0) {
       const prevTab = PATIENT_TABS[tabIndex - 1];
-      showIndicator('prev', `Back to ${prevTab.replace('/', '')}`);
       navigate(prevTab);
       return;
     }
@@ -122,7 +97,6 @@ export const SwipeNavigationHandler: React.FC = () => {
     // 2. Check sequential previous flow map
     if (SEQUENTIAL_PREV_FLOWS[currentPath]) {
       const target = SEQUENTIAL_PREV_FLOWS[currentPath];
-      showIndicator('prev', 'Previous');
       navigate(target);
       return;
     }
@@ -143,7 +117,6 @@ export const SwipeNavigationHandler: React.FC = () => {
       currentPath.startsWith('/receptionist') ||
       currentPath.startsWith('/admin')
     ) {
-      showIndicator('prev', 'Previous Page');
       if (window.history.length > 1) {
         navigate(-1);
       } else {
@@ -154,19 +127,17 @@ export const SwipeNavigationHandler: React.FC = () => {
 
     // 4. Default back behavior
     if (window.history.length > 1 && currentPath !== '/home' && currentPath !== '/login') {
-      showIndicator('prev', 'Previous Page');
       navigate(-1);
     }
-  }, [navigate, showIndicator]);
+  }, [navigate]);
 
   const handleNavigateNext = useCallback(() => {
     const currentPath = locationRef.current;
 
-    // 1. Check patient main tabs sequence
+    // 1. Check patient main tabs sequence (Home -> Hospitals -> History -> Profile)
     const tabIndex = PATIENT_TABS.indexOf(currentPath);
     if (tabIndex >= 0 && tabIndex < PATIENT_TABS.length - 1) {
       const nextTab = PATIENT_TABS[tabIndex + 1];
-      showIndicator('next', `Next: ${nextTab.replace('/', '')}`);
       navigate(nextTab);
       return;
     }
@@ -174,17 +145,15 @@ export const SwipeNavigationHandler: React.FC = () => {
     // 2. Check sequential next flow map
     if (SEQUENTIAL_NEXT_FLOWS[currentPath]) {
       const target = SEQUENTIAL_NEXT_FLOWS[currentPath];
-      showIndicator('next', 'Next');
       navigate(target);
       return;
     }
 
     // 3. Fallback: Browser history forward if available
     try {
-      showIndicator('next', 'Next Page');
       window.history.forward();
     } catch {}
-  }, [navigate, showIndicator]);
+  }, [navigate]);
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
@@ -196,7 +165,7 @@ export const SwipeNavigationHandler: React.FC = () => {
       const touch = e.touches[0];
       const target = e.target;
 
-      // Check if touch originated in a horizontal slider, input, or interactive area
+      // Check if touch originated in a horizontal slider, card deck, input, or interactive area
       const isIgnored = isInsideNonSwipeableElement(target);
 
       touchStartRef.current = {
@@ -230,10 +199,10 @@ export const SwipeNavigationHandler: React.FC = () => {
 
       if (absDeltaX >= MIN_DISTANCE && duration <= MAX_TIME && absDeltaX >= absDeltaY * RATIO) {
         if (deltaX > 0) {
-          // Swiped Right -> Move to Last / Previous Page
+          // Swiped Right -> Move to Previous Tab / Page
           handleNavigatePrevious();
         } else {
-          // Swiped Left -> Move to Next Page
+          // Swiped Left -> Move to Next Tab / Page
           handleNavigateNext();
         }
       }
@@ -248,28 +217,5 @@ export const SwipeNavigationHandler: React.FC = () => {
     };
   }, [handleNavigatePrevious, handleNavigateNext]);
 
-  return (
-    <AnimatePresence>
-      {swipeIndicator && (
-        <motion.div
-          key="swipe-indicator"
-          initial={{ opacity: 0, scale: 0.85, y: -10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.85, y: -10 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="fixed top-5 inset-x-0 mx-auto z-50 pointer-events-none flex items-center justify-center"
-        >
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 text-white shadow-2xl backdrop-blur-md border border-white/15 text-xs font-black uppercase tracking-wider font-heading">
-            {swipeIndicator.direction === 'prev' ? (
-              <ChevronLeft className="w-4 h-4 text-teal-400 animate-pulse" />
-            ) : null}
-            <span>{swipeIndicator.label}</span>
-            {swipeIndicator.direction === 'next' ? (
-              <ChevronRight className="w-4 h-4 text-teal-400 animate-pulse" />
-            ) : null}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  return null;
 };

@@ -94,6 +94,12 @@ def run_command(cmd: str, cwd: Path, desc: str):
     jbr_path = Path("C:/Program Files/Android/Android Studio/jbr")
     if jbr_path.exists() and not env.get("JAVA_HOME"):
         env["JAVA_HOME"] = str(jbr_path)
+    sdk_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "Android" / "Sdk"
+    if sdk_path.exists():
+        if not env.get("ANDROID_HOME"):
+            env["ANDROID_HOME"] = str(sdk_path)
+        if not env.get("ANDROID_SDK_ROOT"):
+            env["ANDROID_SDK_ROOT"] = str(sdk_path)
     result = subprocess.run(cmd, cwd=str(cwd), shell=True, text=True, capture_output=True, env=env)
     if result.returncode != 0:
         print(f"❌ {desc} failed with exit code {result.returncode}:")

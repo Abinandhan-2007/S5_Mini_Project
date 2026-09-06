@@ -121,6 +121,68 @@ const isTimeInWindow = (timeStr: string, windowStr: string) => {
   return false;
 };
 
+/**
+ * Helper to check if all of today's time slots for a doctor are completed / passed
+ */
+export const areAllTodaySlotsCompleted = (
+  doctor?: Doctor,
+  slotCapacities?: TimeSlotCapacity[],
+  blockedSlots: string[] = []
+): boolean => {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const minAllowedMinutes = currentMinutes + 30; // 30 minutes advance requirement for today
+
+  const rawSlots: any[] =
+    (slotCapacities && slotCapacities.length > 0 ? slotCapacities : null) ||
+    ((doctor as any)?.slotCapacities && (doctor as any).slotCapacities.length > 0
+      ? (doctor as any).slotCapacities
+      : null) ||
+    ((doctor as any)?.slot_capacities && (doctor as any).slot_capacities.length > 0
+      ? (doctor as any).slot_capacities
+      : null) ||
+    DEFAULT_SLOTS;
+
+  if (!rawSlots || rawSlots.length === 0) return true;
+
+  const allBlocked: string[] = [...blockedSlots];
+  if (Array.isArray(rawSlots)) {
+    rawSlots.forEach((s: any) => {
+      if (s.isAvailable === false || s.is_available === false) {
+        allBlocked.push(s.timeSlot || s.time_slot || '');
+      }
+    });
+  }
+
+  // If there's at least one upcoming, unblocked, non-full slot, today is not completed
+  const hasAvailableSlot = rawSlots.some((slot: any) => {
+    const timeStr = slot.timeSlot || slot.time_slot || slot.time || '';
+    const startTime = extractStartTime(timeStr);
+    const isPastOrTooSoon = parseTimeToMinutes(startTime) < minAllowedMinutes;
+    if (isPastOrTooSoon) return false;
+
+    const isExplicitlyDisabled = slot.isAvailable === false || slot.is_available === false;
+    if (isExplicitlyDisabled) return false;
+
+    const isBlocked = allBlocked.some((blocked) => isTimeInWindow(timeStr, blocked));
+    if (isBlocked) return false;
+
+    const onlineSeatsLeft =
+      slot.onlineAvailableSeats !== undefined
+        ? slot.onlineAvailableSeats
+        : slot.availableSeats !== undefined
+        ? slot.availableSeats
+        : slot.maxSeats;
+
+    const isFull = onlineSeatsLeft !== undefined && onlineSeatsLeft <= 0;
+    if (isFull) return false;
+
+    return true;
+  });
+
+  return !hasAvailableSlot;
+};
+
 export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   selectedSlot,
   onSelectSlot,
@@ -192,7 +254,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
 
         let statusBadge = 'Available';
         if (isBlocked) statusBadge = 'Closed';
-        else if (isPastOrTooSoon) statusBadge = 'Passed';
+        else if (isPastOrTooSoon) statusBadge = 'Completed';
         else if (isFull) statusBadge = 'Full';
         else if (onlineSeatsLeft !== undefined && onlineSeatsLeft > 0) {
           statusBadge = `${onlineSeatsLeft} ${onlineSeatsLeft === 1 ? 'seat' : 'seats'}`;
@@ -224,7 +286,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
         isPastOrTooSoon,
         isBlocked,
         isFull: false,
-        statusBadge: isBlocked ? 'Closed' : isPastOrTooSoon ? 'Passed' : 'Available',
+        statusBadge: isBlocked ? 'Closed' : isPastOrTooSoon ? 'Completed' : 'Available',
         availableSeats: 3,
         maxSeats: 6,
       };
@@ -380,7 +442,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
                 {isFrozen && (
                   <span className="text-[8.5px] font-black uppercase text-slate-500 bg-slate-200/90 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-0.5">
                     <Lock className="w-2.5 h-2.5 text-slate-400" />
-                    <span>{slot.isBlocked ? 'Closed' : slot.isFull ? 'Full' : 'Passed'}</span>
+                    <span>{slot.isBlocked ? 'Closed' : slot.isFull ? 'Full' : 'Completed'}</span>
                   </span>
                 )}
               </motion.button>

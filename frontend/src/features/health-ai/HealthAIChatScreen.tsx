@@ -224,9 +224,8 @@ export const HealthAIChatScreen: React.FC = () => {
 
       {/* STABLE BOTTOM INPUT BAR */}
       <div
-        className={`fixed left-0 right-0 z-30 max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-2 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md transition-all duration-200 ${
-          isInputFocused ? 'bottom-2' : 'bottom-20 sm:bottom-22'
-        }`}
+        className={`fixed left-0 right-0 z-30 max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-2 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md transition-all duration-200 ${isInputFocused ? 'bottom-2' : 'bottom-20 sm:bottom-22'
+          }`}
       >
         <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E4E7EC] rounded-full px-3 py-1.5 focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/20 transition-all">
           <div className="w-7 h-7 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">

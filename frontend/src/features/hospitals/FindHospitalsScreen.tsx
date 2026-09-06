@@ -322,13 +322,7 @@ export const FindHospitalsScreen: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent" />
 
-                    {/* Top Left Facility Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-white/15 tracking-wider shadow-sm flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                        <span>{hosp.facilityType}</span>
-                      </span>
-                    </div>
+
 
                     {/* Top Right Rating Glass Badge */}
                     <div className="absolute top-3 right-3">

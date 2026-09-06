@@ -10,10 +10,14 @@ import {
   CheckCircle2,
   AlertCircle,
   Shield,
+  Globe,
+  ChevronRight,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Card } from '../../components/ui/Card';
 import { BottomNav } from '../../components/ui/BottomNav';
+import { LanguageSelectModal } from '../../components/ui/LanguageSelectModal';
+import { useTranslation } from '../../lib/i18n';
 import { useCarePulseStore } from '../../lib/store';
 import {
   registerDeviceBiometrics,
@@ -22,8 +26,10 @@ import {
 
 export const AdvancedSettingsScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { t, currentOption } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
 
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
   const toggleBiometric = useCarePulseStore((s) => s.toggleBiometric);
   const [biometricNotice, setBiometricNotice] = useState<{
@@ -167,6 +173,34 @@ export const AdvancedSettingsScreen: React.FC = () => {
             padding="none"
             className="divide-y divide-slate-100 overflow-hidden shadow-xs bg-white rounded-3xl border border-slate-200/90"
           >
+            {/* 0. Language Preference */}
+            <button
+              type="button"
+              onClick={() => setIsLanguageModalOpen(true)}
+              className="w-full p-4 sm:p-4.5 flex items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors text-left cursor-pointer active:bg-slate-100/50"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div className="text-left space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs sm:text-sm font-black font-heading text-slate-900 truncate">
+                      {t('profile.language', 'Language Preference')}
+                    </h4>
+                    <span className="bg-[#E3F3F1] text-[#0B5A54] border border-[#14B8A6]/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {currentOption.flag} {currentOption.nativeLabel}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {t('profile.languageSubtext', 'Choose Tamil, English, or Hindi')}
+                  </p>
+                </div>
+              </div>
+
+              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+            </button>
+
             {/* 1. Tablet Eating Alerts */}
             <div className="p-4 sm:p-4.5 flex items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center gap-3.5 min-w-0">
@@ -458,6 +492,12 @@ export const AdvancedSettingsScreen: React.FC = () => {
           </p>
         </div>
       </main>
+
+      {/* LANGUAGE SELECTION MODAL */}
+      <LanguageSelectModal
+        isOpen={isLanguageModalOpen}
+        onClose={() => setIsLanguageModalOpen(false)}
+      />
 
       <BottomNav />
     </div>

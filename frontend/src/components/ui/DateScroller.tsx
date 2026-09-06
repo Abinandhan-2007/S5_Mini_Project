@@ -4,26 +4,31 @@ import { motion } from 'framer-motion';
 
 export interface DateOption {
   fullDate: string; // e.g. "2026-08-07"
-  dayAbbrev: string; // e.g. "TODAY", "TOM", "Sun"
+  dayAbbrev: string; // e.g. "TODAY", "TOMORROW", "Sun"
   dayNameShort: string; // e.g. "Thu", "Fri"
   dayNumber: string; // e.g. "27"
   month: string; // e.g. "Feb"
   isToday?: boolean;
+  isTomorrow?: boolean;
   slotsAvailableCount?: number;
 }
 
 export interface DateScrollerProps {
   selectedDate: string;
   onSelectDate: (dateStr: string) => void;
+  hideToday?: boolean;
 }
 
-// Generate upcoming 8 rolling days starting from today
-const generateUpcomingDates = (baseDate?: Date, count = 8): DateOption[] => {
+// Generate upcoming 8 rolling days starting from today or tomorrow
+export const generateUpcomingDates = (hideToday = false, count = 8): DateOption[] => {
   const dates: DateOption[] = [];
-  const start = baseDate ? new Date(baseDate) : new Date();
+  const start = new Date();
   start.setHours(0, 0, 0, 0);
 
-  for (let i = 0; i < count; i++) {
+  const startIndex = hideToday ? 1 : 0;
+  const endIndex = startIndex + count;
+
+  for (let i = startIndex; i < endIndex; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
 
@@ -32,9 +37,12 @@ const generateUpcomingDates = (baseDate?: Date, count = 8): DateOption[] => {
     const dayNum = String(d.getDate()).padStart(2, '0');
     const fullDate = `${year}-${monthNum}-${dayNum}`;
 
+    const isToday = i === 0;
+    const isTomorrow = i === 1;
+
     let dayAbbrev = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    if (i === 0) dayAbbrev = 'TODAY';
-    else if (i === 1) dayAbbrev = 'TOM';
+    if (isToday) dayAbbrev = 'TODAY';
+    else if (isTomorrow) dayAbbrev = 'TOMORROW';
 
     const dayNameShort = d.toLocaleDateString('en-US', { weekday: 'short' });
     const month = d.toLocaleDateString('en-US', { month: 'short' });
@@ -48,7 +56,8 @@ const generateUpcomingDates = (baseDate?: Date, count = 8): DateOption[] => {
       dayNameShort,
       dayNumber: dayNum,
       month,
-      isToday: i === 0,
+      isToday,
+      isTomorrow,
       slotsAvailableCount: slotsCount,
     });
   }
@@ -59,8 +68,9 @@ const generateUpcomingDates = (baseDate?: Date, count = 8): DateOption[] => {
 export const DateScroller: React.FC<DateScrollerProps> = ({
   selectedDate,
   onSelectDate,
+  hideToday = false,
 }) => {
-  const dates = React.useMemo(() => generateUpcomingDates(), []);
+  const dates = React.useMemo(() => generateUpcomingDates(hideToday), [hideToday]);
 
   return (
     <div className="relative w-full">
@@ -82,7 +92,7 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
                   : 'bg-white hover:bg-slate-50/90 text-slate-700 border-slate-200/80 hover:border-[#14B8A6]/40 shadow-xs'
               )}
             >
-              {/* Top: Month / Today Tag */}
+              {/* Top: Month / Today / Tomorrow Tag */}
               <div className="w-full flex justify-between items-center px-0.5">
                 <span
                   className={clsx(
@@ -90,16 +100,16 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
                     isSelected ? 'text-[#0B5A54]' : 'text-slate-400 group-hover:text-slate-600'
                   )}
                 >
-                  {item.isToday ? 'TODAY' : item.month}
+                  {item.isToday ? 'TODAY' : item.isTomorrow ? 'TOM' : item.month}
                 </span>
 
-                {item.isToday && (
+                {(item.isToday || (hideToday && item.isTomorrow)) && (
                   <span
                     className={clsx(
                       'w-1.5 h-1.5 rounded-full',
                       isSelected ? 'bg-[#0B5A54]' : 'bg-teal-500'
                     )}
-                    title="Today"
+                    title={item.isToday ? 'Today' : 'Tomorrow'}
                   />
                 )}
               </div>

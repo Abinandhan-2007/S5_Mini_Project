@@ -20,8 +20,8 @@ export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ acti
           }
         }}
         className={`py-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-full text-[11.5px] sm:text-[13px] font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${activeMode === 'prescription'
-            ? 'bg-white text-[#0F766E] shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-100 font-black'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
+          ? 'bg-white text-[#0F766E] shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-100 font-black'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
           }`}
       >
         <Shield
@@ -40,8 +40,8 @@ export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ acti
           }
         }}
         className={`py-2.5 px-2.5 sm:px-4 rounded-xl sm:rounded-full text-[11.5px] sm:text-[13px] font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${activeMode === 'info'
-            ? 'bg-white text-[#1E3A8A] shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-100 font-black'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
+          ? 'bg-white text-[#1E3A8A] shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-100 font-black'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
           }`}
       >
         <Info

@@ -132,12 +132,12 @@ const WALLET_CARD_THEMES = [
   },
 ];
 
-// Smooth snappy spring config
+// Smooth snappy spring config with low mass and high responsiveness
 const SPRING_TRANSITION = {
   type: 'spring' as const,
-  stiffness: 380,
-  damping: 32,
-  mass: 0.85,
+  stiffness: 450,
+  damping: 36,
+  mass: 0.5,
 };
 
 const MAX_VISIBLE_PEEK = 3;
@@ -168,35 +168,30 @@ const TIME_SLOT_THEMES: Record<string, SlotThemeConfig> = {
   morning: {
     emoji: '🌅',
     label: 'Morning',
-    // Soft morning golden amber (borderless)
     unrecorded: 'bg-amber-100/80 text-amber-950 hover:bg-amber-200/80 shadow-2xs border-0 outline-none',
     taken: 'bg-amber-200 text-amber-950 shadow-xs border-0 outline-none',
   },
   afternoon: {
     emoji: '☀️',
     label: 'Afternoon',
-    // Soft solar orange (borderless)
     unrecorded: 'bg-orange-100/80 text-orange-950 hover:bg-orange-200/80 shadow-2xs border-0 outline-none',
     taken: 'bg-orange-200 text-orange-950 shadow-xs border-0 outline-none',
   },
   evening: {
     emoji: '🌇',
     label: 'Evening',
-    // Soft dusk rose (borderless)
     unrecorded: 'bg-rose-100/80 text-rose-950 hover:bg-rose-200/80 shadow-2xs border-0 outline-none',
     taken: 'bg-rose-200 text-rose-950 shadow-xs border-0 outline-none',
   },
   night: {
     emoji: '🌙',
     label: 'Night',
-    // Soft calming indigo / lavender (borderless)
     unrecorded: 'bg-indigo-100/80 text-indigo-950 hover:bg-indigo-200/80 shadow-2xs border-0 outline-none',
     taken: 'bg-indigo-200 text-indigo-950 shadow-xs border-0 outline-none',
   },
   bedtime: {
     emoji: '🌙',
     label: 'Bedtime',
-    // Soft calming indigo / lavender (borderless)
     unrecorded: 'bg-indigo-100/80 text-indigo-950 hover:bg-indigo-200/80 shadow-2xs border-0 outline-none',
     taken: 'bg-indigo-200 text-indigo-950 shadow-xs border-0 outline-none',
   },
@@ -361,36 +356,64 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [takenSlotsMap, setTakenSlotsMap] = useState<
     Record<string, { date: string; slots: Record<string, string> }>
-  >({});
+  >(() => {
+    const today = getTodayDateKey();
+    const loadedMap: Record<string, { date: string; slots: Record<string, string> }> = {};
+    const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : DEFAULT_SAMPLE_PRESCRIPTIONS;
+    sourceList.forEach((m, idx) => {
+      const medId = m.id || `rx-${idx}`;
+      try {
+        const stored = localStorage.getItem(`${DOSE_STORAGE_PREFIX}${medId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.date === today && parsed.slots) {
+            loadedMap[medId] = { date: today, slots: parsed.slots };
+          }
+        }
+      } catch (e) {
+        console.warn('Initial dose load note:', e);
+      }
+    });
+    return loadedMap;
+  });
   const isScrollingRef = useRef(false);
 
-  // Use passed prescriptions, or fallback to rich sample stack cards
-  const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : DEFAULT_SAMPLE_PRESCRIPTIONS;
+  // Normalize data with memoization to eliminate recalculations on every drag frame
+  const normalizedMeds: MedicationItem[] = React.useMemo(() => {
+    const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : DEFAULT_SAMPLE_PRESCRIPTIONS;
+    return sourceList.map((p, idx) => {
+      const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
+      return {
+        id: p.id || `rx-${idx}`,
+        drugName: (p.drugName || 'Prescription Medication')
+          .replace(/\s*\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|meq|%)\b/gi, '')
+          .trim(),
+        dosage: p.dosage || '1 dose',
+        frequency: p.frequency || (idx === 1 || idx === 3 ? '1 capsule • 3 times daily for 7 days' : idx === 0 ? '1 tablet • Twice daily after meals' : '1 tablet • Daily every morning'),
+        prescriber: p.prescriber || 'Treating Physician',
+        hospitalName: p.hospitalName || 'CarePulse Medical Center',
+        status: p.status || (idx === 4 ? 'Refill Soon' : 'Active'),
+        iconType: p.iconType || 'pill',
+        nextDose: p.nextDose || (idx === 0 ? 'Today at 8:00 PM' : 'Tomorrow 9:00 AM'),
+        totalDays: p.totalDays || courseDefaults.total,
+        daysCompleted: p.daysCompleted !== undefined ? p.daysCompleted : courseDefaults.completed,
+      };
+    });
+  }, [prescriptions]);
 
-  // Normalize data with resilient fallbacks and prescribed course days
-  const normalizedMeds: MedicationItem[] = sourceList.map((p, idx) => {
-    const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
-    return {
-      id: p.id || `rx-${idx}`,
-      drugName: (p.drugName || 'Prescription Medication')
-        .replace(/\s*\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|meq|%)\b/gi, '')
-        .trim(),
-      dosage: p.dosage || '1 dose',
-      frequency: p.frequency || (idx === 1 || idx === 3 ? '1 capsule • 3 times daily for 7 days' : idx === 0 ? '1 tablet • Twice daily after meals' : '1 tablet • Daily every morning'),
-      prescriber: p.prescriber || 'Treating Physician',
-      hospitalName: p.hospitalName || 'CarePulse Medical Center',
-      status: p.status || (idx === 4 ? 'Refill Soon' : 'Active'),
-      iconType: p.iconType || 'pill',
-      nextDose: p.nextDose || (idx === 0 ? 'Today at 8:00 PM' : 'Tomorrow 9:00 AM'),
-      totalDays: p.totalDays || courseDefaults.total,
-      daysCompleted: p.daysCompleted !== undefined ? p.daysCompleted : courseDefaults.completed,
-    };
-  });
+  // Precompute dose slots mapping
+  const doseSlotsMap = React.useMemo(() => {
+    const map: Record<string, DoseSlot[]> = {};
+    normalizedMeds.forEach((m) => {
+      map[m.id] = getDoseSlotsForMed(m.frequency, m.dosage);
+    });
+    return map;
+  }, [normalizedMeds]);
 
   const totalCards = normalizedMeds.length;
   const hasPrescriptions = totalCards > 0;
 
-  // On mount: load today's taken dose slots. Automatically resets on new calendar day!
+  // On mount or list change: sync taken dose slots
   useEffect(() => {
     const today = getTodayDateKey();
     const loadedMap: Record<string, { date: string; slots: Record<string, string> }> = {};
@@ -410,7 +433,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     });
 
     setTakenSlotsMap(loadedMap);
-  }, [prescriptions.length]);
+  }, [normalizedMeds]);
 
   // Live update when a dose is taken via notification prompt ("Yes, I Ate It")
   useEffect(() => {
@@ -439,7 +462,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     return () => window.removeEventListener('carepulse:dose_taken', handleDoseTakenEvent);
   }, []);
 
-  // Handle toggling a dose slot (Record dose or Untake/Reset to not taken)
+  // Handle toggling a dose slot
   const handleTakeSlotDose = (med: MedicationItem, slotId: string) => {
     const today = getTodayDateKey();
     const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -450,11 +473,9 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
       let updatedSlots: Record<string, string>;
       if (isAlreadyTaken) {
-        // Toggle OFF: Untake / reset to pending (not taken)
         updatedSlots = { ...currentMedEntry.slots };
         delete updatedSlots[slotId];
       } else {
-        // Toggle ON: Record dose with current timestamp
         updatedSlots = {
           ...currentMedEntry.slots,
           [slotId]: nowTimeStr,
@@ -491,14 +512,32 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     setActiveIndex((prev) => (prev - 1 + totalCards) % totalCards);
   };
 
-  // Vertical drag release handler:
-  // Swipe UP (negative offset.y) -> Advance to next card
-  // Swipe DOWN (positive offset.y) -> Move to previous card
+  // Omnidirectional drag release handler:
+  // Swipe LEFT or UP -> Forward to Next Card
+  // Swipe RIGHT or DOWN -> Backward to Previous Card
   const handleDragEnd = (info: PanInfo) => {
     if (totalCards <= 1) return;
-    if (info.offset.y < -30 || info.velocity.y < -150) {
+    const xOffset = info.offset.x;
+    const xVelocity = info.velocity.x;
+    const yOffset = info.offset.y;
+    const yVelocity = info.velocity.y;
+
+    const threshold = 25;
+    const velocityThreshold = 120;
+
+    if (
+      xOffset < -threshold ||
+      xVelocity < -velocityThreshold ||
+      yOffset < -threshold ||
+      yVelocity < -velocityThreshold
+    ) {
       handleNextCard();
-    } else if (info.offset.y > 30 || info.velocity.y > 150) {
+    } else if (
+      xOffset > threshold ||
+      xVelocity > velocityThreshold ||
+      yOffset > threshold ||
+      yVelocity > velocityThreshold
+    ) {
       handlePrevCard();
     }
   };
@@ -516,7 +555,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       }
       setTimeout(() => {
         isScrollingRef.current = false;
-      }, 250);
+      }, 200);
     }
   };
 
@@ -533,15 +572,22 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
         {hasPrescriptions && (
           <div className="flex items-center gap-2">
-            {onViewAll && (
+            {onViewAll ? (
               <button
                 type="button"
                 onClick={onViewAll}
-                className="text-xs sm:text-sm font-bold text-[#0B5A54] hover:underline flex items-center gap-0.5 cursor-pointer transition-colors"
+                className="text-xs sm:text-sm font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <span>View All</span>
+                <span className="bg-[#E3F3F1] text-[#0B5A54] text-[11px] font-black px-2 py-0.5 rounded-full border border-[#14B8A6]/30">
+                  {totalCards}
+                </span>
                 <ChevronRight className="w-4 h-4 text-[#0B5A54]" />
               </button>
+            ) : (
+              <span className="bg-[#E3F3F1] text-[#0B5A54] text-[11px] font-black px-2 py-0.5 rounded-full border border-[#14B8A6]/30">
+                {totalCards} {totalCards === 1 ? 'Prescription' : 'Prescriptions'}
+              </span>
             )}
           </div>
         )}
@@ -549,7 +595,6 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
       {/* 2. BODY CONTENT: COMPACT, CRISP STACK DECK */}
       {!hasPrescriptions ? (
-        /* EMPTY STATE */
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -575,14 +620,12 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
           </div>
         </motion.div>
       ) : (
-        /* PROPERLY SPACED STACK DECK */
         <div className="space-y-2">
           <div
             style={{ height: BASE_CARD_HEIGHT + 36 }}
             className="relative w-full overflow-visible"
           >
             {normalizedMeds.map((med, actualIndex) => {
-              // Position relative to activeIndex (0 = top active card, 1 = 1st background card, 2 = 2nd background card)
               const relPos = (actualIndex - activeIndex + totalCards) % totalCards;
               const isTopCard = relPos === 0;
               const isVisibleInStack = relPos < MAX_VISIBLE_PEEK;
@@ -592,18 +635,16 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
               const medEntry = takenSlotsMap[med.id];
               const todaySlots = medEntry?.date === todayKey ? medEntry.slots : {};
 
-              const doseSlots = getDoseSlotsForMed(med.frequency, med.dosage);
+              const doseSlots = doseSlotsMap[med.id] || [];
               const completedSlotsCount = doseSlots.filter((s) => Boolean(todaySlots[s.id])).length;
               const allDosesTakenToday = completedSlotsCount === doseSlots.length && doseSlots.length > 0;
 
-              // Compute dynamic days and progress percentage
               const baseTotal = med.totalDays || 10;
               const baseCompleted = med.daysCompleted || 4;
               const effectiveCompleted = allDosesTakenToday ? Math.min(baseTotal, baseCompleted + 1) : baseCompleted;
               const progressPercent = Math.round((effectiveCompleted / baseTotal) * 100);
               const isCourseFinished = effectiveCompleted >= baseTotal;
 
-              // Stepped background cards:
               let targetY = 0;
               let targetScale = 1.0;
               let targetOpacity = 1;
@@ -617,12 +658,12 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
               } else if (relPos === 1) {
                 targetY = -14;
                 targetScale = 0.96;
-                targetOpacity = 1;
+                targetOpacity = 0.95;
                 targetZIndex = 20;
               } else if (relPos === 2) {
                 targetY = -26;
                 targetScale = 0.92;
-                targetOpacity = 1;
+                targetOpacity = 0.9;
                 targetZIndex = 10;
               } else {
                 targetY = -34;
@@ -636,7 +677,8 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                   key={med.id}
                   drag={isTopCard ? 'y' : false}
                   dragConstraints={{ top: 0, bottom: 0 }}
-                  dragElastic={0.45}
+                  dragElastic={0.2}
+                  dragSnapToOrigin
                   onDragEnd={(_e, info) => handleDragEnd(info)}
                   animate={{
                     y: targetY,
@@ -646,7 +688,6 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                   transition={SPRING_TRANSITION}
                   onClick={() => {
                     if (!isTopCard) {
-                      // Clicking any peeking card brings that stack into full focus
                       setActiveIndex(actualIndex);
                     } else if (onSelectMedication) {
                       onSelectMedication(med);
@@ -661,6 +702,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                     zIndex: targetZIndex,
                     pointerEvents: isVisibleInStack ? 'auto' : 'none',
                     transformOrigin: 'top center',
+                    willChange: 'transform, opacity',
                   }}
                   className={clsx(
                     'rounded-3xl p-5 sm:p-5.5 border overflow-hidden select-none transition-shadow duration-300 flex flex-col justify-between',
@@ -669,10 +711,10 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                     theme.shadow,
                     isTopCard
                       ? 'cursor-grab active:cursor-grabbing ring-2 ring-[#0B5A54]/20 shadow-xl'
-                      : 'cursor-pointer hover:-translate-y-1 hover:brightness-98 shadow-md'
+                      : 'cursor-pointer hover:-translate-y-0.5 hover:brightness-98 shadow-md'
                   )}
                 >
-                  {/* Subtle clean medical light gloss overlay */}
+                  {/* Medical light gloss overlay */}
                   <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-black/5 pointer-events-none rounded-3xl" />
 
                   {/* 1. Header Row (Drug Name & Schedule Summary) */}
@@ -684,7 +726,6 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <p className={clsx('text-xs sm:text-[13px] font-extrabold tracking-wide truncate', theme.subtext)}>
                         {med.dosage}
                       </p>
-                      {/* Crisp dark frequency instruction */}
                       <p className="text-xs sm:text-sm font-bold tracking-wide truncate text-slate-700">
                         {med.frequency}
                       </p>
@@ -697,109 +738,104 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                     </div>
                   </div>
 
-                  {/* 2. Expanded Details (Only Shown On The Focused Stack Card) */}
-                  {isTopCard && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="relative z-10 space-y-3"
-                    >
-                      {/* Course Progress Bar */}
-                      <div className={clsx('pt-3 border-t', theme.footerBorder)}>
-                        <div className="flex items-center justify-between text-xs sm:text-[13.5px] mb-2">
-                          <div className="flex items-center gap-1.5 text-slate-800 font-extrabold">
-                            <Calendar className={clsx('w-4 h-4', theme.accentColor)} />
-                            <span>Day {effectiveCompleted} of {baseTotal} Days Prescribed</span>
-                          </div>
-                          <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                            {progressPercent}% Done
-                          </span>
+                  {/* 2. Expanded Details (Smooth CSS opacity fade without DOM unmounting thrash) */}
+                  <div
+                    className={clsx(
+                      'relative z-10 space-y-3 transition-opacity duration-200 ease-out',
+                      isTopCard ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    )}
+                  >
+                    {/* Course Progress Bar */}
+                    <div className={clsx('pt-3 border-t', theme.footerBorder)}>
+                      <div className="flex items-center justify-between text-xs sm:text-[13.5px] mb-2">
+                        <div className="flex items-center gap-1.5 text-slate-800 font-extrabold">
+                          <Calendar className={clsx('w-4 h-4', theme.accentColor)} />
+                          <span>Day {effectiveCompleted} of {baseTotal} Days Prescribed</span>
                         </div>
-
-                        {/* Progress Bar Track */}
-                        <div className={clsx('w-full h-2.5 rounded-full overflow-hidden p-0.5 border shadow-inner', theme.progressBg)}>
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progressPercent}%` }}
-                            transition={{ duration: 0.5, ease: 'easeOut' }}
-                            className={clsx('h-full rounded-full shadow-xs', theme.progressFill)}
-                          />
-                        </div>
+                        <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
+                          {progressPercent}% Done
+                        </span>
                       </div>
 
-                      {/* Daily Dose Slots (Comfortable size with clear typography) */}
-                      <div className={clsx('pt-2.5 border-t', theme.footerBorder)}>
-                        <div className="flex items-center justify-between text-xs sm:text-[13px] mb-2">
-                          <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                            <Clock className={clsx('w-4 h-4', theme.accentColor)} />
-                            <span>Today's Dosage Schedule:</span>
-                          </span>
-                          <span className={clsx('text-[11px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                            {allDosesTakenToday ? 'All doses taken today' : `${completedSlotsCount} of ${doseSlots.length} taken`}
-                          </span>
-                        </div>
+                      <div className={clsx('w-full h-2.5 rounded-full overflow-hidden p-0.5 border shadow-inner', theme.progressBg)}>
+                        <div
+                          style={{ width: `${progressPercent}%` }}
+                          className={clsx('h-full rounded-full shadow-xs transition-all duration-300 ease-out', theme.progressFill)}
+                        />
+                      </div>
+                    </div>
 
-                        <div className={clsx('grid gap-2', doseSlots.length === 3 ? 'grid-cols-3' : doseSlots.length === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
-                          {doseSlots.map((slot) => {
-                            const isSlotTaken = Boolean(todaySlots[slot.id]);
-                            const slotTime = todaySlots[slot.id];
-                            const slotTheme = TIME_SLOT_THEMES[slot.id] || TIME_SLOT_THEMES.daily;
+                    {/* Daily Dose Slots */}
+                    <div className={clsx('pt-2.5 border-t', theme.footerBorder)}>
+                      <div className="flex items-center justify-between text-xs sm:text-[13px] mb-2">
+                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                          <Clock className={clsx('w-4 h-4', theme.accentColor)} />
+                          <span>Today's Dosage Schedule:</span>
+                        </span>
+                        <span className={clsx('text-[11px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
+                          {allDosesTakenToday ? 'All doses taken today' : `${completedSlotsCount} of ${doseSlots.length} taken`}
+                        </span>
+                      </div>
 
-                            return (
-                              <button
-                                key={slot.id}
-                                type="button"
-                                disabled={isCourseFinished}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleTakeSlotDose(med, slot.id);
-                                }}
-                                className={clsx(
-                                  'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold active:scale-95 cursor-pointer',
-                                  isCourseFinished
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
-                                    : isSlotTaken
-                                      ? slotTheme.taken
-                                      : slotTheme.unrecorded
-                                )}
-                                title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Click to unmark)` : `Click to record ${slotTheme.label} dose`}
-                              >
-                                <span className="text-base sm:text-lg leading-none shrink-0 select-none" role="img" aria-label={slotTheme.label}>
-                                  {slotTheme.emoji}
+                      <div className={clsx('grid gap-2', doseSlots.length === 3 ? 'grid-cols-3' : doseSlots.length === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
+                        {doseSlots.map((slot) => {
+                          const isSlotTaken = Boolean(todaySlots[slot.id]);
+                          const slotTime = todaySlots[slot.id];
+                          const slotTheme = TIME_SLOT_THEMES[slot.id] || TIME_SLOT_THEMES.daily;
+
+                          return (
+                            <button
+                              key={slot.id}
+                              type="button"
+                              disabled={isCourseFinished}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTakeSlotDose(med, slot.id);
+                              }}
+                              className={clsx(
+                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold active:scale-95 cursor-pointer',
+                                isCourseFinished
+                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
+                                  : isSlotTaken
+                                    ? slotTheme.taken
+                                    : slotTheme.unrecorded
+                              )}
+                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Click to unmark)` : `Click to record ${slotTheme.label} dose`}
+                            >
+                              <span className="text-base sm:text-lg leading-none shrink-0 select-none" role="img" aria-label={slotTheme.label}>
+                                {slotTheme.emoji}
+                              </span>
+
+                              {isSlotTaken && (
+                                <span className="text-[11px] sm:text-xs font-black font-mono shrink-0 truncate">
+                                  ✓ {slotTime}
                                 </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                                {isSlotTaken && (
-                                  <span className="text-[11px] sm:text-xs font-black font-mono shrink-0 truncate">
-                                    ✓ {slotTime}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
+                    {/* Prescriber & Hospital Strip */}
+                    <div className={clsx('pt-2 border-t flex items-center justify-between gap-2 text-xs sm:text-[12.5px] font-medium', theme.footerBorder, theme.footerText)}>
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Building2 className={clsx('w-4 h-4 shrink-0', theme.accentColor)} />
+                        <span className="truncate font-bold text-slate-700">{med.hospitalName}</span>
                       </div>
 
-                      {/* Prescriber & Hospital Strip */}
-                      <div className={clsx('pt-2 border-t flex items-center justify-between gap-2 text-xs sm:text-[12.5px] font-medium', theme.footerBorder, theme.footerText)}>
-                        <div className="flex items-center gap-1.5 truncate">
-                          <Building2 className={clsx('w-4 h-4 shrink-0', theme.accentColor)} />
-                          <span className="truncate font-bold text-slate-700">{med.hospitalName}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 truncate text-xs">
-                          <UserIcon className={clsx('w-3.5 h-3.5 shrink-0', theme.accentColor)} />
-                          <span className="truncate font-semibold text-slate-700">{med.prescriber}</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 truncate text-xs">
+                        <UserIcon className={clsx('w-3.5 h-3.5 shrink-0', theme.accentColor)} />
+                        <span className="truncate font-semibold text-slate-700">{med.prescriber}</span>
                       </div>
-                    </motion.div>
-                  )}
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
 
-          {/* 3. PAGINATION DOTS (Click to jump to any stack card) */}
+          {/* 3. PAGINATION DOTS */}
           {totalCards > 1 && (
             <div className="flex items-center justify-center gap-2 pt-1.5">
               {normalizedMeds.map((_, idx) => (

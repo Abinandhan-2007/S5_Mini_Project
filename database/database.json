@@ -5055,7 +5055,7 @@
       "patient_id": "00000000-0000-0000-0000-000000000000",
       "fcm_token": "sample_test_token_999",
       "platform": "android",
-      "is_active": true
+      "is_active": false
     },
     {
       "id": "df27d313-64cd-4833-b3e0-8d75592a4381",
@@ -5076,7 +5076,7 @@
       "patient_id": "29181411-29f0-4836-99a2-ef14800a434a",
       "fcm_token": "fcm_cancel_token_3ebb3b",
       "platform": "android",
-      "is_active": true
+      "is_active": false
     }
   ]
 }

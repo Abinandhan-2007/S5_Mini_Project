@@ -94,7 +94,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           <div className="space-y-1 text-slate-800 text-[12.5px] leading-relaxed">
             {formatMessageText(text)}
           </div>
-          
+
           <span
             className={clsx(
               'block text-[10px] mt-2 font-medium',
