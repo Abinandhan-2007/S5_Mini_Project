@@ -15,10 +15,12 @@ import {
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { apiPost } from '../../lib/apiFetch';
 import { shouldPromptProfileCompletion } from './CompleteProfileScreen';
+import { useTranslation } from '../../i18n';
 
 export const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
 
   const [phone, setPhone] = useState('');
@@ -419,8 +421,8 @@ export const LoginScreen: React.FC = () => {
         {/* Main Login Card */}
         <Card padding="lg" className="shadow-xs border border-[#E4E7EC] bg-[#F8FAFC]/90 space-y-4">
           <div className="text-left space-y-1 pb-1 border-b border-[#E4E7EC]/60">
-            <h2 className="text-base sm:text-lg font-bold font-heading text-[#111827]">Welcome back</h2>
-            <p className="text-xs text-[#6B7280] leading-snug">Log in to manage appointments & health records</p>
+            <h2 className="text-base sm:text-lg font-bold font-heading text-[#111827]">{t('auth.loginTitle', 'Welcome Back')}</h2>
+            <p className="text-xs text-[#6B7280] leading-snug">{t('auth.loginSubtitle', 'Log in to manage appointments & health records')}</p>
           </div>
 
           {resetSuccessMessage && (
@@ -458,13 +460,13 @@ export const LoginScreen: React.FC = () => {
             {/* Username / Email / Phone Input */}
             <div className="space-y-1.5 text-left">
               <Input
-                label="USERNAME, EMAIL, OR PHONE"
+                label={t('auth.emailOrPhone', 'USERNAME, EMAIL, OR PHONE')}
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
                   setShowSignupPrompt(false);
                 }}
-                placeholder="Enter username, email, or phone number"
+                placeholder={t('auth.emailOrPhone', 'Enter username, email, or phone number')}
                 leftIcon={<User className="w-4 h-4 text-[#0B5A54]" />}
                 required
               />
@@ -474,7 +476,7 @@ export const LoginScreen: React.FC = () => {
             <div className="space-y-1.5 text-left">
               <div className="flex justify-between items-center">
                 <label className="block text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider">
-                  PASSWORD
+                  {t('auth.password', 'PASSWORD')}
                 </label>
                 <button
                   type="button"
@@ -485,7 +487,7 @@ export const LoginScreen: React.FC = () => {
                   }}
                   className="text-[11px] font-bold text-[#0B5A54] hover:underline cursor-pointer"
                 >
-                  Forgot Password?
+                  {t('auth.forgotPassword', 'Forgot Password?')}
                 </button>
               </div>
               <Input
@@ -493,7 +495,7 @@ export const LoginScreen: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 isPassword
                 leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
-                placeholder="Enter password"
+                placeholder={t('auth.passwordPlaceholder', 'Enter password')}
               />
             </div>
 
@@ -506,7 +508,7 @@ export const LoginScreen: React.FC = () => {
               rightIcon={<ArrowRight className="w-4 h-4" />}
               className="mt-1 text-xs font-bold py-3 rounded-xl shadow-2xs"
             >
-              LOGIN
+              {t('auth.loginButton', 'LOGIN')}
             </Button>
 
             {/* Divider */}
@@ -515,7 +517,7 @@ export const LoginScreen: React.FC = () => {
                 <div className="w-full border-t border-[#E4E7EC]" />
               </div>
               <span className="relative bg-[#F8FAFC] px-3 text-[10px] font-extrabold text-[#9CA3AF] uppercase tracking-wider">
-                OR
+                {t('common.or', 'OR')}
               </span>
             </div>
 
@@ -548,7 +550,7 @@ export const LoginScreen: React.FC = () => {
                 }
                 className="font-bold text-xs text-[#111827] bg-white border border-[#E4E7EC] shadow-2xs py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer"
               >
-                Continue with Google
+                {t('auth.googleLogin', 'Continue with Google')}
               </Button>
             </div>
           </form>
@@ -557,12 +559,12 @@ export const LoginScreen: React.FC = () => {
         {/* Footer */}
         <div className="text-center space-y-3 pt-1">
           <p className="text-xs font-semibold text-[#6B7280]">
-            New user?{' '}
+            {t('auth.noAccount', 'New user?')}{' '}
             <button
               onClick={() => navigate('/register')}
               className="font-bold text-[#0B5A54] hover:underline ml-0.5"
             >
-              Sign Up
+              {t('auth.registerButton', 'Sign Up')}
             </button>
           </p>
 

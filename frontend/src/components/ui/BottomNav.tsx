@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import doctorAvatar from '../../assets/doctor_avatar.png';
 import { Home, Building2, Activity, User } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from '../../i18n';
 
 /**
  * System Theme-Aware Executive Bottom Navigation Capsule
@@ -13,6 +14,7 @@ import { clsx } from 'clsx';
 export const BottomNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Detect system dark mode preference in real-time
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -35,10 +37,10 @@ export const BottomNav: React.FC = () => {
   }, []);
 
   const navItems = [
-    { path: '/home', label: 'Home', icon: Home },
-    { path: '/history', label: 'History', icon: Activity },
-    { path: '/hospitals', label: 'Hospitals', icon: Building2 },
-    { path: '/profile', label: 'Profile', icon: User },
+    { path: '/home', label: t('nav.home', 'Home'), icon: Home },
+    { path: '/history', label: t('nav.history', 'History'), icon: Activity },
+    { path: '/hospitals', label: t('nav.hospitals', 'Hospitals'), icon: Building2 },
+    { path: '/profile', label: t('nav.profile', 'Profile'), icon: User },
   ];
 
   const isHealthAiActive = location.pathname.startsWith('/health-ai');
@@ -108,7 +110,7 @@ export const BottomNav: React.FC = () => {
                   : 'bg-white/95 text-[#0B5A54] border-teal-100/80'
               )}
             >
-              Health AI
+              {t('nav.healthAi', 'Health AI')}
             </span>
           </button>
         </div>

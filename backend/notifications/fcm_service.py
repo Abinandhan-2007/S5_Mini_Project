@@ -257,12 +257,14 @@ def send_push_notification(
     sent_count = 0
     failed_count = 0
 
+    seen_tokens = set()
     for token_record in tokens:
         token_str = token_record.get("fcm_token")
         token_id = token_record.get("id")
 
-        if not token_str:
+        if not token_str or token_str in seen_tokens:
             continue
+        seen_tokens.add(token_str)
 
         # If Firebase Admin is available and initialized with real credentials
         if messaging and firebase_app:
@@ -350,8 +352,14 @@ def broadcast_app_update_notification(
     """
     Broadcast an FCM push notification with high priority to ALL active devices
     announcing a new CarePulse app version update.
+    Deduplicated: sends to each unique device token exactly once with an Android collapse_key and tag,
+    avoiding duplicate alerts caused by simultaneous topic + unicast dual delivery.
     """
     clean_version = str(version).strip()
+    clean_tag = clean_version.replace(".", "_")
+    update_collapse_key = f"carepulse_update_{clean_tag}"
+    update_tag = f"carepulse_update_{clean_tag}"
+
     title = f"🚀 New CarePulse Update! (v{clean_version})"
     body = (
         custom_message or
@@ -370,36 +378,9 @@ def broadcast_app_update_notification(
     sent_count = 0
     failed_count = 0
 
-    # 1. Broadcast to Firebase FCM Topic ("carepulse_app_updates") for mass instant reach
-    if messaging and firebase_app:
-        try:
-            topic_message = messaging.Message(
-                notification=messaging.Notification(
-                    title=title,
-                    body=body
-                ),
-                android=messaging.AndroidConfig(
-                    priority="high",
-                    notification=messaging.AndroidNotification(
-                        channel_id="carepulse_alerts",
-                        sound="default",
-                        priority="high",
-                        default_sound=True,
-                        default_vibrate_timings=True,
-                        visibility="public"
-                    )
-                ),
-                data={k: str(v) for k, v in data_payload.items()},
-                topic="carepulse_app_updates"
-            )
-            topic_res = messaging.send(topic_message)
-            logger.info(f"📢 FCM Topic 'carepulse_app_updates' broadcast dispatched: {topic_res}")
-        except Exception as topic_err:
-            logger.warning(f"Note on FCM topic broadcast: {topic_err}")
-
-    # 2. Direct unicast delivery to all registered active device tokens
     all_tokens = get_all_active_device_tokens()
     seen_tokens = set()
+    target_tokens = []
 
     for token_record in all_tokens:
         token_str = token_record.get("fcm_token")
@@ -408,39 +389,69 @@ def broadcast_app_update_notification(
         if not token_str or token_str in seen_tokens:
             continue
         seen_tokens.add(token_str)
+        target_tokens.append((token_id, token_str))
 
+    android_config = messaging.AndroidConfig(
+        priority="high",
+        collapse_key=update_collapse_key,
+        notification=messaging.AndroidNotification(
+            channel_id="carepulse_alerts",
+            sound="default",
+            priority="high",
+            default_sound=True,
+            default_vibrate_timings=True,
+            visibility="public",
+            tag=update_tag
+        )
+    ) if messaging else None
+
+    # Delivery Strategy:
+    # 1. If active device tokens are registered in DB, send directly to each token.
+    #    Do NOT send to topic simultaneously, which was the cause of duplicate notifications on registered devices.
+    # 2. If NO device tokens exist in DB, fallback to the FCM update topic.
+    if target_tokens:
+        for token_id, token_str in target_tokens:
+            if messaging and firebase_app:
+                try:
+                    msg = messaging.Message(
+                        notification=messaging.Notification(
+                            title=title,
+                            body=body
+                        ),
+                        android=android_config,
+                        data={k: str(v) for k, v in data_payload.items()},
+                        token=token_str
+                    )
+                    messaging.send(msg)
+                    sent_count += 1
+                except Exception as err:
+                    err_str = str(err).lower()
+                    logger.warning(f"⚠️ FCM send error to token {token_str[:12]}...: {err}")
+                    if "unregistered" in err_str or "invalid" in err_str or "not-found" in err_str:
+                        deactivate_device_token(token_id=token_id, fcm_token=token_str)
+                    failed_count += 1
+            else:
+                logger.info(f"🔔 [SIMULATED UPDATE PUSH] Token: {token_str[:12]}... | Title: '{title}' | Body: '{body}'")
+                sent_count += 1
+    else:
+        # Fallback to FCM topic only if no registered device tokens exist
         if messaging and firebase_app:
             try:
-                msg = messaging.Message(
+                topic_message = messaging.Message(
                     notification=messaging.Notification(
                         title=title,
                         body=body
                     ),
-                    android=messaging.AndroidConfig(
-                        priority="high",
-                        notification=messaging.AndroidNotification(
-                            channel_id="carepulse_alerts",
-                            sound="default",
-                            priority="high",
-                            default_sound=True,
-                            default_vibrate_timings=True,
-                            visibility="public"
-                        )
-                    ),
+                    android=android_config,
                     data={k: str(v) for k, v in data_payload.items()},
-                    token=token_str
+                    topic="carepulse_app_updates"
                 )
-                messaging.send(msg)
+                topic_res = messaging.send(topic_message)
+                logger.info(f"📢 FCM Topic 'carepulse_app_updates' fallback broadcast dispatched: {topic_res}")
                 sent_count += 1
-            except Exception as err:
-                err_str = str(err).lower()
-                logger.warning(f"⚠️ FCM send error to token {token_str[:12]}...: {err}")
-                if "unregistered" in err_str or "invalid" in err_str or "not-found" in err_str:
-                    deactivate_device_token(token_id=token_id, fcm_token=token_str)
+            except Exception as topic_err:
+                logger.warning(f"Note on FCM topic broadcast fallback: {topic_err}")
                 failed_count += 1
-        else:
-            logger.info(f"🔔 [SIMULATED UPDATE PUSH] Token: {token_str[:12]}... | Title: '{title}' | Body: '{body}'")
-            sent_count += 1
 
     logger.info(f"🎉 App update broadcast finished: {sent_count} sent, {failed_count} failed across {len(seen_tokens)} registered devices.")
 

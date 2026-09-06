@@ -3,6 +3,7 @@ import { Search, Loader2, X, Sparkles, Pill, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { apiFetch } from '../../lib/apiFetch';
 import type { MedicineSearchResultItem, MedicineSearchResponse } from '../../lib/types';
+import { useTranslation } from '../../i18n';
 
 interface MedicineAutocompleteInputProps {
   value: string;
@@ -23,7 +24,7 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
   value,
   onChange,
   onSelect,
-  placeholder = 'Type medicine or brand name (e.g. Dolo 650, Amoxicillin)...',
+  placeholder,
   disabled = false,
   autoFocus = false,
   className,
@@ -33,6 +34,8 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
   actionButton,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
+  const effectivePlaceholder = placeholder || t('medicineAutocomplete.searchPlaceholder', 'Type medicine or brand name (e.g. Dolo 650, Amoxicillin)...');
   const [results, setResults] = useState<MedicineSearchResultItem[]>([]);
   const [didYouMean, setDidYouMean] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -182,7 +185,7 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
               }
             }}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={effectivePlaceholder}
             autoComplete="off"
             spellCheck={false}
             className={clsx(
@@ -235,7 +238,7 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
               <div className="flex items-center gap-2 min-w-0">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span className="text-[11.5px] text-amber-900 font-medium truncate">
-                  Did you mean:{' '}
+                  {t('medicineAutocomplete.didYouMean', 'Did you mean')}:{' '}
                   <button
                     type="button"
                     onClick={() => handleApplyDidYouMean(didYouMean)}
@@ -251,7 +254,7 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
                 onClick={() => handleApplyDidYouMean(didYouMean)}
                 className="text-[10.5px] font-black uppercase tracking-wider text-amber-800 bg-amber-200/70 hover:bg-amber-300 px-2 py-0.5 rounded-md transition-colors shrink-0 cursor-pointer"
               >
-                Apply
+                {t('common.apply', 'Apply')}
               </button>
             </div>
           )}
@@ -295,16 +298,16 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
                           )}
                         >
                           {item.match_type === 'exact'
-                            ? 'Exact'
+                            ? t('medicineAutocomplete.matchExact', 'Exact')
                             : item.match_type === 'prefix'
-                            ? 'Prefix'
-                            : 'Fuzzy'}
+                            ? t('medicineAutocomplete.matchPrefix', 'Prefix')
+                            : t('medicineAutocomplete.matchFuzzy', 'Fuzzy')}
                         </span>
                       </div>
 
                       {/* Generic Name / Active Ingredient */}
                       <p className="text-[11px] font-medium text-slate-500 truncate">
-                        Active: <span className="text-slate-700 font-semibold">{item.generic_name}</span>
+                        {t('medicineAutocomplete.active', 'Active')}: <span className="text-slate-700 font-semibold">{item.generic_name}</span>
                         {item.category && item.category !== 'General' && (
                           <span> • {item.category}</span>
                         )}
@@ -331,7 +334,7 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
             !didYouMean && (
               <div className="px-4 py-3 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
-                <span>No matching medications found in catalog</span>
+                <span>{t('medicineAutocomplete.noMatchesFound', 'No matching medications found in catalog')}</span>
               </div>
             )
           )}
