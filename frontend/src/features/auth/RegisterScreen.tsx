@@ -30,6 +30,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ProgressStepper } from '../../components/ui/ProgressStepper';
 import { useCarePulseStore } from '../../lib/store';
 import { getTodayDateString, calculateAge } from '../../lib/dateUtils';
+import { useTranslation } from '../../i18n';
 
 const step1Schema = z
   .object({
@@ -83,6 +84,7 @@ type Step2Data = z.infer<typeof step2Schema>;
 export const RegisterScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const registerUser = useCarePulseStore((s) => s.registerUser);
   const setUserAuth = useCarePulseStore((s) => s.setUserAuth);
 
@@ -257,8 +259,8 @@ export const RegisterScreen: React.FC = () => {
 
         {/* Hero Heading */}
         <div className="text-left space-y-0.5 px-0.5">
-          <h1 className="text-lg sm:text-xl font-extrabold font-heading text-[#111827]">Tell us more about yourself</h1>
-          <p className="text-xs text-[#6B7280]">We use this information to customize your medical records and care.</p>
+          <h1 className="text-lg sm:text-xl font-extrabold font-heading text-[#111827]">{t('auth.registerTitle', 'Tell us more about yourself')}</h1>
+          <p className="text-xs text-[#6B7280]">{t('auth.registerSubtitle', 'We use this information to customize your medical records and care.')}</p>
         </div>
 
         {/* Progress Stepper */}
@@ -300,9 +302,9 @@ export const RegisterScreen: React.FC = () => {
               <div className="space-y-3">
                 {/* Full Name / Username */}
                 <Input
-                  label="FULL NAME"
+                  label={t('auth.fullName', 'FULL NAME')}
                   leftIcon={<User className="w-4 h-4 text-[#0B5A54]" />}
-                  placeholder="Enter full name"
+                  placeholder={t('auth.fullNamePlaceholder', 'Enter full name')}
                   error={form1.formState.errors.fullName?.message}
                   {...form1.register('fullName')}
                 />
@@ -310,10 +312,10 @@ export const RegisterScreen: React.FC = () => {
                 {/* Password below username */}
                 <div className="space-y-1.5">
                   <Input
-                    label="PASSWORD"
+                    label={t('auth.password', 'PASSWORD')}
                     isPassword
                     leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
-                    placeholder="Create password (min. 6 characters)"
+                    placeholder={t('auth.passwordPlaceholder', 'Create password (min. 6 characters)')}
                     error={form1.formState.errors.password?.message}
                     {...form1.register('password')}
                   />
@@ -360,17 +362,17 @@ export const RegisterScreen: React.FC = () => {
 
                 {/* Confirm Password */}
                 <Input
-                  label="CONFIRM PASSWORD"
+                  label={t('auth.confirmPassword', 'CONFIRM PASSWORD')}
                   isPassword
                   leftIcon={<Lock className="w-4 h-4 text-[#0B5A54]" />}
-                  placeholder="Re-enter your password"
+                  placeholder={t('auth.confirmPassword', 'Re-enter your password')}
                   error={form1.formState.errors.confirmPassword?.message}
                   {...form1.register('confirmPassword')}
                 />
 
                 {/* Date of Birth */}
                 <Input
-                  label={calculatedAge !== null ? `DATE OF BIRTH (${calculatedAge} YEARS OLD)` : 'DATE OF BIRTH'}
+                  label={calculatedAge !== null ? `${t('auth.age', 'DATE OF BIRTH')} (${calculatedAge})` : t('auth.age', 'DATE OF BIRTH')}
                   type="date"
                   max={getTodayDateString()}
                   leftIcon={<Calendar className="w-4 h-4 text-[#0B5A54]" />}
@@ -381,19 +383,19 @@ export const RegisterScreen: React.FC = () => {
                 {/* Gender & Blood Group */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <Select
-                    label="GENDER"
+                    label={t('auth.gender', 'GENDER')}
                     leftIcon={<User className="w-4 h-4 text-[#0B5A54]" />}
                     options={[
-                      { value: 'Female', label: 'Female' },
-                      { value: 'Male', label: 'Male' },
-                      { value: 'Other', label: 'Other' },
+                      { value: 'Female', label: t('auth.female', 'Female') },
+                      { value: 'Male', label: t('auth.male', 'Male') },
+                      { value: 'Other', label: t('auth.other', 'Other') },
                     ]}
                     error={form1.formState.errors.gender?.message}
                     {...form1.register('gender')}
                   />
 
                   <Select
-                    label="BLOOD GROUP"
+                    label={t('auth.bloodGroup', 'BLOOD GROUP')}
                     leftIcon={<Droplet className="w-4 h-4 text-rose-500" />}
                     options={[
                       { value: 'O+', label: 'O+' },
@@ -427,20 +429,20 @@ export const RegisterScreen: React.FC = () => {
 
               <div className="space-y-3">
                 <Input
-                  label="PHONE NUMBER"
+                  label={t('auth.phone', 'PHONE NUMBER')}
                   leftIcon={<Phone className="w-4 h-4 text-[#0B5A54]" />}
-                  placeholder="Enter phone number"
+                  placeholder={t('auth.phonePlaceholder', 'Enter phone number')}
                   error={form2.formState.errors.phone?.message}
                   {...form2.register('phone')}
                 />
 
                 <Input
-                  label="EMAIL ADDRESS"
+                  label={t('auth.email', 'EMAIL ADDRESS')}
                   type="text"
                   inputMode="email"
                   autoComplete="email"
                   leftIcon={<Mail className="w-4 h-4 text-[#0B5A54]" />}
-                  placeholder="Enter email address"
+                  placeholder={t('auth.emailPlaceholder', 'Enter email address')}
                   error={form2.formState.errors.email?.message}
                   {...form2.register('email')}
                 />
@@ -490,7 +492,7 @@ export const RegisterScreen: React.FC = () => {
                 leftIcon={<ArrowLeft className="w-4 h-4" />}
                 className="w-1/3 text-xs font-bold py-3 rounded-xl bg-white border border-[#E4E7EC]"
               >
-                Back
+                {t('common.back', 'Back')}
               </Button>
               <Button
                 type="submit"
@@ -499,7 +501,7 @@ export const RegisterScreen: React.FC = () => {
                 className="flex-1 text-xs font-bold py-3 rounded-xl"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                Create Profile →
+                {t('auth.saveProfile', 'Create Profile →')}
               </Button>
             </div>
           </form>
@@ -508,9 +510,9 @@ export const RegisterScreen: React.FC = () => {
         {/* Footer */}
         <div className="text-center pt-1">
           <p className="text-xs font-semibold text-[#6B7280]">
-            Already have an account?{' '}
+            {t('auth.haveAccount', 'Already have an account?')}{' '}
             <button onClick={() => navigate('/login')} className="font-bold text-[#0B5A54] hover:underline ml-0.5 cursor-pointer">
-              Log in
+              {t('auth.loginLink', 'Sign In')}
             </button>
           </p>
         </div>

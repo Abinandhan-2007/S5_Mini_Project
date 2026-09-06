@@ -34,9 +34,11 @@ import { isUserProfileIncomplete } from '../auth/CompleteProfileScreen';
 import { MedicationCardStack, SmartMedicineLensCard } from '../../components/prescriptions';
 import { AppointmentCardStack } from '../../components/appointments/AppointmentCardStack';
 import type { Appointment } from '../../lib/types';
+import { useTranslation } from '../../i18n';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const appointments = useCarePulseStore((s) => s.appointments);
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
@@ -153,7 +155,7 @@ export const HomeScreen: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search Doctor's, Hospitals..."
+              placeholder={t('home.searchPlaceholder', "Search Doctor's, Hospitals...")}
               className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
             />
 
@@ -180,10 +182,13 @@ export const HomeScreen: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs font-black text-slate-900 font-heading tracking-tight">
-                  Complete Your Medical Profile
+                  {t('home.completeProfileNoticeTitle', 'Complete Your Medical Profile')}
                 </h3>
                 <p className="text-[11px] text-slate-600 font-medium">
-                  Please add your phone number, date of birth & emergency contact to unlock clinical bookings.
+                  {t(
+                    'home.completeProfileNoticeDesc',
+                    'Please add your phone number, date of birth & emergency contact to unlock clinical bookings.'
+                  )}
                 </p>
               </div>
             </div>
@@ -193,7 +198,7 @@ export const HomeScreen: React.FC = () => {
               onClick={() => navigate('/complete-profile')}
               className="px-4 py-2 bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
             >
-              Complete Now →
+              {t('home.completeNow', 'Complete Now →')}
             </button>
           </div>
         )}
@@ -219,10 +224,10 @@ export const HomeScreen: React.FC = () => {
           <div className="space-y-2 text-left">
             <div className="flex justify-between items-center px-1">
               <h3 className="text-xs font-black text-[#0B5A54] uppercase tracking-widest font-heading">
-                NEXT DOCTOR VISIT
+                {t('home.nextDoctorVisit', 'NEXT DOCTOR VISIT')}
               </h3>
               <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full border border-[#14B8A6]/20 shadow-2xs">
-                {activeAppointment ? 'SCHEDULED' : 'ROUTINE CARE'}
+                {activeAppointment ? t('home.scheduledBadge', 'SCHEDULED') : t('home.routineCareBadge', 'ROUTINE CARE')}
               </span>
             </div>
 
@@ -252,7 +257,7 @@ export const HomeScreen: React.FC = () => {
                   </div>
 
                   <span className="bg-[#0B5A54] text-white font-black text-[9.5px] px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs shrink-0 flex items-center gap-1">
-                    <span>UPCOMING</span>
+                    <span>{t('home.upcomingBadge', 'UPCOMING')}</span>
                   </span>
                 </div>
 
@@ -263,7 +268,7 @@ export const HomeScreen: React.FC = () => {
                   </span>
 
                   <span className="bg-[#E3F3F1] text-[#0B5A54] text-[10.5px] font-extrabold px-3 py-1.5 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1 shadow-2xs group-hover:bg-[#0B5A54] group-hover:text-white transition-colors">
-                    <span>View Session</span>
+                    <span>{t('home.viewSession', 'View Session')}</span>
                     <ChevronRight className="w-3 h-3" />
                   </span>
                 </div>
@@ -278,15 +283,15 @@ export const HomeScreen: React.FC = () => {
                     <CalendarIcon className="w-5 h-5 text-[#0B5A54]" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-[#111827]">No Scheduled Follow-ups</h4>
-                    <p className="text-xs text-[#6B7280]">Browse doctors by specialty to book a consultation</p>
+                    <h4 className="text-sm font-black text-[#111827]">{t('home.noFollowUps', 'No Scheduled Follow-ups')}</h4>
+                    <p className="text-xs text-[#6B7280]">{t('home.browseDoctors', 'Browse doctors by specialty to book a consultation')}</p>
                   </div>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/hospitals'); }}
                   className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1"
                 >
-                  <span>Explore Specialists →</span>
+                  <span>{t('home.exploreSpecialists', 'Explore Specialists →')}</span>
                 </button>
               </div>
             )}
@@ -327,7 +332,7 @@ export const HomeScreen: React.FC = () => {
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <div className="flex items-center gap-1.5">
                   <Ticket className="w-4 h-4 text-[#0B5A54]" />
-                  <h3 className="text-sm font-extrabold text-[#111827] tracking-tight">Queue Status</h3>
+                  <h3 className="text-sm font-extrabold text-[#111827] tracking-tight">{t('home.queueStatusTitle', 'Queue Status')}</h3>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -479,7 +484,7 @@ export const HomeScreen: React.FC = () => {
                   className="w-full bg-[#0B5A54] hover:bg-[#084540] active:scale-[0.98] text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer border-0 outline-none"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span>Track Live</span>
+                  <span>{t('home.trackLive', 'Track Live')}</span>
                 </button>
               </div>
             </div>

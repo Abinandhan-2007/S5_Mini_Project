@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Info } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 
 interface MedicineModeSelectorProps {
   activeMode: 'prescription' | 'info';
@@ -8,6 +9,7 @@ interface MedicineModeSelectorProps {
 
 export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ activeMode }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="relative p-1.5 bg-slate-200/70 backdrop-blur-sm rounded-2xl sm:rounded-full border border-slate-200/90 shadow-inner grid grid-cols-2 gap-1.5 w-full select-none">
@@ -28,7 +30,7 @@ export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ acti
           className={`w-4 h-4 shrink-0 ${activeMode === 'prescription' ? 'text-[#0F766E]' : 'text-[#0F766E]/80'
             }`}
         />
-        <span>Check My Prescription</span>
+        <span>{t('prescriptions.checkMyPrescription', 'Check My Prescription')}</span>
       </button>
 
       {/* Tab 2: What Is This For? */}
@@ -48,7 +50,7 @@ export const MedicineModeSelector: React.FC<MedicineModeSelectorProps> = ({ acti
           className={`w-4 h-4 shrink-0 ${activeMode === 'info' ? 'text-[#1E3A8A]' : 'text-blue-600'
             }`}
         />
-        <span>What Is This For?</span>
+        <span>{t('prescriptions.whatIsThisFor', 'What Is This For?')}</span>
       </button>
     </div>
   );

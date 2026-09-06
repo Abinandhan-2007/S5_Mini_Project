@@ -20,7 +20,8 @@ from notifications.fcm_service import (
     deactivate_device_token,
     send_push_notification,
     log_notification,
-    is_notification_already_sent
+    is_notification_already_sent,
+    broadcast_app_update_notification
 )
 from notifications.scheduler import (
     parse_time_slot_start,
@@ -191,6 +192,32 @@ def test_push_notification_system():
     custom_times = parse_prescription_frequency_times("1-1-1-1")
     assert custom_times == [(8, 0), (12, 0), (16, 0), (20, 0)]
     print(f"[OK] Frequency parser verified: 'Once daily' -> {once_times}, 'Twice daily' -> {twice_times}, 'Three times daily' -> {thrice_times}")
+
+    # -------------------------------------------------------------
+    # 6. Test App Update Broadcast Deduplication & Collapse Tag
+    # -------------------------------------------------------------
+    print("\n--- [TEST 6] App Update Broadcast Single Delivery & Collapse Tag ---")
+    with patch("notifications.fcm_service.messaging.send") as mock_send:
+        mock_send.return_value = "projects/carepulse-mock/messages/update_123"
+        b_res = broadcast_app_update_notification(
+            version="1.9.9",
+            release_notes="Bug fixes and improvements",
+            custom_message="Update now available"
+        )
+        assert b_res["success"] is True
+        assert b_res["version"] == "1.9.9"
+        # Verify that mock_send was called exactly once per device, NOT twice (no topic + unicast dual send)
+        expected_calls = b_res["total_devices"]
+        assert mock_send.call_count == expected_calls, f"Expected {expected_calls} sends (1 per device), got {mock_send.call_count}!"
+        
+        # Verify that the message contains the Android tag and collapse_key
+        if expected_calls > 0:
+            first_msg = mock_send.call_args_list[0][0][0]
+            assert first_msg.android.collapse_key == "carepulse_update_1_9_9"
+            assert first_msg.android.notification.tag == "carepulse_update_1_9_9"
+            print(f"[OK] Android collapse_key and tag verified: {first_msg.android.collapse_key}")
+
+    print(f"[OK] App update broadcast verified: exactly {expected_calls} notification(s) sent for {expected_calls} device(s) (no dual-delivery)")
 
     print("\n===========================================================")
     print("[SUCCESS] ALL PUSH NOTIFICATION TESTS PASSED SUCCESSFULLY!")
