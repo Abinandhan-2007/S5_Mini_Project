@@ -9,6 +9,9 @@
  * 5. HTML5 Audio fallback for environments with disabled speech synthesis
  */
 
+import { Capacitor } from '@capacitor/core';
+import { getApiBaseUrls } from './apiFetch';
+
 let activeAudioElement: HTMLAudioElement | null = null;
 let keepAliveInterval: any = null;
 let currentSessionId = 0;
@@ -126,11 +129,22 @@ export function checkTtsVoiceAvailability(targetLang = 'en'): VoiceAvailabilityR
   const normKey = targetLang.toLowerCase().trim();
   const langConfig = LANG_MAP[normKey] || LANG_MAP[normKey.split('-')[0]] || LANG_MAP.en;
 
+  // On native platform (Android/iOS APK), CarePulse Voice Stream Engine is always active and available
+  if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+    return {
+      isAvailable: true,
+      targetVoice: null,
+      voiceName: `CarePulse Voice Engine (${langConfig.name})`,
+      langTag: langConfig.tag,
+      languageName: langConfig.name,
+    };
+  }
+
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     return {
-      isAvailable: false,
+      isAvailable: true,
       targetVoice: null,
-      voiceName: 'None',
+      voiceName: `CarePulse Audio Stream (${langConfig.name})`,
       langTag: langConfig.tag,
       languageName: langConfig.name,
     };
@@ -144,9 +158,11 @@ export function checkTtsVoiceAvailability(targetLang = 'en'): VoiceAvailabilityR
   );
 
   return {
-    isAvailable: !!matchingVoice,
+    isAvailable: true,
     targetVoice: matchingVoice || null,
-    voiceName: matchingVoice ? `${matchingVoice.name} (${matchingVoice.lang})` : 'Not Installed',
+    voiceName: matchingVoice
+      ? `${matchingVoice.name} (${matchingVoice.lang})`
+      : `CarePulse Audio Stream (${langConfig.name})`,
     langTag: langConfig.tag,
     languageName: langConfig.name,
   };
@@ -251,20 +267,32 @@ export function isCurrentlySpeaking(): boolean {
 /**
  * Fallback TTS using Google Translate TTS audio stream
  */
-function playFallbackAudio(
+/**
+ * Universal Audio Stream Player for Android WebView (Capacitor) and fallback environments.
+ * Uses CarePulse backend /api/tts endpoint with automatic fallback to direct Google Translate TTS stream.
+ */
+function playAudioStream(
   chunks: string[],
   sessionId: number,
   langTag = 'en',
+  rate = 1.0,
   onStart?: () => void,
-  onEnd?: () => void
+  onEnd?: () => void,
+  onError?: (err?: any) => void
 ): void {
   if (chunks.length === 0 || sessionId !== currentSessionId) {
     onEnd?.();
     return;
   }
 
-  onStart?.();
+  const normLang = langTag.split('-')[0].toLowerCase() || 'en';
+  const cleanLang = ['en', 'ta', 'ml', 'hi'].includes(normLang) ? normLang : 'en';
+
   let index = 0;
+  let hasStarted = false;
+
+  const apiBases = typeof window !== 'undefined' ? getApiBaseUrls() : ['/api'];
+  const primaryBase = apiBases[0] || '/api';
 
   const playNext = () => {
     if (index >= chunks.length || sessionId !== currentSessionId) {
@@ -275,23 +303,62 @@ function playFallbackAudio(
 
     const chunk = chunks[index++];
     const encoded = encodeURIComponent(chunk);
-    const langParam = encodeURIComponent(langTag.split('-')[0] || 'en');
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${langParam}&client=tw-ob`;
 
-    const audio = new Audio(audioUrl);
+    const backendUrl = `${primaryBase}/tts?text=${encoded}&lang=${cleanLang}`;
+    const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${cleanLang}&client=tw-ob`;
+
+    const audio = new Audio();
     activeAudioElement = audio;
 
+    if (rate && rate > 0.5 && rate < 2.0) {
+      audio.playbackRate = rate;
+    }
+
+    let triedDirect = false;
+
+    audio.onplay = () => {
+      if (!hasStarted) {
+        hasStarted = true;
+        onStart?.();
+      }
+    };
+
     audio.onended = () => {
-      playNext();
+      if (sessionId === currentSessionId) {
+        playNext();
+      }
     };
 
-    audio.onerror = () => {
-      // If audio fails (e.g. offline or language unavailable), advance or end gracefully
-      playNext();
+    audio.onerror = (e) => {
+      if (sessionId !== currentSessionId) return;
+
+      if (!triedDirect) {
+        triedDirect = true;
+        console.warn('[TTS] Backend /api/tts unavailable, switching to direct audio stream');
+        audio.src = directUrl;
+        audio.play().catch(() => {
+          playNext();
+        });
+      } else {
+        console.warn('[TTS] Audio chunk playback error:', e);
+        playNext();
+      }
     };
 
-    audio.play().catch(() => {
-      onEnd?.();
+    // Try backend proxy first for optimal CORS and caching
+    audio.src = backendUrl;
+    audio.play().catch((err) => {
+      if (sessionId !== currentSessionId) return;
+      if (!triedDirect) {
+        triedDirect = true;
+        audio.src = directUrl;
+        audio.play().catch(() => {
+          playNext();
+        });
+      } else {
+        onError?.(err);
+        playNext();
+      }
     });
   };
 
@@ -300,7 +367,7 @@ function playFallbackAudio(
 
 /**
  * Main public speech function: Speaks the provided text with language-aware voice detection,
- * automatic chunking, Chromium bug mitigations, and fallback support.
+ * automatic chunking, Android/Capacitor WebView audio streaming, and Chromium bug mitigations.
  */
 export function speakText(
   text: string,
@@ -328,14 +395,29 @@ export function speakText(
   }
 
   const reqLang = options?.lang || 'en';
+  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
   const hasSpeechSynthesis =
     typeof window !== 'undefined' &&
     'speechSynthesis' in window &&
     typeof SpeechSynthesisUtterance !== 'undefined';
 
-  if (!hasSpeechSynthesis) {
-    // Direct fallback to HTML5 Audio
-    playFallbackAudio(chunks, sessionId, reqLang, options?.onStart, options?.onEnd);
+  const availableVoices = hasSpeechSynthesis ? window.speechSynthesis.getVoices() : [];
+
+  // In Android WebView / Capacitor app, window.speechSynthesis is a silent broken stub.
+  // Also on devices without pre-loaded Web Speech voices, native speech will not produce sound.
+  // Use high-fidelity audio stream when on native platform or when voices are unavailable:
+  const shouldUseAudioStream = isNative || !hasSpeechSynthesis || availableVoices.length === 0;
+
+  if (shouldUseAudioStream) {
+    playAudioStream(
+      chunks,
+      sessionId,
+      reqLang,
+      options?.rate ?? 0.95,
+      options?.onStart,
+      options?.onEnd,
+      options?.onError
+    );
     return;
   }
 
@@ -431,7 +513,15 @@ export function speakText(
             clearInterval(keepAliveInterval);
             keepAliveInterval = null;
           }
-          playFallbackAudio(chunks.slice(chunkIdx - 1), sessionId, effectiveTag, options?.onStart, options?.onEnd);
+          playAudioStream(
+            chunks.slice(chunkIdx - 1),
+            sessionId,
+            effectiveTag,
+            options?.rate ?? 0.95,
+            options?.onStart,
+            options?.onEnd,
+            options?.onError
+          );
         };
 
         window.speechSynthesis.speak(utterance);
@@ -440,7 +530,15 @@ export function speakText(
       speakNextChunk();
     } catch (err) {
       console.warn('[TTS] SpeechSynthesis failed, using fallback:', err);
-      playFallbackAudio(chunks, sessionId, reqLang, options?.onStart, options?.onEnd);
+      playAudioStream(
+        chunks,
+        sessionId,
+        reqLang,
+        options?.rate ?? 0.95,
+        options?.onStart,
+        options?.onEnd,
+        options?.onError
+      );
     }
   }, 60);
 }

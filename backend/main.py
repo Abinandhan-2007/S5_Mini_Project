@@ -26,10 +26,12 @@ def normalize_text_key(val: str) -> str:
 
 from fastapi import FastAPI, HTTPException, status, Header, Request, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+import httpx
+import urllib.parse
 
 import random
 import time
@@ -143,6 +145,49 @@ from ai.schemas import AIChatRequest, AIChatResponse
 @app.post("/api/health-assistant/chat", response_model=AIChatResponse, tags=["AI Clinical Services"])
 async def health_assistant_chat_direct(request: AIChatRequest):
     return await chat_medical_assistant(request)
+
+
+@app.get("/api/tts", tags=["Text-to-Speech"])
+async def text_to_speech_audio(
+    text: str = Query(..., max_length=500),
+    lang: str = Query("en", max_length=10)
+):
+    """
+    Proxies TTS audio stream (MP3) for languages (en, ta, ml, hi) with CORS and cache headers,
+    enabling seamless voice playback in both mobile WebViews/Android APK and desktop browsers.
+    """
+    clean_lang = lang.split("-")[0].lower()
+    if clean_lang not in ["en", "ta", "ml", "hi"]:
+        clean_lang = "en"
+
+    encoded_text = text.strip()[:400]
+    if not encoded_text:
+        raise HTTPException(status_code=400, detail="Empty text provided")
+
+    tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&q={urllib.parse.quote(encoded_text)}&tl={clean_lang}&client=tw-ob"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+        "Referer": "https://translate.google.com/",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(tts_url, headers=headers)
+            if resp.status_code == 200 and resp.content:
+                return Response(
+                    content=resp.content,
+                    media_type="audio/mpeg",
+                    headers={
+                        "Cache-Control": "public, max-age=86400",
+                        "Accept-Ranges": "bytes",
+                    }
+                )
+            logger.warning(f"[TTS] Upstream status {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"[TTS] Proxy error: {e}")
+
+    raise HTTPException(status_code=502, detail="TTS service temporarily unavailable")
 
 
 @app.get("/api/health")
