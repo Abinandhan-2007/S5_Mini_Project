@@ -28,24 +28,24 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
       tabIndex={0}
       className={`
         relative overflow-hidden cursor-pointer group select-none
-        rounded-[24px] p-5 sm:p-5.5
+        rounded-2xl sm:rounded-3xl p-4 sm:p-5.5
         bg-[linear-gradient(135deg,#042824_0%,#0B5A54_55%,#064e45_100%)]
         text-white border border-teal-400/30
         shadow-[0_10px_30px_rgba(4,40,36,0.3)]
         hover:shadow-[0_14px_35px_rgba(20,184,166,0.25)]
         hover:border-teal-300/50
         transition-all duration-300 ease-out active:scale-[0.99]
-        flex flex-col justify-between min-h-[140px]
+        flex flex-col justify-between min-h-[130px] sm:min-h-[140px] w-full
         ${className}
       `}
     >
       {/* Background Ambient Glowing Backlights */}
       <div className="absolute inset-0 bg-[radial-gradient(#14B8A6_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
-      <div className="absolute right-4 -bottom-6 w-48 h-48 rounded-full bg-emerald-400/25 blur-3xl pointer-events-none group-hover:bg-emerald-400/35 transition-all duration-500" />
-      <div className="absolute -left-10 -top-10 w-40 h-40 rounded-full bg-teal-500/15 blur-2xl pointer-events-none" />
+      <div className="absolute right-4 -bottom-6 w-36 sm:w-48 h-36 sm:h-48 rounded-full bg-emerald-400/25 blur-3xl pointer-events-none group-hover:bg-emerald-400/35 transition-all duration-500" />
+      <div className="absolute -left-10 -top-10 w-32 sm:w-40 h-32 sm:h-40 rounded-full bg-teal-500/15 blur-2xl pointer-events-none" />
 
       {/* 3D Floating Glass Medicine Capsule Background Artwork on Right */}
-      <div className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-32 h-32 sm:w-36 sm:h-36 pointer-events-none select-none">
+      <div className="absolute right-1 sm:right-6 top-1/2 -translate-y-1/2 w-28 h-28 sm:w-36 sm:h-36 pointer-events-none select-none">
         <svg
           viewBox="0 0 120 120"
           fill="none"
@@ -138,22 +138,22 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
       </div>
 
       {/* Top Header Row */}
-      <div className="relative z-10 space-y-0.5 text-left">
-        <h3 className="text-lg sm:text-[19px] font-black font-heading text-white tracking-tight leading-snug">
+      <div className="relative z-10 space-y-0.5 text-left max-w-[70%] sm:max-w-[75%]">
+        <h3 className="text-base sm:text-lg md:text-[19px] font-black font-heading text-white tracking-tight leading-snug">
           Smart Medicine Lens
         </h3>
-        <p className="text-xs sm:text-[12.5px] text-white/75 font-medium leading-tight">
+        <p className="text-xs sm:text-[12.5px] text-white/80 font-medium leading-tight">
           Scan any medicine — get instant info
         </p>
       </div>
 
       {/* Bottom Action Row - Centered Open Button */}
-      <div className="relative z-10 pt-3 flex justify-center items-center">
+      <div className="relative z-10 pt-2.5 sm:pt-3 flex justify-center items-center">
         <button
           type="button"
           onClick={handleLaunchScanner}
           className="
-            py-2 px-6 rounded-full
+            py-1.5 sm:py-2 px-5 sm:px-6 rounded-full
             bg-gradient-to-r from-emerald-300 via-teal-200 to-emerald-300
             text-[#042824] font-black text-xs sm:text-[13px] tracking-wide
             shadow-[0_0_18px_rgba(52,211,153,0.35)]

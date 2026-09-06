@@ -138,17 +138,17 @@ export const HomeScreen: React.FC = () => {
         <TopBar variant="cyan" />
 
         {/* PILL SEARCH BAR WITH VOICE MIC BUTTON */}
-        <div className="px-4 mt-4">
+        <div className="px-4 sm:px-6 md:px-8 max-w-7xl mx-auto mt-3 sm:mt-4 w-full">
           <form
             onSubmit={handleSearchSubmit}
-            className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all"
+            className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all"
           >
             <button
               type="submit"
               className="p-1 text-[#6B7280] hover:text-[#0B5A54] transition-colors shrink-0 flex items-center justify-center cursor-pointer"
               title="Search"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             </button>
 
             <input
@@ -156,13 +156,13 @@ export const HomeScreen: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('home.searchPlaceholder', "Search Doctor's, Hospitals...")}
-              className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-medium px-2 py-1.5 focus:outline-none placeholder:text-[#9CA3AF]"
+              className="w-full bg-transparent border-none text-xs sm:text-sm md:text-base text-[#111827] font-medium px-2 py-1 focus:outline-none placeholder:text-[#9CA3AF]"
             />
 
             <button
               type="button"
               onClick={() => alert('Voice Search: Speak your query...')}
-              className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-colors shrink-0 shadow-2xs"
+              className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-colors shrink-0 shadow-2xs cursor-pointer"
               title="Voice Search"
             >
               <Mic className="w-4 h-4 text-[#111827]" />
