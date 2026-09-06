@@ -29,9 +29,11 @@ import { MedicineModeSelector } from '../../components/prescriptions/MedicineMod
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { useTranslation } from '../../i18n';
 
 export const ScanMedicineScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const prescriptions = useCarePulseStore((s) => s.prescriptions);
   const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
@@ -349,7 +351,7 @@ export const ScanMedicineScreen: React.FC = () => {
 
             <div>
               <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight font-heading text-white">
-                Medicine Info
+                {t('scanMedicine.title', 'Medicine Info')}
               </h1>
             </div>
           </div>
@@ -360,7 +362,7 @@ export const ScanMedicineScreen: React.FC = () => {
               className="px-3.5 py-2 rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset</span>
+              <span>{t('common.retry', 'Reset')}</span>
             </button>
           )}
         </div>
@@ -390,11 +392,10 @@ export const ScanMedicineScreen: React.FC = () => {
 
               <div className="space-y-1.5">
                 <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading">
-                  Identify Your Tablet Strip or Box
+                  {t('scanMedicine.title', 'Identify Your Tablet Strip or Box')}
                 </h2>
                 <p className="text-xs sm:text-[13px] text-slate-600 max-w-md mx-auto leading-relaxed">
-                  Lost your medicine packaging or unsure whether to take your pill before or after food?
-                  Take a photo of the tablet foil or box to safely match with your doctor's prescriptions.
+                  {t('scanMedicine.subtitle', "Lost your medicine packaging or unsure whether to take your pill before or after food? Take a photo of the tablet foil or box to safely match with your doctor's prescriptions.")}
                 </p>
               </div>
 
@@ -404,7 +405,7 @@ export const ScanMedicineScreen: React.FC = () => {
                   <div className="w-6 h-6 rounded-lg bg-teal-100 text-[#0B5A54] text-xs font-black flex items-center justify-center">
                     1
                   </div>
-                  <h4 className="text-[11px] font-black text-slate-800">Clear Lighting</h4>
+                  <h4 className="text-[11px] font-black text-slate-800">{t('scanMedicine.tip1', 'Clear Lighting')}</h4>
                   <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                     Ensure packaging text is well-lit without blinding foil reflections.
                   </p>
@@ -414,7 +415,7 @@ export const ScanMedicineScreen: React.FC = () => {
                   <div className="w-6 h-6 rounded-lg bg-teal-100 text-[#0B5A54] text-xs font-black flex items-center justify-center">
                     2
                   </div>
-                  <h4 className="text-[11px] font-black text-slate-800">Show Drug Name</h4>
+                  <h4 className="text-[11px] font-black text-slate-800">{t('scanMedicine.tip2', 'Show Drug Name')}</h4>
                   <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                     Position the printed brand or generic medicine name in focus.
                   </p>
@@ -424,7 +425,7 @@ export const ScanMedicineScreen: React.FC = () => {
                   <div className="w-6 h-6 rounded-lg bg-teal-100 text-[#0B5A54] text-xs font-black flex items-center justify-center">
                     3
                   </div>
-                  <h4 className="text-[11px] font-black text-slate-800">Safety Check</h4>
+                  <h4 className="text-[11px] font-black text-slate-800">{t('scanMedicine.tip3', 'Safety Check')}</h4>
                   <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
                     Cross-references strictly against your own active prescriptions.
                   </p>
@@ -462,7 +463,7 @@ export const ScanMedicineScreen: React.FC = () => {
                   className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-gradient-to-r from-[#0F766E] to-[#14B8A6] hover:from-[#0D655E] hover:to-[#0F9488] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer border border-teal-400/20"
                 >
                   <Camera className="w-4 h-4 text-white" />
-                  <span>Take Photo with Camera</span>
+                  <span>{t('scanMedicine.capturePhoto', 'Take Photo with Camera')}</span>
                 </button>
 
                 <button
@@ -470,7 +471,7 @@ export const ScanMedicineScreen: React.FC = () => {
                   className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border-[1.5px] border-slate-300 hover:border-slate-400 shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                 >
                   <Upload className="w-4 h-4 text-slate-500" />
-                  <span>Choose from Gallery</span>
+                  <span>{t('scanMedicine.uploadGallery', 'Choose from Gallery')}</span>
                 </button>
               </div>
             </div>
@@ -482,10 +483,13 @@ export const ScanMedicineScreen: React.FC = () => {
               </div>
               <div className="space-y-0.5 min-w-0 flex-1">
                 <p className="text-xs sm:text-[13px] font-black text-emerald-950 tracking-tight">
-                  Doctor-Verified Safety Check
+                  {t('scanMedicine.doctorVerifiedCheck', 'Doctor-Verified Safety Check')}
                 </p>
                 <p className="text-[11px] sm:text-xs text-emerald-800/90 leading-snug">
-                  Matches strictly against your active prescriptions to confirm correct dosage and food timing.
+                  {t(
+                    'scanMedicine.doctorVerifiedDesc',
+                    'Matches strictly against your active prescriptions to confirm correct dosage and food timing.'
+                  )}
                 </p>
               </div>
             </div>
@@ -504,10 +508,10 @@ export const ScanMedicineScreen: React.FC = () => {
 
             <div className="space-y-2 max-w-md mx-auto">
               <h3 className="text-base font-black text-slate-900 font-heading">
-                Scanning Medicine Packaging...
+                {t('scanMedicine.processing', 'Scanning Medicine Packaging...')}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Extracting drug name via offline OCR and matching against your active medical records.
+                {t('scanMedicine.analyzingPill', 'Reading drug name, strength & dosage form...')}
               </p>
             </div>
 
@@ -620,7 +624,7 @@ export const ScanMedicineScreen: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 text-slate-800">
                             <Info className="w-4 h-4 text-[#14B8A6]" />
-                            <h4 className="text-xs font-black tracking-tight">About this medication</h4>
+                            <h4 className="text-xs font-black tracking-tight">{t('scanMedicine.aboutThisMedication', 'About this medication')}</h4>
                           </div>
                           <span className="text-[9.5px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
                             {dInfo?.source || 'OpenFDA'}
@@ -758,14 +762,14 @@ export const ScanMedicineScreen: React.FC = () => {
                     className="w-full sm:w-1/2 py-3 rounded-2xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Scan Another Pill</span>
+                    <span>{t('scanMedicine.scanAnotherPill', 'Scan Another Pill')}</span>
                   </button>
                   <button
                     onClick={() => navigate('/prescriptions')}
                     className="w-full sm:w-1/2 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Pill className="w-4 h-4 text-[#0B5A54]" />
-                    <span>View All Prescriptions</span>
+                    <span>{t('scanMedicine.viewAllPrescriptions', 'View All Prescriptions')}</span>
                   </button>
                 </div>
               </div>
@@ -778,11 +782,14 @@ export const ScanMedicineScreen: React.FC = () => {
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left space-y-1">
                   <div className="flex items-center gap-2 text-amber-900">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <h4 className="text-xs font-black">Ambiguous Match — Please Confirm</h4>
+                    <h4 className="text-xs font-black">{t('scanMedicine.ambiguousMatch', 'Ambiguous Match — Please Confirm')}</h4>
                   </div>
                   <p className="text-[11px] text-amber-800 leading-snug">
                     {scanResult.message ||
-                      'We found multiple possible prescription matches on your records. Tap the exact medicine shown on your blister pack.'}
+                      t(
+                        'scanMedicine.ambiguousDesc',
+                        'We found multiple possible prescription matches on your records. Tap the exact medicine shown on your blister pack.'
+                      )}
                   </p>
                 </div>
 
@@ -791,7 +798,7 @@ export const ScanMedicineScreen: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Near-Miss OCR? Refine Tablet Name:</span>
+                      <span>{t('scanMedicine.refineTabletName', 'Near-Miss OCR? Refine Tablet Name:')}</span>
                     </span>
                     {scanResult.extractedText && (
                       <span className="text-[10.5px] text-slate-400 font-mono">
@@ -803,7 +810,7 @@ export const ScanMedicineScreen: React.FC = () => {
                     value={editableQuery}
                     onChange={setEditableQuery}
                     onSelect={handleSelectFromAutocomplete}
-                    placeholder="Type to search and confirm medicine..."
+                    placeholder={t('medicineAutocomplete.searchPlaceholder', 'Type to search and confirm medicine...')}
                   />
                 </div>
 
@@ -811,7 +818,7 @@ export const ScanMedicineScreen: React.FC = () => {
                 {!selectedCandidate ? (
                   <div className="space-y-2.5 text-left">
                     <p className="text-xs font-extrabold text-slate-700 px-1">
-                      Select Matching Prescription ({scanResult.matches?.length || 0} Candidates):
+                      {t('scanMedicine.selectMatching', 'Select Matching Prescription')} ({scanResult.matches?.length || 0}):
                     </p>
 
                     <div className="space-y-2">

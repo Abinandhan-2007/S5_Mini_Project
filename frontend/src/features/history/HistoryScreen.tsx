@@ -23,6 +23,7 @@ import {
 import { clsx } from 'clsx';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useCarePulseStore } from '../../lib/store';
+import { useTranslation } from '../../i18n';
 
 export type VisitType = 'In-Person' | 'Video Consult' | 'Follow-up';
 export type VisitStatus = 'Completed' | 'Cancelled' | 'No-Show';
@@ -177,6 +178,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   isLoading: propLoading = false,
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const storeAppointments = useCarePulseStore((s) => s.appointments);
   const storeHistory = useCarePulseStore((s) => s.history);
@@ -193,7 +195,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const [visibleCount, setVisibleCount] = useState(15);
 
   const formattedDateLabel = useMemo(() => {
-    if (customDateFilter === 'ALL') return 'All Dates';
+    if (customDateFilter === 'ALL') return t('history.allDates', 'All Dates');
     try {
       const d = new Date(customDateFilter + 'T00:00:00');
       if (!isNaN(d.getTime())) {
@@ -203,7 +205,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       // fallback
     }
     return customDateFilter;
-  }, [customDateFilter]);
+  }, [customDateFilter, t]);
 
   // Sync on mount if user is logged in
   useEffect(() => {
@@ -422,7 +424,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-white drop-shadow-2xs font-heading">
-                History
+                {t('history.title', 'History')}
               </h1>
             </div>
 
@@ -477,14 +479,14 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search doctor, hospital, diagnosis, Rx..."
+                    placeholder={t('history.searchVisitsPlaceholder', 'Search doctor, hospital, diagnosis, Rx...')}
                     className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-bold focus:outline-none placeholder:text-[#94A3B8]"
                   />
 
                   {/* Live Match Badge */}
                   {searchQuery && (
                     <span className="text-[10px] font-black uppercase tracking-wider bg-teal-100/90 text-[#0B5A54] px-2 py-0.5 rounded-full mr-2 shrink-0 select-none">
-                      {filteredVisits.length} found
+                      {filteredVisits.length} {t('history.foundCount', 'found')}
                     </span>
                   )}
 
@@ -544,7 +546,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-[#0B5A54]" />
-                      Filter by Date
+                      {t('history.filterByDate', 'Filter by Date')}
                     </span>
                     {customDateFilter !== 'ALL' && (
                       <button
@@ -555,7 +557,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                         }}
                         className="text-[11px] font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
                       >
-                        Reset
+                        {t('common.reset', 'Reset')}
                       </button>
                     )}
                   </div>
@@ -627,7 +629,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             >
               <SlidersHorizontal className={clsx('w-3.5 h-3.5', selectedSpecialty !== 'All' ? 'text-[#0B5A54]' : 'text-slate-500')} />
               <span className="max-w-[100px] sm:max-w-[140px] truncate">
-                {selectedSpecialty === 'All' ? 'All Specialties' : selectedSpecialty}
+                {selectedSpecialty === 'All' ? t('history.allSpecialties', 'All Specialties') : selectedSpecialty}
               </span>
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform text-slate-400', isSpecialtyMenuOpen && 'rotate-180')} />
             </button>
@@ -643,7 +645,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-40"
                 >
                   <div className="px-3.5 py-1.5 border-b border-slate-100 text-[10.5px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
-                    <span>Filter Specialty</span>
+                    <span>{t('history.filterBySpecialty', 'Filter Specialty')}</span>
                     {selectedSpecialty !== 'All' && (
                       <button
                         type="button"
@@ -653,7 +655,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                         }}
                         className="text-[10.5px] font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
                       >
-                        Reset
+                        {t('common.reset', 'Reset')}
                       </button>
                     )}
                   </div>
@@ -718,12 +720,12 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
             <div className="max-w-sm mx-auto space-y-1.5">
               <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                No visits found
+                {t('history.noAppointmentsFound', 'No consultation records found')}
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
                 {isFilterActive
-                  ? "No consultations match your active filters or search terms."
-                  : "You don't have any past doctor visits recorded in your clinical history."}
+                  ? t('history.noAppointmentsDesc', 'No consultations match your active filters or search terms.')
+                  : t('history.noAppointmentsDesc', 'Your scheduled and completed hospital visits will appear here.')}
               </p>
             </div>
 
@@ -734,7 +736,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#084540] transition-all shadow-xs active:scale-95 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Clear filters</span>
+                <span>{t('history.clearAllFilters', 'Clear all filters')}</span>
               </button>
             ) : (
               <button
@@ -743,7 +745,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#0B5A54] hover:bg-[#084540] transition-all shadow-xs active:scale-95 cursor-pointer"
               >
                 <Stethoscope className="w-3.5 h-3.5" />
-                <span>Book a Consultation</span>
+                <span>{t('home.bookAppointment', 'Book Doctor')}</span>
               </button>
             )}
           </motion.div>
@@ -834,7 +836,13 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                                 {isCompleted && <CheckCircle2 className="w-3 h-3 text-emerald-600 stroke-[2.5]" />}
                                 {isCancelled && <XCircle className="w-3 h-3 text-rose-600 stroke-[2.5]" />}
                                 {isNoShow && <AlertCircle className="w-3 h-3 text-slate-500 stroke-[2.5]" />}
-                                <span>{visit.status}</span>
+                                <span>
+                                  {visit.status === 'Completed'
+                                    ? t('history.statusCompleted', 'Completed')
+                                    : visit.status === 'Cancelled'
+                                    ? t('history.statusCancelled', 'Cancelled')
+                                    : visit.status}
+                                </span>
                               </span>
                             </div>
                           </div>
@@ -866,12 +874,18 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                               {visit.visitType === 'Video Consult' ? (
                                 <>
                                   <Video className="w-3 h-3 text-indigo-500" />
-                                  <span>Video Consult</span>
+                                  <span>{t('history.videoConsult', 'Video Consult')}</span>
                                 </>
                               ) : (
                                 <>
                                   <Building2 className="w-3 h-3 text-teal-600" />
-                                  <span>{visit.visitType}</span>
+                                  <span>
+                                    {visit.visitType === 'In-Person'
+                                      ? t('history.inPerson', 'In-Person')
+                                      : visit.visitType === 'Follow-up'
+                                      ? t('history.followUp', 'Follow-up')
+                                      : visit.visitType}
+                                  </span>
                                 </>
                               )}
                             </div>
@@ -903,19 +917,19 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                                     <div className="mt-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
                                       {visit.diagnosis && (
                                         <div>
-                                          <span className="font-black text-slate-700 block">Assessment / Diagnosis:</span>
+                                          <span className="font-black text-slate-700 block">{t('history.diagnosisLabel', 'Diagnosis')}:</span>
                                           <p className="text-slate-600 font-medium leading-relaxed">{visit.diagnosis}</p>
                                         </div>
                                       )}
                                       {visit.prescriptionDetails && (
                                         <div className="pt-1.5 border-t border-slate-200/70">
-                                          <span className="font-black text-slate-700 block">Prescribed Medication:</span>
+                                          <span className="font-black text-slate-700 block">{t('history.prescriptionLabel', 'Prescription')}:</span>
                                           <p className="text-[#0B5A54] font-bold">{visit.prescriptionDetails}</p>
                                         </div>
                                       )}
                                       {visit.ticketNumber && (
                                         <div className="pt-1 text-[11px] text-slate-400 font-mono">
-                                          Reference Ticket: {visit.ticketNumber}
+                                          {t('history.tokenLabel', 'Token')}: {visit.ticketNumber}
                                         </div>
                                       )}
                                     </div>

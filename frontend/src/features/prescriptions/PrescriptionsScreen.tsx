@@ -20,6 +20,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
 import { MedicationCardStack } from '../../components/prescriptions';
 import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
+import { useTranslation } from '../../i18n';
 
 export interface PrescribedMedicine {
   id: string;
@@ -43,6 +44,7 @@ export interface DoctorPrescriptionGroup {
 
 export const PrescriptionsScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const storePrescriptions = useCarePulseStore((s) => s.prescriptions);
   const history = useCarePulseStore((s) => s.history);
@@ -156,8 +158,8 @@ export const PrescriptionsScreen: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-base font-black tracking-tight leading-tight">My Prescriptions</h1>
-              <p className="text-[11px] text-teal-50 font-medium">Medications, dosages & refill schedule</p>
+              <h1 className="text-base font-black tracking-tight leading-tight">{t('prescriptions.title', 'Prescription Vault')}</h1>
+              <p className="text-[11px] text-teal-50 font-medium">{t('home.latestPrescriptions', 'Medications, dosages & refill schedule')}</p>
             </div>
           </div>
 
@@ -168,7 +170,7 @@ export const PrescriptionsScreen: React.FC = () => {
               title="Scan Medicine with Camera"
             >
               <Camera className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <span className="hidden sm:inline">Scan Medicine</span>
+              <span className="hidden sm:inline">{t('scanMedicine.scanAnother', 'Scan Medicine')}</span>
             </button>
 
             <button
@@ -223,7 +225,7 @@ export const PrescriptionsScreen: React.FC = () => {
             className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white text-[#0B5A54] hover:bg-teal-50 text-xs font-black shadow-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#14B8A6]" />
-            <span>Scan Medicine</span>
+            <span>{t('scanMedicine.scanAnother', 'Scan Medicine')}</span>
           </button>
         </div>
 
@@ -278,10 +280,10 @@ export const PrescriptionsScreen: React.FC = () => {
 
             <div className="max-w-md mx-auto space-y-2">
               <h3 className="text-base sm:text-lg font-black text-[#111827] font-heading">
-                No Active Prescriptions
+                {t('prescriptions.noPrescriptionsFound', 'No Active Prescriptions')}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B7280] leading-relaxed">
-                You have no active prescriptions or medication plans on file. Any prescriptions issued during your doctor visits will appear here automatically with dosing schedules and reminders.
+                {t('prescriptions.noPrescriptionsFound', 'You have no active prescriptions or medication plans on file.')}
               </p>
             </div>
 
@@ -291,13 +293,13 @@ export const PrescriptionsScreen: React.FC = () => {
                 className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Book a Consultation</span>
+                <span>{t('home.bookAppointment', 'Book Doctor')}</span>
               </button>
               <button
                 onClick={() => navigate('/home')}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-[#F8FAFC] hover:bg-slate-100 text-[#475467] text-xs sm:text-sm font-bold border border-[#E4E7EC] transition-all cursor-pointer"
               >
-                Return to Home
+                {t('common.back', 'Return to Home')}
               </button>
             </div>
           </div>

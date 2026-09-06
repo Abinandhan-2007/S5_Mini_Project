@@ -72,6 +72,8 @@ import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
 import { registerPushNotifications } from './lib/pushNotifications';
 import { MedicineIntakePromptModal } from './components/prescriptions/MedicineIntakePromptModal';
 import { initMedicationNotificationService } from './services/medicationNotificationService';
+import { LanguageProvider } from './i18n';
+import { TtsFallbackToast } from './components/ui/TtsFallbackToast';
 
 /**
  * Handles live foreground-resume APK version checking when app is already running.
@@ -176,13 +178,16 @@ export const App: React.FC = () => {
   // 3. Normal Authenticated App Flow (Biometric Lock / Session Restore / Login / Routes)
   return (
     <BrowserRouter>
-      <NotificationNavigationListener />
-      <AppResumeUpdateChecker />
-      <OfflineBanner />
-      <MedicineIntakePromptModal />
-      <div className="min-h-screen bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col overflow-x-hidden">
-        <AppRoutes />
-      </div>
+      <LanguageProvider>
+        <NotificationNavigationListener />
+        <AppResumeUpdateChecker />
+        <OfflineBanner />
+        <MedicineIntakePromptModal />
+        <TtsFallbackToast />
+        <div className="min-h-screen bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col overflow-x-hidden">
+          <AppRoutes />
+        </div>
+      </LanguageProvider>
     </BrowserRouter>
   );
 };

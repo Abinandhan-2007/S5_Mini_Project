@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { TokenQueueItem } from '../../types/receptionist';
+import { speakText } from '../../lib/speechUtils';
 
 interface TokenManagementProps {
   onShowToast?: (msg: string) => void;
@@ -65,20 +66,9 @@ const playHospitalChime = () => {
   }
 };
 
-// Voice announcement using Web Speech API
+// Voice announcement using CarePulse TTS Engine
 const speakAnnouncement = (text: string) => {
-  try {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1.05;
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
-    }
-  } catch {
-    // Ignore speech errors if unsupported
-  }
+  speakText(text, { rate: 0.95, pitch: 1.05 });
 };
 
 export type TokenSortOption =

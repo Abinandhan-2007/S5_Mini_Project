@@ -31,6 +31,8 @@ import { MedicineModeSelector } from '../../components/prescriptions/MedicineMod
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { speakText, stopSpeaking } from '../../lib/speechUtils';
+import { useTranslation } from '../../i18n';
 
 // Rich Curated Clinical Knowledge Fallback for Instant Samples / Offline
 const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
@@ -219,6 +221,7 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
 
 export const MedicineInfoLookupScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { t, language } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -235,9 +238,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
   // Stop speech synthesis on unmount
   useEffect(() => {
     return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeaking();
     };
   }, []);
 
@@ -272,39 +273,40 @@ export const MedicineInfoLookupScreen: React.FC = () => {
 
   // Voice narration for accessibility (reads structured sections)
   const handleToggleSpeech = (result: MedicineInfoLookupResponse) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      stopSpeaking();
       setIsSpeaking(false);
     } else {
-      window.speechSynthesis.cancel();
       const parts: string[] = [`${result.drugName}.`];
       if (result.genericName) parts.push(`Active ingredient: ${result.genericName}.`);
-      if (result.purpose) parts.push(`Primary purpose: ${result.purpose}`);
+      if (result.purpose) {
+        parts.push(`Primary purpose: ${result.purpose}`);
+      } else if (result.summary) {
+        parts.push(`Overview: ${result.summary}`);
+      }
       if (result.mainUses && result.mainUses.length > 0) {
-        parts.push(`Main uses: ${result.mainUses.join(' ')}`);
+        parts.push(`Main uses: ${result.mainUses.slice(0, 4).join(', ')}.`);
       }
       if (result.howToTake && result.howToTake.length > 0) {
-        parts.push(`How to take it: ${result.howToTake.join(' ')}`);
+        parts.push(`How to take it: ${result.howToTake.slice(0, 2).join(' ')}`);
       }
       if (result.boxedWarning && result.boxedWarning.length > 0) {
-        parts.push(`FDA Boxed Warning: ${result.boxedWarning.join(' ')}`);
-      }
-      if (result.warnings && result.warnings.length > 0) {
-        parts.push(`Important warnings: ${result.warnings.join(' ')}`);
+        parts.push(`Warning: ${result.boxedWarning.slice(0, 1).join(' ')}`);
+      } else if (result.warnings && result.warnings.length > 0) {
+        parts.push(`Important warnings: ${result.warnings.slice(0, 2).join(' ')}`);
       }
       if (result.sideEffects && result.sideEffects.length > 0) {
-        parts.push(`Common side effects: ${result.sideEffects.join(' ')}`);
+        parts.push(`Possible side effects: ${result.sideEffects.slice(0, 3).join(', ')}.`);
       }
+
       const textToRead = parts.join(' ');
-      const utterance = new SpeechSynthesisUtterance(textToRead);
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      setIsSpeaking(true);
-      window.speechSynthesis.speak(utterance);
+      speakText(textToRead, {
+        lang: language,
+        rate: 0.95,
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
     }
   };
 
@@ -435,10 +437,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     setErrorNotice(null);
     setIsWarningsExpanded(false);
     setIsSideEffectsExpanded(false);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
+    stopSpeaking();
+    setIsSpeaking(false);
 
     try {
       const res = await apiFetch('/medicine/lookup-info', {
@@ -521,10 +521,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     setLookupResult(null);
     setErrorNotice(null);
     setManualQuery('');
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
+    stopSpeaking();
+    setIsSpeaking(false);
   };
 
   const analyzingSteps = [
@@ -593,77 +591,66 @@ export const MedicineInfoLookupScreen: React.FC = () => {
           <div className="space-y-0.5 min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="text-xs sm:text-[13px] font-extrabold text-[#1E3A8A] tracking-tight">
-                General Medication Information Only
+                {t('medicineInfo.generalNoticeTitle', 'General Medication Information Only')}
               </p>
             </div>
             <p className="text-[11.5px] sm:text-xs text-slate-600 leading-relaxed">
-              This informational lookup is{' '}
-              <strong className="font-bold text-slate-900 underline decoration-blue-300">
-                NOT a verification
-              </strong>{' '}
-              against your personal prescriptions. To confirm personal dosage schedule, meal timing,
-              and safety cross-checks, use{' '}
+              {t('medicineInfo.generalNoticeDesc', 'This informational lookup is NOT a verification against your personal prescriptions. To confirm personal dosage schedule, meal timing, and safety cross-checks, use')}{' '}
               <button
+                type="button"
                 onClick={() => navigate('/prescriptions/scan')}
                 className="underline font-bold text-[#0F766E] hover:text-[#0B5A54] inline-flex items-center gap-0.5 cursor-pointer ml-0.5"
               >
-                Check My Prescription <ChevronRight className="w-3 h-3 inline" />
+                {t('prescriptions.checkMyPrescription', 'Check My Prescription')} <ChevronRight className="w-3 h-3 inline" />
               </button>
             </p>
           </div>
         </div>
 
-        {/* Error Notice */}
+        {/* Error Notice if any */}
         {errorNotice && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-[13px] font-semibold p-4 rounded-3xl flex items-center gap-3 shadow-xs animate-in fade-in">
-            <HelpCircle className="w-5 h-5 text-rose-600 shrink-0" />
-            <span className="flex-1">{errorNotice}</span>
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold p-3.5 rounded-2xl flex items-center gap-2.5 shadow-xs">
+            <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorNotice}</span>
           </div>
         )}
 
-        {/* INITIAL CAPTURE & SEARCH STATE */}
+        {/* STATE 1: INITIAL CAMERA CAPTURE / UPLOAD PROMPT */}
         {!imagePreview && !lookupResult && !isAnalyzing && (
-          <div className="space-y-4 sm:space-y-5">
-            {/* MAIN SCAN/SEARCH CARD (20-24px Large Radius + Diffused Elevation) */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_10px_30px_rgba(30,58,138,0.06)] space-y-6 text-center">
-              {/* Soft Gradient Circle Badge with breathing ambient ring */}
-              <div className="relative w-20 h-20 mx-auto">
-                <div className="absolute inset-0 rounded-full bg-blue-400/20 animate-ping opacity-30" />
-                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[#EEF2FF] via-[#DBEAFE] to-[#C7D2FE] border border-blue-200/80 flex items-center justify-center text-[#1E3A8A] shadow-inner mx-auto group">
-                  <Pill className="w-9 h-9 text-[#1E3A8A] transition-transform group-hover:scale-110 duration-300" />
-                </div>
+          <div className="space-y-4">
+            {/* Visual Guide Card */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4 text-center">
+              <div className="w-16 h-16 rounded-3xl bg-[#EEF2FF] border border-blue-200/70 flex items-center justify-center mx-auto text-[#1E3A8A] shadow-2xs">
+                <Info className="w-8 h-8 text-[#1E3A8A]" />
               </div>
 
-              {/* Trust-Inspiring Headline & High-Legibility Typography */}
-              <div className="space-y-2 max-w-lg mx-auto">
-                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 font-heading tracking-tight">
-                  Scan or Search Any Medicine
+              <div className="space-y-1.5">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading">
+                  {t('medicineInfo.title', 'Lookup Medication Information')}
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Curious what an unfamiliar pill, syrup, or tablet is generally used for? Photograph
-                  the packaging or enter its name to look up verified therapeutic background from the
-                  OpenFDA public medical library.
+                <p className="text-xs sm:text-[13px] text-slate-600 max-w-md mx-auto leading-relaxed">
+                  {t('medicineInfo.disclaimer', 'Learn clinical purpose, indications, dosages, warnings, and possible side effects by scanning or searching.')}
                 </p>
               </div>
 
-              {/* Action Buttons: Gradient Pill CTA + Outlined Secondary Pill */}
-              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3.5">
-                {/* Primary CTA: Scan Packaging with Camera */}
+              {/* Action Buttons: Camera & Upload */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <button
+                  type="button"
                   onClick={handleStartCamera}
-                  className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-gradient-to-r from-[#1E3A8A] via-[#2A4DC7] to-[#3B5FE0] hover:from-[#193278] hover:to-[#3252CA] text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-700/25 hover:shadow-xl hover:shadow-blue-700/35 transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] cursor-pointer border border-blue-400/30"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#1E3A8A] via-[#2A4DC7] to-[#3B5FE0] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-700/20 hover:shadow-lg transition-all cursor-pointer active:scale-98"
                 >
-                  <Camera className="w-4 h-4 text-white" />
-                  <span>Scan Packaging with Camera</span>
+                  <Camera className="w-4 h-4" />
+                  <span>{t('scanMedicine.takePhoto', 'Scan Package or Bottle')}</span>
                 </button>
 
-                {/* Secondary CTA: Choose from Gallery (Outlined Pill, 1.5px border) */}
                 <button
+                  type="button"
                   onClick={handleOpenGallery}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border-[1.5px] border-slate-300 hover:border-slate-400 shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] cursor-pointer"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 border border-slate-200"
                 >
                   <Upload className="w-4 h-4 text-slate-500" />
-                  <span>Choose from Gallery</span>
+                  <span>{t('scanMedicine.uploadGallery', 'Choose from Gallery')}</span>
                 </button>
               </div>
 
@@ -674,7 +661,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                 </div>
                 <div className="relative flex justify-center">
                   <span className="bg-[#F1F5F9] border border-slate-200/80 text-slate-500 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-2xs">
-                    OR ENTER MEDICINE NAME
+                    {t('common.or', 'OR ENTER MEDICINE NAME')}
                   </span>
                 </div>
               </div>
@@ -687,7 +674,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                   onSelect={handleSelectMedicine}
                   onSubmit={() => handleManualSearch()}
                   pill={true}
-                  placeholder="Type name (e.g. Amoxicillin, Dolo 650, Metformin)..."
+                  placeholder={t('medicineInfo.searchPlaceholder', 'Type name (e.g. Amoxicillin, Dolo 650, Metformin)...')}
                   inputClassName="shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white text-xs sm:text-sm py-3 pl-10 pr-9 rounded-full border border-slate-200"
                   actionButton={
                     <button
@@ -697,7 +684,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                       className="px-5 py-3 rounded-full bg-gradient-to-r from-[#1E3A8A] to-[#3B5FE0] text-white text-xs sm:text-sm font-bold hover:shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-sm active:scale-95 flex items-center gap-1.5"
                     >
                       <Search className="w-3.5 h-3.5" />
-                      <span>Lookup</span>
+                      <span>{t('common.search', 'Lookup')}</span>
                     </button>
                   }
                 />
@@ -720,7 +707,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
 
             <div className="space-y-2 max-w-md mx-auto">
               <h3 className="text-base sm:text-lg font-black text-slate-900 font-heading">
-                Looking Up Medication Purpose...
+                {t('scanMedicine.processing', 'Looking Up Medication Purpose...')}
               </h3>
               <p className="text-xs sm:text-sm text-blue-700 font-bold h-6 transition-all">
                 {analyzingSteps[analyzingStep]}
@@ -767,7 +754,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                   {/* 'INFORMATIONAL ONLY' Subtle Outlined Tag */}
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="bg-slate-50/90 text-slate-600 border border-slate-300/80 text-[10px] sm:text-[10.5px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider shadow-2xs">
-                      INFORMATIONAL ONLY
+                      {t('medicineInfo.informationalOnly', 'INFORMATIONAL ONLY')}
                     </span>
 
                     {/* Audio read-aloud button for accessibility */}
@@ -779,12 +766,12 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                       {isSpeaking ? (
                         <>
                           <VolumeX className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
-                          <span className="text-rose-600">Stop Voice</span>
+                          <span className="text-rose-600">{t('medicineInfo.stopListening', 'Stop Voice')}</span>
                         </>
                       ) : (
                         <>
                           <Volume2 className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Listen</span>
+                          <span>{t('medicineInfo.listenToInfo', 'Listen')}</span>
                         </>
                       )}
                     </button>
@@ -797,7 +784,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     <div className="flex items-center gap-2 border-b border-slate-200/70 pb-1.5">
                       <FileText className="w-4 h-4 text-[#1E3A8A]" />
                       <h3 className="text-[11.5px] sm:text-xs font-black text-slate-700 uppercase tracking-wider">
-                        Overview & Primary Purpose
+                        {t('medicineInfo.overviewAndPurpose', 'Overview & Primary Purpose')}
                       </h3>
                     </div>
                     <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 text-xs sm:text-sm font-medium text-slate-800 leading-relaxed">
@@ -813,11 +800,11 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                       <div className="flex items-center gap-2 text-red-900">
                         <AlertOctagon className="w-5 h-5 text-red-600 animate-pulse shrink-0" />
                         <h3 className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-red-950 font-heading">
-                          FDA Boxed Warning
+                          {t('medicineInfo.boxedWarning', 'FDA Boxed Warning')}
                         </h3>
                       </div>
                       <span className="text-[9px] sm:text-[10px] font-black bg-red-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0">
-                        Black Box Warning
+                        {t('medicineInfo.blackBoxWarning', 'Black Box Warning')}
                       </span>
                     </div>
                     <ul className="space-y-2 pt-1">
@@ -837,7 +824,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     <div className="flex items-center gap-2 border-b border-indigo-100 pb-1.5">
                       <CheckCircle2 className="w-4 h-4 text-indigo-600" />
                       <h3 className="text-[11.5px] sm:text-xs font-black text-indigo-950 uppercase tracking-wider">
-                        Main Uses
+                        {t('medicineInfo.mainUses', 'Main Uses')}
                       </h3>
                     </div>
                     <div className="bg-indigo-50/40 border border-indigo-100/80 rounded-2xl p-4 sm:p-4.5 space-y-2">
@@ -859,7 +846,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     <div className="flex items-center gap-2 border-b border-emerald-100 pb-1.5">
                       <Pill className="w-4 h-4 text-emerald-600" />
                       <h3 className="text-[11.5px] sm:text-xs font-black text-emerald-950 uppercase tracking-wider">
-                        How to Take It
+                        {t('medicineInfo.howToTake', 'How to Take It')}
                       </h3>
                     </div>
                     <div className="bg-emerald-50/40 border border-emerald-100/80 rounded-2xl p-4 sm:p-4.5 space-y-2">
@@ -882,7 +869,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-amber-600" />
                         <h3 className="text-[11.5px] sm:text-xs font-black text-amber-950 uppercase tracking-wider">
-                          Important Warnings
+                          {t('medicineInfo.precautions', 'Important Warnings')}
                         </h3>
                       </div>
                       {lookupResult.warnings.length > 3 && (
@@ -919,7 +906,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <ShieldAlert className="w-4 h-4 text-rose-600" />
                         <h3 className="text-[11.5px] sm:text-xs font-black text-rose-950 uppercase tracking-wider">
-                          Common Side Effects
+                          {t('medicineInfo.sideEffects', 'Common Side Effects')}
                         </h3>
                       </div>
                       {lookupResult.sideEffects.length > 3 && (
@@ -955,7 +942,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     <div className="flex items-center gap-2 border-b border-slate-200/70 pb-1.5">
                       <BookmarkCheck className="w-4 h-4 text-[#1E3A8A]" />
                       <h3 className="text-[11.5px] sm:text-xs font-black text-slate-700 uppercase tracking-wider">
-                        Clinical Indications & Uses
+                        {t('medicineInfo.indications', 'Clinical Indications & Uses')}
                       </h3>
                     </div>
                     <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 sm:p-4.5 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed">
@@ -968,9 +955,11 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                 <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-2.5 text-amber-900 text-xs">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong>Notice:</strong> This therapeutic summary explains what this drug is generally
-                    prescribed for. Do not start, change, or stop any medication without consulting your
-                    prescribing physician or pharmacist.
+                    <strong>{t('medicineInfo.importantNotice', 'Notice')}:</strong>{' '}
+                    {t(
+                      'medicineInfo.importantNoticeDesc',
+                      'This therapeutic summary explains what this drug is generally prescribed for. Do not start, change, or stop any medication without consulting your prescribing physician or pharmacist.'
+                    )}
                   </p>
                 </div>
 
@@ -982,7 +971,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     className="w-full sm:w-1/2 py-3.5 px-6 rounded-full bg-gradient-to-r from-[#1E3A8A] via-[#2A4DC7] to-[#3B5FE0] hover:from-[#193278] hover:to-[#3252CA] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-blue-400/30"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Scan Another Medicine</span>
+                    <span>{t('scanMedicine.scanAnother', 'Scan Another Medicine')}</span>
                   </button>
 
                   {/* Secondary Emerald Pill: Check My Prescription (Safety Action #0F766E) */}
@@ -991,7 +980,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     className="w-full sm:w-1/2 py-3.5 px-6 rounded-full bg-[#0F766E] hover:bg-[#0B5A54] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-[#0F766E]"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Check My Prescription</span>
+                    <span>{t('prescriptions.checkMyPrescription', 'Check My Prescription')}</span>
                   </button>
                 </div>
               </div>
@@ -1006,7 +995,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">
-                      {lookupResult.drugName || 'Medication Not Listed'}
+                      {lookupResult.drugName || t('medicineInfo.medicationNotListed', 'Medication Not Listed')}
                     </h3>
                     <p className="text-xs text-slate-500 font-medium">OpenFDA Public Database</p>
                   </div>
@@ -1015,7 +1004,10 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                 <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4.5 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed">
                   <p>
                     {lookupResult.summary ||
-                      'General clinical background is not currently indexed in the OpenFDA database for this brand name. Please check spelling or consult your pharmacist.'}
+                      t(
+                        'medicineInfo.medicationNotListedDesc',
+                        'General clinical background is not currently indexed in the OpenFDA database for this brand name. Please check spelling or consult your pharmacist.'
+                      )}
                   </p>
                 </div>
 
@@ -1024,13 +1016,13 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     onClick={handleReset}
                     className="w-full sm:w-1/2 py-3.5 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95"
                   >
-                    Search Another Name
+                    {t('medicineInfo.searchAnotherName', 'Search Another Name')}
                   </button>
                   <button
                     onClick={() => navigate('/hospitals')}
                     className="w-full sm:w-1/2 py-3.5 rounded-full bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold border-[1.5px] border-slate-300 transition-all cursor-pointer active:scale-95"
                   >
-                    Consult Healthcare Provider
+                    {t('medicineInfo.consultHealthcareProvider', 'Consult Healthcare Provider')}
                   </button>
                 </div>
               </div>
@@ -1044,11 +1036,14 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                 </div>
                 <div className="space-y-2 max-w-md mx-auto">
                   <h3 className="text-base sm:text-lg font-black text-slate-900 font-heading">
-                    Could Not Read Medicine Name
+                    {t('medicineInfo.couldNotReadTitle', 'Could Not Read Medicine Name')}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                     {lookupResult.summary ||
-                      'Please ensure direct lighting without camera glare so the printed label or blister strip is sharp and legible, or search the medication name directly.'}
+                      t(
+                        'medicineInfo.couldNotReadDesc',
+                        'Please ensure direct lighting without camera glare so the printed label or blister strip is sharp and legible, or search the medication name directly.'
+                      )}
                   </p>
                 </div>
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -1056,7 +1051,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     onClick={handleReset}
                     className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-gradient-to-r from-[#1E3A8A] to-[#3B5FE0] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer active:scale-95"
                   >
-                    Try Photo Again
+                    {t('medicineInfo.tryPhotoAgain', 'Try Photo Again')}
                   </button>
                 </div>
               </div>
@@ -1074,7 +1069,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
           processLookup({ image: img });
         }}
         onOpenGallery={handleOpenGallery}
-        title="What Is This Medicine For?"
+        title={t('prescriptions.whatIsThisFor', 'What Is This Medicine For?')}
         themeColor="blue"
       />
     </div>
