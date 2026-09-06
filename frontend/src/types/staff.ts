@@ -1,6 +1,6 @@
 // src/types/staff.ts
 
-export type StaffRole = 'admin' | 'receptionist' | 'doctor';
+export type StaffRole = 'superadmin' | 'admin' | 'receptionist' | 'doctor';
 
 export interface Staff {
   id: string;
@@ -15,6 +15,9 @@ export interface Staff {
   avatarUrl?: string;
   hospital_id?: string;
   hospitalId?: string;
+  doctorId?: string;
+  doctor_id?: string;
+  phone?: string;
 }
 
 export interface AdminProfile {
@@ -45,6 +48,8 @@ export interface ReceptionistRecord {
   phone: string;
   password?: string;
   hospitalName?: string;
+  hospitalId?: string;
+  hospital_id?: string;
   department: string;
   deskNumber: string;
   shift: 'Morning' | 'Evening' | 'Night' | 'Full Day';
@@ -109,4 +114,59 @@ export interface AnnouncementRecord {
   deliveredCount: number;
   readCount: number;
   status: 'Sent' | 'Scheduled' | 'Draft';
+}
+
+export interface SuperAdminStats {
+  total_hospitals: number;
+  active_hospitals: number;
+  total_admins: number;
+  hospitals_with_admin: number;
+  hospitals_without_admin: number;
+  total_doctors: number;
+  total_receptionists: number;
+  total_patients: number;
+}
+
+export interface SuperAdminHospital {
+  id: string;
+  hospital_code: string;
+  name: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  facility_type?: string;
+  rating?: number;
+  reviews_count?: number;
+  emergency_available?: boolean;
+  image_url?: string;
+  specialties?: string[];
+  is_active: boolean;
+  created_at?: string;
+  has_active_admin: boolean;
+  doctor_count: number;
+  receptionist_count: number;
+  admin?: {
+    id: string;
+    full_name: string;
+    email: string;
+    staff_code: string;
+    phone?: string;
+    is_active: boolean;
+    created_at?: string;
+  } | null;
+}
+
+export interface SuperAdminAdmin {
+  id: string;
+  staff_code: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  role: 'admin';
+  department: string;
+  is_active: boolean;
+  hospital_id: string;
+  hospital_name: string;
+  hospital_code: string;
+  created_at?: string;
 }

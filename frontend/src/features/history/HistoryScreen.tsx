@@ -51,126 +51,7 @@ export interface HistoryScreenProps {
 }
 
 // Curated realistic clinical visit records spanning multiple months
-export const DEFAULT_MOCK_VISITS: VisitRecord[] = [
-  {
-    id: 'visit-1',
-    doctorName: 'Dr. Sarah Jenkins',
-    doctorSpecialty: 'Cardiologist',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'CarePulse Medical Center',
-    date: '2026-08-24',
-    time: '10:30 AM',
-    visitType: 'In-Person',
-    status: 'Completed',
-    summaryAvailable: true,
-    diagnosis: 'Routine Cardiovascular Follow-up & ECG Review',
-    prescriptionDetails: 'Lisinopril 10mg • Daily morning',
-    ticketNumber: '#CP-9021',
-  },
-  {
-    id: 'visit-2',
-    doctorName: 'Dr. Marcus Vance',
-    doctorSpecialty: 'Dermatologist',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'Cedar Skin & Wellness Clinic',
-    date: '2026-08-11',
-    time: '2:15 PM',
-    visitType: 'Video Consult',
-    status: 'Completed',
-    summaryAvailable: true,
-    diagnosis: 'Mild Contact Dermatitis Assessment',
-    prescriptionDetails: 'Hydrocortisone 1% Topical • Twice daily',
-    ticketNumber: '#CP-8842',
-  },
-  {
-    id: 'visit-3',
-    doctorName: 'Dr. Elena Rostova',
-    doctorSpecialty: 'General Physician',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1594824813575-b8923b789943?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'Metropolitan General Hospital',
-    date: '2026-07-29',
-    time: '9:00 AM',
-    visitType: 'In-Person',
-    status: 'Completed',
-    summaryAvailable: true,
-    diagnosis: 'Seasonal Upper Respiratory Tract Infection',
-    prescriptionDetails: 'Amoxicillin 500mg • Twice daily for 7 days',
-    ticketNumber: '#CP-7910',
-  },
-  {
-    id: 'visit-4',
-    doctorName: 'Dr. James Wilson',
-    doctorSpecialty: 'Orthopedic Surgeon',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'St. Jude Sports & Ortho Center',
-    date: '2026-07-15',
-    time: '4:00 PM',
-    visitType: 'Follow-up',
-    status: 'Cancelled',
-    summaryAvailable: false,
-    diagnosis: 'Knee Arthroscopy Post-op Check',
-    ticketNumber: '#CP-7603',
-  },
-  {
-    id: 'visit-5',
-    doctorName: 'Dr. Priya Nair',
-    doctorSpecialty: 'Endocrinologist',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'CarePulse Central Hospital',
-    date: '2026-06-30',
-    time: '11:45 AM',
-    visitType: 'Video Consult',
-    status: 'Completed',
-    summaryAvailable: true,
-    diagnosis: 'Type 2 Diabetes Glycemic Control Review (HbA1c 6.4%)',
-    prescriptionDetails: 'Metformin 500mg • 3 times daily with meals',
-    ticketNumber: '#CP-6921',
-  },
-  {
-    id: 'visit-6',
-    doctorName: 'Dr. Michael Chen',
-    doctorSpecialty: 'Neurologist',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'City Neuro & Spine Institute',
-    date: '2026-06-12',
-    time: '3:30 PM',
-    visitType: 'In-Person',
-    status: 'No-Show',
-    summaryAvailable: false,
-    diagnosis: 'Tension Headache & Sleep Hygiene Consultation',
-    ticketNumber: '#CP-6401',
-  },
-  {
-    id: 'visit-7',
-    doctorName: 'Dr. Emily Watson',
-    doctorSpecialty: 'Pulmonologist',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1594824813575-b8923b789943?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'Metropolitan General Hospital',
-    date: '2026-05-18',
-    time: '1:00 PM',
-    visitType: 'In-Person',
-    status: 'Completed',
-    summaryAvailable: true,
-    diagnosis: 'Bronchial Asthma Maintenance Spirometry Check',
-    prescriptionDetails: 'Salbutamol Inhaler 100mcg • 2 puffs PRN',
-    ticketNumber: '#CP-5819',
-  },
-  {
-    id: 'visit-8',
-    doctorName: 'Dr. Alex Morgan',
-    doctorSpecialty: 'Cardiologist',
-    doctorAvatarUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
-    hospitalName: 'St. Jude Heart Center',
-    date: '2026-04-22',
-    time: '10:00 AM',
-    visitType: 'Follow-up',
-    status: 'Completed',
-    summaryAvailable: true,
-    diagnosis: 'Lipid Panel Review & Statin Titration',
-    prescriptionDetails: 'Atorvastatin 20mg • Nightly',
-    ticketNumber: '#CP-4911',
-  },
-];
+export const DEFAULT_MOCK_VISITS: VisitRecord[] = [];
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   visits: propVisits,
@@ -271,18 +152,6 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         }
       });
     }
-
-    // If still empty, use rich default mock visits
-    if (records.length === 0) {
-      return DEFAULT_MOCK_VISITS;
-    }
-
-    // Merge mock visits for historical depth
-    DEFAULT_MOCK_VISITS.forEach((mock) => {
-      if (!records.some((r) => r.id === mock.id)) {
-        records.push(mock);
-      }
-    });
 
     // Sort descending by date
     return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

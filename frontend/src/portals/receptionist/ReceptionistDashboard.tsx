@@ -106,6 +106,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const receptionistProfile = useStaffStore((s) => s.receptionistProfile);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
 
   const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
 
@@ -670,7 +671,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                 <span className="font-bold text-slate-700">Operator Desk Active</span>
               </div>
               <span className="font-mono font-semibold text-slate-600 text-[11px]">
-                {receptionistProfile.name || 'Emily Watson'} (Desk A-1)
+                {currentStaff?.name || receptionistProfile.name || 'Front Desk Staff'} (Desk A-1)
               </span>
             </div>
           </div>

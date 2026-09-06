@@ -30,6 +30,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
   autoOpenAddModal = false,
 }) => {
   const doctors = useStaffStore((s) => s.doctors);
+  const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const departments = useStaffStore((s) => s.departments);
   const createDoctor = useStaffStore((s) => s.createDoctor);
   const updateDoctor = useStaffStore((s) => s.updateDoctor);
@@ -51,6 +52,10 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
   const [doctorToDelete, setDoctorToDelete] = useState<DoctorRecord | null>(null);
   const [resetPasswordDoc, setResetPasswordDoc] = useState<DoctorRecord | null>(null);
   const [newResetPassword, setNewResetPassword] = useState('');
+
+  React.useEffect(() => {
+    fetchDoctors();
+  }, [fetchDoctors]);
 
   // Form State
   const [formName, setFormName] = useState('');
@@ -342,12 +347,12 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                 {filteredDoctors.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
-                      No physicians found matching your search criteria. Click "+ Add Doctor" to register one.
+                      No physicians registered yet for this hospital. Click "+ Add Doctor" to register one.
                     </td>
                   </tr>
                 ) : (
                   filteredDoctors.map((doc) => {
-                    const totalSlotsThisWeek = 28;
+                    const totalSlotsThisWeek = (doc.slotCapacities || []).reduce((acc, s) => acc + (s.bookedSeats || 0), 0);
                     const usernameDisplay = doc.username || doc.email.split('@')[0] || 'doctor';
                     const isPasswordRevealed = !!showPasswords[doc.id];
 

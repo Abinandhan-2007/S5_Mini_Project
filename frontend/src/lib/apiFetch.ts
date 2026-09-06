@@ -80,13 +80,28 @@ export async function apiFetch(
       : `${cleanBase}/api${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
 
     try {
+      const existingHeaders = (options.headers as Record<string, string> | undefined) || {};
+      let authHeader = existingHeaders.Authorization || existingHeaders.authorization;
+      if (!authHeader) {
+        const token =
+          localStorage.getItem('staff_token') ||
+          localStorage.getItem('carepulse_token') ||
+          localStorage.getItem('auth_token');
+        if (token) {
+          authHeader = `Bearer ${token}`;
+        }
+      }
+
+      const mergedHeaders: Record<string, string> = {
+        ...API_HEADERS,
+        ...existingHeaders,
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      };
+
       if (Capacitor.isNativePlatform()) {
         // Native mobile request via CapacitorHttp for true Android network isolation & fast timeouts
         const method = (options.method || 'GET').toUpperCase();
-        const headers = {
-          ...API_HEADERS,
-          ...(options.headers as Record<string, string> | undefined),
-        };
+        const headers = mergedHeaders;
 
         let requestData: any = undefined;
         if (options.body && typeof options.body === 'string') {
@@ -141,10 +156,7 @@ export async function apiFetch(
         const res = await fetch(url, {
           ...options,
           signal: options.signal || (controller ? controller.signal : undefined),
-          headers: {
-            ...API_HEADERS,
-            ...(options.headers as Record<string, string> | undefined),
-          },
+          headers: mergedHeaders,
         });
         if (timeoutId) clearTimeout(timeoutId);
 
@@ -183,6 +195,25 @@ export function apiPost(path: string, body: unknown): Promise<Response> {
   return apiFetch(path, {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Convenience: PATCH request with JSON body
+ */
+export function apiPatch(path: string, body: unknown): Promise<Response> {
+  return apiFetch(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Convenience: DELETE request
+ */
+export function apiDelete(path: string): Promise<Response> {
+  return apiFetch(path, {
+    method: 'DELETE',
   });
 }
 

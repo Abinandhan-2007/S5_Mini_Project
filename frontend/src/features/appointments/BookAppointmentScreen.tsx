@@ -36,11 +36,25 @@ export const BookAppointmentScreen: React.FC = () => {
   const user = useCarePulseStore((s) => s.user);
   const staffDoctors = useStaffStore((s) => s.doctors);
 
+  const EMPTY_DOCTOR: Doctor = {
+    id: '',
+    name: '',
+    specialty: '',
+    department: '',
+    hospitalId: '',
+    hospitalName: '',
+    photoUrl: '/doctor_default.jpg',
+    rating: 5.0,
+    reviewsCount: 0,
+    experienceYears: 0,
+    consultationFee: 500,
+  };
+
   const matchedStaffDoc = staffDoctors.find(
     (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
   );
   const matchedMockDoc = MOCK_DOCTORS.find((d) => d.id === doctorId);
-  const initialDoctor = (matchedStaffDoc as any) || matchedMockDoc || staffDoctors[0] || MOCK_DOCTORS[0];
+  const initialDoctor: Doctor = (matchedStaffDoc as any) || matchedMockDoc || staffDoctors[0] || EMPTY_DOCTOR;
   const [doctor, setDoctor] = useState<Doctor>(initialDoctor);
 
   useEffect(() => {
@@ -58,8 +72,8 @@ export const BookAppointmentScreen: React.FC = () => {
         name: staffDoc.name,
         specialty: staffDoc.specialty,
         department: staffDoc.department,
-        hospitalId: (staffDoc as any).hospitalId || 'hosp-1',
-        hospitalName: (staffDoc as any).hospitalName || 'St. Jude Heart & Medical Center',
+        hospitalId: (staffDoc as any).hospitalId || prev.hospitalId || '',
+        hospitalName: (staffDoc as any).hospitalName || prev.hospitalName || '',
         photoUrl: staffDoc.photo || prev.photoUrl || '/doctor_default.jpg',
         experienceYears: staffDoc.experienceYears,
         consultationFee: staffDoc.consultationFee,
@@ -241,6 +255,42 @@ export const BookAppointmentScreen: React.FC = () => {
       setIsSuccessModalOpen(true);
     }
   };
+
+  if (!doctor || !doctor.id || !doctor.name) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] pb-36 flex flex-col justify-between">
+        <header className="sticky top-0 z-30 bg-[#22B3BD] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md">
+          <div className="max-w-3xl mx-auto flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white"
+              title="Go Back"
+            >
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </button>
+            <h1 className="text-lg font-black text-white">Book Appointment</h1>
+          </div>
+        </header>
+        <div className="max-w-sm mx-auto text-center space-y-4 px-4 my-auto">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-[#0B5A54] mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-800">Doctor Profile Not Found</h3>
+            <p className="text-xs text-slate-500">
+              The requested doctor schedule is currently unavailable or has been removed.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-bold py-3 px-4 rounded-full shadow-sm transition-all"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-36 w-full relative select-none text-left">

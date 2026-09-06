@@ -95,6 +95,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   onShowToast,
   onOpenNewAppointment,
 }) => {
+  const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
   const tokens = useStaffStore((s) => s.tokens);
   const doctors = useStaffStore((s) => s.doctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
@@ -837,7 +838,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                 CAREPULSE OPD QUEUE SLIP
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">
-                Front Desk Registration • St. Jude Medical
+                Front Desk Registration{hospitalSettings?.name ? ` • ${hospitalSettings.name}` : ''}
               </p>
               <p className="text-[10px] text-slate-400 font-mono">
                 Date: {formatDisplayDate(tokenToPrint.date)} • {new Date().toLocaleTimeString()}

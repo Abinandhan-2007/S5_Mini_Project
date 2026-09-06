@@ -194,6 +194,9 @@ class DoctorCreateRequest(BaseModel):
     photo: Optional[str] = ""
     phone: Optional[str] = ""
     email: Optional[str] = ""
+    username: Optional[str] = ""
+    password: Optional[str] = "doc123"
+    hospital_id: Optional[str] = None
     roomNumber: Optional[str] = "Room 101"
     isAvailable: Optional[bool] = True
     availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]

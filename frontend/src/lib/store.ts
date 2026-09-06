@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Preferences } from '@capacitor/preferences';
 import type { User, Appointment, MedicalHistoryItem, ChatMessage, Doctor, BookingSelection, Prescription } from './types';
-import { INITIAL_CHAT_MESSAGES, MOCK_PRESCRIPTIONS } from './mockApi';
+import { INITIAL_CHAT_MESSAGES } from './mockApi';
 import { apiGet, apiFetch } from './apiFetch';
 import { signOutGoogle } from './googleAuth';
 import { registerPushNotifications } from './pushNotifications';
@@ -478,12 +478,12 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
     }
   },
 
-  prescriptions: MOCK_PRESCRIPTIONS,
+  prescriptions: [],
   syncPrescriptions: async (patientId?: string) => {
     try {
       const pid = patientId || get().user?.id;
       if (!pid || pid === 'undefined' || pid === 'null') {
-        set({ prescriptions: MOCK_PRESCRIPTIONS });
+        set({ prescriptions: [] });
         return;
       }
       let res: Response | null = null;
@@ -494,17 +494,13 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       }
       if (res && res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          set({ prescriptions: data });
-        } else {
-          set({ prescriptions: MOCK_PRESCRIPTIONS });
-        }
+        set({ prescriptions: Array.isArray(data) ? data : [] });
       } else {
-        set({ prescriptions: MOCK_PRESCRIPTIONS });
+        set({ prescriptions: [] });
       }
     } catch (e) {
       console.warn('Sync prescriptions notice:', e);
-      set({ prescriptions: MOCK_PRESCRIPTIONS });
+      set({ prescriptions: [] });
     }
   },
 

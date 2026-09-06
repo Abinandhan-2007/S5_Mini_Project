@@ -47,79 +47,45 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('Schedule Conflict');
 
-  if (!isOpen) return null;
-
   // Selected appointment
-  const currentApp: Appointment =
-    appointments.find((a) => a.id === selectedAppId) || activeAppointment || {
-      id: 'app-1',
-      ticketNumber: 'TK-482',
-      patientId: user?.id || '',
-      patientName: user?.fullName || 'CarePulse Patient',
-      doctorId: 'doc-2',
-      doctorName: 'Dr. Elena Rostova',
-      doctorPhoto: '/doctor_default.jpg',
-      doctorSpecialty: 'General Medicine',
-      hospitalName: 'CarePulse Central Hospital',
-      date: '2026-08-12',
-      timeSlot: '09:00 AM - 09:30 AM',
-      type: 'In-Person',
-      status: 'Upcoming',
-    };
+  const currentApp: Appointment | null =
+    appointments.find((a) => a.id === selectedAppId) || activeAppointment || (appointments.length > 0 ? appointments[0] : null);
 
-  // Schedule Timeline Mock Items (matching user screenshot colors)
-  const scheduleBlocks = [
-    {
-      id: 'slot-1',
-      time: '8:00 AM',
-      title: 'General Consultation',
-      duration: '8:00 AM - 09:10 AM',
-      patient: 'Jane Cooper',
-      doctor: 'Dr. Elena Rostova',
-      colorBg: 'bg-pink-100/90 border-pink-200 text-pink-950',
-      tagColor: 'bg-pink-200/80 text-pink-900',
-    },
-    {
-      id: 'slot-2',
-      time: '10:00 AM',
-      title: 'Vaccination Drive',
-      duration: '10:00 AM - 11:10 AM',
-      patient: 'Marvin McKinney',
-      doctor: 'Dr. Marcus Vance',
-      colorBg: 'bg-emerald-100/90 border-emerald-200 text-emerald-950',
-      tagColor: 'bg-emerald-200/80 text-emerald-900',
-    },
-    {
-      id: 'slot-3',
-      time: '11:00 AM',
-      title: 'Digital X-Ray & Scan',
-      duration: '11:12 AM - 12:20 PM',
-      patient: 'Cody Fisher',
-      doctor: 'Dr. Sarah Jenkins',
-      colorBg: 'bg-blue-100/90 border-blue-200 text-blue-950',
-      tagColor: 'bg-blue-200/80 text-blue-900',
-    },
-    {
-      id: 'slot-4',
-      time: '13:00 PM',
-      title: 'Flee & Health Checkup',
-      duration: '12:55 PM - 14:05 PM',
-      patient: 'Ronald Richards',
-      doctor: 'Dr. Elena Rostova',
-      colorBg: 'bg-amber-100/90 border-amber-200 text-amber-950',
-      tagColor: 'bg-amber-200/80 text-amber-900',
-    },
-    {
-      id: 'slot-5',
-      time: '14:00 PM',
-      title: 'Injury Examinations',
-      duration: '14:30 PM - 15:30 PM',
-      patient: user?.fullName || 'Patient',
-      doctor: currentApp.doctorName,
-      colorBg: 'bg-[#E3F3F1] border-teal-200 text-[#0B5A54]',
-      tagColor: 'bg-[#0B5A54] text-white',
-    },
-  ];
+  if (!isOpen || !currentApp) return null;
+
+  // Schedule Timeline derived dynamically from active appointments
+  const scheduleBlocks = appointments.length > 0
+    ? appointments.map((a, idx) => {
+        const isSelected = a.id === currentApp.id;
+        return {
+          id: a.id,
+          time: a.timeSlot?.split('-')[0]?.trim() || 'Scheduled',
+          title: a.doctorSpecialty || 'Consultation',
+          duration: a.timeSlot || 'Consultation Slot',
+          patient: a.patientName || user?.fullName || 'Patient',
+          doctor: a.doctorName,
+          colorBg: isSelected
+            ? 'bg-[#E3F3F1] border-teal-200 text-[#0B5A54]'
+            : idx % 2 === 0
+            ? 'bg-blue-50 border-blue-200 text-blue-950'
+            : 'bg-emerald-50 border-emerald-200 text-emerald-950',
+          tagColor: isSelected
+            ? 'bg-[#0B5A54] text-white'
+            : 'bg-slate-700 text-white',
+        };
+      })
+    : [
+        {
+          id: currentApp.id,
+          time: currentApp.timeSlot?.split('-')[0]?.trim() || 'Scheduled',
+          title: currentApp.doctorSpecialty || 'Consultation',
+          duration: currentApp.timeSlot || 'Scheduled Slot',
+          patient: currentApp.patientName || user?.fullName || 'Patient',
+          doctor: currentApp.doctorName,
+          colorBg: 'bg-[#E3F3F1] border-teal-200 text-[#0B5A54]',
+          tagColor: 'bg-[#0B5A54] text-white',
+        }
+      ];
 
   const handleSaveReschedule = () => {
     rescheduleAppointment(currentApp.id, newDate, newSlot);
@@ -294,7 +260,9 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-extrabold text-slate-900">{currentApp.patientName}</p>
-                  <p className="text-[11px] text-slate-400 font-semibold">32 Yrs • Female</p>
+                  <p className="text-[11px] text-slate-400 font-semibold">
+                    {user?.dob ? `${new Date().getFullYear() - new Date(user.dob).getFullYear()} Yrs` : 'Patient'} {user?.gender ? `• ${user.gender}` : ''}
+                  </p>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-bold border ${currentApp.status === 'Cancelled'

@@ -82,6 +82,7 @@ from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
 from routes.doctor_routes import router as doctor_router
+from routes.superadmin_routes import router as superadmin_router
 from routes.ai_routes import router as ai_router
 from notifications.fcm_service import register_device_token, send_push_notification, broadcast_app_update_notification
 from notifications.scheduler import start_scheduler, shutdown_scheduler
@@ -138,6 +139,7 @@ app.include_router(receptionist_router)
 app.include_router(admin_router)
 app.include_router(staff_auth_router)
 app.include_router(doctor_router)
+app.include_router(superadmin_router)
 
 from routes.ai_routes import chat_medical_assistant
 from ai.schemas import AIChatRequest, AIChatResponse
@@ -2613,19 +2615,23 @@ def format_doctor(d: dict) -> DoctorResponse:
 def get_all_hospitals(search: Optional[str] = None):
     """Retrieve all hospitals from database with optional search filtering."""
     if database.use_pg:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                if search:
-                    term = f"%{search.strip().lower()}%"
-                    cur.execute(
-                        "SELECT * FROM hospitals WHERE LOWER(name) LIKE %s OR LOWER(address) LIKE %s OR specialties::text ILIKE %s ORDER BY rating DESC",
-                        (term, term, term)
-                    )
-                else:
-                    cur.execute("SELECT * FROM hospitals ORDER BY rating DESC")
-                rows = cur.fetchall()
-                if rows and len(rows) > 0:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if search:
+                        term = f"%{search.strip().lower()}%"
+                        cur.execute(
+                            "SELECT * FROM hospitals WHERE LOWER(name) LIKE %s OR LOWER(address) LIKE %s OR specialties::text ILIKE %s ORDER BY rating DESC",
+                            (term, term, term)
+                        )
+                    else:
+                        cur.execute("SELECT * FROM hospitals ORDER BY rating DESC")
+                    rows = cur.fetchall()
                     return [format_hospital(dict(r)) for r in rows]
+        except Exception as e:
+            logger.error(f"Error fetching hospitals from pg: {e}")
+            if not database.ALLOW_JSON_FALLBACK:
+                return []
 
     db = read_json_db()
     hospitals = db.get("hospitals", [])
@@ -2646,17 +2652,32 @@ def get_hospital_by_id(hospital_id: str):
     doctors_list = []
 
     if database.use_pg:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT * FROM hospitals WHERE id = %s LIMIT 1", (hospital_id,))
-                row = cur.fetchone()
-                if row:
-                    found_hosp = format_hospital(dict(row))
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM hospitals WHERE id = %s LIMIT 1", (hospital_id,))
+                    row = cur.fetchone()
+                    if row:
+                        found_hosp = format_hospital(dict(row))
 
-                cur.execute("SELECT * FROM doctors WHERE hospital_id = %s OR hospital_id IS NULL ORDER BY rating DESC", (hospital_id,))
-                doc_rows = cur.fetchall()
-                if doc_rows and len(doc_rows) > 0:
-                    doctors_list = [format_doctor(dict(d)) for d in doc_rows]
+                    cur.execute("SELECT * FROM doctors WHERE hospital_id = %s OR hospital_id IS NULL ORDER BY rating DESC", (hospital_id,))
+                    doc_rows = cur.fetchall()
+                    if doc_rows:
+                        doctors_list = [format_doctor(dict(d)) for d in doc_rows]
+            if found_hosp:
+                return {
+                    "success": True,
+                    "hospital": found_hosp,
+                    "doctors": doctors_list
+                }
+            elif not database.ALLOW_JSON_FALLBACK:
+                raise HTTPException(status_code=404, detail="Hospital not found")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error fetching hospital {hospital_id} from pg: {e}")
+            if not database.ALLOW_JSON_FALLBACK:
+                raise HTTPException(status_code=404, detail="Hospital not found")
 
     if not found_hosp:
         db = read_json_db()
@@ -2686,25 +2707,29 @@ def get_all_doctors(
 ):
     """Retrieve doctors from database with optional filters."""
     if database.use_pg:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                query = "SELECT * FROM doctors WHERE 1=1"
-                params = []
-                if hospital_id:
-                    query += " AND (hospital_id = %s OR hospital_id IS NULL)"
-                    params.append(hospital_id)
-                if specialty and specialty.lower() != "all":
-                    query += " AND LOWER(specialty) = %s"
-                    params.append(specialty.lower())
-                if search:
-                    term = f"%{search.strip().lower()}%"
-                    query += " AND (LOWER(name) LIKE %s OR LOWER(specialty) LIKE %s OR LOWER(department) LIKE %s)"
-                    params.extend([term, term, term])
-                query += " ORDER BY rating DESC, experience_years DESC"
-                cur.execute(query, tuple(params))
-                rows = cur.fetchall()
-                if rows and len(rows) > 0:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = "SELECT * FROM doctors WHERE 1=1"
+                    params = []
+                    if hospital_id:
+                        query += " AND hospital_id = %s"
+                        params.append(hospital_id)
+                    if specialty and specialty.lower() != "all":
+                        query += " AND LOWER(specialty) = %s"
+                        params.append(specialty.lower())
+                    if search:
+                        term = f"%{search.strip().lower()}%"
+                        query += " AND (LOWER(name) LIKE %s OR LOWER(specialty) LIKE %s OR LOWER(department) LIKE %s)"
+                        params.extend([term, term, term])
+                    query += " ORDER BY rating DESC, experience_years DESC"
+                    cur.execute(query, tuple(params))
+                    rows = cur.fetchall()
                     return [format_doctor(dict(r)) for r in rows]
+        except Exception as e:
+            logger.error(f"Error fetching doctors from pg: {e}")
+            if not database.ALLOW_JSON_FALLBACK:
+                return []
 
     db = read_json_db()
     doctors = db.get("doctors", [])
@@ -2741,6 +2766,37 @@ def get_doctor_by_id(doctor_id: str):
                 return format_doctor(d)
 
     raise HTTPException(status_code=404, detail="Doctor not found")
+
+
+@app.delete("/api/doctors/{doctor_id}")
+def delete_doctor_public(doctor_id: str):
+    """Delete doctor endpoint."""
+    from routes.admin_routes import delete_doctor_record
+    return delete_doctor_record(doctor_id)
+
+
+@app.put("/api/doctors/{doctor_id}")
+def update_doctor_public(doctor_id: str, payload: Dict[str, Any]):
+    """Update doctor endpoint."""
+    from routes.admin_routes import update_doctor_record
+    return update_doctor_record(doctor_id, payload)
+
+
+@app.delete("/api/receptionists/{receptionist_id}")
+@app.delete("/api/admin/receptionists/{receptionist_id}")
+def delete_receptionist_public(receptionist_id: str):
+    """Delete receptionist endpoint."""
+    from routes.admin_routes import delete_receptionist_record
+    return delete_receptionist_record(receptionist_id)
+
+
+@app.put("/api/receptionists/{receptionist_id}")
+@app.put("/api/admin/receptionists/{receptionist_id}")
+def update_receptionist_public(receptionist_id: str, payload: Dict[str, Any]):
+    """Update receptionist endpoint."""
+    from routes.admin_routes import update_receptionist_record
+    return update_receptionist_record(receptionist_id, payload)
+
 
 
 app.include_router(receptionist_router)

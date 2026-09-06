@@ -2,11 +2,12 @@ import type { DoctorRecord, TokenQueueItem, TokenStatus } from '../types/recepti
 import { apiFetch } from '../lib/apiFetch';
 
 export const receptionistService = {
-  async getDoctors(): Promise<DoctorRecord[]> {
+  async getDoctors(hospitalId?: string): Promise<DoctorRecord[]> {
     try {
-      let res = await apiFetch('/receptionist/doctors', { method: 'GET' });
+      const q = hospitalId ? `?hospital_id=${encodeURIComponent(hospitalId)}` : '';
+      let res = await apiFetch(`/receptionist/doctors${q}`, { method: 'GET' });
       if (!res.ok) {
-        res = await apiFetch('/doctors', { method: 'GET' });
+        res = await apiFetch(`/doctors${q}`, { method: 'GET' });
       }
       if (res.ok) {
         const data = await res.json();
@@ -64,10 +65,13 @@ export const receptionistService = {
     }
   },
 
-  async getTokenQueue(doctorId?: string): Promise<TokenQueueItem[]> {
+  async getTokenQueue(doctorId?: string, hospitalId?: string): Promise<TokenQueueItem[]> {
     try {
-      const path = doctorId ? `/receptionist/tokens?doctor_id=${doctorId}` : '/receptionist/tokens';
-      const res = await apiFetch(path, { method: 'GET' });
+      const params = new URLSearchParams();
+      if (doctorId) params.append('doctor_id', doctorId);
+      if (hospitalId) params.append('hospital_id', hospitalId);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const res = await apiFetch(`/receptionist/tokens${query}`, { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         return data.tokens || [];

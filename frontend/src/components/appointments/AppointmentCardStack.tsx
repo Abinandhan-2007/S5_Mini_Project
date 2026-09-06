@@ -16,78 +16,50 @@ export interface AppointmentCardStackProps {
   onScheduleNew?: () => void;
 }
 
-export const SAMPLE_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'apt-sample-1',
-    patientId: 'pat-1',
-    patientName: 'SIVANAGU E',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Ethan Reynolds',
-    doctorSpecialty: 'Neurologist',
-    doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
-    hospitalId: 'hosp-1',
-    hospitalName: 'Metropolitan General Hospital',
-    date: '2026-09-02',
-    timeSlot: '02:00 PM',
-    status: 'Scheduled',
-    ticketNumber: 'TK-482',
-    type: 'In-Person',
-  },
-  {
-    id: 'apt-sample-2',
-    patientId: 'pat-1',
-    patientName: 'SIVANAGU E',
-    doctorId: 'doc-2',
-    doctorName: 'Dr. Priya Sharma',
-    doctorSpecialty: 'Cardiologist',
-    doctorPhoto: 'https://images.unsplash.com/photo-1594824813583-69022e5e1e07?w=150&auto=format&fit=crop&q=80',
-    hospitalId: 'hosp-2',
-    hospitalName: 'City Heart & Vascular Institute',
-    date: '2026-09-04',
-    timeSlot: '10:30 AM',
-    status: 'Confirmed',
-    ticketNumber: 'TK-503',
-    type: 'In-Person',
-  },
-  {
-    id: 'apt-sample-3',
-    patientId: 'pat-1',
-    patientName: 'SIVANAGU E',
-    doctorId: 'doc-3',
-    doctorName: 'Dr. Marcus Vance',
-    doctorSpecialty: 'Orthopedic Surgeon',
-    doctorPhoto: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80',
-    hospitalId: 'hosp-3',
-    hospitalName: 'Apex Medical Specialty Center',
-    date: '2026-09-07',
-    timeSlot: '04:15 PM',
-    status: 'Scheduled',
-    ticketNumber: 'TK-512',
-    type: 'Follow-up',
-  },
-];
-
 export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
   appointments = [],
   onViewDetails,
-  onScheduleNew: _onScheduleNew,
+  onScheduleNew,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
 
-  // Combine user appointment with sample stack items so stack interaction is always visible and functional!
-  const displayList: Appointment[] = React.useMemo(() => {
-    if (appointments && appointments.length > 1) {
-      return appointments;
-    }
-    if (appointments && appointments.length === 1) {
-      const userApp = appointments[0];
-      const otherSamples = SAMPLE_APPOINTMENTS.filter((s) => s.id !== userApp.id);
-      return [{ ...userApp, patientName: userApp.patientName || 'SIVANAGU E' }, ...otherSamples.slice(0, 2)];
-    }
-    return SAMPLE_APPOINTMENTS;
-  }, [appointments]);
+  if (!appointments || appointments.length === 0) {
+    return (
+      <div
+        onClick={onScheduleNew}
+        className="relative bg-white rounded-2xl p-5 border border-dashed border-slate-200 shadow-2xs hover:border-[#14B8A6] transition-all cursor-pointer text-left space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#0B5A54]">
+            <Ticket className="w-4 h-4 text-[#14B8A6]" />
+            <span>APPOINTMENT TOKEN</span>
+          </div>
+          <span className="bg-slate-100 text-slate-500 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold">
+            NO ACTIVE TOKEN
+          </span>
+        </div>
+        <div className="flex items-center gap-3.5 pt-1">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-[#0B5A54] flex items-center justify-center font-bold shrink-0">
+            <CalendarIcon className="w-6 h-6 text-[#0B5A54]" />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-[#111827]">No Appointments Scheduled</h4>
+            <p className="text-xs text-slate-500 mt-0.5">Book a consultation with verified doctors to get your digital queue token.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onScheduleNew?.(); }}
+          className="w-full py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <span>Book Doctor Consultation →</span>
+        </button>
+      </div>
+    );
+  }
 
+  const displayList: Appointment[] = appointments;
   const activeApp = displayList[currentIndex] || displayList[0];
   const totalCount = displayList.length;
   const isStacked = totalCount > 1;

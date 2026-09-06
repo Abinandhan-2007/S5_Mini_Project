@@ -22,6 +22,8 @@ export interface DoctorRecord {
   name: string;
   specialty: string;
   department: string;
+  hospital_id?: string;
+  hospitalId?: string;
   experienceYears: number;
   consultationFee: number;
   photo: string;

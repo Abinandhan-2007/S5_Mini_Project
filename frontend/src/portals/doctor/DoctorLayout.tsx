@@ -44,124 +44,7 @@ const REASON_PRESETS = [
 
 const DURATION_PRESETS = ['15 mins', '30 mins', '45 mins', '1 hour', '2 hours', 'End of Shift'];
 
-// Fallback seed queue for doctor
-const INITIAL_DOCTOR_QUEUE: TokenQueueItem[] = [
-  {
-    id: 'tok-1',
-    tokenNumber: '#TOK-001',
-    ticketNumber: '#CP-4821',
-    patientId: 'pat-sarah-jenkins',
-    patientName: 'Sarah Jenkins',
-    patientPhone: '+91 98765 43210',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    timeSlot: '09:00 AM - 10:00 AM',
-    status: 'In Consultation',
-    arrivalTime: '08:50 AM',
-    issueTime: '08:55 AM',
-    type: 'In-Person',
-    age: 31,
-    bloodGroup: 'A+',
-    healthIssue: 'Atypical chest tightness and exertional palpitation for 3 days.',
-  },
-  {
-    id: 'tok-2',
-    tokenNumber: '#TOK-002',
-    ticketNumber: '#CP-4822',
-    patientId: 'pat-robert-chen',
-    patientName: 'Robert Chen',
-    patientPhone: '+91 98765 43211',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    timeSlot: '09:30 AM - 10:30 AM',
-    status: 'Waiting',
-    arrivalTime: '09:15 AM',
-    issueTime: '09:20 AM',
-    type: 'Walk-In',
-    age: 45,
-    bloodGroup: 'B+',
-    healthIssue: 'Follow-up routine hypertension check and morning headaches.',
-  },
-  {
-    id: 'tok-3',
-    tokenNumber: '#TOK-003',
-    ticketNumber: '#CP-4823',
-    patientId: 'pat-anita-sharma',
-    patientName: 'Anita Sharma',
-    patientPhone: '+91 98765 43212',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    timeSlot: '10:00 AM - 11:00 AM',
-    status: 'Waiting',
-    arrivalTime: '09:40 AM',
-    issueTime: '09:45 AM',
-    type: 'In-Person',
-    age: 28,
-    bloodGroup: 'O+',
-    healthIssue: 'Routine preventive cardiac screening & ECG check.',
-  },
-  {
-    id: 'tok-4',
-    tokenNumber: '#TOK-004',
-    ticketNumber: '#CP-4824',
-    patientId: 'pat-michael-scott',
-    patientName: 'Michael Scott',
-    patientPhone: '+91 98765 43213',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    timeSlot: '10:30 AM - 11:30 AM',
-    status: 'Waiting',
-    arrivalTime: '10:10 AM',
-    issueTime: '10:15 AM',
-    type: 'In-Person',
-    age: 52,
-    bloodGroup: 'AB+',
-    healthIssue: 'Blood pressure review and lipid profile analysis.',
-  },
-  {
-    id: 'tok-5',
-    tokenNumber: '#TOK-005',
-    ticketNumber: '#CP-4825',
-    patientId: 'pat-priya-nair',
-    patientName: 'Priya Nair',
-    patientPhone: '+91 98765 43214',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    timeSlot: '11:00 AM - 12:00 PM',
-    status: 'Waiting',
-    arrivalTime: '10:45 AM',
-    issueTime: '10:50 AM',
-    type: 'In-Person',
-    age: 37,
-    bloodGroup: 'O-',
-    healthIssue: 'Post-op follow-up and prescription refill.',
-  },
-  {
-    id: 'tok-6',
-    tokenNumber: '#TOK-006',
-    ticketNumber: '#CP-4826',
-    patientId: 'pat-james-wong',
-    patientName: 'James Wong',
-    patientPhone: '+91 98765 43215',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    timeSlot: '11:30 AM - 12:30 PM',
-    status: 'Completed',
-    arrivalTime: '08:30 AM',
-    issueTime: '08:35 AM',
-    type: 'In-Person',
-    age: 61,
-    bloodGroup: 'A+',
-    healthIssue: 'Cardiac stress test results review - Stable normal.',
-    diagnosis: 'Ischemic Heart Disease - Stable on Medical Therapy',
-  },
-];
+
 
 interface NavSection {
   groupTitle: string;
@@ -200,10 +83,12 @@ export const DoctorLayout: React.FC = () => {
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
+  const activeDoctorId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
+
   // Background polling for real-time doctor queue
   usePolling(
     async () => {
-      await fetchTokens(currentStaff?.id, true);
+      await fetchTokens(activeDoctorId, true);
     },
     {
       interval: 7500,
@@ -230,11 +115,15 @@ export const DoctorLayout: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const currentDoctor = doctors.find((d) => d.id === currentStaff?.id) || doctors[0] || {
-    id: currentStaff?.id || 'doc-1',
-    name: currentStaff?.name || 'Dr. Olivia Wilson',
-    specialty: 'Cardiologist',
-    roomNumber: 'Cabin 102 - 1st Floor',
+  const currentDoctor = doctors.find((d) => 
+    (activeDoctorId && d.id === activeDoctorId) ||
+    (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
+    (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
+  ) || {
+    id: activeDoctorId || 'doc-current',
+    name: currentStaff?.name || 'Doctor',
+    specialty: currentStaff?.department || 'General Medicine',
+    roomNumber: 'Cabin 101',
     isAvailable: true,
     availabilityReason: '',
     unavailableUntil: '',
@@ -261,14 +150,18 @@ export const DoctorLayout: React.FC = () => {
 
   // Map live tokens or fallback
   const doctorQueue: TokenQueueItem[] = useMemo(() => {
-    if (!rawTokens || rawTokens.length === 0) return INITIAL_DOCTOR_QUEUE;
+    if (!rawTokens || rawTokens.length === 0) return [];
 
-    const staffId = currentStaff?.id;
-    const filtered = rawTokens.filter(
-      (t) => !t.doctorId || t.doctorId === staffId || t.doctorId === 'doc-1'
-    );
+    const filtered = rawTokens.filter((t) => {
+      if (!activeDoctorId) return true;
+      return (
+        t.doctorId === activeDoctorId ||
+        t.doctorId === currentStaff?.id ||
+        (t.doctorName && currentStaff?.name && t.doctorName.toLowerCase() === currentStaff.name.toLowerCase())
+      );
+    });
 
-    if (filtered.length === 0) return INITIAL_DOCTOR_QUEUE;
+    if (filtered.length === 0) return [];
 
     return filtered.map((t, idx) => ({
       id: t.id || `tok-${idx}`,
@@ -277,8 +170,8 @@ export const DoctorLayout: React.FC = () => {
       patientId: t.patientId || `pat-${idx + 1}`,
       patientName: t.patientName || (t as any).name || 'Walk-In Patient',
       patientPhone: t.patientPhone || (t as any).phone || '+91 98765 43210',
-      doctorId: t.doctorId || currentStaff?.id || 'doc-1',
-      doctorName: t.doctorName || currentStaff?.name || 'Dr. Olivia Wilson',
+      doctorId: t.doctorId || activeDoctorId || 'doc-current',
+      doctorName: t.doctorName || currentStaff?.name || currentDoctor.name || 'Doctor',
       doctorSpecialty: t.doctorSpecialty || currentDoctor.specialty || 'General Medicine',
       timeSlot: t.timeSlot || (t as any).slot || '10:00 AM - 11:00 AM',
       status: (t.status === 'Completed' || (t.status as any) === 'Done') ? 'Completed' : t.status,
@@ -294,7 +187,7 @@ export const DoctorLayout: React.FC = () => {
       prescriptions: t.prescriptions || [],
       prescriptionDetails: t.prescriptionDetails || '',
     }));
-  }, [rawTokens, currentStaff?.id, currentStaff?.name, currentDoctor.specialty]);
+  }, [rawTokens, activeDoctorId, currentStaff?.id, currentStaff?.name, currentDoctor.name, currentDoctor.specialty]);
 
   // Auth Guard
   if (!currentStaff || currentStaff.role !== 'doctor') {
@@ -680,9 +573,9 @@ export const DoctorLayout: React.FC = () => {
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-3xl border border-slate-200 shadow-2xl p-2 z-50 animate-in fade-in duration-200 text-xs font-bold text-slate-700 space-y-1">
                   <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="font-black text-slate-900 font-heading">{currentStaff?.name || 'Dr. Olivia Wilson'}</p>
+                    <p className="font-black text-slate-900 font-heading">{currentStaff?.name || currentDoctor.name || 'Doctor'}</p>
                     <p className="text-[10px] text-slate-400 font-medium truncate">
-                      {currentDoctor.specialty || 'Cardiologist'}
+                      {currentDoctor.specialty || currentStaff?.department || 'Consultant'}
                     </p>
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-100">
                       <span className="text-[9px] text-[#0B5A54] font-extrabold font-mono">

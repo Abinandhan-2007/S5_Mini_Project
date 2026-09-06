@@ -11,6 +11,7 @@ import type {
 } from '../types/staff';
 import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile, TimeSlotCapacity } from '../types/receptionist';
 import { receptionistService } from '../services/receptionistService';
+import { apiGet, apiPost, apiFetch } from '../lib/apiFetch';
 
 export function createSplitSlot(
   id: string,
@@ -41,7 +42,7 @@ export function createSplitSlot(
   };
 }
 
-const DEFAULT_SLOTS: TimeSlotCapacity[] = [
+export const DEFAULT_SLOTS: TimeSlotCapacity[] = [
   createSplitSlot('slot-1', '09:00 AM - 10:00 AM', 6, 1, 1, true),
   createSplitSlot('slot-2', '10:00 AM - 11:00 AM', 6, 2, 2, true),
   createSplitSlot('slot-3', '11:00 AM - 12:00 PM', 6, 1, 0, true),
@@ -50,338 +51,9 @@ const DEFAULT_SLOTS: TimeSlotCapacity[] = [
   createSplitSlot('slot-6', '04:00 PM - 05:00 PM', 6, 1, 1, true),
 ];
 
-const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [
-  {
-    id: 'doc-1',
-    name: 'Dr. Olivia Wilson',
-    specialty: 'Cardiologist',
-    department: 'Cardiology',
-    experienceYears: 12,
-    consultationFee: 850,
-    photo: '/doctor_default.jpg',
-    phone: '+91 98765 11001',
-    email: 'olivia.w@carepulse.com',
-    username: 'olivia.w',
-    password: 'doc123',
-    roomNumber: 'Cabin 102 - 1st Floor',
-    isAvailable: true,
-    availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-    slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
-  },
-  {
-    id: 'doc-2',
-    name: 'Dr. Marcus Vance',
-    specialty: 'Dermatologist',
-    department: 'Dermatology',
-    experienceYears: 9,
-    consultationFee: 700,
-    photo: '/doctor_default.jpg',
-    phone: '+91 98765 11002',
-    email: 'marcus.v@carepulse.com',
-    username: 'marcus.v',
-    password: 'doc123',
-    roomNumber: 'Cabin 204 - 2nd Floor',
-    isAvailable: true,
-    availableDays: ['Mon', 'Wed', 'Fri', 'Sat'],
-    slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
-  },
-  {
-    id: 'doc-3',
-    name: 'Dr. Sophia Patel',
-    specialty: 'Pediatrician',
-    department: 'Pediatrics',
-    experienceYears: 14,
-    consultationFee: 900,
-    photo: '/doctor_default.jpg',
-    phone: '+91 98765 11003',
-    email: 'sophia.p@carepulse.com',
-    username: 'sophia.p',
-    password: 'doc123',
-    roomNumber: 'Cabin 108 - 1st Floor',
-    isAvailable: false,
-    availableDays: ['Tue', 'Thu', 'Sat'],
-    slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
-  },
-  {
-    id: 'doc-4',
-    name: 'Dr. Ethan Reynolds',
-    specialty: 'Neurologist',
-    department: 'Neurology',
-    experienceYears: 16,
-    consultationFee: 1200,
-    photo: '/doctor_default.jpg',
-    phone: '+91 98765 11004',
-    email: 'ethan.r@carepulse.com',
-    username: 'ethan.r',
-    password: 'doc123',
-    roomNumber: 'Cabin 301 - 3rd Floor',
-    isAvailable: true,
-    availableDays: ['Mon', 'Tue', 'Wed', 'Thu'],
-    slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
-  }
-];
+const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [];
 
-const getTodayDateStr = (offsetDays = 0) => {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [
-  {
-    id: 'tok-1',
-    tokenNumber: '#TOK-001',
-    patientName: 'SIVANAGU E',
-    patientPhone: '+91 98765 43210',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    ticketNumber: '#CP-4820',
-    timeSlot: '09:00 AM - 10:00 AM',
-    status: 'Checked In',
-    arrivalTime: '08:45 AM',
-    checkInTime: '08:50 AM',
-    issueTime: '08:40 AM',
-    type: 'In-Person',
-    date: getTodayDateStr(0),
-    age: 29,
-    bloodGroup: 'O+',
-    healthIssue: 'General Cardiology Checkup',
-  },
-  {
-    id: 'tok-2',
-    tokenNumber: '#TOK-002',
-    patientName: 'Rajesh Kumar',
-    patientPhone: '+91 98123 45678',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    ticketNumber: '#CP-4821',
-    timeSlot: '09:00 AM - 10:00 AM',
-    status: 'Waiting',
-    arrivalTime: '08:55 AM',
-    issueTime: '08:56 AM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 45,
-    bloodGroup: 'B+',
-    healthIssue: 'Chest tightness evaluation',
-  },
-  {
-    id: 'tok-3',
-    tokenNumber: '#TOK-003',
-    patientName: 'Sarah Jenkins',
-    patientPhone: '+91 98765 43210',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    ticketNumber: '#CP-4822',
-    timeSlot: '10:00 AM - 11:00 AM',
-    status: 'Checked In',
-    arrivalTime: '09:40 AM',
-    checkInTime: '09:45 AM',
-    issueTime: '09:35 AM',
-    type: 'In-Person',
-    date: getTodayDateStr(0),
-    age: 31,
-    bloodGroup: 'O+',
-    healthIssue: 'Heart rhythm consultation',
-  },
-  {
-    id: 'tok-4',
-    tokenNumber: '#TOK-004',
-    patientName: 'Priya Patel',
-    patientPhone: '+91 97654 32109',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Olivia Wilson',
-    doctorSpecialty: 'Cardiologist',
-    ticketNumber: '#CP-4823',
-    timeSlot: '10:00 AM - 11:00 AM',
-    status: 'Waiting',
-    arrivalTime: '09:50 AM',
-    issueTime: '09:52 AM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 38,
-    bloodGroup: 'A+',
-    healthIssue: 'Hypertension management',
-  },
-  {
-    id: 'tok-7',
-    tokenNumber: '#TOK-007',
-    patientName: 'Robert Chen',
-    patientPhone: '+91 98111 22334',
-    doctorId: 'doc-2',
-    doctorName: 'Dr. Marcus Vance',
-    doctorSpecialty: 'Dermatologist',
-    ticketNumber: '#CP-4824',
-    timeSlot: '11:00 AM - 12:00 PM',
-    status: 'Waiting',
-    arrivalTime: '10:45 AM',
-    issueTime: '10:48 AM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 42,
-    bloodGroup: 'A+',
-    healthIssue: 'Skin rash follow-up',
-  },
-  {
-    id: 'tok-8',
-    tokenNumber: '#TOK-008',
-    patientName: 'Anita Sharma',
-    patientPhone: '+91 99887 76655',
-    doctorId: 'doc-2',
-    doctorName: 'Dr. Marcus Vance',
-    doctorSpecialty: 'Dermatologist',
-    ticketNumber: '#CP-4825',
-    timeSlot: '11:00 AM - 12:00 PM',
-    status: 'Waiting',
-    arrivalTime: '10:50 AM',
-    issueTime: '10:52 AM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 28,
-    bloodGroup: 'B+',
-    healthIssue: 'Allergy consultation',
-  },
-  {
-    id: 'tok-5',
-    tokenNumber: '#TOK-005',
-    patientName: 'Carlos Santana',
-    patientPhone: '+91 94567 89012',
-    doctorId: 'doc-2',
-    doctorName: 'Dr. Marcus Vance',
-    doctorSpecialty: 'Dermatologist',
-    ticketNumber: '#CP-4826',
-    timeSlot: '11:00 AM - 12:00 PM',
-    status: 'Waiting',
-    arrivalTime: '10:55 AM',
-    issueTime: '10:40 AM',
-    type: 'In-Person',
-    date: getTodayDateStr(0),
-    age: 35,
-    bloodGroup: 'AB+',
-    healthIssue: 'Eczema flare-up',
-  },
-  {
-    id: 'tok-9',
-    tokenNumber: '#TOK-009',
-    patientName: 'Michael Scott',
-    patientPhone: '+91 91234 56789',
-    doctorId: 'doc-4',
-    doctorName: 'Dr. Ethan Reynolds',
-    doctorSpecialty: 'Neurologist',
-    ticketNumber: '#CP-4827',
-    timeSlot: '02:00 PM - 03:00 PM',
-    status: 'Waiting',
-    arrivalTime: '01:30 PM',
-    issueTime: '01:35 PM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 46,
-    bloodGroup: 'O-',
-    healthIssue: 'Headache & Migraine check',
-  },
-  {
-    id: 'tok-6',
-    tokenNumber: '#TOK-006',
-    patientName: 'Jessica Alba',
-    patientPhone: '+91 93456 78901',
-    doctorId: 'doc-4',
-    doctorName: 'Dr. Ethan Reynolds',
-    doctorSpecialty: 'Neurologist',
-    ticketNumber: '#CP-4828',
-    timeSlot: '02:00 PM - 03:00 PM',
-    status: 'Checked In',
-    arrivalTime: '01:40 PM',
-    checkInTime: '01:45 PM',
-    issueTime: '01:30 AM',
-    type: 'In-Person',
-    date: getTodayDateStr(0),
-    age: 33,
-    bloodGroup: 'A-',
-    healthIssue: 'Nerve pinch evaluation',
-  },
-  {
-    id: 'tok-10',
-    tokenNumber: '#TOK-010',
-    patientName: 'David Miller',
-    patientPhone: '+91 95555 44433',
-    doctorId: 'doc-3',
-    doctorName: 'Dr. Sophia Patel',
-    doctorSpecialty: 'Pediatrician',
-    ticketNumber: '#CP-4829',
-    timeSlot: '03:00 PM - 04:00 PM',
-    status: 'Waiting',
-    arrivalTime: '02:15 PM',
-    issueTime: '02:20 PM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 8,
-    bloodGroup: 'AB+',
-    healthIssue: 'Routine Child Checkup',
-  },
-  {
-    id: 'tok-11',
-    tokenNumber: '#TOK-011',
-    patientName: 'Alexander Pope',
-    patientPhone: '+91 92345 67890',
-    doctorId: 'doc-3',
-    doctorName: 'Dr. Sophia Patel',
-    doctorSpecialty: 'Pediatrician',
-    ticketNumber: '#CP-4830',
-    timeSlot: '03:00 PM - 04:00 PM',
-    status: 'Waiting',
-    arrivalTime: '02:30 PM',
-    issueTime: '02:00 PM',
-    type: 'In-Person',
-    date: getTodayDateStr(0),
-    age: 10,
-    bloodGroup: 'O+',
-    healthIssue: 'Pediatric Fever follow-up',
-  },
-  {
-    id: 'tok-12',
-    tokenNumber: '#TOK-012',
-    patientName: 'Vikram Malhotra',
-    patientPhone: '+91 98888 77766',
-    doctorId: 'doc-4',
-    doctorName: 'Dr. Ethan Reynolds',
-    doctorSpecialty: 'Neurologist',
-    ticketNumber: '#CP-4831',
-    timeSlot: '04:00 PM - 05:00 PM',
-    status: 'Waiting',
-    arrivalTime: '03:45 PM',
-    issueTime: '03:48 PM',
-    type: 'Walk-In',
-    date: getTodayDateStr(0),
-    age: 50,
-    bloodGroup: 'B+',
-    healthIssue: 'Chronic Sciatica consult',
-  },
-  {
-    id: 'tok-13',
-    tokenNumber: '#TOK-013',
-    patientName: 'Elena Rostova',
-    patientPhone: '+91 91122 33445',
-    doctorId: 'doc-4',
-    doctorName: 'Dr. Ethan Reynolds',
-    doctorSpecialty: 'Neurologist',
-    ticketNumber: '#CP-4832',
-    timeSlot: '04:00 PM - 05:00 PM',
-    status: 'Waiting',
-    arrivalTime: '03:50 PM',
-    issueTime: '03:30 PM',
-    type: 'In-Person',
-    date: getTodayDateStr(0),
-    age: 27,
-    bloodGroup: 'A+',
-    healthIssue: 'Vertigo & Dizziness check',
-  },
-];
+const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [];
 
 const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
   id: 'rec-101',
@@ -396,24 +68,26 @@ const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
 };
 
 const DEFAULT_ADMIN_PROFILE: AdminProfile = {
-  id: 'admin-1',
-  name: 'Admin',
-  email: 'admin@carepulse.com',
-  password: 'admin123',
-  phone: '+1 (555) 735-4600',
+  id: 'admin-bag',
+  name: 'BAG Hospital Administrator',
+  email: 'bag@carepulse.com',
+  username: 'BAG',
+  password: 'bitsathy',
+  phone: '+91 4295 226000',
   role: 'admin',
-  department: 'Platform Super Administration',
+  department: 'Hospital Administration & Operations',
   avatarUrl: '',
-  hospitalName: 'CarePulse Global Network',
+  hospitalName: 'BAG Hospital',
+  hospitalId: 'hosp-bag',
 };
 
 const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
-  name: 'CarePulse Central Hospital',
+  name: 'BAG Hospital',
   tagline: 'Advanced Clinical Care & Patient Guidance Center',
-  address: '4517 Washington Ave, Medical Hub, Metro District',
-  phone: '+1 (555) 735-4614',
-  emergencyHotline: '+1 (555) 911-0000',
-  email: 'contact@carepulse.com',
+  address: 'Bannari Amman Group (BAG) Medical Complex, Sathyamangalam, Tamil Nadu 638401',
+  phone: '+91 4295 226000',
+  emergencyHotline: '+91 4295 226000',
+  email: 'bag@carepulse.com',
   logoUrl: '/hospital_default.jpg',
   defaultSlotDurationMinutes: 30,
   maxOnlineBookingPercentage: 50,
@@ -422,218 +96,26 @@ const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
   enableAutoCancellation: false,
 };
 
-const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [
-  {
-    id: 'rec-101',
-    name: 'Emily Watson',
-    email: 'receptionist@carepulse.com',
-    password: 'password123',
-    hospitalName: 'CarePulse Central Hospital',
-    phone: '+91 98765 43220',
-    department: 'Main Reception',
-    deskNumber: 'Desk A-1 (Ground Floor)',
-    shift: 'Morning',
-    isActive: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
-    assignedDoctorsCount: 4,
-    joinDate: '2024-03-15'
-  },
-  {
-    id: 'rec-102',
-    name: 'Anna Mathews',
-    email: 'anna.m@carepulse.com',
-    password: 'password123',
-    hospitalName: 'CarePulse Central Hospital',
-    phone: '+91 98765 43221',
-    department: 'Emergency & OPD Desk',
-    deskNumber: 'Desk B-2 (Wing C)',
-    shift: 'Evening',
-    isActive: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
-    assignedDoctorsCount: 3,
-    joinDate: '2024-06-10'
-  },
-  {
-    id: 'rec-103',
-    name: 'David Miller',
-    email: 'david.m@carepulse.com',
-    password: 'password123',
-    hospitalName: 'CarePulse Central Hospital',
-    phone: '+91 98765 43222',
-    department: 'Specialist Clinic Desk',
-    deskNumber: 'Desk C-1 (2nd Floor)',
-    shift: 'Full Day',
-    isActive: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
-    assignedDoctorsCount: 2,
-    joinDate: '2025-01-20'
-  }
-];
+const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [];
 
 const DEFAULT_HOSPITALS: HospitalBranch[] = [
   {
-    id: 'hosp-1',
-    name: 'CarePulse Metro Central Hospital',
-    address: '4517 Washington Ave, Medical Hub, Metro District',
-    city: 'Metro City',
-    phone: '+1 (555) 735-4614',
+    id: 'hosp-bag',
+    name: 'BAG Hospital',
+    address: 'Bannari Amman Group (BAG) Medical Complex, Alathukombai, Sathyamangalam, Tamil Nadu 638401',
+    city: 'Sathyamangalam',
+    phone: '+91 4295 226000',
     operatingHours: '24/7 Emergency & OPD (08:00 AM - 10:00 PM)',
     doctorsCount: 10,
     receptionDesksCount: 4,
     logoUrl: '/hospital_default.jpg',
     isActive: true,
   },
-  {
-    id: 'hosp-2',
-    name: 'CarePulse West Wing Specialty Clinic',
-    address: '8902 Health Boulevard, Westside District',
-    city: 'West Haven',
-    phone: '+1 (555) 890-1200',
-    operatingHours: 'Mon-Sat (08:00 AM - 08:00 PM)',
-    doctorsCount: 6,
-    receptionDesksCount: 2,
-    logoUrl: '/hospital_default.jpg',
-    isActive: true,
-  },
-  {
-    id: 'hosp-3',
-    name: 'CarePulse Downtown Urgent Care',
-    address: '1240 Innovation Way, Financial District',
-    city: 'Downtown Core',
-    phone: '+1 (555) 345-9800',
-    operatingHours: '24/7 Walk-Ins & Emergency Trauma',
-    doctorsCount: 4,
-    receptionDesksCount: 2,
-    logoUrl: '/hospital_default.jpg',
-    isActive: true,
-  },
-  {
-    id: 'hosp-4',
-    name: 'CarePulse Greenfield Pediatric Center',
-    address: '67 Greenfield Park, North Suburb',
-    city: 'Greenfield',
-    phone: '+1 (555) 234-7700',
-    operatingHours: 'Mon-Fri (07:30 AM - 06:30 PM)',
-    doctorsCount: 3,
-    receptionDesksCount: 1,
-    logoUrl: '/hospital_default.jpg',
-    isActive: true,
-  },
 ];
 
-const DEFAULT_DEPARTMENTS: DepartmentRecord[] = [
-  {
-    id: 'dept-1',
-    name: 'Cardiology',
-    iconName: 'HeartPulse',
-    color: '#0B5A54',
-    headDoctor: 'Dr. Olivia Wilson',
-    operatingHours: '08:00 AM - 08:00 PM',
-    description: 'Comprehensive cardiovascular diagnostics, echocardiography, ECG, and emergency heart care.',
-    doctorIds: ['doc-1'],
-    totalBeds: 24,
-    emergencyCoverage: true,
-  },
-  {
-    id: 'dept-2',
-    name: 'Dermatology',
-    iconName: 'Sparkles',
-    color: '#0284C7',
-    headDoctor: 'Dr. Marcus Vance',
-    operatingHours: '09:00 AM - 06:00 PM',
-    description: 'Advanced clinical dermatology, laser diagnostics, skin allergy treatment, and cosmetology.',
-    doctorIds: ['doc-2'],
-    totalBeds: 12,
-    emergencyCoverage: false,
-  },
-  {
-    id: 'dept-3',
-    name: 'Pediatrics & Neonatal',
-    iconName: 'Baby',
-    color: '#F59E0B',
-    headDoctor: 'Dr. Sophia Patel',
-    operatingHours: '24/7 Emergency & Day OPD',
-    description: 'Specialized child health, developmental tracking, pediatric emergency care, and immunizations.',
-    doctorIds: ['doc-3'],
-    totalBeds: 36,
-    emergencyCoverage: true,
-  },
-  {
-    id: 'dept-4',
-    name: 'Neurology',
-    iconName: 'Brain',
-    color: '#7C3AED',
-    headDoctor: 'Dr. Ethan Reynolds',
-    operatingHours: '08:30 AM - 05:30 PM',
-    description: 'Neuro-consultations, stroke protocols, EEG diagnostics, and nervous system therapeutics.',
-    doctorIds: ['doc-4'],
-    totalBeds: 18,
-    emergencyCoverage: true,
-  },
-  {
-    id: 'dept-5',
-    name: 'Orthopedics & Joint Care',
-    iconName: 'Activity',
-    color: '#10B981',
-    headDoctor: 'Dr. Alexander King',
-    operatingHours: '08:00 AM - 07:00 PM',
-    description: 'Musculoskeletal trauma, arthroscopy, joint replacement, sports injuries, and rehabilitation.',
-    doctorIds: [],
-    totalBeds: 30,
-    emergencyCoverage: true,
-  },
-  {
-    id: 'dept-6',
-    name: 'General Medicine & OPD',
-    iconName: 'Stethoscope',
-    color: '#EC4899',
-    headDoctor: 'Admin',
-    operatingHours: '24/7 Round the Clock',
-    description: 'Primary clinical consultations, internal medicine, triage, and multi-system diagnostics.',
-    doctorIds: ['doc-1', 'doc-2'],
-    totalBeds: 50,
-    emergencyCoverage: true,
-  },
-];
+const DEFAULT_DEPARTMENTS: DepartmentRecord[] = [];
 
-const DEFAULT_ANNOUNCEMENTS: AnnouncementRecord[] = [
-  {
-    id: 'ann-1',
-    title: 'Hospital Cardiology Wing Upgraded with Digital Cath Lab',
-    message: 'New high-resolution cardiac catheterization equipment is now active in Wing B. All OPD slots operate under upgraded protocols.',
-    audience: 'All Staff',
-    priority: 'High',
-    scheduledFor: '2026-08-18 09:00 AM',
-    sentAt: 'Today, 09:00 AM',
-    deliveredCount: 48,
-    readCount: 42,
-    status: 'Sent',
-  },
-  {
-    id: 'ann-2',
-    title: 'Digital Token Queue System Live Notification for Patients',
-    message: 'CarePulse app live token tracker is now synchronized across all OPD reception desks. Patients receive instant SMS alerts 15 minutes prior to slot call.',
-    audience: 'All Patients',
-    priority: 'Normal',
-    scheduledFor: '2026-08-17 10:30 AM',
-    sentAt: 'Yesterday, 10:30 AM',
-    deliveredCount: 312,
-    readCount: 289,
-    status: 'Sent',
-  },
-  {
-    id: 'ann-3',
-    title: 'Sunday General Medical Camp & Vaccination Drive',
-    message: 'Special immunization and health screening camp scheduled for this Sunday in the Greenfield Pavilion. Front desk to issue physical yellow slips.',
-    audience: 'All Patients',
-    priority: 'Normal',
-    scheduledFor: '2026-08-23 08:00 AM',
-    sentAt: 'Pending Dispatch',
-    deliveredCount: 0,
-    readCount: 0,
-    status: 'Scheduled',
-  },
-];
+const DEFAULT_ANNOUNCEMENTS: AnnouncementRecord[] = [];
 
 export interface StaffState {
   currentStaff: Staff | null;
@@ -750,7 +232,40 @@ export const useStaffStore = create<StaffState>((set, get) => ({
 
   setStaffAuth: (staff, token) => {
     if (token) localStorage.setItem('staff_token', token);
-    if (staff) localStorage.setItem('carepulse_staff', JSON.stringify(staff));
+    if (staff) {
+      localStorage.setItem('carepulse_staff', JSON.stringify(staff));
+      const hospId = staff.hospitalId || staff.hospital_id || 'hosp-bag';
+      const hospName = hospId === 'hosp-bag' ? 'BAG Hospital' : 'CarePulse Hospital';
+
+      if (staff.role === 'receptionist') {
+        set((state) => ({
+          receptionistProfile: {
+            ...state.receptionistProfile,
+            id: staff.id,
+            name: staff.name || state.receptionistProfile.name,
+            email: staff.email,
+            phone: staff.phone || state.receptionistProfile.phone,
+            department: staff.department || state.receptionistProfile.department,
+            clinicName: hospName,
+            employeeId: staff.staff_code || staff.staffCode || staff.id,
+          },
+        }));
+      }
+
+      if (staff.role === 'admin') {
+        set((state) => ({
+          adminProfile: {
+            ...state.adminProfile,
+            id: staff.id,
+            name: staff.name || state.adminProfile.name,
+            email: staff.email,
+            hospitalId: hospId,
+            hospitalName: hospName,
+            department: staff.department || state.adminProfile.department,
+          },
+        }));
+      }
+    }
     set({ currentStaff: staff });
   },
 
@@ -774,12 +289,9 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   fetchDoctors: async (silent?: boolean) => {
     if (!silent) set({ isLoading: true });
     try {
-      const doctors = await receptionistService.getDoctors();
-      if (doctors && doctors.length > 0) {
-        set({ doctors, isLoading: false });
-      } else {
-        if (!silent) set({ isLoading: false });
-      }
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+      const doctors = await receptionistService.getDoctors(hospId);
+      set({ doctors: doctors || [], isLoading: false });
     } catch {
       if (!silent) set({ isLoading: false });
     }
@@ -878,51 +390,30 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   createDoctor: async (doctorData: Partial<DoctorRecord>) => {
-    const newDoc: DoctorRecord = {
-      id: `doc-${Date.now()}`,
-      name: doctorData.name || 'Dr. New Doctor',
-      specialty: doctorData.specialty || 'General Medicine',
-      department: doctorData.department || 'General Medicine',
-      experienceYears: doctorData.experienceYears || 5,
-      consultationFee: doctorData.consultationFee || 600,
-      photo: doctorData.photo || '/doctor_default.jpg',
-      phone: doctorData.phone || '+91 98765 00000',
-      email: doctorData.email || 'doctor@carepulse.com',
-      roomNumber: doctorData.roomNumber || 'Cabin 105',
-      about: doctorData.about || `Senior specialist with ${doctorData.experienceYears || 5}+ years of clinical experience.`,
-      isAvailable: true,
-      availableDays: doctorData.availableDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      slotCapacities: DEFAULT_SLOTS.map(s => ({ ...s }))
-    };
-
-    set(state => ({
-      doctors: [newDoc, ...state.doctors]
-    }));
-
-    await receptionistService.createDoctor(newDoc);
+    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+    try {
+      const created = await receptionistService.createDoctor({
+        ...doctorData,
+        hospital_id: hospId,
+      });
+      if (created) {
+        set((state) => ({
+          doctors: [created, ...state.doctors.filter((d) => d.id !== created.id)],
+        }));
+        return;
+      }
+    } catch (e) {
+      console.warn('Create doctor store error:', e);
+    }
+    await get().fetchDoctors(true);
   },
 
   fetchTokens: async (doctorId?: string, silent?: boolean) => {
     if (!silent) set({ isLoading: true });
     try {
-      const fetchedTokens = await receptionistService.getTokenQueue(doctorId);
-      if (fetchedTokens && fetchedTokens.length > 0) {
-        // Ensure walk-in patients are always present and available
-        const currentWalkIns = get().tokens.filter((t) => t.type === 'Walk-In');
-        const defaultWalkIns = MOCK_INITIAL_TOKENS.filter((t) => t.type === 'Walk-In');
-        const walkInsToRetain = currentWalkIns.length > 0 ? currentWalkIns : defaultWalkIns;
-
-        const combined = [...fetchedTokens];
-        walkInsToRetain.forEach((w) => {
-          if (!combined.some((c) => c.id === w.id)) {
-            combined.push(w);
-          }
-        });
-
-        set({ tokens: combined, isLoading: false });
-      } else {
-        if (!silent) set({ isLoading: false });
-      }
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+      const fetchedTokens = await receptionistService.getTokenQueue(doctorId, hospId);
+      set({ tokens: fetchedTokens || [], isLoading: false });
     } catch {
       if (!silent) set({ isLoading: false });
     }
@@ -1038,29 +529,49 @@ export const useStaffStore = create<StaffState>((set, get) => ({
 
   // Admin Actions Implementation
   fetchReceptionists: async () => {
-    // Already populated with DEFAULT_RECEPTIONISTS or synced with backend
+    try {
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+      const res = await apiGet(`/admin/receptionists?hospital_id=${encodeURIComponent(hospId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        set({ receptionists: Array.isArray(data) ? data : [] });
+      } else {
+        set({ receptionists: [] });
+      }
+    } catch {
+      set({ receptionists: [] });
+    }
   },
 
   createReceptionist: async (recData: Partial<ReceptionistRecord>) => {
-    const newRec: ReceptionistRecord = {
-      id: `rec-${Date.now()}`,
-      name: recData.name || 'New Receptionist',
-      email: recData.email || 'receptionist@carepulse.com',
-      password: recData.password || 'password123',
-      hospitalName: recData.hospitalName || 'CarePulse Central Hospital',
-      phone: recData.phone || '+91 98765 00000',
-      department: recData.department || 'Front Desk',
-      deskNumber: recData.deskNumber || 'Desk A-1',
-      shift: recData.shift || 'Morning',
-      isActive: true,
-      avatarUrl: recData.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
-      assignedDoctorsCount: recData.assignedDoctorsCount || 2,
-      joinDate: new Date().toISOString().split('T')[0],
-    };
-
-    set((state) => ({
-      receptionists: [newRec, ...state.receptionists],
-    }));
+    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+    try {
+      const res = await apiPost('/admin/receptionists', {
+        name: recData.name || 'New Receptionist',
+        email: recData.email || 'receptionist@carepulse.com',
+        password: recData.password || 'password123',
+        phone: recData.phone || '+91 98765 00000',
+        department: recData.department || 'Front Desk',
+        deskNumber: recData.deskNumber || 'Desk A-1',
+        shift: recData.shift || 'Morning',
+        assignedDoctorsCount: recData.assignedDoctorsCount || 2,
+        avatarUrl: recData.avatarUrl || '',
+        hospital_id: hospId,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const created = data.receptionist;
+        if (created) {
+          set((state) => ({
+            receptionists: [created, ...state.receptionists.filter((r) => r.id !== created.id)],
+          }));
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend receptionist create note:', e);
+    }
+    get().fetchReceptionists();
   },
 
   updateReceptionist: async (id: string, updates: Partial<ReceptionistRecord>) => {
@@ -1069,20 +580,34 @@ export const useStaffStore = create<StaffState>((set, get) => ({
         r.id === id ? { ...r, ...updates } : r
       ),
     }));
+    try {
+      await apiFetch(`/admin/receptionists/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (e) {
+      console.warn('Backend receptionist update note:', e);
+    }
   },
 
   deleteReceptionist: async (id: string) => {
     set((state) => ({
       receptionists: state.receptionists.filter((r) => r.id !== id),
     }));
+    try {
+      await apiFetch(`/admin/receptionists/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Backend receptionist delete note:', e);
+    }
   },
 
   toggleReceptionistStatus: async (id: string) => {
-    set((state) => ({
-      receptionists: state.receptionists.map((r) =>
-        r.id === id ? { ...r, isActive: !r.isActive } : r
-      ),
-    }));
+    const rec = get().receptionists.find((r) => r.id === id);
+    if (!rec) return;
+    const nextStatus = !rec.isActive;
+    get().updateReceptionist(id, { isActive: nextStatus });
   },
 
   updateHospitalSettings: async (settings: Partial<HospitalSettings>) => {
@@ -1130,12 +655,27 @@ export const useStaffStore = create<StaffState>((set, get) => ({
         doc.id === id ? { ...doc, ...updates } : doc
       ),
     }));
+    try {
+      await apiFetch(`/admin/doctors/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (e) {
+      console.warn('Backend doctor update error:', e);
+    }
   },
 
   deleteDoctor: async (id: string) => {
     set((state) => ({
       doctors: state.doctors.filter((doc) => doc.id !== id),
     }));
+    try {
+      await apiFetch(`/admin/doctors/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Backend doctor delete error:', e);
+    }
   },
 
   addHospital: async (hospData: Partial<HospitalBranch>) => {

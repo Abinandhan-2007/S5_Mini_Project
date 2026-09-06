@@ -30,41 +30,10 @@ def init_json_db() -> Dict[str, Any]:
     if not JSON_DB_PATH.exists():
         JSON_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         initial_data = {
-            "patients": [
-                {
-                    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
-                    "full_name": "Sarah Jenkins",
-                    "email": "sarah.j@carepulse.com",
-                    "phone": "+91 98765 43210",
-                    "dob": "1995-07-24",
-                    "gender": "Female",
-                    "blood_group": "O+",
-                    "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
-                    "auth_provider": "google",
-                    "google_id": "google-demo-sarah"
-                }
-            ],
-            "consultations": [
-                {
-                    "id": "c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
-                    "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
-                    "doctor_id": "doc-1",
-                    "doctor_name": "Dr. Olivia Wilson",
-                    "date": "2026-07-24",
-                    "soap_data": {
-                        "subjective": "Patient reports mild seasonal allergy symptoms including sneezing and congestion.",
-                        "objective": "Clear nasal discharge, no wheezing, clear breath sounds, normal temperature.",
-                        "assessment": "Allergic Rhinitis.",
-                        "plan": "Prescribed Cetirizine 10mg once daily as needed. Recommended avoidance of known environmental allergens.",
-                        "vitals": {
-                            "bp": "118/76",
-                            "heart_rate": 72,
-                            "temperature": 98.4
-                        }
-                    },
-                    "soap_embedding": []
-                }
-            ]
+            "patients": [],
+            "consultations": [],
+            "appointments": [],
+            "prescriptions": []
         }
         with open(JSON_DB_PATH, "w", encoding="utf-8") as f:
             json.dump(initial_data, f, indent=2)

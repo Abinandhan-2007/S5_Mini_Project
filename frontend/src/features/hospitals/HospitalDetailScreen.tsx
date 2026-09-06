@@ -7,7 +7,6 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
 import { hospitalService } from '../../services/hospitalService';
 import type { Hospital, Doctor } from '../../lib/types';
-import { MOCK_HOSPITALS, MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
 
 export const HospitalDetailScreen: React.FC = () => {
@@ -15,11 +14,9 @@ export const HospitalDetailScreen: React.FC = () => {
   const navigate = useNavigate();
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
-  const initialHospital = MOCK_HOSPITALS.find((h) => h.id === id) || MOCK_HOSPITALS[0];
-  const initialDoctors = MOCK_DOCTORS.filter((d) => d.hospitalId === id || d.hospitalId === 'hosp-1');
-
-  const [hospital, setHospital] = useState<Hospital>(initialHospital);
-  const [doctors, setDoctors] = useState<Doctor[]>(initialDoctors);
+  const [hospital, setHospital] = useState<Hospital | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'available' | 'offduty'>('all');
@@ -29,12 +26,16 @@ export const HospitalDetailScreen: React.FC = () => {
   const fetchLiveHospitalData = React.useCallback(() => {
     if (!id) return;
     hospitalService.getHospitalById(id).then((res) => {
+      setLoading(false);
       if (res && res.hospital) {
         setHospital(res.hospital);
-        if (res.doctors && res.doctors.length > 0) {
-          setDoctors(res.doctors);
-        }
+        setDoctors(res.doctors || []);
+      } else {
+        setHospital(null);
       }
+    }).catch(() => {
+      setLoading(false);
+      setHospital(null);
     });
   }, [id]);
 
@@ -95,6 +96,52 @@ export const HospitalDetailScreen: React.FC = () => {
     setBookingDoctor(doctor);
     navigate(`/appointments/book/${doctor.id}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-[#0B5A54] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-slate-500">Loading hospital details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hospital) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] pb-28 flex flex-col justify-between">
+        <div className="p-4 flex items-center gap-3">
+          <button
+            onClick={() => navigate('/hospitals')}
+            className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] shadow-sm border border-slate-200"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-[#0B5A54]" />
+          </button>
+          <span className="font-bold text-slate-800 text-sm">Hospital Details</span>
+        </div>
+        <div className="max-w-sm mx-auto text-center space-y-4 px-4 my-auto">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-[#0B5A54] mx-auto">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-800">Hospital Not Found</h3>
+            <p className="text-xs text-slate-500">
+              The requested hospital facility does not exist or has been removed from the database.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/hospitals')}
+            className="w-full bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-bold py-3 px-4 rounded-full shadow-sm transition-all"
+          >
+            Browse All Hospitals
+          </button>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">

@@ -51,61 +51,7 @@ interface DoctorNotificationCenterProps {
   showToast: (msg: string) => void;
 }
 
-const INITIAL_MOCK_NOTIFICATIONS: ClinicalNotification[] = [
-  {
-    id: 'notif-urgent-1',
-    category: 'urgent',
-    priority: 'urgent',
-    title: 'Priority OPD Triage: Chest Discomfort',
-    message: 'Patient Rajesh Sharma (#TOK-001) arrived with Elevated BP 155/95 mmHg. Triaged for priority physician review.',
-    timestamp: 'Just now',
-    isRead: false,
-    metadata: {
-      tokenNumber: '#TOK-001',
-      patientName: 'Rajesh Sharma',
-      vitalsPreview: 'BP 155/95 · SpO2 98%',
-    },
-  },
-  {
-    id: 'notif-queue-2',
-    category: 'queue',
-    priority: 'normal',
-    title: 'New Patient Check-in',
-    message: 'Ananya Verma (#TOK-002) checked in for General Outpatient Consultation at Front Desk.',
-    timestamp: '4m ago',
-    isRead: false,
-    metadata: {
-      tokenNumber: '#TOK-002',
-      patientName: 'Ananya Verma',
-      waitTime: '4 mins waiting',
-    },
-  },
-  {
-    id: 'notif-lab-3',
-    category: 'urgent',
-    priority: 'high',
-    title: 'Lab Diagnostics Ready',
-    message: '12-Lead ECG & Cardiac Enzyme panel ready for review in EMR records.',
-    timestamp: '18m ago',
-    isRead: false,
-    metadata: {
-      patientName: 'Robert Fox',
-      department: 'Biochemistry & ECG Lab',
-    },
-  },
-  {
-    id: 'notif-broadcast-4',
-    category: 'broadcast',
-    priority: 'normal',
-    title: 'Hospital Pharmacy Notice',
-    message: 'Emergency formulary updated: Oral anti-hypertensives restocked at Central Pharmacy Counter 3.',
-    timestamp: '45m ago',
-    isRead: true,
-    metadata: {
-      department: 'Hospital Administration',
-    },
-  },
-];
+const INITIAL_MOCK_NOTIFICATIONS: ClinicalNotification[] = [];
 
 export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> = ({
   isOpen,

@@ -173,7 +173,7 @@ export const AppointmentDetailScreen: React.FC = () => {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-sm font-black text-slate-900 leading-tight font-heading">
-                    {user?.fullName || appointmentData.clientName || 'SIVANAGU E'}
+                    {user?.fullName || appointmentData.clientName || 'Patient'}
                   </h4>
                   <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
                 </div>

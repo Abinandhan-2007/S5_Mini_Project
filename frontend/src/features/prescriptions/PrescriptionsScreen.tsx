@@ -19,7 +19,6 @@ import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
 import { MedicationCardStack } from '../../components/prescriptions';
-import { MOCK_PRESCRIPTIONS } from '../../lib/mockApi';
 import { useTranslation } from '../../i18n';
 
 export interface PrescribedMedicine {
@@ -61,9 +60,7 @@ export const PrescriptionsScreen: React.FC = () => {
     }
   }, [user?.id, syncPrescriptions, syncHistory]);
 
-  const effectivePrescriptions = (storePrescriptions && storePrescriptions.length > 0)
-    ? storePrescriptions
-    : MOCK_PRESCRIPTIONS;
+  const effectivePrescriptions = storePrescriptions || [];
 
   // Build dynamic prescription groups from store prescriptions & consultation history
   const dynamicGroups: DoctorPrescriptionGroup[] = React.useMemo(() => {

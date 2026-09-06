@@ -19,84 +19,16 @@ logger = logging.getLogger("carepulse.receptionist")
 router = APIRouter(prefix="/api/receptionist", tags=["Receptionist Portal"])
 
 DEFAULT_SLOTS = [
-    {"id": "slot-1", "timeSlot": "09:00 AM - 10:00 AM", "maxSeats": 5, "bookedSeats": 2, "availableSeats": 3, "isAvailable": True},
-    {"id": "slot-2", "timeSlot": "10:00 AM - 11:00 AM", "maxSeats": 6, "bookedSeats": 4, "availableSeats": 2, "isAvailable": True},
-    {"id": "slot-3", "timeSlot": "11:00 AM - 12:00 PM", "maxSeats": 5, "bookedSeats": 1, "availableSeats": 4, "isAvailable": True},
-    {"id": "slot-4", "timeSlot": "02:00 PM - 03:00 PM", "maxSeats": 6, "bookedSeats": 3, "availableSeats": 3, "isAvailable": True},
+    {"id": "slot-1", "timeSlot": "09:00 AM - 10:00 AM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
+    {"id": "slot-2", "timeSlot": "10:00 AM - 11:00 AM", "maxSeats": 6, "bookedSeats": 0, "availableSeats": 6, "isAvailable": True},
+    {"id": "slot-3", "timeSlot": "11:00 AM - 12:00 PM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
+    {"id": "slot-4", "timeSlot": "02:00 PM - 03:00 PM", "maxSeats": 6, "bookedSeats": 0, "availableSeats": 6, "isAvailable": True},
     {"id": "slot-5", "timeSlot": "03:00 PM - 04:00 PM", "maxSeats": 4, "bookedSeats": 0, "availableSeats": 4, "isAvailable": True},
-    {"id": "slot-6", "timeSlot": "04:00 PM - 05:00 PM", "maxSeats": 5, "bookedSeats": 2, "availableSeats": 3, "isAvailable": True},
+    {"id": "slot-6", "timeSlot": "04:00 PM - 05:00 PM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
 ]
 
-MOCK_TOKEN_QUEUE = [
-    {
-        "id": "tok-1",
-        "tokenNumber": "#TOK-001",
-        "patientName": "Sarah Jenkins",
-        "patientPhone": "+91 98765 43210",
-        "doctorId": "doc-1",
-        "doctorName": "Dr. Olivia Wilson",
-        "doctorSpecialty": "Cardiologist",
-        "ticketNumber": "#CP-4821",
-        "timeSlot": "10:00 AM - 11:00 AM",
-        "status": "In Consultation",
-        "arrivalTime": "09:45 AM",
-        "issueTime": "09:50 AM",
-        "type": "In-Person",
-        "hospitalId": "hosp-1",
-        "hospital_id": "hosp-1"
-    },
-    {
-        "id": "tok-2",
-        "tokenNumber": "#TOK-002",
-        "patientName": "Robert Chen",
-        "patientPhone": "+91 98111 22334",
-        "doctorId": "doc-1",
-        "doctorName": "Dr. Olivia Wilson",
-        "doctorSpecialty": "Cardiologist",
-        "ticketNumber": "#CP-4822",
-        "timeSlot": "10:00 AM - 11:00 AM",
-        "status": "Waiting",
-        "arrivalTime": "10:05 AM",
-        "issueTime": "10:08 AM",
-        "type": "Walk-In",
-        "hospitalId": "hosp-1",
-        "hospital_id": "hosp-1"
-    },
-    {
-        "id": "tok-3",
-        "tokenNumber": "#TOK-003",
-        "patientName": "Anita Sharma",
-        "patientPhone": "+91 99887 76655",
-        "doctorId": "doc-2",
-        "doctorName": "Dr. Marcus Vance",
-        "doctorSpecialty": "Dermatologist",
-        "ticketNumber": "#CP-4823",
-        "timeSlot": "11:00 AM - 12:00 PM",
-        "status": "Waiting",
-        "arrivalTime": "10:15 AM",
-        "issueTime": "10:20 AM",
-        "type": "In-Person",
-        "hospitalId": "hosp-3",
-        "hospital_id": "hosp-3"
-    },
-    {
-        "id": "tok-4",
-        "tokenNumber": "#TOK-004",
-        "patientName": "Michael Scott",
-        "patientPhone": "+91 91234 56789",
-        "doctorId": "doc-4",
-        "doctorName": "Dr. Ethan Reynolds",
-        "doctorSpecialty": "Neurologist",
-        "ticketNumber": "#CP-4824",
-        "timeSlot": "02:00 PM - 03:00 PM",
-        "status": "Waiting",
-        "arrivalTime": "10:25 AM",
-        "issueTime": "10:28 AM",
-        "type": "Walk-In",
-        "hospitalId": "hosp-2",
-        "hospital_id": "hosp-2"
-    }
-]
+MOCK_TOKEN_QUEUE = []
+
 
 def format_receptionist_doctor(d: dict) -> dict:
     days = d.get("available_days") or d.get("availableDays") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
@@ -180,7 +112,7 @@ def get_doctors(
                     if effective_hosp_id:
                         cur.execute("SELECT * FROM doctors WHERE hospital_id = %s ORDER BY id", (effective_hosp_id,))
                     else:
-                        cur.execute("SELECT * FROM doctors ORDER BY id")
+                        cur.execute("SELECT * FROM doctors WHERE hospital_id IS NULL ORDER BY id")
                     rows = cur.fetchall()
                     if rows is not None:
                         return {"success": True, "doctors": [format_receptionist_doctor(dict(r)) for r in rows]}
@@ -191,49 +123,122 @@ def get_doctors(
     doctors = db.get("doctors", [])
     if effective_hosp_id:
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
+    else:
+        doctors = [d for d in doctors if not d.get("hospital_id") and not d.get("hospitalId")]
     return {"success": True, "doctors": [format_receptionist_doctor(d) for d in doctors]}
 
 @router.post("/doctors")
 def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = Header(None)):
-    """Create a new doctor record in database."""
+    """Create a new doctor record in database and auto-generate staff login credentials."""
+    import re
+    from routes.staff_auth import get_current_staff, hash_password
+
     new_id = f"doc-{uuid.uuid4().hex[:6]}"
     slots = payload.slotCapacities if payload.slotCapacities else [dict(s) for s in DEFAULT_SLOTS]
     slots_json = [s if isinstance(s, dict) else s.dict() for s in slots]
 
-    # Derive hospital_id from staff context if available
-    hosp_id = "hosp-1"
-    hosp_name = "St. Jude Heart & Medical Center"
+    # Derive hospital_id from payload or staff context
+    hosp_id = payload.hospital_id or "hosp-bag"
     if authorization:
-        from routes.staff_auth import get_current_staff
         staff_ctx = get_current_staff(authorization)
         if staff_ctx and staff_ctx.get("hospital_id"):
             hosp_id = staff_ctx["hospital_id"]
 
+    db = database.read_json_db()
+    hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
+    hosp_name = hosp_match.get("name") if hosp_match else "BAG Hospital"
+
+    # Auto-generate staff code D<HospNum><Seq>
+    hosp_num = "007"
+    if "bag" in str(hosp_id).lower():
+        hosp_num = "007"
+    else:
+        m = re.search(r"\d+", str(hosp_id))
+        hosp_num = f"{int(m.group(0)):03d}" if m else "001"
+
+    staff_list = db.get("staff", [])
+    existing_docs = [s for s in staff_list if s.get("role") == "doctor" and (s.get("hospital_id") == hosp_id or s.get("hospitalId") == hosp_id)]
+    seq = 101 + len(existing_docs)
+    staff_code = f"D{hosp_num}{seq:03d}"
+
+    # Generate login email and username
+    username = (payload.username or "").strip()
+    email = (payload.email or "").strip().lower()
+    if not email:
+        clean_name = payload.name.lower().replace("dr.", "").strip().replace(" ", ".")
+        email = f"{username.lower()}@carepulse.com" if username else f"{clean_name}@carepulse.com"
+    if not username:
+        username = email.split("@")[0]
+
+    raw_pass = payload.password or "doc123"
+    hashed_pass = hash_password(raw_pass)
+
     doctor_obj = {
         "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
         "name": payload.name,
         "specialty": payload.specialty,
         "department": payload.department,
         "hospital_id": hosp_id,
+        "hospitalId": hosp_id,
         "hospital_name": hosp_name,
+        "hospitalName": hosp_name,
         "experienceYears": payload.experienceYears,
         "consultationFee": payload.consultationFee,
         "photo": payload.photo or "/doctor_default.jpg",
         "phone": payload.phone or "+91 98765 00000",
-        "email": payload.email or f"{payload.name.lower().replace(' ', '.')}@carepulse.com",
+        "email": email,
+        "username": username,
         "roomNumber": payload.roomNumber or "Cabin 105",
         "isAvailable": payload.isAvailable if payload.isAvailable is not None else True,
         "availableDays": payload.availableDays or ["Mon", "Tue", "Wed", "Thu", "Fri"],
         "slotCapacities": slots_json
     }
 
+    new_staff_entry = {
+        "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
+        "name": payload.name,
+        "full_name": payload.name,
+        "email": email,
+        "username": username,
+        "password": hashed_pass,
+        "password_hash": hashed_pass,
+        "role": "doctor",
+        "specialization": payload.specialty,
+        "department": payload.department,
+        "phone": doctor_obj["phone"],
+        "avatar": doctor_obj["photo"],
+        "avatar_url": doctor_obj["photo"],
+        "avatarUrl": doctor_obj["photo"],
+        "hospital_id": hosp_id,
+        "hospitalId": hosp_id,
+        "is_active": True,
+        "isActive": True
+    }
+
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # 1. Insert into doctors table FIRST so staff foreign key constraint succeeds
                     cur.execute("""
                         INSERT INTO doctors (id, name, specialty, department, hospital_id, hospital_name, experience_years, consultation_fee, photo, phone, email, room_number, is_available, available_days, slot_capacities)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (id) DO UPDATE SET
+                            name = EXCLUDED.name,
+                            specialty = EXCLUDED.specialty,
+                            department = EXCLUDED.department,
+                            consultation_fee = EXCLUDED.consultation_fee,
+                            experience_years = EXCLUDED.experience_years,
+                            phone = EXCLUDED.phone,
+                            email = EXCLUDED.email,
+                            room_number = EXCLUDED.room_number,
+                            is_available = EXCLUDED.is_available,
+                            available_days = EXCLUDED.available_days,
+                            slot_capacities = EXCLUDED.slot_capacities
                     """, (
                         new_id,
                         payload.name,
@@ -245,23 +250,40 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
                         payload.consultationFee,
                         doctor_obj["photo"],
                         doctor_obj["phone"],
-                        doctor_obj["email"],
+                        email,
                         doctor_obj["roomNumber"],
                         doctor_obj["isAvailable"],
                         json.dumps(doctor_obj["availableDays"]),
                         json.dumps(slots_json)
                     ))
+                    # 2. Insert into staff table with valid UUID and doctor_id FK
+                    staff_uuid = str(uuid.uuid4())
+                    cur.execute("""
+                        INSERT INTO staff (id, doctor_id, staff_code, full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'doctor', %s, %s, %s, %s)
+                        ON CONFLICT (email) DO UPDATE SET
+                            doctor_id = EXCLUDED.doctor_id,
+                            full_name = EXCLUDED.full_name,
+                            password_hash = EXCLUDED.password_hash,
+                            phone = EXCLUDED.phone,
+                            specialization = EXCLUDED.specialization,
+                            hospital_id = EXCLUDED.hospital_id
+                    """, (staff_uuid, new_id, staff_code, payload.name, email, hashed_pass, payload.specialty, doctor_obj["phone"], doctor_obj["photo"], hosp_id))
                 conn.commit()
-                return {"success": True, "doctor": doctor_obj}
         except Exception as e:
-            logger.warning(f"DB insert doctor note: {e}")
+            logger.error(f"DB insert doctor note: {e}")
 
-    db = database.read_json_db()
+    # JSON DB write
     if "doctors" not in db:
         db["doctors"] = []
+    if "staff" not in db:
+        db["staff"] = []
+
     db["doctors"].append(doctor_obj)
+    db["staff"].append(new_staff_entry)
     database.write_json_db(db)
-    return {"success": True, "doctor": doctor_obj}
+
+    return {"success": True, "doctor": doctor_obj, "staff": new_staff_entry}
 
 @router.patch("/doctors/{doctor_id}/availability")
 def toggle_doctor_availability(doctor_id: str, payload: DoctorAvailabilityUpdate):
@@ -404,6 +426,8 @@ def fetch_all_tokens_from_db(
                                p.phone as patient_phone_db, 
                                p.blood_group as patient_blood_group,
                                p.dob as patient_dob,
+                               d.name as doc_name,
+                               d.specialty as doc_specialty,
                                d.hospital_id as doc_hospital_id
                         FROM appointments a
                         LEFT JOIN patients p ON a.patient_id = p.id
@@ -448,9 +472,9 @@ def fetch_all_tokens_from_db(
                             "patientId": str(app_dict.get("patient_id") or ""),
                             "patientName": p_name,
                             "patientPhone": p_phone,
-                            "doctorId": str(app_dict.get("doctor_id") or "doc-1"),
-                            "doctorName": app_dict.get("doctor_name") or "Dr. Olivia Wilson",
-                            "doctorSpecialty": app_dict.get("doctor_specialty") or "Cardiologist",
+                            "doctorId": str(app_dict.get("doctor_id") or "doc-current"),
+                            "doctorName": app_dict.get("doctor_name") or app_dict.get("doc_name") or "Doctor",
+                            "doctorSpecialty": app_dict.get("doctor_specialty") or app_dict.get("doc_specialty") or "General Medicine",
                             "hospitalId": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
                             "hospital_id": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
                             "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
@@ -472,7 +496,7 @@ def fetch_all_tokens_from_db(
         db = database.read_json_db()
         raw_apps = db.get("appointments", [])
         raw_patients = {str(p.get("id")): p for p in db.get("patients", [])}
-        doc_hosp_map = {d.get("id"): (d.get("hospital_id") or d.get("hospitalId")) for d in db.get("doctors", [])}
+        doc_obj_map = {d.get("id"): d for d in db.get("doctors", [])}
 
         idx = 1
         for app_dict in reversed(raw_apps): # chronological order
@@ -480,7 +504,9 @@ def fetch_all_tokens_from_db(
             if app_id in seen_ids:
                 continue
 
-            app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_hosp_map.get(app_dict.get("doctor_id"))
+            app_doc_id = app_dict.get("doctor_id")
+            doc_obj = doc_obj_map.get(app_doc_id, {})
+            app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_obj.get("hospital_id") or doc_obj.get("hospitalId")
             if effective_hosp_id and app_hosp != effective_hosp_id:
                 continue
 
@@ -502,9 +528,9 @@ def fetch_all_tokens_from_db(
                 "patientId": p_id,
                 "patientName": p_name,
                 "patientPhone": p_phone,
-                "doctorId": str(app_dict.get("doctor_id") or "doc-1"),
-                "doctorName": app_dict.get("doctor_name") or "Dr. Olivia Wilson",
-                "doctorSpecialty": app_dict.get("doctor_specialty") or "Cardiologist",
+                "doctorId": str(app_dict.get("doctor_id") or doc_obj.get("id") or "doc-current"),
+                "doctorName": app_dict.get("doctor_name") or doc_obj.get("name") or "Doctor",
+                "doctorSpecialty": app_dict.get("doctor_specialty") or doc_obj.get("specialty") or "General Medicine",
                 "hospitalId": app_hosp or "hosp-1",
                 "hospital_id": app_hosp or "hosp-1",
                 "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",

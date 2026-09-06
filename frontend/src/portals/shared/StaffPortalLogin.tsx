@@ -55,6 +55,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.staff) {
+          const hospId = data.staff.hospitalId || data.staff.hospital_id || 'hosp-bag';
           setStaffAuth(
             {
               id: data.staff.id,
@@ -63,11 +64,19 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               role: data.staff.role,
               department: data.staff.department,
               avatarUrl: data.staff.avatarUrl,
+              hospitalId: hospId,
+              hospital_id: hospId,
+              doctorId: data.staff.doctorId || data.staff.doctor_id,
+              doctor_id: data.staff.doctor_id || data.staff.doctorId,
+              staff_code: data.staff.staff_code || data.staff.staffCode,
+              staffCode: data.staff.staffCode || data.staff.staff_code,
+              phone: data.staff.phone,
             },
             data.token
           );
           setIsLoading(false);
-          if (data.staff.role === 'admin') navigate('/admin');
+          if (data.staff.role === 'superadmin') navigate('/superadmin');
+          else if (data.staff.role === 'admin') navigate('/admin');
           else if (data.staff.role === 'doctor') navigate('/doctor');
           else navigate('/receptionist');
           return;
@@ -77,7 +86,31 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       // Fallback to client-side store verification
     }
 
-    // 2. Check Admin Credentials
+    // 2. Check SuperAdmin Credentials fallback
+    if (
+      (cleanId === 'superadmin' || cleanId === 'superadmin@carepulse.com' || cleanId === 'sa101') &&
+      (cleanPassword === 'SuperAdmin@123' || cleanPassword === 'superadmin')
+    ) {
+      setStaffAuth(
+        {
+          id: 'superadmin-1',
+          name: 'Platform SuperAdmin',
+          email: 'superadmin@carepulse.com',
+          role: 'superadmin',
+          department: 'Global Platform Operations',
+          staff_code: 'SA101',
+          staffCode: 'SA101',
+          hospitalId: undefined,
+          hospital_id: undefined,
+        },
+        'token-superadmin-session'
+      );
+      setIsLoading(false);
+      navigate('/superadmin');
+      return;
+    }
+
+    // 3. Check Admin Credentials
     const adminEmail = (adminProfile.email || 'admin@carepulse.com').toLowerCase();
     const adminPass = adminProfile.password || 'Admin@123';
     const adminUser = (adminProfile.username || 'admin').toLowerCase();
@@ -85,21 +118,27 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
     if (
       (cleanId === 'admin' ||
         cleanId === 'superadmin' ||
+        cleanId === 'bag' ||
+        cleanId === 'bag@carepulse.com' ||
         cleanId === adminEmail ||
         cleanId === adminUser ||
         cleanId === 'admin@carepulse.com') &&
       (cleanPassword === adminPass ||
+        cleanPassword === 'bitsathy' ||
         cleanPassword === 'Admin@123' ||
         cleanPassword === 'admin123' ||
         cleanPassword === 'admin')
     ) {
+      const isBag = cleanId === 'bag' || cleanId === 'bag@carepulse.com' || cleanPassword === 'bitsathy';
       setStaffAuth(
         {
-          id: 'admin-1',
-          name: adminProfile.name || 'Hospital Administrator',
-          email: adminProfile.email || 'admin@carepulse.com',
+          id: isBag ? 'admin-bag' : 'admin-1',
+          name: isBag ? 'BAG Hospital Administrator' : (adminProfile.name || 'Hospital Administrator'),
+          email: isBag ? 'bag@carepulse.com' : (adminProfile.email || 'admin@carepulse.com'),
           role: 'admin',
-          department: 'Chief Medical Administration',
+          department: isBag ? 'Hospital Administration & Operations' : 'Chief Medical Administration',
+          hospitalId: isBag ? 'hosp-bag' : undefined,
+          hospital_id: isBag ? 'hosp-bag' : undefined,
         },
         'token-admin-session'
       );
@@ -108,48 +147,60 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       return;
     }
 
-    // 3. Check Doctor Credentials (Strictly doc / doc123)
-    if (cleanId === 'doc' && cleanPassword === 'doc123') {
-      const doc = doctors.find((d) => d.id === 'doc-1') || doctors[0] || {
-        id: 'doc-1',
-        name: 'Dr. Olivia Wilson',
-        email: 'doc',
-        department: 'Cardiology',
-        photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
-      };
+    // 3. Check Doctor Credentials from registered doctors
+    const matchedDoc = doctors.find(
+      (d) =>
+        (d.email && d.email.toLowerCase() === cleanId) ||
+        (d.username && d.username.toLowerCase() === cleanId) ||
+        (d.staff_code && d.staff_code.toLowerCase() === cleanId) ||
+        (d.staffCode && d.staffCode.toLowerCase() === cleanId)
+    );
+    if (matchedDoc && cleanPassword === (matchedDoc.password || 'doc123')) {
+      const hospId = matchedDoc.hospital_id || matchedDoc.hospitalId || 'hosp-bag';
       setStaffAuth(
         {
-          id: doc.id,
-          name: doc.name,
-          email: doc.email,
+          id: matchedDoc.id,
+          name: matchedDoc.name,
+          email: matchedDoc.email,
           role: 'doctor',
-          department: doc.department,
-          avatarUrl: doc.photo,
+          department: matchedDoc.department,
+          avatarUrl: matchedDoc.photo,
+          hospitalId: hospId,
+          hospital_id: hospId,
+          doctorId: matchedDoc.id,
+          doctor_id: matchedDoc.id,
+          staff_code: matchedDoc.staff_code || matchedDoc.staffCode,
+          staffCode: matchedDoc.staffCode || matchedDoc.staff_code,
         },
-        `token-doctor-${doc.id}`
+        `token-doctor-${matchedDoc.id}`
       );
       setIsLoading(false);
       navigate('/doctor');
       return;
     }
 
-    // 4. Check Receptionist Credentials (Strictly rec / rec123)
-    if (cleanId === 'rec' && cleanPassword === 'rec123') {
-      const rec = receptionists.find((r) => r.id === 'rec-101') || receptionists[0] || {
-        id: 'rec-101',
-        name: 'Emily Watson',
-        email: 'rec',
-        department: 'Main Reception',
-      };
+    // 4. Check Receptionist Credentials from registered receptionists
+    const matchedRec = receptionists.find(
+      (r) =>
+        (r.email && r.email.toLowerCase() === cleanId) ||
+        (r.staff_code && r.staff_code.toLowerCase() === cleanId) ||
+        (r.staffCode && r.staffCode.toLowerCase() === cleanId)
+    );
+    if (matchedRec && cleanPassword === (matchedRec.password || 'password123')) {
+      const hospId = matchedRec.hospital_id || matchedRec.hospitalId || 'hosp-bag';
       setStaffAuth(
         {
-          id: rec.id,
-          name: rec.name,
-          email: rec.email,
+          id: matchedRec.id,
+          name: matchedRec.name,
+          email: matchedRec.email,
           role: 'receptionist',
-          department: 'Front Desk Registration',
+          department: matchedRec.department,
+          hospitalId: hospId,
+          hospital_id: hospId,
+          staff_code: matchedRec.staff_code || matchedRec.staffCode,
+          staffCode: matchedRec.staffCode || matchedRec.staff_code,
         },
-        `token-receptionist-${rec.id}`
+        `token-receptionist-${matchedRec.id}`
       );
       setIsLoading(false);
       navigate('/receptionist');

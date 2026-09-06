@@ -343,8 +343,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                     <p class="contact-line">100 Health Avenue, Medical District · 24x7 Emergency: +91 (800) 247-9999 · www.carepulse-health.org</p>
                   </div>
                   <div class="doctor-stamp-block">
-                    <h2>${currentStaff?.name || 'Dr. Olivia Wilson'}</h2>
-                    <p class="specialty">${currentStaff?.department || 'Consultant Physician & Cardiologist'}</p>
+                    <h2>${currentStaff?.name || 'Attending Physician'}</h2>
+                    <p class="specialty">${currentStaff?.department || 'Consultant Physician'}</p>
                     <p class="credentials">Cabin 102 · Reg: ${currentStaff?.staff_code || 'MCI-84920'}</p>
                   </div>
                 </div>
@@ -450,7 +450,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                     <p class="advice-note">General Advice: Maintain adequate rest and hydration. In case of acute discomfort, report immediately to CarePulse Emergency Department.</p>
                   </div>
                   <div class="signature-panel">
-                    <p class="physician-name">${currentStaff?.name || 'Dr. Olivia Wilson, MD'}</p>
+                    <p class="physician-name">${currentStaff?.name || 'Attending Physician'}</p>
                     <div class="sign-line">Authorized Physician Signature</div>
                   </div>
                 </div>
@@ -500,8 +500,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
         gender: patient.bloodGroup ? 'Recorded' : 'Adult',
         bloodGroup: patient.bloodGroup || 'O+',
         phone: patient.patientPhone || '+91 98765 00000',
-        doctorId: currentStaff?.id || 'doc-1',
-        doctorName: currentStaff?.name || 'Dr. Olivia Wilson',
+        doctorId: currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id || 'doc-current',
+        doctorName: currentStaff?.name || 'Attending Physician',
         doctorSpecialty: currentStaff?.department || 'Consultant Physician',
         hospitalName: hospitalSettings?.name || 'CarePulse Central Hospital',
         chiefComplaint: patient.healthIssue || (patient as any).issue || 'Outpatient Consultation',
@@ -1282,10 +1282,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
 
                   <div className="text-left sm:text-right bg-slate-50 p-3 rounded-xl border border-slate-200/80 min-w-[210px] shrink-0">
                     <h4 className="text-sm font-bold text-[#0B5A54] font-serif">
-                      {currentStaff?.name || 'Dr. Olivia Wilson'}
+                      {currentStaff?.name || 'Attending Physician'}
                     </h4>
                     <p className="text-xs font-medium text-slate-700">
-                      {currentStaff?.department || 'Consultant Physician & Cardiologist'}
+                      {currentStaff?.department || 'Consultant Physician'}
                     </p>
                     <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                       Cabin 102 · Reg: {currentStaff?.staff_code || 'MCI-84920'}
@@ -1426,7 +1426,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   </div>
 
                   <div className="text-left sm:text-right shrink-0">
-                    <p className="font-bold text-[#0B5A54] font-serif text-xs">{currentStaff?.name || 'Dr. Olivia Wilson, MD'}</p>
+                    <p className="font-bold text-[#0B5A54] font-serif text-xs">{currentStaff?.name || 'Attending Physician'}</p>
                     <div className="w-44 border-t border-slate-600 mt-6 pt-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 font-mono">
                       Authorized Physician Signature
                     </div>

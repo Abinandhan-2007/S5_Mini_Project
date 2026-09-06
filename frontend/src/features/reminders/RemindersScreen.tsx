@@ -17,38 +17,7 @@ interface ReminderItem {
 }
 
 export const RemindersScreen: React.FC = () => {
-  const [reminders, setReminders] = useState<ReminderItem[]>([
-    {
-      id: 'rem-1',
-      medicationName: 'Cetirizine Hydrochloride',
-      dosage: '10 mg - 1 Tablet',
-      time: '08:00 AM',
-      timingCategory: 'Morning',
-      taken: true,
-      active: true,
-      doctorPrescribed: 'Dr. Olivia Wilson',
-    },
-    {
-      id: 'rem-2',
-      medicationName: 'Multivitamin Complex',
-      dosage: '1 Capsule',
-      time: '01:30 PM',
-      timingCategory: 'Afternoon',
-      taken: false,
-      active: true,
-      doctorPrescribed: 'General Care',
-    },
-    {
-      id: 'rem-3',
-      medicationName: 'Amoxicillin 500mg',
-      dosage: '500 mg - 1 Capsule',
-      time: '08:30 PM',
-      timingCategory: 'Evening',
-      taken: false,
-      active: true,
-      doctorPrescribed: 'Dr. Marcus Vance',
-    },
-  ]);
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
 
   // Sync state when dose is marked taken via notification prompt
   useEffect(() => {
@@ -84,6 +53,10 @@ export const RemindersScreen: React.FC = () => {
 
   const handleTriggerTestNotification = () => {
     const activeMed = reminders.find((r) => !r.taken) || reminders[0];
+    if (!activeMed) {
+      alert("No medications scheduled. Add a medication to test reminders.");
+      return;
+    }
     triggerIntakePrompt({
       id: `${activeMed.id}-morning`,
       medId: activeMed.id,
@@ -178,66 +151,78 @@ export const RemindersScreen: React.FC = () => {
             SCHEDULED DOSAGES
           </h2>
 
-          {reminders.map((rem) => (
-            <Card
-              key={rem.id}
-              padding="md"
-              className={`border transition-all duration-150 shadow-2xs ${
-                rem.taken
-                  ? 'bg-emerald-50/60 border-emerald-200 opacity-90'
-                  : rem.active
-                  ? 'bg-[#F8FAFC] border-[#E4E7EC]'
-                  : 'bg-gray-50 border-gray-200 opacity-50'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-900">{rem.medicationName}</span>
-                    <Badge variant={rem.taken ? 'success' : 'tint'} size="sm">
-                      {rem.timingCategory}
-                    </Badge>
-                  </div>
-
-                  <p className="text-[11px] text-gray-600 font-medium">{rem.dosage}</p>
-
-                  <div className="flex items-center gap-3 text-[10px] text-gray-500 pt-1">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[#0B5A54]" />
-                      <span>{rem.time}</span>
-                    </div>
-                    <span>•</span>
-                    <span>{rem.doctorPrescribed}</span>
-                  </div>
-                </div>
-
-                {/* Right Action buttons */}
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <button
-                    onClick={() => toggleTaken(rem.id)}
-                    className={`p-2 rounded-xl transition-all shadow-2xs flex items-center justify-center ${
-                      rem.taken
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:border-emerald-600'
-                    }`}
-                    title={rem.taken ? 'Mark as Not Taken' : 'Mark as Taken'}
-                  >
-                    <CheckCircle2 className="w-5 h-5" />
-                  </button>
-
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={rem.active}
-                      onChange={() => toggleActive(rem.id)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-7 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#0B5A54]"></div>
-                  </label>
-                </div>
+          {reminders.length === 0 ? (
+            <div className="text-center py-10 px-4 rounded-2xl bg-gray-50 border border-dashed border-gray-200">
+              <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto mb-3">
+                <Pill className="w-6 h-6" />
               </div>
-            </Card>
-          ))}
+              <p className="text-sm font-bold text-gray-700">No active medication reminders</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+                Prescriptions from your doctor will automatically appear here, or you can add pills manually.
+              </p>
+            </div>
+          ) : (
+            reminders.map((rem) => (
+              <Card
+                key={rem.id}
+                padding="md"
+                className={`border transition-all duration-150 shadow-2xs ${
+                  rem.taken
+                    ? 'bg-emerald-50/60 border-emerald-200 opacity-90'
+                    : rem.active
+                    ? 'bg-[#F8FAFC] border-[#E4E7EC]'
+                    : 'bg-gray-50 border-gray-200 opacity-50'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900">{rem.medicationName}</span>
+                      <Badge variant={rem.taken ? 'success' : 'tint'} size="sm">
+                        {rem.timingCategory}
+                      </Badge>
+                    </div>
+
+                    <p className="text-[11px] text-gray-600 font-medium">{rem.dosage}</p>
+
+                    <div className="flex items-center gap-3 text-[10px] text-gray-500 pt-1">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-[#0B5A54]" />
+                        <span>{rem.time}</span>
+                      </div>
+                      <span>•</span>
+                      <span>{rem.doctorPrescribed}</span>
+                    </div>
+                  </div>
+
+                  {/* Right Action buttons */}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <button
+                      onClick={() => toggleTaken(rem.id)}
+                      className={`p-2 rounded-xl transition-all shadow-2xs flex items-center justify-center ${
+                        rem.taken
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:border-emerald-600'
+                      }`}
+                      title={rem.taken ? 'Mark as Not Taken' : 'Mark as Taken'}
+                    >
+                      <CheckCircle2 className="w-5 h-5" />
+                    </button>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={rem.active}
+                        onChange={() => toggleActive(rem.id)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-7 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#0B5A54]"></div>
+                    </label>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 

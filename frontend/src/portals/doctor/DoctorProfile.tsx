@@ -31,22 +31,27 @@ export const DoctorProfile: React.FC = () => {
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
 
   // Match doctor record in store
-  const currentDocRecord = doctors.find((d) => d.id === currentStaff?.id) || doctors[0] || {
-    id: 'doc-1',
-    name: currentStaff?.name || 'Dr. Olivia Wilson',
-    specialty: 'Cardiologist',
-    department: 'Cardiology',
-    experienceYears: 12,
-    consultationFee: 850,
-    photo: '/doctor_default.jpg',
-    phone: '+91 98765 11001',
-    email: currentStaff?.email || 'olivia.w@carepulse.com',
-    roomNumber: 'Cabin 102 - 1st Floor',
+  const activeDocId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
+  const currentDocRecord = doctors.find((d) => 
+    (activeDocId && d.id === activeDocId) ||
+    (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
+    (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
+  ) || {
+    id: activeDocId || 'doc-current',
+    name: currentStaff?.name || 'Doctor',
+    specialty: currentStaff?.department || 'General Medicine',
+    department: currentStaff?.department || 'General Medicine',
+    experienceYears: 5,
+    consultationFee: 500,
+    photo: currentStaff?.avatarUrl || '/doctor_default.jpg',
+    phone: currentStaff?.phone || '+91 98765 00000',
+    email: currentStaff?.email || '',
+    roomNumber: 'Cabin 101',
     isAvailable: true,
     availabilityReason: '',
     unavailableUntil: '',
     availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-    about: 'Senior Consultant Interventional Cardiologist specializing in adult preventive cardiology, hypertension, and non-invasive diagnostics.',
+    about: 'Consultant physician offering clinical consultations and patient care.',
   };
 
   const [formData, setFormData] = useState({

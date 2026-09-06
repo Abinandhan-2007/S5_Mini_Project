@@ -1,6 +1,5 @@
 import { apiGet } from '../lib/apiFetch';
 import type { Doctor } from '../lib/types';
-import { MOCK_DOCTORS } from '../lib/mockApi';
 import { useStaffStore } from '../store/staffStore';
 
 export const doctorService = {
@@ -22,7 +21,7 @@ export const doctorService = {
       const res = await apiGet(`/doctors${qs ? `?${qs}` : ''}`);
       if (res && res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           // Merge with live staffStore slots if present
           const staffDocs = useStaffStore.getState().doctors;
           return data.map((doc: any) => {
@@ -44,10 +43,10 @@ export const doctorService = {
         }
       }
     } catch (err) {
-      console.warn('Backend fetch doctors failed, using local fallback:', err);
+      console.warn('Backend fetch doctors failed, using local store:', err);
     }
 
-    // Local fallback: Combine staffStore doctors and MOCK_DOCTORS
+    // Local fallback: strictly use staffStore doctors
     const staffDocs = useStaffStore.getState().doctors;
     const mappedStaffDocs: Doctor[] = staffDocs.map((s) => ({
       id: s.id,
@@ -56,8 +55,8 @@ export const doctorService = {
       name: s.name,
       specialty: s.specialty,
       department: s.department,
-      hospitalId: (s as any).hospitalId || 'hosp-1',
-      hospitalName: (s as any).hospitalName || 'St. Jude Heart & Medical Center',
+      hospitalId: (s as any).hospitalId || (s as any).hospital_id || '',
+      hospitalName: (s as any).hospitalName || (s as any).hospital_name || '',
       photoUrl: s.photo || '/doctor_default.jpg',
       rating: 4.8,
       reviewsCount: 95,
@@ -74,17 +73,9 @@ export const doctorService = {
       about: s.about,
     }));
 
-    const allDocsMap = new Map<string, Doctor>();
-    mappedStaffDocs.forEach((d) => allDocsMap.set(d.id, d));
-    MOCK_DOCTORS.forEach((d) => {
-      if (!allDocsMap.has(d.id)) {
-        allDocsMap.set(d.id, d);
-      }
-    });
-
-    let list = Array.from(allDocsMap.values());
+    let list = mappedStaffDocs;
     if (params?.hospitalId) {
-      list = list.filter((d) => d.hospitalId === params.hospitalId || d.hospitalId === 'hosp-1');
+      list = list.filter((d) => d.hospitalId === params.hospitalId);
     }
     if (params?.specialty && params.specialty !== 'All') {
       list = list.filter((d) => d.specialty.toLowerCase() === params.specialty?.toLowerCase());
@@ -104,7 +95,7 @@ export const doctorService = {
   /**
    * Fetch a single doctor by ID (/api/doctors/:id)
    */
-  async getDoctorById(id: string): Promise<Doctor> {
+  async getDoctorById(id: string): Promise<Doctor | null> {
     const staffDoc = useStaffStore.getState().doctors.find(
       (d) => d.id === id || d.staffCode === id || d.staff_code === id
     );
@@ -128,7 +119,7 @@ export const doctorService = {
         }
       }
     } catch (err) {
-      console.warn(`Backend fetch doctor ${id} failed, using local fallback:`, err);
+      console.warn(`Backend fetch doctor ${id} failed:`, err);
     }
 
     if (staffDoc) {
@@ -139,8 +130,8 @@ export const doctorService = {
         name: staffDoc.name,
         specialty: staffDoc.specialty,
         department: staffDoc.department,
-        hospitalId: (staffDoc as any).hospitalId || 'hosp-1',
-        hospitalName: (staffDoc as any).hospitalName || 'St. Jude Heart & Medical Center',
+        hospitalId: (staffDoc as any).hospitalId || '',
+        hospitalName: (staffDoc as any).hospitalName || '',
         photoUrl: staffDoc.photo || '/doctor_default.jpg',
         rating: 4.8,
         reviewsCount: 95,
@@ -158,6 +149,6 @@ export const doctorService = {
       };
     }
 
-    return MOCK_DOCTORS.find((d) => d.id === id) || MOCK_DOCTORS[0];
+    return null;
   },
 };

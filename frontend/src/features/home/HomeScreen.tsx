@@ -47,11 +47,11 @@ export const HomeScreen: React.FC = () => {
   const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
 
-  // Active appointments list (fallback to activeAppointment or mock if empty)
+  // Active appointments list (fallback to activeAppointment or empty if none)
   const activeAppointments = useMemo(() => {
     if (appointments && appointments.length > 0) {
       const activeList = appointments.filter(
-        (a) => a.status === 'Scheduled' || a.status === 'Confirmed' || a.status === 'In-Progress'
+        (a) => a.status === 'Scheduled' || a.status === 'Confirmed' || a.status === 'In-Progress' || a.status === 'Upcoming'
       );
       if (activeList.length > 0) return activeList;
     }
@@ -337,7 +337,7 @@ export const HomeScreen: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-[11px] px-2 py-0.5 rounded-full font-extrabold border border-[#14B8A6]/20">
-                    {modalApp.ticketNumber || 'TK-482'}
+                    {modalApp.ticketNumber || '#CP-PENDING'}
                   </span>
                   <button
                     onClick={() => setIsQueueModalOpen(false)}
@@ -454,7 +454,7 @@ export const HomeScreen: React.FC = () => {
                           YOUR TOKEN
                         </span>
                         <span className="text-[11px] font-black text-[#111827] tracking-tight whitespace-nowrap">
-                          {modalApp.ticketNumber || 'TK-482'}
+                          {modalApp.ticketNumber || '#CP-PENDING'}
                         </span>
                       </div>
 

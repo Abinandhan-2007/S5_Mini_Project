@@ -29,75 +29,7 @@ interface DoctorNotificationViewProps {
   showToast: (msg: string) => void;
 }
 
-const SEED_NOTIFICATIONS: ClinicalNotification[] = [
-  {
-    id: 'view-notif-urgent-1',
-    category: 'urgent',
-    priority: 'urgent',
-    title: 'Priority OPD Triage: Severe Chest Pain & Palpitations',
-    message: 'Patient Rajesh Sharma (#TOK-001) arrived with Elevated BP 155/95 mmHg and SpO2 98%. Triaged for immediate clinical evaluation.',
-    timestamp: 'Just now',
-    isRead: false,
-    metadata: {
-      tokenNumber: '#TOK-001',
-      patientName: 'Rajesh Sharma',
-      vitalsPreview: 'BP 155/95 · Pulse 92 bpm · SpO2 98%',
-      department: 'Cardiology Triage',
-    },
-  },
-  {
-    id: 'view-notif-queue-2',
-    category: 'queue',
-    priority: 'normal',
-    title: 'New Patient Arrival: Ananya Verma',
-    message: 'Ananya Verma (#TOK-002) checked in at front desk reception for Routine Outpatient Consultation. Currently waiting in lounge.',
-    timestamp: '5m ago',
-    isRead: false,
-    metadata: {
-      tokenNumber: '#TOK-002',
-      patientName: 'Ananya Verma',
-      waitTime: '5 mins waiting',
-      department: 'OPD Reception Desk 1',
-    },
-  },
-  {
-    id: 'view-notif-lab-3',
-    category: 'urgent',
-    priority: 'high',
-    title: 'Diagnostic ECG & Cardiac Biomarker Panel Ready',
-    message: 'Diagnostic laboratory results published for Robert Fox. 12-Lead Electrocardiogram report is available in Longitudinal EMR archives.',
-    timestamp: '22m ago',
-    isRead: false,
-    metadata: {
-      patientName: 'Robert Fox',
-      department: 'Diagnostic Biochemistry & Radiology',
-    },
-  },
-  {
-    id: 'view-notif-broadcast-4',
-    category: 'broadcast',
-    priority: 'normal',
-    title: 'Hospital Clinical Administration Notice',
-    message: 'Central Pharmacy counter updated with fresh inventory of oral cardioprotective therapeutics and antihypertensives.',
-    timestamp: '1h ago',
-    isRead: true,
-    metadata: {
-      department: 'Medical Administration',
-    },
-  },
-  {
-    id: 'view-notif-broadcast-5',
-    category: 'broadcast',
-    priority: 'normal',
-    title: 'Shift Handover & OT Schedule Alert',
-    message: 'Cardiology Operation Theater 2 sanitization completed. Emergency surgical slot reserved from 04:00 PM onwards.',
-    timestamp: '2h ago',
-    isRead: true,
-    metadata: {
-      department: 'Surgical Services',
-    },
-  },
-];
+const SEED_NOTIFICATIONS: ClinicalNotification[] = [];
 
 export const DoctorNotificationView: React.FC<DoctorNotificationViewProps> = ({
   tokens,

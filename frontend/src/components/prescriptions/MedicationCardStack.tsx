@@ -254,88 +254,6 @@ const getDoseSlotsForMed = (frequencyStr = '', dosageStr = ''): DoseSlot[] => {
   ];
 };
 
-// Curated diverse default sample medication stack cards
-const DEFAULT_SAMPLE_PRESCRIPTIONS: MedicationItem[] = [
-  {
-    id: 'rx-sample-1',
-    drugName: 'Amoxicillin Trihydrate',
-    dosage: '500 mg',
-    frequency: '1 capsule • Twice daily after meals',
-    prescriber: 'Dr. Elena Rostova',
-    hospitalName: 'Metropolitan General Hospital',
-    status: 'Active',
-    iconType: 'capsule',
-    nextDose: 'Today at 8:00 PM',
-    totalDays: 10,
-    daysCompleted: 4,
-  },
-  {
-    id: 'rx-sample-2',
-    drugName: 'Lisinopril Oral',
-    dosage: '10 mg',
-    frequency: '1 tablet • Daily every morning',
-    prescriber: 'Dr. Alex Morgan',
-    hospitalName: 'St. Jude Heart & Medical Center',
-    status: 'Active',
-    iconType: 'pill',
-    nextDose: 'Tomorrow 8:00 AM',
-    totalDays: 30,
-    daysCompleted: 18,
-  },
-  {
-    id: 'rx-sample-3',
-    drugName: 'Metformin Hydrochloride',
-    dosage: '500 mg',
-    frequency: '1 tablet • 3 times daily with meals',
-    prescriber: 'Dr. Johan Janson',
-    hospitalName: 'St. Jude Heart & Medical Center',
-    status: 'Active',
-    iconType: 'pill',
-    nextDose: 'Today at 2:00 PM',
-    totalDays: 14,
-    daysCompleted: 8,
-  },
-  {
-    id: 'rx-sample-4',
-    drugName: 'Atorvastatin Calcium',
-    dosage: '20 mg',
-    frequency: '1 tablet • Nightly before bedtime',
-    prescriber: 'Dr. Michael Chen',
-    hospitalName: 'City General Hospital',
-    status: 'Active',
-    iconType: 'pill',
-    nextDose: 'Tonight at 10:00 PM',
-    totalDays: 30,
-    daysCompleted: 22,
-  },
-  {
-    id: 'rx-sample-5',
-    drugName: 'Salbutamol Inhaler',
-    dosage: '100 mcg',
-    frequency: '2 puffs • As needed for shortness of breath',
-    prescriber: 'Dr. Arlene McCoy',
-    hospitalName: 'Cedar Skin & Wellness Clinic',
-    status: 'Refill Soon',
-    iconType: 'inhaler',
-    nextDose: 'As needed',
-    totalDays: 14,
-    daysCompleted: 12,
-  },
-  {
-    id: 'rx-sample-6',
-    drugName: 'Azithromycin',
-    dosage: '250 mg',
-    frequency: '1 tablet • Daily every morning',
-    prescriber: 'Dr. Eleanor Pena',
-    hospitalName: 'CarePulse Central Hospital',
-    status: 'Active',
-    iconType: 'capsule',
-    nextDose: 'Tomorrow 9:00 AM',
-    totalDays: 5,
-    daysCompleted: 3,
-  },
-];
-
 // Default prescribed course lengths per medication index
 const DEFAULT_COURSE_DAYS = [
   { total: 10, completed: 4 },
@@ -359,7 +277,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   >(() => {
     const today = getTodayDateKey();
     const loadedMap: Record<string, { date: string; slots: Record<string, string> }> = {};
-    const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : DEFAULT_SAMPLE_PRESCRIPTIONS;
+    const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : [];
     sourceList.forEach((m, idx) => {
       const medId = m.id || `rx-${idx}`;
       try {
@@ -380,7 +298,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
   // Normalize data with memoization to eliminate recalculations on every drag frame
   const normalizedMeds: MedicationItem[] = React.useMemo(() => {
-    const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : DEFAULT_SAMPLE_PRESCRIPTIONS;
+    const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : [];
     return sourceList.map((p, idx) => {
       const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
       return {

@@ -23,7 +23,6 @@ import { requestNativeLocation } from '../../lib/locationService';
 import { hospitalService } from '../../services/hospitalService';
 import { doctorService } from '../../services/doctorService';
 import type { Hospital, Doctor } from '../../lib/types';
-import { MOCK_HOSPITALS, MOCK_DOCTORS } from '../../lib/mockApi';
 
 type HospitalSortOption = 'rating' | 'distance' | 'reviews' | 'name';
 
@@ -61,8 +60,8 @@ export const FindHospitalsScreen: React.FC = () => {
   const navigate = useNavigate();
   const locationRoute = useLocation();
 
-  const [hospitals, setHospitals] = useState<Hospital[]>(MOCK_HOSPITALS);
-  const [doctors, setDoctors] = useState<Doctor[]>(MOCK_DOCTORS);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
@@ -78,8 +77,8 @@ export const FindHospitalsScreen: React.FC = () => {
       doctorService.getDoctors(),
     ]).then(([hospData, docData]) => {
       if (isMounted) {
-        if (hospData && hospData.length > 0) setHospitals(hospData);
-        if (docData && docData.length > 0) setDoctors(docData);
+        if (Array.isArray(hospData)) setHospitals(hospData);
+        if (Array.isArray(docData)) setDoctors(docData);
       }
     });
 
@@ -395,15 +394,23 @@ export const FindHospitalsScreen: React.FC = () => {
                 <Search className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-800">No matching facilities found</h3>
-                <p className="text-xs text-slate-500">Try searching for a different doctor, specialty, or location.</p>
+                <h3 className="text-sm font-bold text-slate-800">
+                  {searchQuery ? 'No matching facilities found' : 'No hospital facilities available'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {searchQuery
+                    ? 'Try searching for a different doctor, specialty, or location.'
+                    : 'There are currently no hospitals registered in the database.'}
+                </p>
               </div>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-xs font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-4 py-2 rounded-full hover:bg-[#0B5A54] hover:text-white transition-all inline-block"
-              >
-                Clear Search Filter
-              </button>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-4 py-2 rounded-full hover:bg-[#0B5A54] hover:text-white transition-all inline-block"
+                >
+                  Clear Search Filter
+                </button>
+              )}
             </div>
           )}
         </div>

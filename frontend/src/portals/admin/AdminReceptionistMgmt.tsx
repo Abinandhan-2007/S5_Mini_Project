@@ -24,6 +24,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
   autoOpenAdd,
 }) => {
   const receptionists = useStaffStore((s) => s.receptionists);
+  const fetchReceptionists = useStaffStore((s) => s.fetchReceptionists);
   const createReceptionist = useStaffStore((s) => s.createReceptionist);
   const updateReceptionist = useStaffStore((s) => s.updateReceptionist);
   const deleteReceptionist = useStaffStore((s) => s.deleteReceptionist);
@@ -40,6 +41,10 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
   const [recToDelete, setRecToDelete] = useState<ReceptionistRecord | null>(null);
   const [resetPasswordRec, setResetPasswordRec] = useState<ReceptionistRecord | null>(null);
   const [newResetPassword, setNewResetPassword] = useState('');
+
+  React.useEffect(() => {
+    fetchReceptionists();
+  }, [fetchReceptionists]);
 
   React.useEffect(() => {
     if (autoOpenAdd) {
@@ -243,7 +248,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
               {filteredReceptionists.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
-                    No receptionists match the search criteria. Click "+ Add Receptionist" to create a station.
+                    No receptionists registered yet for this hospital. Click "+ Add Receptionist" to create a front-desk account.
                   </td>
                 </tr>
               ) : (
@@ -276,7 +281,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs font-black text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200">
-                          18 Tokens
+                          {(rec as any).tokensIssuedToday ?? 0} Tokens
                         </span>
                       </div>
                     </td>

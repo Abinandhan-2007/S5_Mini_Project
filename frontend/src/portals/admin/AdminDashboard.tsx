@@ -7,8 +7,6 @@ import {
   ChevronRight,
   ArrowUpRight,
   Plus,
-  Building2,
-  Clock,
   Layers,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
@@ -28,8 +26,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
   // Computed Real-time Stats
   const totalDoctorsCount = doctors.length;
   const totalReceptionistsCount = receptionists.length;
-  const totalBookingsToday = tokens.length > 0 ? tokens.length : 24;
-  const totalPatientsCount = 1240 + tokens.length;
+  const totalBookingsToday = tokens.length;
+  const totalPatientsCount = tokens.length;
 
   // Chart Data: Weekly & Monthly
   const weeklyData = [
@@ -69,53 +67,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
             : 'bg-teal-50 text-[#0B5A54] border-teal-200',
       }));
     }
-    return [
-      {
-        id: 'act-1',
-        title: 'Online Appointment Booked',
-        desc: 'Sarah Jenkins scheduled consultation with Dr. Olivia Wilson',
-        time: '12m ago',
-        type: 'booking',
-        icon: CalendarCheck,
-        color: 'bg-teal-50 text-[#0B5A54] border-teal-200',
-      },
-      {
-        id: 'act-2',
-        title: 'Walk-In Patient Check-In',
-        desc: 'Receptionist Emily Watson issued physical token #TOK-004',
-        time: '34m ago',
-        type: 'token',
-        icon: UserCheck,
-        color: 'bg-sky-50 text-sky-700 border-sky-200',
-      },
-      {
-        id: 'act-3',
-        title: 'Physician Duty Shift Online',
-        desc: 'Dr. Marcus Vance toggled availability status to Active Duty',
-        time: '1h ago',
-        type: 'doctor',
-        icon: Stethoscope,
-        color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      },
-      {
-        id: 'act-4',
-        title: 'Pediatrics Cabin Consultation',
-        desc: 'Dr. Sophia Patel completed 6 child health checkup slots',
-        time: '2h ago',
-        type: 'consultation',
-        icon: Clock,
-        color: 'bg-amber-50 text-amber-900 border-amber-200',
-      },
-      {
-        id: 'act-5',
-        title: 'Department Slot Expansion',
-        desc: 'Cardiology wing afternoon token limits adjusted by Admin',
-        time: '3h ago',
-        type: 'admin',
-        icon: Building2,
-        color: 'bg-purple-50 text-purple-700 border-purple-200',
-      },
-    ];
+    return [];
   }, [tokens]);
 
   return (
@@ -468,7 +420,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
           </div>
 
           <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 no-scrollbar">
-            {recentActivities.map((act) => {
+            {recentActivities.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <CalendarCheck className="w-8 h-8 mx-auto mb-2 opacity-40 text-[#0B5A54]" />
+                <p className="text-xs font-semibold">No recent activity logged yet</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Appointments booked will appear here in real time</p>
+              </div>
+            ) : (
+              recentActivities.map((act) => {
               const Icon = act.icon;
               return (
                 <div
@@ -492,7 +451,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
                   <span className="text-[9px] font-bold text-slate-400 shrink-0">{act.time}</span>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       </div>

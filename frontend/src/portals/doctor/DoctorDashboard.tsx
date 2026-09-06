@@ -37,11 +37,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const announcements = useStaffStore((s) => s.announcements);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
 
-  const currentDoctor = doctors.find((d) => d.id === currentStaff?.id) || doctors[0] || {
-    id: 'doc-1',
-    name: currentStaff?.name || 'Dr. Olivia Wilson',
-    specialty: 'Cardiologist',
-    roomNumber: 'Cabin 102 - 1st Floor',
+  const activeDocId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
+  const currentDoctor = doctors.find((d) =>
+    (activeDocId && d.id === activeDocId) ||
+    (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
+    (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
+  ) || {
+    id: activeDocId || 'doc-current',
+    name: currentStaff?.name || 'Doctor',
+    specialty: currentStaff?.department || 'General Medicine',
+    roomNumber: 'Cabin 101',
     isAvailable: true,
   };
 

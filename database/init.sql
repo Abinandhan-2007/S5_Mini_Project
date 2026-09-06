@@ -80,6 +80,8 @@ ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS specialties JSONB DEFAULT '["General", "Emergency Care"]'::jsonb;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS facility_type VARCHAR(100) DEFAULT 'General';
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS distance_miles DECIMAL(4, 1) DEFAULT 1.0;
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS email VARCHAR(255);
 
 -- Trigger Function for Auto-Generating Hospital Display Codes (H001, H002, H003...)
 CREATE OR REPLACE FUNCTION generate_hospital_code()
@@ -190,7 +192,7 @@ CREATE TABLE IF NOT EXISTS staff (
     password_hash VARCHAR(255),
     google_id VARCHAR(255) UNIQUE,
     auth_provider VARCHAR(50) DEFAULT 'local',
-    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'receptionist', 'doctor')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('superadmin', 'admin', 'receptionist', 'doctor')),
     specialization VARCHAR(255),
     phone VARCHAR(50) DEFAULT '',
     avatar_url TEXT DEFAULT '',
@@ -220,6 +222,17 @@ DECLARE
     seq_num INT;
 BEGIN
     IF NEW.staff_code IS NULL OR NEW.staff_code = '' THEN
+        -- Special handling for SuperAdmin: Global scope, format SA101, SA102...
+        IF NEW.role = 'superadmin' THEN
+            SELECT COUNT(*) INTO staff_count 
+            FROM staff 
+            WHERE role = 'superadmin' 
+              AND (NEW.id IS NULL OR id <> NEW.id);
+            seq_num := 101 + staff_count;
+            NEW.staff_code := 'SA' || LPAD(seq_num::text, 3, '0');
+            RETURN NEW;
+        END IF;
+
         -- 1. Determine Role Letter
         IF NEW.role = 'admin' THEN
             role_letter := 'A';
