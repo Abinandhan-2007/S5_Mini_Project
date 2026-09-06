@@ -184,7 +184,7 @@ export const App: React.FC = () => {
         <OfflineBanner />
         <MedicineIntakePromptModal />
         <TtsFallbackToast />
-        <div className="min-h-screen bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col overflow-x-hidden">
+        <div className="min-h-screen min-h-[100dvh] bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col items-stretch overflow-x-hidden">
           <AppRoutes />
         </div>
       </LanguageProvider>
