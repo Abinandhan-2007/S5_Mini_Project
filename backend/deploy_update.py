@@ -177,6 +177,8 @@ def main():
             pass
 
     # 5. Build APK with Gradle
+    # Stop any stale daemons first to prevent Gradle 'BUG! exception in phase semantic analysis'
+    run_command(".\\gradlew.bat --stop", ANDROID_DIR, "Resetting Gradle Daemons")
     run_command(".\\gradlew.bat assembleDebug", ANDROID_DIR, "Compiling Android APK (Gradle)")
 
     # 6. Locate generated APK

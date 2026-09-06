@@ -10,7 +10,7 @@
  */
 
 import { Capacitor } from '@capacitor/core';
-import { getApiBaseUrls } from './apiFetch';
+import { apiFetch } from './apiFetch';
 
 let activeAudioElement: HTMLAudioElement | null = null;
 let keepAliveInterval: any = null;
@@ -238,6 +238,7 @@ export function stopSpeaking(): void {
     try {
       activeAudioElement.pause();
       activeAudioElement.currentTime = 0;
+      activeAudioElement.src = '';
     } catch (_) {}
     activeAudioElement = null;
   }
@@ -265,11 +266,19 @@ export function isCurrentlySpeaking(): boolean {
 }
 
 /**
- * Fallback TTS using Google Translate TTS audio stream
- */
-/**
  * Universal Audio Stream Player for Android WebView (Capacitor) and fallback environments.
- * Uses CarePulse backend /api/tts endpoint with automatic fallback to direct Google Translate TTS stream.
+ * 
+ * KNOWN LIMITATION & ARCHITECTURAL NOTE:
+ * Uses CarePulse backend /api/tts endpoint (proxying Google Translate TTS).
+ * This is an unofficial, non-SLA upstream endpoint. To mitigate upstream fluctuations:
+ * 1. Backend caches audio to persistent disk (.cache/tts/).
+ * 2. Requests are dispatched via `apiFetch()`, ensuring CapacitorHttp automatically attaches
+ *    the `ngrok-skip-browser-warning: true` header to prevent ngrok HTML warning interstitial pages.
+ * 3. Base64 audio data URLs (`data:audio/mpeg;base64,...`) are played in-memory, completely bypassing
+ *    mobile WebView CORS restrictions and network decode crashes.
+ * 4. Pipelined prefetching downloads subsequent sentence chunks in parallel while the current sentence plays,
+ *    eliminating silence gaps between sentences.
+ * 5. If the backend is unreachable (e.g. offline mode), it gracefully falls back to browser Web Speech API.
  */
 function playAudioStream(
   chunks: string[],
@@ -288,81 +297,225 @@ function playAudioStream(
   const normLang = langTag.split('-')[0].toLowerCase() || 'en';
   const cleanLang = ['en', 'ta', 'ml', 'hi'].includes(normLang) ? normLang : 'en';
 
-  let index = 0;
   let hasStarted = false;
+  let currentIndex = 0;
 
-  const apiBases = typeof window !== 'undefined' ? getApiBaseUrls() : ['/api'];
-  const primaryBase = apiBases[0] || '/api';
+  // Pipeline cache for chunk audio data URLs
+  const chunkAudioMap: Map<number, Promise<string | null>> = new Map();
 
-  const playNext = () => {
-    if (index >= chunks.length || sessionId !== currentSessionId) {
+  const fetchChunkDataUrl = async (idx: number): Promise<string | null> => {
+    if (idx >= chunks.length || sessionId !== currentSessionId) return null;
+    try {
+      const encoded = encodeURIComponent(chunks[idx]);
+      const res = await apiFetch(`/tts?text=${encoded}&lang=${cleanLang}&format=base64`);
+      if (!res.ok) {
+        throw new Error(`TTS status ${res.status}`);
+      }
+      const data = await res.json();
+      if (sessionId !== currentSessionId) return null;
+      return data?.audio || null;
+    } catch (err) {
+      console.warn(`[TTS] Failed to fetch chunk ${idx}:`, err);
+      return null;
+    }
+  };
+
+  // Pre-trigger fetching for a chunk if not already queued
+  const ensurePrefetched = (idx: number) => {
+    if (idx < chunks.length && !chunkAudioMap.has(idx)) {
+      chunkAudioMap.set(idx, fetchChunkDataUrl(idx));
+    }
+  };
+
+  // Start prefetching chunk 0 and chunk 1 immediately
+  ensurePrefetched(0);
+  if (chunks.length > 1) {
+    ensurePrefetched(1);
+  }
+
+  const playCurrent = async () => {
+    if (currentIndex >= chunks.length || sessionId !== currentSessionId) {
       activeAudioElement = null;
       onEnd?.();
       return;
     }
 
-    const chunk = chunks[index++];
-    const encoded = encodeURIComponent(chunk);
+    const idx = currentIndex++;
+    ensurePrefetched(idx);
+    // Also prefetch the subsequent chunk in the background
+    ensurePrefetched(idx + 1);
 
-    const backendUrl = `${primaryBase}/tts?text=${encoded}&lang=${cleanLang}`;
-    const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${cleanLang}&client=tw-ob`;
+    const dataUrl = await chunkAudioMap.get(idx);
+    if (sessionId !== currentSessionId) return;
 
-    const audio = new Audio();
-    activeAudioElement = audio;
-
-    if (rate && rate > 0.5 && rate < 2.0) {
-      audio.playbackRate = rate;
+    if (!dataUrl) {
+      // If chunk 0 failed and we haven't started playing, fallback to Web Speech API
+      if (!hasStarted && idx === 0) {
+        console.warn('[TTS] Backend TTS stream unavailable, falling back to Web Speech API');
+        speakViaSpeechSynthesis(chunks, sessionId, cleanLang, rate, onStart, onEnd, onError);
+        return;
+      }
+      // If a subsequent chunk failed, try next chunk or end
+      playCurrent();
+      return;
     }
 
-    let triedDirect = false;
+    try {
+      const audio = new Audio();
+      activeAudioElement = audio;
 
-    audio.onplay = () => {
-      if (!hasStarted) {
-        hasStarted = true;
-        onStart?.();
+      if (rate && rate > 0.5 && rate < 2.0) {
+        audio.playbackRate = rate;
       }
-    };
 
-    audio.onended = () => {
-      if (sessionId === currentSessionId) {
-        playNext();
-      }
-    };
+      audio.onplay = () => {
+        if (!hasStarted) {
+          hasStarted = true;
+          onStart?.();
+        }
+      };
 
-    audio.onerror = (e) => {
+      audio.onended = () => {
+        if (sessionId === currentSessionId) {
+          playCurrent();
+        }
+      };
+
+      audio.onerror = (e) => {
+        if (sessionId !== currentSessionId) return;
+        console.warn(`[TTS] Audio playback error on chunk ${idx}:`, e);
+        if (!hasStarted && idx === 0) {
+          speakViaSpeechSynthesis(chunks, sessionId, cleanLang, rate, onStart, onEnd, onError);
+        } else {
+          playCurrent();
+        }
+      };
+
+      audio.src = dataUrl;
+      await audio.play();
+    } catch (err) {
       if (sessionId !== currentSessionId) return;
-
-      if (!triedDirect) {
-        triedDirect = true;
-        console.warn('[TTS] Backend /api/tts unavailable, switching to direct audio stream');
-        audio.src = directUrl;
-        audio.play().catch(() => {
-          playNext();
-        });
+      console.warn(`[TTS] Play call rejected on chunk ${idx}:`, err);
+      if (!hasStarted && idx === 0) {
+        speakViaSpeechSynthesis(chunks, sessionId, cleanLang, rate, onStart, onEnd, onError);
       } else {
-        console.warn('[TTS] Audio chunk playback error:', e);
-        playNext();
+        playCurrent();
       }
-    };
-
-    // Try backend proxy first for optimal CORS and caching
-    audio.src = backendUrl;
-    audio.play().catch((err) => {
-      if (sessionId !== currentSessionId) return;
-      if (!triedDirect) {
-        triedDirect = true;
-        audio.src = directUrl;
-        audio.play().catch(() => {
-          playNext();
-        });
-      } else {
-        onError?.(err);
-        playNext();
-      }
-    });
+    }
   };
 
-  playNext();
+  playCurrent();
+}
+
+/**
+ * Native Browser Web Speech API synthesizer with keep-alive and Chromium pause mitigations
+ */
+function speakViaSpeechSynthesis(
+  chunks: string[],
+  sessionId: number,
+  reqLang = 'en',
+  rate = 0.95,
+  onStart?: () => void,
+  onEnd?: () => void,
+  onError?: (err?: any) => void
+): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onError?.(new Error('Speech synthesis not available'));
+    return;
+  }
+
+  // Pre-wake synthesis engine in Chromium
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+  } catch (_) {}
+
+  setTimeout(() => {
+    if (sessionId !== currentSessionId) return;
+
+    try {
+      const { voice, effectiveTag, isFallback, languageName } = getBestVoiceForLanguage(reqLang);
+
+      if (isFallback && typeof window !== 'undefined') {
+        const fallbackMsg = `Voice narration in ${languageName} isn't available on this device, using English.`;
+        window.dispatchEvent(
+          new CustomEvent('carepulse:tts_fallback', {
+            detail: {
+              requestedLang: languageName,
+              fallbackLang: 'English',
+              message: fallbackMsg,
+            },
+          })
+        );
+      }
+
+      let chunkIdx = 0;
+      let hasStarted = false;
+
+      keepAliveInterval = setInterval(() => {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+            window.speechSynthesis.pause();
+            window.speechSynthesis.resume();
+          }
+        }
+      }, 10000);
+
+      const speakNextChunk = () => {
+        if (chunkIdx >= chunks.length || sessionId !== currentSessionId) {
+          if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+            keepAliveInterval = null;
+          }
+          (window as any).__carepulse_speech = null;
+          onEnd?.();
+          return;
+        }
+
+        const chunk = chunks[chunkIdx++];
+        const utterance = new SpeechSynthesisUtterance(chunk);
+        utterance.rate = rate;
+        utterance.pitch = 1.0;
+        utterance.lang = effectiveTag;
+        if (voice) utterance.voice = voice;
+
+        (window as any).__carepulse_speech = utterance;
+
+        utterance.onstart = () => {
+          if (!hasStarted) {
+            hasStarted = true;
+            onStart?.();
+          }
+        };
+
+        utterance.onend = () => {
+          if (sessionId === currentSessionId) {
+            speakNextChunk();
+          }
+        };
+
+        utterance.onerror = (e: any) => {
+          if (e?.error === 'canceled' || sessionId !== currentSessionId) {
+            return;
+          }
+          console.warn('[TTS] Web Speech error:', e);
+          if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+            keepAliveInterval = null;
+          }
+          onError?.(e);
+        };
+
+        window.speechSynthesis.speak(utterance);
+      };
+
+      speakNextChunk();
+    } catch (err) {
+      console.warn('[TTS] Web Speech failed:', err);
+      onError?.(err);
+    }
+  }, 60);
 }
 
 /**
@@ -403,10 +556,9 @@ export function speakText(
 
   const availableVoices = hasSpeechSynthesis ? window.speechSynthesis.getVoices() : [];
 
-  // In Android WebView / Capacitor app, window.speechSynthesis is a silent broken stub.
-  // Also on devices without pre-loaded Web Speech voices, native speech will not produce sound.
-  // Use high-fidelity audio stream when on native platform or when voices are unavailable:
-  const shouldUseAudioStream = isNative || !hasSpeechSynthesis || availableVoices.length === 0;
+  // In Android APK or when native voices are missing (e.g. Tamil/Malayalam on desktop),
+  // use CarePulse audio stream engine:
+  const shouldUseAudioStream = isNative || !hasSpeechSynthesis || availableVoices.length === 0 || reqLang !== 'en';
 
   if (shouldUseAudioStream) {
     playAudioStream(
@@ -421,124 +573,14 @@ export function speakText(
     return;
   }
 
-  // Pre-wake synthesis engine in Chromium
-  try {
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
-  } catch (_) {}
-
-  // 🚨 CRITICAL Chromium fix: Wait 60ms after window.speechSynthesis.cancel() before calling .speak()
-  setTimeout(() => {
-    if (sessionId !== currentSessionId) return;
-
-    try {
-      const { voice, effectiveTag, isFallback, languageName } = getBestVoiceForLanguage(reqLang);
-
-      // If requested language is not installed on this device, notify via callback and custom event
-      if (isFallback) {
-        const fallbackMsg = `Voice narration in ${languageName} isn't available on this device, using English.`;
-        options?.onVoiceFallback?.({
-          requestedLang: languageName,
-          fallbackLang: 'English',
-          message: fallbackMsg,
-        });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('carepulse:tts_fallback', {
-              detail: {
-                requestedLang: languageName,
-                fallbackLang: 'English',
-                message: fallbackMsg,
-              },
-            })
-          );
-        }
-      }
-
-      let chunkIdx = 0;
-      let hasStarted = false;
-
-      // Chrome keep-alive ping (resumes engine every 10 seconds to prevent auto-pause)
-      keepAliveInterval = setInterval(() => {
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-            window.speechSynthesis.pause();
-            window.speechSynthesis.resume();
-          }
-        }
-      }, 10000);
-
-      const speakNextChunk = () => {
-        if (chunkIdx >= chunks.length || sessionId !== currentSessionId) {
-          if (keepAliveInterval) {
-            clearInterval(keepAliveInterval);
-            keepAliveInterval = null;
-          }
-          (window as any).__carepulse_speech = null;
-          options?.onEnd?.();
-          return;
-        }
-
-        const chunk = chunks[chunkIdx++];
-        const utterance = new SpeechSynthesisUtterance(chunk);
-        utterance.rate = options?.rate ?? 0.95;
-        utterance.pitch = options?.pitch ?? 1.0;
-        utterance.lang = effectiveTag;
-        if (voice) utterance.voice = voice;
-
-        // Prevent V8 garbage collection
-        (window as any).__carepulse_speech = utterance;
-
-        utterance.onstart = () => {
-          if (!hasStarted) {
-            hasStarted = true;
-            options?.onStart?.();
-          }
-        };
-
-        utterance.onend = () => {
-          if (sessionId === currentSessionId) {
-            speakNextChunk();
-          }
-        };
-
-        utterance.onerror = (e: any) => {
-          // If canceled by user, don't trigger error fallback
-          if (e?.error === 'canceled' || sessionId !== currentSessionId) {
-            return;
-          }
-          console.warn('[TTS] Synthesis error, falling back to audio stream:', e);
-          if (keepAliveInterval) {
-            clearInterval(keepAliveInterval);
-            keepAliveInterval = null;
-          }
-          playAudioStream(
-            chunks.slice(chunkIdx - 1),
-            sessionId,
-            effectiveTag,
-            options?.rate ?? 0.95,
-            options?.onStart,
-            options?.onEnd,
-            options?.onError
-          );
-        };
-
-        window.speechSynthesis.speak(utterance);
-      };
-
-      speakNextChunk();
-    } catch (err) {
-      console.warn('[TTS] SpeechSynthesis failed, using fallback:', err);
-      playAudioStream(
-        chunks,
-        sessionId,
-        reqLang,
-        options?.rate ?? 0.95,
-        options?.onStart,
-        options?.onEnd,
-        options?.onError
-      );
-    }
-  }, 60);
+  speakViaSpeechSynthesis(
+    chunks,
+    sessionId,
+    reqLang,
+    options?.rate ?? 0.95,
+    options?.onStart,
+    options?.onEnd,
+    options?.onError
+  );
 }
+

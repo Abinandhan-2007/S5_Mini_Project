@@ -147,14 +147,31 @@ async def health_assistant_chat_direct(request: AIChatRequest):
     return await chat_medical_assistant(request)
 
 
+import base64
+
+TTS_CACHE_DIR = backend_dir / ".cache" / "tts"
+TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
 @app.get("/api/tts", tags=["Text-to-Speech"])
 async def text_to_speech_audio(
     text: str = Query(..., max_length=500),
-    lang: str = Query("en", max_length=10)
+    lang: str = Query("en", max_length=10),
+    format: str = Query("audio", description="audio or base64")
 ):
     """
-    Proxies TTS audio stream (MP3) for languages (en, ta, ml, hi) with CORS and cache headers,
-    enabling seamless voice playback in both mobile WebViews/Android APK and desktop browsers.
+    CarePulse Text-to-Speech (TTS) Proxy & Persistent Audio Cache.
+
+    KNOWN LIMITATION & ARCHITECTURAL NOTE:
+    This proxy relies on Google's public translate_tts endpoint (client=tw-ob / client=gtx)
+    to provide natural voice narration for English, Tamil (ta), Malayalam (ml), and Hindi (hi).
+    Because this is not an official, SLA-backed, or guaranteed-available Google Cloud API:
+    1. Responses are persistently cached to disk (backend/.cache/tts/) to survive backend restarts,
+       minimize upstream calls, and deliver sub-millisecond cached audio responses.
+    2. Multiple upstream client parameter fallbacks (tw-ob -> gtx) are implemented.
+    3. Both raw audio/mpeg and base64 JSON responses are supported. The base64 format allows
+       the mobile app (Capacitor/Android) to fetch audio via CapacitorHttp with ngrok headers,
+       completely bypassing ngrok free-tier HTML warning pages.
     """
     clean_lang = lang.split("-")[0].lower()
     if clean_lang not in ["en", "ta", "ml", "hi"]:
@@ -164,30 +181,68 @@ async def text_to_speech_audio(
     if not encoded_text:
         raise HTTPException(status_code=400, detail="Empty text provided")
 
-    tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&q={urllib.parse.quote(encoded_text)}&tl={clean_lang}&client=tw-ob"
+    # 1. Compute persistent disk cache key
+    cache_key = hashlib.sha256(f"{clean_lang}:{encoded_text}".encode("utf-8")).hexdigest()
+    cache_file = TTS_CACHE_DIR / f"{cache_key}.mp3"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-        "Referer": "https://translate.google.com/",
-    }
+    audio_bytes: Optional[bytes] = None
 
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            resp = await client.get(tts_url, headers=headers)
-            if resp.status_code == 200 and resp.content:
-                return Response(
-                    content=resp.content,
-                    media_type="audio/mpeg",
-                    headers={
-                        "Cache-Control": "public, max-age=86400",
-                        "Accept-Ranges": "bytes",
-                    }
-                )
-            logger.warning(f"[TTS] Upstream status {resp.status_code}")
-    except Exception as e:
-        logger.warning(f"[TTS] Proxy error: {e}")
+    # 2. Check disk cache first (persists across backend restarts)
+    if cache_file.exists():
+        try:
+            audio_bytes = cache_file.read_bytes()
+        except Exception as e:
+            logger.warning(f"[TTS] Failed to read disk cache: {e}")
 
-    raise HTTPException(status_code=502, detail="TTS service temporarily unavailable")
+    # 3. If cache miss, fetch upstream from Google TTS with multiple client fallbacks
+    if not audio_bytes:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+            "Referer": "https://translate.google.com/",
+        }
+
+        for client_param in ["tw-ob", "gtx"]:
+            tts_url = f"https://translate.google.com/translate_tts?ie=UTF-8&q={urllib.parse.quote(encoded_text)}&tl={clean_lang}&client={client_param}"
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.get(tts_url, headers=headers)
+                    if resp.status_code == 200 and resp.content and len(resp.content) > 100:
+                        audio_bytes = resp.content
+                        # Write atomically to persistent disk cache
+                        try:
+                            temp_file = TTS_CACHE_DIR / f"{cache_key}.tmp"
+                            temp_file.write_bytes(audio_bytes)
+                            temp_file.replace(cache_file)
+                        except Exception as ce:
+                            logger.warning(f"[TTS] Failed to write disk cache: {ce}")
+                        break
+                    logger.warning(f"[TTS] Upstream client={client_param} status {resp.status_code}")
+            except Exception as e:
+                logger.warning(f"[TTS] Upstream client={client_param} error: {e}")
+
+    if not audio_bytes:
+        raise HTTPException(status_code=502, detail="TTS service temporarily unavailable")
+
+    # 4. Return format
+    if format in ["base64", "json"]:
+        b64_audio = base64.b64encode(audio_bytes).decode("ascii")
+        return {
+            "status": "success",
+            "audio": f"data:audio/mpeg;base64,{b64_audio}",
+            "lang": clean_lang,
+            "cached": cache_file.exists()
+        }
+
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "Accept-Ranges": "bytes",
+        }
+    )
 
 
 @app.get("/api/health")
