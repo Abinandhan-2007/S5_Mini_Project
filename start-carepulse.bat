@@ -10,7 +10,6 @@ setlocal EnableDelayedExpansion
 ::
 :: NOTE: The Android APK bundles the production frontend assets directly.
 :: A live Vite dev server (npm run dev) is NOT needed for the mobile app.
-:: For local web UI development/testing, run: start-carepulse-dev.bat
 :: ===================================================================
 
 title CarePulse Launcher (Android Services)
@@ -137,8 +136,6 @@ echo      No terminal is needed; it is set to Automatic startup so it
 echo      is always ready before the backend starts.
 echo    * The Android app works from ANY network as long as these 2
 echo      terminals stay open and this machine is on and connected to internet.
-echo    * The frontend is bundled inside the APK. If you want to test UI
-echo      changes in a browser, use: start-carepulse-dev.bat
 echo.
 echo  To shut down services cleanly, run: stop-carepulse.bat
 echo ===================================================================
