@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Users,
   RefreshCw,
-  ArrowRight,
 } from 'lucide-react';
 
 
@@ -32,7 +31,7 @@ import { useCarePulseStore } from '../../lib/store';
 import { doctorService } from '../../services/doctorService';
 import { hospitalService } from '../../services/hospitalService';
 import { isUserProfileIncomplete } from '../auth/CompleteProfileScreen';
-import { MedicationCardStack } from '../../components/prescriptions';
+import { MedicationCardStack, SmartMedicineLensCard } from '../../components/prescriptions';
 import { AppointmentCardStack } from '../../components/appointments/AppointmentCardStack';
 import type { Appointment } from '../../lib/types';
 import { useTranslation } from '../../i18n';
@@ -216,33 +215,7 @@ export const HomeScreen: React.FC = () => {
           />
 
           {/* 2. ULTRA-PREMIUM SMART MEDICINE LENS CARD */}
-          <div
-            onClick={() => navigate('/prescriptions/scan')}
-            className="bg-gradient-to-br from-[#063833] via-[#0B5A54] to-[#042824] text-white rounded-3xl p-5 shadow-sm hover:shadow-2xl border border-teal-400/40 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-all duration-300 flex flex-col justify-between"
-          >
-            {/* Ambient Radial Mesh & High-Tech Glow */}
-            <div className="absolute inset-0 bg-[radial-gradient(#14B8A6_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none" />
-            <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-[#14B8A6]/25 blur-3xl pointer-events-none group-hover:bg-[#14B8A6]/40 transition-all duration-500" />
-            <div className="absolute -left-10 -top-10 w-36 h-36 rounded-full bg-emerald-400/15 blur-2xl pointer-events-none" />
-
-            {/* Top Header Row */}
-            <div className="relative z-10 py-1">
-              <h3 className="text-base font-black font-heading text-white tracking-tight leading-snug">
-                {t('home.smartMedicineLens', 'Smart Medicine Lens')}
-              </h3>
-            </div>
-
-            {/* Bottom Glow Action CTA */}
-            <div className="pt-2 relative z-10">
-              <button
-                type="button"
-                className="w-full bg-gradient-to-r from-teal-300 via-teal-200 to-[#14B8A6] text-[#05322E] font-black text-xs py-2.5 px-4 rounded-2xl flex items-center justify-between shadow-[0_0_20px_rgba(20,184,166,0.35)] group-hover:shadow-[0_0_25px_rgba(20,184,166,0.55)] group-hover:scale-[1.01] active:scale-98 transition-all cursor-pointer"
-              >
-                <span className="tracking-wide">{t('home.launchCameraScanner', 'Launch Camera Scanner')}</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5] group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
+          <SmartMedicineLensCard onScan={() => navigate('/prescriptions/scan')} />
         </div>
 
         {/* SECONDARY SECTION GRID - ADAPTIVE RESPONSIVE GRID */}
