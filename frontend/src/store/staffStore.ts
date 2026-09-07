@@ -55,17 +55,65 @@ const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [];
 
 const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [];
 
-const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = {
-  id: 'rec-101',
-  name: 'Emily Watson',
-  email: 'emily.watson@carepulse.com',
-  phone: '+91 98765 99887',
-  employeeId: 'REC-4092',
-  clinicName: 'CarePulse Central Hospital',
-  department: 'Main Reception & OPD Queue',
-  shift: 'Morning Shift (08:00 AM - 04:00 PM)',
-  avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+const getStoredStaff = (): Staff | null => {
+  try {
+    const raw = localStorage.getItem('carepulse_staff');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 };
+
+export const getInitialReceptionistProfile = (): ReceptionistProfile => {
+  const storedStaff = getStoredStaff();
+  if (storedStaff && storedStaff.role === 'receptionist') {
+    const hospName = storedStaff.hospitalName || (storedStaff.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'CarePulse Hospital');
+    const empId = storedStaff.staffCode || storedStaff.staff_code || 'R007101';
+    const emailPrefix = storedStaff.email ? storedStaff.email.split('@')[0] : 'rep1';
+    return {
+      id: storedStaff.id,
+      name: storedStaff.name || 'REP1',
+      fullName: storedStaff.name || 'REP1',
+      username: storedStaff.username || emailPrefix,
+      email: storedStaff.email || 'bag@bitsathy',
+      phone: storedStaff.phone || '+91 98765 43220',
+      employeeId: empId,
+      staffCode: empId,
+      clinicName: hospName,
+      hospitalName: hospName,
+      hospitalId: storedStaff.hospitalId || 'hosp-bag',
+      deskName: storedStaff.deskName || 'Main Reception & OPD Queue Desk 01',
+      department: storedStaff.department || 'Main Reception & OPD Queue',
+      shift: 'Morning Shift (08:00 AM - 04:00 PM)',
+      avatarUrl: storedStaff.avatarUrl || storedStaff.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+      operationalStatus: 'Active On Duty',
+      twoFactorEnabled: true,
+      isActive: true,
+    };
+  }
+  return {
+    id: 'a708461f-e3fe-45b8-9ed1-b9848d064e29',
+    name: 'REP1',
+    fullName: 'REP1',
+    username: 'rep1',
+    email: 'bag@bitsathy',
+    phone: '+91 98765 43220',
+    employeeId: 'R007101',
+    staffCode: 'R007101',
+    clinicName: 'BAG Hospital',
+    hospitalName: 'BAG Hospital',
+    hospitalId: 'hosp-bag',
+    deskName: 'Main Reception & OPD Queue Desk 01',
+    department: 'Main Reception & OPD Queue',
+    shift: 'Morning Shift (08:00 AM - 04:00 PM)',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+    operationalStatus: 'Active On Duty',
+    twoFactorEnabled: true,
+    isActive: true,
+  };
+};
+
+const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = getInitialReceptionistProfile();
 
 const DEFAULT_ADMIN_PROFILE: AdminProfile = {
   id: 'admin-bag',
@@ -202,15 +250,6 @@ export interface StaffState {
   }) => Promise<void>;
 }
 
-const getStoredStaff = (): Staff | null => {
-  try {
-    const raw = localStorage.getItem('carepulse_staff');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
 export const useStaffStore = create<StaffState>((set, get) => ({
   currentStaff: getStoredStaff() || {
     id: 'admin-1',
@@ -238,16 +277,24 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       const hospName = hospId === 'hosp-bag' ? 'BAG Hospital' : 'CarePulse Hospital';
 
       if (staff.role === 'receptionist') {
+        const emailPrefix = staff.email ? staff.email.split('@')[0] : 'rep1';
+        const empId = staff.staff_code || staff.staffCode || staff.id || 'R007101';
         set((state) => ({
           receptionistProfile: {
             ...state.receptionistProfile,
             id: staff.id,
             name: staff.name || state.receptionistProfile.name,
+            fullName: staff.name || state.receptionistProfile.fullName,
+            username: staff.username || emailPrefix,
             email: staff.email,
             phone: staff.phone || state.receptionistProfile.phone,
             department: staff.department || state.receptionistProfile.department,
             clinicName: hospName,
-            employeeId: staff.staff_code || staff.staffCode || staff.id,
+            hospitalName: hospName,
+            hospitalId: hospId,
+            deskName: staff.deskName || state.receptionistProfile.deskName || 'Main Reception & OPD Queue Desk 01',
+            employeeId: empId,
+            staffCode: empId,
           },
         }));
       }
@@ -276,14 +323,28 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   fetchReceptionistProfile: async () => {
-    set({ isLoading: true });
-    set({ isLoading: false });
+    try {
+      const realProfile = await receptionistService.getProfile();
+      if (realProfile) {
+        set({ receptionistProfile: realProfile });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch real receptionist profile from API', e);
+    }
   },
 
   updateReceptionistProfile: async (updatedData) => {
     set((state) => ({
       receptionistProfile: { ...state.receptionistProfile, ...updatedData },
     }));
+    try {
+      const saved = await receptionistService.updateProfile(updatedData);
+      if (saved) {
+        set({ receptionistProfile: saved });
+      }
+    } catch (e) {
+      console.warn('Failed to update receptionist profile via backend', e);
+    }
   },
 
   fetchDoctors: async (silent?: boolean) => {

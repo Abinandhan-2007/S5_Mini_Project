@@ -9,15 +9,21 @@ export interface Staff {
   name?: string;
   fullName?: string;
   email: string;
+  username?: string;
   role: StaffRole;
   isActive?: boolean;
   department?: string;
   avatarUrl?: string;
+  avatar?: string;
   hospital_id?: string;
   hospitalId?: string;
+  hospitalName?: string;
+  hospital_name?: string;
   doctorId?: string;
   doctor_id?: string;
   phone?: string;
+  deskName?: string;
+  desk_name?: string;
 }
 
 export interface AdminProfile {

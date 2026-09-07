@@ -1,4 +1,4 @@
-import type { DoctorRecord, TokenQueueItem, TokenStatus } from '../types/receptionist';
+import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile } from '../types/receptionist';
 import { apiFetch } from '../lib/apiFetch';
 
 export const receptionistService = {
@@ -135,5 +135,50 @@ export const receptionistService = {
       console.warn('Failed to book walkin appointment', e);
     }
     return null;
-  }
+  },
+
+  async getProfile(): Promise<ReceptionistProfile | null> {
+    try {
+      const res = await apiFetch('/receptionist/profile', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        return data.profile || null;
+      }
+    } catch (e) {
+      console.warn('Failed to load receptionist profile from API', e);
+    }
+    return null;
+  },
+
+  async updateProfile(updates: Partial<ReceptionistProfile>): Promise<ReceptionistProfile | null> {
+    try {
+      const res = await apiFetch('/receptionist/profile', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.profile || null;
+      }
+    } catch (e) {
+      console.warn('Failed to update receptionist profile via API', e);
+    }
+    return null;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await apiFetch('/receptionist/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, message: data.message };
+      }
+      return { success: false, message: data.detail || data.message || 'Failed to update password.' };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Network error updating password.' };
+    }
+  },
 };
