@@ -940,20 +940,87 @@ def get_analytics():
 
 
 @router.get("/settings")
-def get_settings():
-    """Retrieve hospital configurations."""
+def get_settings(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Retrieve hospital configurations scoped to authenticated admin's hospital."""
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    effective_hosp_id = hospital_id
+    if staff_ctx and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+
     db = read_json_db()
-    return db.get("hospital_settings", {})
+    current = dict(db.get("hospital_settings", {}))
+
+    if effective_hosp_id:
+        hosp = next((h for h in db.get("hospitals", []) if str(h.get("id")) == str(effective_hosp_id)), None)
+        if hosp:
+            current["name"] = hosp.get("name") or current.get("name")
+            current["address"] = hosp.get("address") or current.get("address")
+            current["phone"] = hosp.get("phone") or current.get("phone")
+            current["email"] = hosp.get("email") or current.get("email")
+            current["hospital_code"] = hosp.get("hospital_code") or ""
+            current["hospitalId"] = effective_hosp_id
+            current["hospital_id"] = effective_hosp_id
+
+    return current
 
 
 @router.put("/settings")
-def update_settings(payload: HospitalSettingsUpdate):
-    """Update hospital configuration details."""
+def update_settings(
+    payload: HospitalSettingsUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """Update hospital configuration details scoped to hospital."""
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    effective_hosp_id = staff_ctx.get("hospital_id") if staff_ctx else None
+
     db = read_json_db()
     current = db.get("hospital_settings", {})
-    for k, v in payload.dict(exclude_unset=True).items():
+    updates = payload.dict(exclude_unset=True)
+    for k, v in updates.items():
         current[k] = v
     db["hospital_settings"] = current
+
+    if effective_hosp_id:
+        for h in db.get("hospitals", []):
+            if str(h.get("id")) == str(effective_hosp_id):
+                if "name" in updates and updates["name"]:
+                    h["name"] = updates["name"]
+                if "address" in updates and updates["address"]:
+                    h["address"] = updates["address"]
+                if "phone" in updates and updates["phone"]:
+                    h["phone"] = updates["phone"]
+                if "email" in updates and updates["email"]:
+                    h["email"] = updates["email"]
+                break
+
+        if database.use_pg:
+            try:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        fields = []
+                        vals = []
+                        if "name" in updates and updates["name"]:
+                            fields.append("name = %s")
+                            vals.append(updates["name"])
+                        if "address" in updates and updates["address"]:
+                            fields.append("address = %s")
+                            vals.append(updates["address"])
+                        if "phone" in updates and updates["phone"]:
+                            fields.append("phone = %s")
+                            vals.append(updates["phone"])
+                        if "email" in updates and updates["email"]:
+                            fields.append("email = %s")
+                            vals.append(updates["email"])
+                        if fields:
+                            vals.append(str(effective_hosp_id))
+                            cur.execute(f"UPDATE hospitals SET {', '.join(fields)} WHERE id = %s", tuple(vals))
+                    conn.commit()
+            except Exception as e:
+                database.logger.warning(f"Note on updating hospital in PG: {e}")
+
     write_json_db(db)
     return {"message": "Hospital settings updated successfully", "settings": current}
 

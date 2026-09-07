@@ -115,6 +115,10 @@ export const AdminManagement: React.FC<AdminManagementProps> = ({
         department: department.trim(),
       });
 
+      if (res.admin) {
+        setAdmins((prev) => [res.admin, ...prev.filter((a) => a.id !== res.admin.id && a.email !== res.admin.email)]);
+      }
+
       setCreatedSuccess(
         `Administrator "${res.admin.full_name}" appointed successfully with code ${res.admin.staff_code}!`
       );
@@ -137,15 +141,25 @@ export const AdminManagement: React.FC<AdminManagementProps> = ({
   const selectedHospitalHasAdmin = selectedHospitalObj?.has_active_admin ?? false;
 
   const filteredAdmins = admins.filter((admin) => {
+    const q = searchQuery.trim().toLowerCase();
+    const fName = (admin.full_name || (admin as any).name || '').toLowerCase();
+    const sCode = (admin.staff_code || (admin as any).staffCode || '').toLowerCase();
+    const mail = (admin.email || '').toLowerCase();
+    const hName = (admin.hospital_name || (admin as any).hospitalName || '').toLowerCase();
+    const hCode = (admin.hospital_code || (admin as any).hospitalCode || '').toLowerCase();
+
     const matchQuery =
-      admin.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      admin.staff_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (admin.hospital_name && admin.hospital_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (admin.hospital_code && admin.hospital_code.toLowerCase().includes(searchQuery.toLowerCase()));
+      !q ||
+      fName.includes(q) ||
+      sCode.includes(q) ||
+      mail.includes(q) ||
+      hName.includes(q) ||
+      hCode.includes(q);
 
     const matchHospital =
-      hospitalFilter === 'all' || admin.hospital_id === hospitalFilter;
+      hospitalFilter === 'all' ||
+      admin.hospital_id === hospitalFilter ||
+      (admin as any).hospitalId === hospitalFilter;
 
     return matchQuery && matchHospital;
   });
@@ -439,7 +453,7 @@ export const AdminManagement: React.FC<AdminManagementProps> = ({
                   </option>
                   {hospitals.map((h) => (
                     <option key={h.id} value={h.id}>
-                      {h.name} ({h.hospital_code}) {h.has_active_admin ? '— [ALREADY OCCUPIED]' : '— [AVAILABLE]'}
+                      {h.name} ({h.hospital_code}) {h.has_active_admin ? '— [ACTIVE ADMIN ASSIGNED]' : '— [UNASSIGNED]'}
                     </option>
                   ))}
                 </select>
@@ -448,7 +462,7 @@ export const AdminManagement: React.FC<AdminManagementProps> = ({
                   <div className="mt-2.5 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                     <span>
-                      Governance Conflict: <strong className="font-bold">{selectedHospitalObj?.name}</strong> already has an active administrator ({selectedHospitalObj?.admin?.full_name} - <code className="font-mono font-bold">{selectedHospitalObj?.admin?.staff_code}</code>). Appointing another will be rejected by policy unless the current administrator is deactivated.
+                      Notice: <strong className="font-bold">{selectedHospitalObj?.name}</strong> currently has an active administrator ({selectedHospitalObj?.admin?.full_name} - <code className="font-mono font-bold">{selectedHospitalObj?.admin?.staff_code}</code>). Submitting this appointment will supersede and reassign active governance to the new administrator.
                     </span>
                   </div>
                 )}
@@ -536,7 +550,11 @@ export const AdminManagement: React.FC<AdminManagementProps> = ({
                   disabled={isSubmitting || !selectedHospitalId}
                   className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer font-mono"
                 >
-                  {isSubmitting ? 'Appointing...' : 'CONFIRM APPOINTMENT'}
+                  {isSubmitting
+                    ? 'Appointing...'
+                    : selectedHospitalHasAdmin
+                    ? 'REASSIGN & APPOINT'
+                    : 'CONFIRM APPOINTMENT'}
                 </button>
               </div>
             </form>

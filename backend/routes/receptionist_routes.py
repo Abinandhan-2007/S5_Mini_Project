@@ -102,9 +102,18 @@ def format_receptionist_doctor(d: dict) -> dict:
     is_avail = bool(d.get("is_available") if d.get("is_available") is not None else d.get("isAvailable", True))
     room = d.get("room_number") or d.get("roomNumber") or f"Cabin {d.get('id', '101')}"
     fee = float(d.get("consultation_fee") or d.get("consultationFee") or 500.0)
-    exp = int(d.get("experience_years") or d.get("experienceYears") or 5)
     hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-bag"
-    hosp_name = d.get("hospital_name") or d.get("hospitalName") or "BAG Hospital"
+    hosp_name = d.get("hospital_name") or d.get("hospitalName")
+    if not hosp_name or (hosp_name == "BAG Hospital" and hosp_id != "hosp-bag"):
+        try:
+            db_hosp = database.read_json_db()
+            matched = next((h for h in db_hosp.get("hospitals", []) if str(h.get("id")) == str(hosp_id) or str(h.get("hospital_code", "")).lower() == str(hosp_id).lower()), None)
+            if matched and matched.get("name"):
+                hosp_name = matched.get("name")
+        except Exception:
+            pass
+    if not hosp_name:
+        hosp_name = "BAG Hospital" if hosp_id == "hosp-bag" else "CarePulse Hospital"
 
     stf_code = d.get("staff_code") or d.get("staffCode")
     email = d.get("email") or f"{d.get('name', 'doctor').lower().replace(' ', '.')}@carepulse.com"

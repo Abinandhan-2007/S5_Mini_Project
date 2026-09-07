@@ -331,24 +331,28 @@ def staff_login(request: StaffLoginRequest):
         except Exception as e:
             logger.warning(f"Could not sync staff hospital_id: {e}")
 
-    hosp_name = "BAG Hospital"
+    hosp_name = found_staff.get("hospital_name") or found_staff.get("hospitalName") or None
     if resolved_hospital_id:
         if database.use_pg:
             try:
                 with get_pg_connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute("SELECT name FROM hospitals WHERE id = %s LIMIT 1", (resolved_hospital_id,))
+                        cur.execute("SELECT name FROM hospitals WHERE id = %s OR id::text = %s LIMIT 1", (str(resolved_hospital_id), str(resolved_hospital_id)))
                         h_row = cur.fetchone()
                         if h_row and h_row.get("name"):
                             hosp_name = h_row["name"]
             except Exception as e:
-                logger.warning(f"Error fetching hospital name: {e}")
-        else:
+                logger.warning(f"Error fetching hospital name from PG: {e}")
+        
+        if not hosp_name:
             db = read_json_db()
             for h in db.get("hospitals", []):
-                if h.get("id") == resolved_hospital_id:
-                    hosp_name = h.get("name", hosp_name)
+                if str(h.get("id")) == str(resolved_hospital_id) or str(h.get("hospital_code", "")).lower() == str(resolved_hospital_id).lower():
+                    hosp_name = h.get("name")
                     break
+
+    if not hosp_name:
+        hosp_name = "CarePulse Medical Center"
 
     email_user = (found_staff.get("email") or "").split("@")[0] if found_staff.get("email") else "staff"
     staff_profile = {

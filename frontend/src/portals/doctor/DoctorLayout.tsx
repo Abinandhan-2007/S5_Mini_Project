@@ -314,7 +314,7 @@ export const DoctorLayout: React.FC = () => {
       case 'dashboard':
         return {
           title: hospitalDisplayName,
-          breadcrumb: 'Doctor Portal / Live Overview',
+          breadcrumb: '',
         };
       case 'consultation':
         return {
@@ -512,9 +512,11 @@ export const DoctorLayout: React.FC = () => {
             </button>
 
             <div>
-              <p className="text-[11px] font-bold text-slate-400 hidden sm:block">
-                {headerContext.breadcrumb}
-              </p>
+              {headerContext.breadcrumb ? (
+                <p className="text-[11px] font-bold text-slate-400 hidden sm:block">
+                  {headerContext.breadcrumb}
+                </p>
+              ) : null}
               <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading tracking-tight leading-tight">
                 {headerContext.title}
               </h2>

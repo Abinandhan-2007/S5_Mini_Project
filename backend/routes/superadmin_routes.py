@@ -782,6 +782,7 @@ def list_admins(current_user: Dict[str, Any] = Depends(require_superadmin)):
     Joined with associated hospital name and hospital code.
     """
     admins = []
+    seen_emails = set()
 
     if database.use_pg:
         try:
@@ -803,31 +804,49 @@ def list_admins(current_user: Dict[str, Any] = Depends(require_superadmin)):
                     )
                     rows = cur.fetchall()
                     for r in rows:
-                        admins.append(dict(r))
-            return {"success": True, "admins": admins}
+                        adm = dict(r)
+                        adm["id"] = str(adm["id"])
+                        adm["full_name"] = adm.get("full_name") or "Administrator"
+                        adm["name"] = adm["full_name"]
+                        admins.append(adm)
+                        if adm.get("email"):
+                            seen_emails.add(adm["email"].strip().lower())
         except Exception as e:
             logger.warning(f"Error listing admins from PostgreSQL: {e}")
 
-    # Fallback to JSON DB
+    # Merge/Fallback with JSON DB
     db = read_json_db()
-    hosp_map = {h.get("id"): h for h in db.get("hospitals", [])}
+    hosp_map = {str(h.get("id")): h for h in db.get("hospitals", [])}
     for s in db.get("staff", []):
         if s.get("role") == "admin":
-            h_id = s.get("hospital_id") or s.get("hospitalId")
+            s_email = (s.get("email") or "").strip().lower()
+            if s_email and s_email in seen_emails:
+                continue
+
+            h_id = str(s.get("hospital_id") or s.get("hospitalId") or "")
             h_data = hosp_map.get(h_id, {})
-            admins.append({
-                "id": s.get("id"),
-                "staff_code": s.get("staff_code") or s.get("staffCode"),
-                "full_name": s.get("full_name") or s.get("name"),
-                "email": s.get("email"),
+            if not h_data:
+                # try matching by hospital code
+                h_data = next((h for h in db.get("hospitals", []) if str(h.get("hospital_code", "")).lower() == h_id.lower()), {})
+
+            f_name = s.get("full_name") or s.get("name") or "Administrator"
+            adm_entry = {
+                "id": str(s.get("id")),
+                "staff_code": s.get("staff_code") or s.get("staffCode") or "",
+                "full_name": f_name,
+                "name": f_name,
+                "email": s.get("email") or "",
                 "phone": s.get("phone") or "",
                 "role": "admin",
                 "department": s.get("department") or s.get("specialization") or "Hospital Administration",
                 "is_active": s.get("is_active", True) if "is_active" in s else s.get("isActive", True),
                 "hospital_id": h_id,
-                "hospital_name": h_data.get("name", "Unknown Hospital"),
-                "hospital_code": h_data.get("hospital_code", "")
-            })
+                "hospital_name": h_data.get("name") or s.get("hospital_name") or s.get("hospitalName") or "Hospital Facility",
+                "hospital_code": h_data.get("hospital_code") or s.get("hospital_code") or ""
+            }
+            admins.append(adm_entry)
+            if s_email:
+                seen_emails.add(s_email)
 
     return {"success": True, "admins": admins}
 
@@ -858,43 +877,108 @@ def create_hospital_admin(
     if not target_hosp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Hospital '{hospital_id}' does not exist.")
 
-    # Check collision: strictly one active admin per hospital
-    for s in db.get("staff", []):
-        if str(s.get("hospital_id")) == str(hospital_id) and s.get("role") == "admin" and (s.get("is_active", True) or s.get("isActive", True)):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Hospital '{target_hosp.get('name')}' already has active administrator '{s.get('full_name')}' ({s.get('staff_code')})."
-            )
-
     # Sequence staff code A<HospitalNumber>101
     h_code = target_hosp.get("hospital_code") or "H001"
     digits = re.sub(r'\D', '', h_code) or "001"
     assigned_code = f"A{int(digits):03d}101"
 
     hashed_pwd = hash_password(payload.password.strip())
-    staff_id = str(uuid.uuid4())
+    raw_pwd = payload.password.strip()
 
-    # Save to JSON DB
-    admin_entry = {
-        "id": staff_id,
-        "staff_code": assigned_code,
-        "staffCode": assigned_code,
-        "name": clean_name,
-        "full_name": clean_name,
-        "email": clean_email,
-        "password": hashed_pwd,
-        "password_hash": hashed_pwd,
-        "role": "admin",
-        "department": payload.department or "Chief Hospital Administration",
-        "specialization": payload.department or "Chief Hospital Administration",
-        "phone": payload.phone or "",
-        "hospital_id": hospital_id,
-        "hospitalId": hospital_id,
-        "isActive": True,
-        "is_active": True,
-        "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
-    }
-    db["staff"] = db.get("staff", []) + [admin_entry]
+    # Enforce strictly one active admin per hospital by deactivating existing active admins for this hospital
+    for s in db.get("staff", []):
+        if str(s.get("hospital_id")) == str(hospital_id) and s.get("role") == "admin":
+            s["is_active"] = False
+            s["isActive"] = False
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE staff SET is_active = false WHERE hospital_id = %s AND role = 'admin'",
+                        (hospital_id,)
+                    )
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Note on deactivating prior admin in PG: {e}")
+
+    # Check if admin with same email already exists in staff
+    existing_staff_entry = next((s for s in db.get("staff", []) if s.get("email", "").strip().lower() == clean_email), None)
+    
+    if existing_staff_entry:
+        staff_id = str(existing_staff_entry.get("id"))
+        existing_staff_entry["staff_code"] = assigned_code
+        existing_staff_entry["staffCode"] = assigned_code
+        existing_staff_entry["name"] = clean_name
+        existing_staff_entry["full_name"] = clean_name
+        existing_staff_entry["password"] = raw_pwd
+        existing_staff_entry["password_hash"] = hashed_pwd
+        existing_staff_entry["role"] = "admin"
+        existing_staff_entry["department"] = payload.department or "Chief Hospital Administration"
+        existing_staff_entry["specialization"] = payload.department or "Chief Hospital Administration"
+        existing_staff_entry["phone"] = payload.phone or ""
+        existing_staff_entry["hospital_id"] = hospital_id
+        existing_staff_entry["hospitalId"] = hospital_id
+        existing_staff_entry["is_active"] = True
+        existing_staff_entry["isActive"] = True
+    else:
+        staff_id = str(uuid.uuid4())
+        admin_entry = {
+            "id": staff_id,
+            "staff_code": assigned_code,
+            "staffCode": assigned_code,
+            "name": clean_name,
+            "full_name": clean_name,
+            "email": clean_email,
+            "password": raw_pwd,
+            "password_hash": hashed_pwd,
+            "role": "admin",
+            "department": payload.department or "Chief Hospital Administration",
+            "specialization": payload.department or "Chief Hospital Administration",
+            "phone": payload.phone or "",
+            "hospital_id": hospital_id,
+            "hospitalId": hospital_id,
+            "isActive": True,
+            "is_active": True,
+            "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+        }
+        db["staff"] = db.get("staff", []) + [admin_entry]
+
+    # Save to PostgreSQL if available
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO staff (id, staff_code, full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id, is_active)
+                        VALUES (%s, %s, %s, %s, %s, 'admin', %s, %s, %s, %s, true)
+                        ON CONFLICT (email) DO UPDATE SET
+                            staff_code = EXCLUDED.staff_code,
+                            full_name = EXCLUDED.full_name,
+                            password_hash = EXCLUDED.password_hash,
+                            role = 'admin',
+                            specialization = EXCLUDED.specialization,
+                            phone = EXCLUDED.phone,
+                            hospital_id = EXCLUDED.hospital_id,
+                            is_active = true
+                        """,
+                        (
+                            staff_id,
+                            assigned_code,
+                            clean_name,
+                            clean_email,
+                            hashed_pwd,
+                            payload.department or "Chief Hospital Administration",
+                            payload.phone or "",
+                            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+                            hospital_id
+                        )
+                    )
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Note on inserting/updating admin in PG: {e}")
 
     # Advance hospital lifecycle state to Pending Setup if in Draft
     if target_hosp.get("lifecycle_state") == "Draft" or not target_hosp.get("lifecycle_state"):
@@ -965,18 +1049,33 @@ def toggle_admin_status(
     hosp_code = hosp_obj.get("hospital_code") or ""
     hosp_name = hosp_obj.get("name") or "Assigned Hospital"
 
-    # Collision check if activating
+    # If activating, deactivate other admins for the same hospital first to prevent conflict
     if new_status and hosp_id:
         for s in db.get("staff", []):
-            if str(s.get("id")) != str(admin_id) and str(s.get("hospital_id")) == str(hosp_id) and s.get("role") == "admin" and (s.get("is_active", True) or s.get("isActive", True)):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Cannot activate administrator: Hospital already has active admin '{s.get('full_name')}' ({s.get('staff_code')})."
-                )
+            if str(s.get("id")) != str(admin_id) and str(s.get("hospital_id")) == str(hosp_id) and s.get("role") == "admin":
+                s["is_active"] = False
+                s["isActive"] = False
 
     target_admin["is_active"] = new_status
     target_admin["isActive"] = new_status
     write_json_db(db)
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if new_status and hosp_id:
+                        cur.execute(
+                            "UPDATE staff SET is_active = false WHERE hospital_id = %s AND role = 'admin' AND id::text != %s",
+                            (hosp_id, str(admin_id))
+                        )
+                    cur.execute(
+                        "UPDATE staff SET is_active = %s WHERE id::text = %s OR staff_code = %s",
+                        (new_status, str(admin_id), str(admin_code))
+                    )
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Note on updating admin status in PG: {e}")
 
     # Emit Audit Log Event
     act_type = "ADMIN_ACTIVATED" if new_status else "ADMIN_DEACTIVATED"
@@ -1009,6 +1108,18 @@ def delete_admin(admin_id: str, current_user: Dict[str, Any] = Depends(require_s
 
     db["staff"] = [s for s in db.get("staff", []) if str(s.get("id")) != str(admin_id)]
     write_json_db(db)
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM staff WHERE id::text = %s OR staff_code = %s",
+                        (str(admin_id), str(admin_code))
+                    )
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Note on deleting admin from PG: {e}")
 
     log_audit_event(
         action_type="ADMIN_DELETED",
