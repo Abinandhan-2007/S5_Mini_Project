@@ -39,7 +39,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const [healthIssue, setHealthIssue] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState(doctors[0]?.id || '');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [timeSlot, setTimeSlot] = useState('10:00 AM - 11:00 AM');
+  const [timeSlot, setTimeSlot] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<{
     ticketNumber: string;
@@ -51,13 +51,22 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     timeSlot: string;
   } | null>(null);
 
-  if (!isOpen) return null;
-
   const selectedDoctor = doctors.find((d) => d.id === selectedDoctorId) || doctors[0];
+
+  React.useEffect(() => {
+    if (selectedDoctor?.slotCapacities && selectedDoctor.slotCapacities.length > 0) {
+      const firstAvail = selectedDoctor.slotCapacities.find((s) => s.isAvailable);
+      setTimeSlot(firstAvail ? firstAvail.timeSlot : selectedDoctor.slotCapacities[0].timeSlot);
+    } else {
+      setTimeSlot('');
+    }
+  }, [selectedDoctorId, selectedDoctor]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientName.trim() || !patientPhone.trim() || !selectedDoctor) return;
+    if (!patientName.trim() || !patientPhone.trim() || !selectedDoctor || !timeSlot) return;
 
     setIsSubmitting(true);
     const generatedTicket = `#CP-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -376,16 +385,19 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                         onChange={(e) => setTimeSlot(e.target.value)}
                         className="w-full pl-10 pr-3 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-extrabold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 appearance-none cursor-pointer"
                       >
-                        {selectedDoctor?.slotCapacities?.map((s) => {
-                          const offlineAvail = s.offlineAvailableSeats ?? Math.floor(s.availableSeats / 2);
-                          const offlineMax = s.offlineMaxSeats ?? Math.floor(s.maxSeats / 2);
-                          return (
-                            <option key={s.id} value={s.timeSlot} disabled={!s.isAvailable || offlineAvail <= 0}>
-                              {s.timeSlot} ({offlineAvail}/{offlineMax} offline seats available)
-                            </option>
-                          );
-                        }) || <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>}
-
+                        {(!selectedDoctor?.slotCapacities || selectedDoctor.slotCapacities.length === 0) ? (
+                          <option value="" disabled>No time slots configured</option>
+                        ) : (
+                          selectedDoctor.slotCapacities.map((s) => {
+                            const offlineAvail = s.offlineAvailableSeats ?? Math.floor(s.availableSeats / 2);
+                            const offlineMax = s.offlineMaxSeats ?? Math.floor(s.maxSeats / 2);
+                            return (
+                              <option key={s.id} value={s.timeSlot} disabled={!s.isAvailable || offlineAvail <= 0}>
+                                {s.timeSlot} ({offlineAvail}/{offlineMax} offline seats available)
+                              </option>
+                            );
+                          })
+                        )}
                       </select>
                     </div>
                   </div>
@@ -404,8 +416,8 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="px-8 py-3.5 bg-gradient-to-r from-[#0B5A54] to-teal-700 hover:from-[#084540] hover:to-[#0B5A54] text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg transition-all hover:scale-[1.01] active:scale-95 cursor-pointer flex items-center gap-2"
+                disabled={isSubmitting || !timeSlot}
+                className="px-8 py-3.5 bg-gradient-to-r from-[#0B5A54] to-teal-700 hover:from-[#084540] hover:to-[#0B5A54] text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg transition-all hover:scale-[1.01] active:scale-95 cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>{isSubmitting ? 'Registering Patient & Issuing Token...' : 'Confirm Registration & Issue Token'}</span>

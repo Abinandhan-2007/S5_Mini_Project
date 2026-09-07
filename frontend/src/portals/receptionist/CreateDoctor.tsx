@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Upload, CheckCircle2, FileText, ChevronDown } from 'lucide-react';
+import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Upload, CheckCircle2, FileText, ChevronDown, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 
 interface CreateDoctorProps {
@@ -18,6 +18,9 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
   const [consultationFee, setConsultationFee] = useState<string>('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
   const [about, setAbout] = useState('');
   const [photo, setPhoto] = useState('');
@@ -47,6 +50,8 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
     const feeNum = parseFloat(consultationFee) || 500;
     const selectedSpecialty = specialty || 'General Physician';
     const selectedDept = department || selectedSpecialty;
+    const assignedUsername = username.trim() || email.split('@')[0] || name.toLowerCase().replace(/\s+/g, '.');
+    const assignedPassword = password.trim() || 'doc123';
 
     setIsSubmitting(true);
     await createDoctor({
@@ -57,11 +62,14 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
       consultationFee: feeNum,
       phone: phone || '+91 98765 00000',
       email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@carepulse.com`,
+      username: assignedUsername,
+      password: assignedPassword,
       roomNumber: roomNumber || 'Cabin 101 - 1st Floor',
       about: about || `Senior ${selectedSpecialty} with clinical experience in medical consultations and patient care.`,
       photo: photo || '/doctor_default.jpg',
       isAvailable: true,
       availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      slotCapacities: [],
     });
 
     // Reset form fields
@@ -72,6 +80,9 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
     setConsultationFee('');
     setPhone('');
     setEmail('');
+    setUsername('');
+    setPassword('');
+    setShowPassword(false);
     setRoomNumber('');
     setAbout('');
     setPhoto('');
@@ -113,6 +124,49 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
                 onChange={(e) => setName(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] text-slate-900 font-medium placeholder:text-slate-400"
               />
+            </div>
+          </div>
+
+          {/* Portal Login Credentials */}
+          <div className="p-3.5 rounded-2xl bg-teal-50/60 border border-teal-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black text-[#0B5A54] uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
+                Doctor Portal Login Credentials
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Username / Login ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. alexander.w"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-teal-200 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Account Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="e.g. doc123"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 bg-white border border-teal-200 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

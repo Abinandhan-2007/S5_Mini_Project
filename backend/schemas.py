@@ -178,12 +178,23 @@ class SearchResultItem(BaseModel):
     distance: float
 
 class SlotCapacitySchema(BaseModel):
-    id: str
+    id: Optional[str] = None
     timeSlot: str
     maxSeats: int
-    bookedSeats: int
-    availableSeats: int
-    isAvailable: bool
+    bookedSeats: Optional[int] = 0
+    availableSeats: Optional[int] = 0
+    onlineMaxSeats: Optional[int] = None
+    onlineBookedSeats: Optional[int] = 0
+    onlineAvailableSeats: Optional[int] = None
+    offlineMaxSeats: Optional[int] = None
+    offlineBookedSeats: Optional[int] = 0
+    offlineAvailableSeats: Optional[int] = None
+    isAvailable: Optional[bool] = True
+
+class SlotAddRequest(BaseModel):
+    timeSlot: str
+    maxSeats: Optional[int] = 6
+    isAvailable: Optional[bool] = True
 
 class DoctorCreateRequest(BaseModel):
     name: str
@@ -195,12 +206,12 @@ class DoctorCreateRequest(BaseModel):
     phone: Optional[str] = ""
     email: Optional[str] = ""
     username: Optional[str] = ""
-    password: Optional[str] = "doc123"
+    password: Optional[str] = None
     hospital_id: Optional[str] = None
     roomNumber: Optional[str] = "Room 101"
     isAvailable: Optional[bool] = True
     availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-    slotCapacities: Optional[List[SlotCapacitySchema]] = None
+    slotCapacities: Optional[List[SlotCapacitySchema]] = []
 
 class DoctorAvailabilityUpdate(BaseModel):
     isAvailable: bool
@@ -219,18 +230,13 @@ class WalkInAppointmentCreate(BaseModel):
     patientEmail: Optional[str] = ""
     doctorId: str
     doctorName: str
-    doctorSpecialty: Optional[str] = "General Physician"
-    hospitalId: Optional[str] = None
-    hospital_id: Optional[str] = None
-    hospitalName: Optional[str] = None
-    hospital_name: Optional[str] = None
-    date: str
+    doctorSpecialty: str
+    date: Optional[str] = None
     timeSlot: str
-    type: Optional[str] = "Walk-In"
-    age: Optional[int] = 30
-    bloodGroup: Optional[str] = "O+"
-    address: Optional[str] = ""
-    healthIssue: Optional[str] = "General Checkup"
+    age: Optional[int] = None
+    bloodGroup: Optional[str] = None
+    address: Optional[str] = None
+    healthIssue: Optional[str] = None
 
 class HospitalResponse(BaseModel):
     id: str
@@ -242,15 +248,17 @@ class HospitalResponse(BaseModel):
     rating: float
     reviewsCount: int
     reviews_count: Optional[int] = None
-    emergencyAvailable: bool
-    emergency_available: Optional[bool] = None
+    is24x7: Optional[bool] = True
+    is_24x7: Optional[bool] = True
+    emergencyAvailable: Optional[bool] = True
+    emergency_available: Optional[bool] = True
     imageUrl: str
     image_url: Optional[str] = None
     specialties: List[str]
     facilityType: str
     facility_type: Optional[str] = None
-    distanceMiles: float
-    distance_miles: Optional[float] = None
+    distanceMiles: Optional[float] = 1.0
+    distance_miles: Optional[float] = 1.0
 
 class DoctorResponse(BaseModel):
     id: str
@@ -281,6 +289,7 @@ class DoctorResponse(BaseModel):
     about: Optional[str] = ""
     availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
     slotCapacities: Optional[List[Any]] = []
+    slot_capacities: Optional[List[Any]] = []
 
 class DeviceTokenRequest(BaseModel):
     patient_id: Optional[str] = "anonymous"

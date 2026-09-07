@@ -136,6 +136,8 @@ export interface AnnouncementRecord {
   status: 'Sent' | 'Scheduled' | 'Draft';
 }
 
+export type SuperAdminHospitalLifecycle = 'Draft' | 'Pending Setup' | 'Active' | 'Suspended';
+
 export interface SuperAdminStats {
   total_hospitals: number;
   active_hospitals: number;
@@ -145,6 +147,12 @@ export interface SuperAdminStats {
   total_doctors: number;
   total_receptionists: number;
   total_patients: number;
+  lifecycle_breakdown?: {
+    active: number;
+    pending_setup: number;
+    draft: number;
+    suspended: number;
+  };
 }
 
 export interface SuperAdminHospital {
@@ -161,6 +169,10 @@ export interface SuperAdminHospital {
   image_url?: string;
   specialties?: string[];
   is_active: boolean;
+  is_suspended?: boolean;
+  lifecycle_state?: SuperAdminHospitalLifecycle;
+  suspension_reason?: string | null;
+  suspended_at?: string | null;
   created_at?: string;
   has_active_admin: boolean;
   doctor_count: number;
@@ -189,4 +201,28 @@ export interface SuperAdminAdmin {
   hospital_name: string;
   hospital_code: string;
   created_at?: string;
+}
+
+export interface SuperAdminAuditEvent {
+  id: string;
+  timestamp: string;
+  actor_code: string;
+  actor_name: string;
+  action_type:
+    | 'HOSPITAL_CREATED'
+    | 'HOSPITAL_DELETED'
+    | 'HOSPITAL_LIFECYCLE_CHANGED'
+    | 'ADMIN_APPOINTED'
+    | 'ADMIN_ACTIVATED'
+    | 'ADMIN_DEACTIVATED'
+    | 'ADMIN_DELETED'
+    | string;
+  target_type: 'hospital' | 'admin';
+  target_id: string;
+  target_code: string;
+  target_name: string;
+  description: string;
+  before_state?: Record<string, any> | null;
+  after_state?: Record<string, any> | null;
+  reason?: string | null;
 }

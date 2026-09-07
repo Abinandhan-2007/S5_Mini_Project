@@ -184,7 +184,6 @@ def staff_login(request: StaffLoginRequest):
                     row = cur.fetchone()
                     if row:
                         found_staff = dict(row)
-                        # Normalize key names
                         if "full_name" in found_staff and not found_staff.get("name"):
                             found_staff["name"] = found_staff["full_name"]
                         if "specialization" in found_staff and not found_staff.get("department"):
@@ -213,6 +212,45 @@ def staff_login(request: StaffLoginRequest):
             ):
                 found_staff = dict(s)
                 break
+
+        # Check JSON database doctors collection if not in staff
+        if not found_staff:
+            doctors_list = db.get("doctors", [])
+            for d in doctors_list:
+                d_email = (d.get("email") or "").strip().lower()
+                d_code = (d.get("staff_code") or d.get("staffCode") or "").strip().lower()
+                d_user = (d.get("username") or "").strip().lower()
+                d_id = (d.get("id") or "").strip().lower()
+                if (
+                    d_email == raw_email
+                    or d_email == f"{raw_email}@carepulse.com"
+                    or d_code == raw_email
+                    or d_user == raw_email
+                    or d_id == raw_email
+                ):
+                    raw_p = d.get("password") or "doc123"
+                    found_staff = {
+                        "id": d.get("id"),
+                        "doctor_id": d.get("id"),
+                        "doctorId": d.get("id"),
+                        "staff_code": d.get("staff_code") or d.get("staffCode"),
+                        "staffCode": d.get("staffCode") or d.get("staff_code"),
+                        "name": d.get("name"),
+                        "full_name": d.get("name"),
+                        "email": d.get("email") or f"{d_user}@carepulse.com",
+                        "username": d_user or d.get("username"),
+                        "password": raw_p,
+                        "password_hash": d.get("password_hash") or hash_password(raw_p),
+                        "role": "doctor",
+                        "specialization": d.get("specialty") or d.get("department") or "General Medicine",
+                        "department": d.get("department") or d.get("specialty") or "General Medicine",
+                        "phone": d.get("phone", "+91 98765 00000"),
+                        "avatar_url": d.get("photo") or "/doctor_default.jpg",
+                        "hospital_id": d.get("hospital_id") or d.get("hospitalId") or "hosp-bag",
+                        "hospitalId": d.get("hospitalId") or d.get("hospital_id") or "hosp-bag",
+                        "is_active": d.get("is_active", True) and d.get("isAvailable", True)
+                    }
+                    break
 
     # 3. Default fallback for initial Admin / Nurse access
     if not found_staff and (raw_email in ["admin@carepulse.com", "admin"]):
@@ -276,6 +314,8 @@ def staff_login(request: StaffLoginRequest):
             logger.warning(f"Could not auto-upgrade staff password hash: {e}")
 
     doc_id = found_staff.get("doctor_id") or found_staff.get("doctorId")
+    if role == "doctor" and not doc_id:
+        doc_id = str(found_staff.get("id"))
     staff_hosp_id = found_found_hosp = found_staff.get("hospital_id") or found_staff.get("hospitalId")
 
     # Authoritative resolution for doctor / receptionist hospital_id

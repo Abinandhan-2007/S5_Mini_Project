@@ -57,73 +57,6 @@ export const BookAppointmentScreen: React.FC = () => {
   const initialDoctor: Doctor = (matchedStaffDoc as any) || matchedMockDoc || staffDoctors[0] || EMPTY_DOCTOR;
   const [doctor, setDoctor] = useState<Doctor>(initialDoctor);
 
-  useEffect(() => {
-    if (!doctorId) return;
-    let isMounted = true;
-
-    // Check staffStore immediately for real-time reactive receptionist updates
-    const staffDoc = useStaffStore.getState().doctors.find(
-      (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
-    );
-    if (staffDoc) {
-      setDoctor((prev) => ({
-        ...prev,
-        id: staffDoc.id,
-        name: staffDoc.name,
-        specialty: staffDoc.specialty,
-        department: staffDoc.department,
-        hospitalId: (staffDoc as any).hospitalId || prev.hospitalId || '',
-        hospitalName: (staffDoc as any).hospitalName || prev.hospitalName || '',
-        photoUrl: staffDoc.photo || prev.photoUrl || '/doctor_default.jpg',
-        experienceYears: staffDoc.experienceYears,
-        consultationFee: staffDoc.consultationFee,
-        phone: staffDoc.phone,
-        email: staffDoc.email,
-        roomNumber: staffDoc.roomNumber,
-        isAvailable: staffDoc.isAvailable,
-        availableDays: staffDoc.availableDays,
-        slotCapacities: staffDoc.slotCapacities,
-        slot_capacities: staffDoc.slotCapacities,
-        staffCode: staffDoc.staffCode || staffDoc.staff_code,
-        staff_code: staffDoc.staffCode || staffDoc.staff_code,
-      }));
-    }
-
-    const fetchDoctor = () => {
-      doctorService.getDoctorById(doctorId).then((doc) => {
-        if (isMounted && doc) {
-          const latestStaffDoc = useStaffStore.getState().doctors.find(
-            (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
-          );
-          if (latestStaffDoc && latestStaffDoc.slotCapacities && latestStaffDoc.slotCapacities.length > 0) {
-            setDoctor({
-              ...doc,
-              isAvailable: latestStaffDoc.isAvailable,
-              slotCapacities: latestStaffDoc.slotCapacities,
-              slot_capacities: latestStaffDoc.slotCapacities,
-              availableDays: latestStaffDoc.availableDays,
-            });
-          } else {
-            setDoctor(doc);
-          }
-        }
-      });
-    };
-
-    fetchDoctor();
-    const interval = setInterval(fetchDoctor, 3000);
-    const handleFocus = () => fetchDoctor();
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleFocus);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleFocus);
-    };
-  }, [doctorId, staffDoctors]);
-
   // Helpers to get local date ISO format YYYY-MM-DD
   const getTodayIso = () => {
     const d = new Date();
@@ -154,6 +87,48 @@ export const BookAppointmentScreen: React.FC = () => {
       setSelectedDate(getTomorrowIso());
     }
   }, [isTodayCompleted, selectedDate]);
+
+  useEffect(() => {
+    if (!doctorId) return;
+    let isMounted = true;
+
+    const fetchDoctorAndSlots = async () => {
+      try {
+        const [doc, liveSlots] = await Promise.all([
+          doctorService.getDoctorById(doctorId),
+          doctorService.getDoctorSlots(doctorId, selectedDate),
+        ]);
+
+        if (isMounted && doc) {
+          const effectiveSlots =
+            Array.isArray(liveSlots)
+              ? liveSlots
+              : (doc as any).slotCapacities || (doc as any).slot_capacities || [];
+
+          setDoctor({
+            ...doc,
+            slotCapacities: effectiveSlots,
+            slot_capacities: effectiveSlots,
+          });
+        }
+      } catch (err) {
+        console.warn('Error fetching doctor & slots:', err);
+      }
+    };
+
+    fetchDoctorAndSlots();
+    const interval = setInterval(fetchDoctorAndSlots, 4000);
+    const handleFocus = () => fetchDoctorAndSlots();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [doctorId, selectedDate, staffDoctors]);
 
   const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -467,6 +442,15 @@ export const BookAppointmentScreen: React.FC = () => {
               >
                 <X className="w-4 h-4 text-slate-400" />
                 <span>Doctor is Currently Off-Duty</span>
+              </button>
+            ) : (!((doctor as any)?.slotCapacities?.length > 0 || (doctor as any)?.slot_capacities?.length > 0)) ? (
+              <button
+                type="button"
+                disabled
+                className="w-full py-3.5 px-6 rounded-2xl bg-slate-200 text-slate-500 font-black text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-slate-300"
+              >
+                <AlertCircle className="w-4 h-4 text-slate-400" />
+                <span>No Time Slots Configured</span>
               </button>
             ) : !selectedSlot ? (
               <button

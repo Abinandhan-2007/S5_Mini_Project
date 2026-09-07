@@ -42,14 +42,7 @@ export function createSplitSlot(
   };
 }
 
-export const DEFAULT_SLOTS: TimeSlotCapacity[] = [
-  createSplitSlot('slot-1', '09:00 AM - 10:00 AM', 6, 1, 1, true),
-  createSplitSlot('slot-2', '10:00 AM - 11:00 AM', 6, 2, 2, true),
-  createSplitSlot('slot-3', '11:00 AM - 12:00 PM', 6, 1, 0, true),
-  createSplitSlot('slot-4', '02:00 PM - 03:00 PM', 6, 2, 1, true),
-  createSplitSlot('slot-5', '03:00 PM - 04:00 PM', 6, 0, 0, true),
-  createSplitSlot('slot-6', '04:00 PM - 05:00 PM', 6, 1, 1, true),
-];
+export const DEFAULT_SLOTS: TimeSlotCapacity[] = [];
 
 const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [];
 
@@ -170,8 +163,8 @@ export interface StaffState {
   toggleDoctorAvailability: (doctorId: string, isAvailable?: boolean, reason?: string, unavailableUntil?: string) => Promise<void>;
   updateDoctorSlotCapacity: (doctorId: string, timeSlot: string, availableSeats: number) => Promise<void>;
   updateSlotCapacity: (doctorId: string, timeSlot: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
-  addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => void;
-  removeTimeSlot: (doctorId: string, slotId: string) => void;
+  addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => Promise<void>;
+  removeTimeSlot: (doctorId: string, slotId: string) => Promise<void>;
   createDoctor: (doctorData: Partial<DoctorRecord>) => Promise<void>;
   fetchTokens: (doctorId?: string, silent?: boolean) => Promise<void>;
   callNextToken: (doctorId?: string) => Promise<void>;
@@ -321,7 +314,8 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     set(state => ({
       doctors: state.doctors.map(doc => {
         if (doc.id !== doctorId) return doc;
-        const updatedSlots = doc.slotCapacities.map(slot => {
+        const currentSlots = doc.slotCapacities || [];
+        const updatedSlots = currentSlots.map(slot => {
           if (slot.timeSlot !== timeSlot) return slot;
           const offlineAvail = Math.max(0, availableSeats);
           return {
@@ -341,7 +335,8 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     set(state => ({
       doctors: state.doctors.map(doc => {
         if (doc.id !== doctorId) return doc;
-        const updatedSlots = doc.slotCapacities.map(slot => {
+        const currentSlots = doc.slotCapacities || [];
+        const updatedSlots = currentSlots.map(slot => {
           if (slot.timeSlot !== timeSlot) return slot;
           const onlineMax = Math.ceil(maxSeats / 2);
           const offlineMax = Math.floor(maxSeats / 2);
@@ -365,28 +360,34 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     await receptionistService.updateSlotCapacity(doctorId, timeSlot, maxSeats, isAvailable);
   },
 
-  addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => {
+  addTimeSlot: async (doctorId: string, timeSlot: string, maxSeats: number) => {
     set(state => ({
       doctors: state.doctors.map(doc => {
         if (doc.id !== doctorId) return doc;
-        const exists = doc.slotCapacities.some(s => s.timeSlot === timeSlot);
+        const currentSlots = doc.slotCapacities || [];
+        const exists = currentSlots.some(s => s.timeSlot === timeSlot);
         if (exists) return doc;
         const newSlot = createSplitSlot(`slot-${Date.now()}`, timeSlot, maxSeats, 0, 0, true);
-        return { ...doc, slotCapacities: [...doc.slotCapacities, newSlot] };
+        return { ...doc, slotCapacities: [...currentSlots, newSlot] };
       })
     }));
+
+    await receptionistService.addSlot(doctorId, timeSlot, maxSeats, true);
   },
 
-  removeTimeSlot: (doctorId: string, slotId: string) => {
+  removeTimeSlot: async (doctorId: string, slotId: string) => {
     set(state => ({
       doctors: state.doctors.map(doc => {
         if (doc.id !== doctorId) return doc;
+        const currentSlots = doc.slotCapacities || [];
         return {
           ...doc,
-          slotCapacities: doc.slotCapacities.filter(s => s.id !== slotId)
+          slotCapacities: currentSlots.filter(s => s.id !== slotId && s.timeSlot !== slotId)
         };
       })
     }));
+
+    await receptionistService.deleteSlot(doctorId, slotId);
   },
 
   createDoctor: async (doctorData: Partial<DoctorRecord>) => {

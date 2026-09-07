@@ -37,10 +37,10 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
   let totalPeakSlotsCount = 0;
 
   doctors.forEach((doc) => {
-    doc.slotCapacities.forEach((slot) => {
+    (doc.slotCapacities || []).forEach((slot) => {
       totalHospitalSeats += slot.maxSeats;
       totalBookedSeats += slot.bookedSeats;
-      if (slot.bookedSeats / slot.maxSeats >= 0.8) {
+      if (slot.maxSeats > 0 && slot.bookedSeats / slot.maxSeats >= 0.8) {
         totalPeakSlotsCount++;
       }
     });
@@ -201,74 +201,82 @@ export const AdminTokenSlotMgmt: React.FC<AdminTokenSlotMgmtProps> = ({ onShowTo
             </div>
 
             {/* Time Slot Heat Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-              {doc.slotCapacities.map((slot) => {
-                const occupancyRate = slot.maxSeats > 0 ? Math.round((slot.bookedSeats / slot.maxSeats) * 100) : 0;
-                const isHighDemand = occupancyRate >= 80;
-                const isModerate = occupancyRate >= 50 && occupancyRate < 80;
+            {(!doc.slotCapacities || doc.slotCapacities.length === 0) ? (
+              <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
+                <p className="text-xs font-semibold text-slate-500">
+                  No slots configured yet. Slots can be added in the Receptionist Portal.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+                {doc.slotCapacities.map((slot) => {
+                  const occupancyRate = slot.maxSeats > 0 ? Math.round((slot.bookedSeats / slot.maxSeats) * 100) : 0;
+                  const isHighDemand = occupancyRate >= 80;
+                  const isModerate = occupancyRate >= 50 && occupancyRate < 80;
 
-                // Visual heat indicator color styling
-                const heatCardStyle = !slot.isAvailable
-                  ? 'bg-slate-50 border-slate-200 opacity-60'
-                  : isHighDemand
-                    ? 'bg-rose-50/80 border-rose-300 shadow-2xs'
-                    : isModerate
-                      ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
-                      : 'bg-teal-50/40 border-teal-200/80 hover:shadow-xs';
+                  // Visual heat indicator color styling
+                  const heatCardStyle = !slot.isAvailable
+                    ? 'bg-slate-50 border-slate-200 opacity-60'
+                    : isHighDemand
+                      ? 'bg-rose-50/80 border-rose-300 shadow-2xs'
+                      : isModerate
+                        ? 'bg-amber-50/80 border-amber-300 shadow-2xs'
+                        : 'bg-teal-50/40 border-teal-200/80 hover:shadow-xs';
 
-                const heatBarColor = isHighDemand ? 'bg-rose-500' : isModerate ? 'bg-amber-500' : 'bg-[#0B5A54]';
+                  const heatBarColor = isHighDemand ? 'bg-rose-500' : isModerate ? 'bg-amber-500' : 'bg-[#0B5A54]';
 
-                return (
-                  <div
-                    key={slot.id}
-                    onClick={() => handleOpenOverride(doc, slot)}
-                    className={`rounded-2xl p-3.5 border transition-all flex flex-col justify-between space-y-2.5 cursor-pointer hover:shadow-md active:scale-98 ${heatCardStyle}`}
-                    title="Click slot to configure capacity"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-900 font-heading">
-                          {slot.timeSlot}
-                        </span>
-                        {isHighDemand ? (
-                          <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 bg-rose-200/70 px-1.5 py-0.5 rounded">
-                            {occupancyRate}% Full
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => handleOpenOverride(doc, slot)}
+                      className={`rounded-2xl p-3.5 border transition-all flex flex-col justify-between space-y-2.5 cursor-pointer hover:shadow-md active:scale-98 ${heatCardStyle}`}
+                      title="Click slot to configure capacity"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-900 font-heading">
+                            {slot.timeSlot}
                           </span>
-                        ) : isModerate ? (
-                          <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded">
-                            {occupancyRate}% Load
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-black uppercase tracking-wider text-teal-800 bg-teal-200/60 px-1.5 py-0.5 rounded">
-                            Available
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Seats breakdown */}
-                      <div className="mt-2 text-xs space-y-1 font-bold">
-                        <div className="flex justify-between text-slate-800">
-                          <span>Total Seats:</span>
-                          <span className="font-black">{slot.bookedSeats} / {slot.maxSeats}</span>
+                          {isHighDemand ? (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 bg-rose-200/70 px-1.5 py-0.5 rounded">
+                              {occupancyRate}% Full
+                            </span>
+                          ) : isModerate ? (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded">
+                              {occupancyRate}% Load
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-teal-800 bg-teal-200/60 px-1.5 py-0.5 rounded">
+                              Available
+                            </span>
+                          )}
                         </div>
-                        <div className="flex justify-between text-[11px] text-slate-500">
-                          <span>Online / Walk-In:</span>
-                          <span className="font-mono">{slot.onlineBookedSeats ?? 0}/{slot.onlineMaxSeats ?? Math.ceil((slot.maxSeats || 6) / 2)} • {slot.offlineBookedSeats ?? 0}/{slot.offlineMaxSeats ?? Math.floor((slot.maxSeats || 6) / 2)}</span>
-                        </div>
-                      </div>
 
-                      {/* Heat Bar */}
-                      <div className="mt-2.5 w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${occupancyRate}%` }}
-                          className={`h-full rounded-full ${heatBarColor}`}
-                        />
+                        {/* Seats breakdown */}
+                        <div className="mt-2 text-xs space-y-1 font-bold">
+                          <div className="flex justify-between text-slate-800">
+                            <span>Total Seats:</span>
+                            <span className="font-black">{slot.bookedSeats} / {slot.maxSeats}</span>
+                          </div>
+                          <div className="flex justify-between text-[11px] text-slate-500">
+                            <span>Online / Walk-In:</span>
+                            <span className="font-mono">{slot.onlineBookedSeats ?? 0}/{slot.onlineMaxSeats ?? Math.ceil((slot.maxSeats || 6) / 2)} • {slot.offlineBookedSeats ?? 0}/{slot.offlineMaxSeats ?? Math.floor((slot.maxSeats || 6) / 2)}</span>
+                          </div>
+                        </div>
+
+                        {/* Heat Bar */}
+                        <div className="mt-2.5 w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${occupancyRate}%` }}
+                            className={`h-full rounded-full ${heatBarColor}`}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ))}
       </div>
