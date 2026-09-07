@@ -146,23 +146,29 @@ def get_doctors(
     """
     List doctor records scoped to the receptionist's or doctor's own hospital.
     Fails safely with empty results if a staff member has hospital_id=NULL.
+    Superadmin accounts retain global visibility across all hospitals.
     """
-    effective_hosp_id = hospital_id
-
-    # Check staff auth header
+    staff_ctx = None
     if authorization:
         from routes.staff_auth import get_current_staff
         staff_ctx = get_current_staff(authorization)
-        if staff_ctx:
-            role = staff_ctx.get("role")
-            if role in ["receptionist", "doctor"]:
-                staff_hosp = staff_ctx.get("hospital_id")
-                if not staff_hosp:
-                    logger.warning(f"Data integrity issue: Staff account {staff_ctx.get('staff_id')} ({role}) has hospital_id=NULL. Failing safely with empty result set.")
-                    return {"success": True, "doctors": []}
-                effective_hosp_id = staff_hosp
-            elif role == "admin" and staff_ctx.get("hospital_id"):
-                effective_hosp_id = staff_ctx.get("hospital_id")
+
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
+    effective_hosp_id = hospital_id
+
+    if staff_ctx:
+        role = staff_ctx.get("role")
+        if role == "superadmin":
+            effective_hosp_id = hospital_id  # Filter by hospital_id if provided, else None = global
+        elif role in ["receptionist", "doctor", "admin", "nurse"]:
+            staff_hosp = staff_ctx.get("hospital_id")
+            if not staff_hosp:
+                logger.warning(f"Data integrity issue: Staff account {staff_ctx.get('staff_id')} ({role}) has hospital_id=NULL. Failing safely with empty result set.")
+                return {"success": True, "doctors": []}
+            effective_hosp_id = staff_hosp
+
+    if not is_superadmin and not effective_hosp_id:
+        return {"success": True, "doctors": []}
 
     if database.use_pg:
         try:
@@ -170,8 +176,10 @@ def get_doctors(
                 with conn.cursor() as cur:
                     if effective_hosp_id:
                         cur.execute("SELECT * FROM doctors WHERE hospital_id = %s ORDER BY id", (effective_hosp_id,))
+                    elif is_superadmin:
+                        cur.execute("SELECT * FROM doctors ORDER BY id")
                     else:
-                        cur.execute("SELECT * FROM doctors WHERE hospital_id IS NULL ORDER BY id")
+                        return {"success": True, "doctors": []}
                     rows = cur.fetchall()
                     if rows is not None:
                         return {"success": True, "doctors": [format_receptionist_doctor(dict(r)) for r in rows]}
@@ -182,8 +190,10 @@ def get_doctors(
     doctors = db.get("doctors", [])
     if effective_hosp_id:
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
+    elif is_superadmin:
+        pass
     else:
-        doctors = [d for d in doctors if not d.get("hospital_id") and not d.get("hospitalId")]
+        doctors = []
     return {"success": True, "doctors": [format_receptionist_doctor(d) for d in doctors]}
 
 @router.post("/doctors")
@@ -209,9 +219,22 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
             if staff_ctx.get("hospital_id"):
                 hosp_id = staff_ctx["hospital_id"]
 
-    db = database.read_json_db()
-    hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
-    hosp_name = hosp_match.get("name") if hosp_match else "BAG Hospital"
+    hosp_name = None
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT name FROM hospitals WHERE id = %s LIMIT 1", (hosp_id,))
+                    h_row = cur.fetchone()
+                    if h_row and h_row.get("name"):
+                        hosp_name = h_row["name"]
+        except Exception as e:
+            logger.warning(f"Error fetching hospital name in create_doctor: {e}")
+
+    if not hosp_name:
+        db = database.read_json_db()
+        hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
+        hosp_name = hosp_match.get("name") if hosp_match else "CarePulse Hospital"
 
     # Auto-generate staff code D<HospNum><Seq>
     hosp_num = "007"
@@ -656,12 +679,26 @@ def get_nurses(
     authorization: Optional[str] = Header(None)
 ):
     """List nurse records scoped to the hospital."""
-    effective_hosp_id = hospital_id
+    staff_ctx = None
     if authorization:
         from routes.staff_auth import get_current_staff
         staff_ctx = get_current_staff(authorization)
-        if staff_ctx and staff_ctx.get("hospital_id"):
-            effective_hosp_id = staff_ctx["hospital_id"]
+
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
+    effective_hosp_id = hospital_id
+
+    if staff_ctx:
+        role = staff_ctx.get("role")
+        if role == "superadmin":
+            effective_hosp_id = hospital_id
+        elif role in ["receptionist", "doctor", "admin", "nurse"]:
+            staff_hosp = staff_ctx.get("hospital_id")
+            if not staff_hosp:
+                return {"success": True, "nurses": []}
+            effective_hosp_id = staff_hosp
+
+    if not is_superadmin and not effective_hosp_id:
+        return {"success": True, "nurses": []}
 
     if database.use_pg:
         try:
@@ -669,8 +706,10 @@ def get_nurses(
                 with conn.cursor() as cur:
                     if effective_hosp_id:
                         cur.execute("SELECT * FROM staff WHERE role = 'nurse' AND hospital_id = %s ORDER BY created_at ASC", (effective_hosp_id,))
-                    else:
+                    elif is_superadmin:
                         cur.execute("SELECT * FROM staff WHERE role = 'nurse' ORDER BY created_at ASC")
+                    else:
+                        return {"success": True, "nurses": []}
                     rows = cur.fetchall()
                     if rows is not None:
                         return {"success": True, "nurses": [format_receptionist_nurse(dict(r)) for r in rows]}
@@ -682,6 +721,10 @@ def get_nurses(
     nurses = [s for s in staff_list if s.get("role") == "nurse"]
     if effective_hosp_id:
         nurses = [s for s in nurses if s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id]
+    elif is_superadmin:
+        pass
+    else:
+        nurses = []
     return {"success": True, "nurses": [format_receptionist_nurse(s) for s in nurses]}
 
 
@@ -777,14 +820,18 @@ def fetch_all_tokens_from_db(
 ) -> List[dict]:
     """
     Fetch live appointments from PostgreSQL or JSON DB and format them as TokenQueueItem records.
-    Strictly filters results to the receptionist's/doctor's own hospital.
-    Fails safely returning [] if staff has hospital_id=NULL.
+    Strictly filters results to the receptionist's/doctor's/admin's own hospital.
+    Fails safely returning [] if non-superadmin staff has hospital_id=NULL or no hospital is provided.
+    SuperAdmin accounts (hospital_id=NULL) retain global visibility across all hospitals.
     """
     effective_hosp_id = hospital_id
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
 
     if staff_ctx:
         role = staff_ctx.get("role")
-        if role in ["receptionist", "doctor"]:
+        if role == "superadmin":
+            effective_hosp_id = hospital_id  # optional filter if provided
+        elif role in ["receptionist", "doctor", "nurse"]:
             staff_hosp = staff_ctx.get("hospital_id")
             if not staff_hosp:
                 logger.warning(
@@ -793,8 +840,20 @@ def fetch_all_tokens_from_db(
                 )
                 return []
             effective_hosp_id = staff_hosp
-        elif role == "admin" and staff_ctx.get("hospital_id"):
-            effective_hosp_id = staff_ctx.get("hospital_id")
+        elif role == "admin":
+            staff_hosp = staff_ctx.get("hospital_id")
+            if not staff_hosp:
+                logger.warning(
+                    f"Data integrity issue: Admin account {staff_ctx.get('staff_id')} "
+                    f"has hospital_id=NULL. Failing safely with empty result set."
+                )
+                return []
+            effective_hosp_id = staff_hosp
+
+    # If caller is not SuperAdmin and no effective hospital_id is resolved, fail-closed to prevent cross-hospital data leakage
+    if not is_superadmin and not effective_hosp_id:
+        logger.warning("Unscoped token query rejected: no valid hospital context provided.")
+        return []
 
     tokens = []
     seen_ids = set()
@@ -821,6 +880,8 @@ def fetch_all_tokens_from_db(
                     if effective_hosp_id:
                         query += " AND (a.hospital_id = %s OR (a.hospital_id IS NULL AND d.hospital_id = %s))"
                         params.extend([effective_hosp_id, effective_hosp_id])
+                    elif not is_superadmin:
+                        return []
                     if doctor_id:
                         query += " AND a.doctor_id = %s"
                         params.append(doctor_id)
@@ -874,7 +935,7 @@ def fetch_all_tokens_from_db(
         except Exception as e:
             logger.warning(f"DB fetch tokens note: {e}")
 
-    if not tokens and not (staff_ctx and staff_ctx.get("role") in ["receptionist", "doctor"] and not staff_ctx.get("hospital_id")):
+    if not tokens and (is_superadmin or effective_hosp_id):
         # Read from JSON DB
         db = database.read_json_db()
         raw_apps = db.get("appointments", [])
@@ -1213,39 +1274,30 @@ def get_receptionist_profile(
                             LIMIT 1
                         """, (str(target_staff_id) if target_staff_id else "", target_email or "", str(target_staff_id) if target_staff_id else ""))
                     else:
-                        cur.execute("""
-                            SELECT s.id, s.full_name, s.email, s.role, s.phone, s.avatar_url, s.specialization, 
-                                   s.hospital_id, s.staff_code, s.is_active, s.desk_name, s.username,
-                                   h.name as hospital_name, h.address as hospital_address, h.phone as hospital_phone
-                            FROM staff s
-                            LEFT JOIN hospitals h ON s.hospital_id = h.id
-                            WHERE s.role = 'receptionist'
-                            ORDER BY s.created_at ASC
-                            LIMIT 1
-                        """)
+                        return {"success": False, "profile": None, "detail": "Unauthorized: valid receptionist session required"}
                     row = cur.fetchone()
                     if row:
                         r = dict(row)
                         email_prefix = r["email"].split("@")[0] if r.get("email") else "rep1"
                         username_val = r.get("username") or email_prefix
-                        hosp_name = r.get("hospital_name") or "BAG Hospital"
+                        hosp_name = r.get("hospital_name") or "CarePulse Hospital"
                         desk_name = r.get("desk_name") or "Main Reception & OPD Queue Desk 01"
                         dept_name = r.get("specialization") or "Main Reception & OPD Queue"
-                        emp_id = r.get("staff_code") or "R007101"
+                        emp_id = r.get("staff_code") or "R001101"
                         return {
                             "success": True,
                             "profile": {
                                 "id": str(r["id"]),
-                                "name": r.get("full_name") or "REP1",
-                                "fullName": r.get("full_name") or "REP1",
-                                "email": r.get("email") or "bag@bitsathy",
+                                "name": r.get("full_name") or "Receptionist",
+                                "fullName": r.get("full_name") or "Receptionist",
+                                "email": r.get("email"),
                                 "username": username_val,
-                                "phone": r.get("phone") or "+91 98765 43220",
+                                "phone": r.get("phone") or "",
                                 "employeeId": emp_id,
                                 "staffCode": emp_id,
                                 "clinicName": hosp_name,
                                 "hospitalName": hosp_name,
-                                "hospitalId": r.get("hospital_id") or "hosp-bag",
+                                "hospitalId": r.get("hospital_id"),
                                 "deskName": desk_name,
                                 "department": dept_name,
                                 "shift": "Morning Shift (08:00 AM - 04:00 PM)",
@@ -1259,19 +1311,16 @@ def get_receptionist_profile(
             logger.warning(f"Error fetching receptionist profile from PG: {e}")
 
     # 2. JSON DB fallback
+    if not (target_staff_id or target_email):
+        return {"success": False, "profile": None, "detail": "Unauthorized: valid receptionist session required"}
+
     db = database.read_json_db()
     staff_list = db.get("staff", [])
     matched_staff = None
-    if target_staff_id or target_email:
-        for s in staff_list:
-            if s.get("id") == target_staff_id or s.get("email") == target_email or s.get("staff_code") == target_staff_id:
-                matched_staff = s
-                break
-    if not matched_staff:
-        for s in staff_list:
-            if s.get("role") == "receptionist":
-                matched_staff = s
-                break
+    for s in staff_list:
+        if s.get("id") == target_staff_id or s.get("email") == target_email or s.get("staff_code") == target_staff_id:
+            matched_staff = s
+            break
 
     if not matched_staff:
         matched_staff = {

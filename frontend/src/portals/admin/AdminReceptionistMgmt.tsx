@@ -29,6 +29,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
   const updateReceptionist = useStaffStore((s) => s.updateReceptionist);
   const deleteReceptionist = useStaffStore((s) => s.deleteReceptionist);
   const toggleReceptionistStatus = useStaffStore((s) => s.toggleReceptionistStatus);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
@@ -144,7 +145,11 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
       return;
     }
 
-    await createReceptionist(formData);
+    await createReceptionist({
+      ...formData,
+      hospital_id: currentStaff?.hospitalId || currentStaff?.hospital_id,
+      hospitalId: currentStaff?.hospitalId || currentStaff?.hospital_id,
+    });
     setIsAddModalOpen(false);
     onShowToast(`Receptionist ${formData.name} successfully registered to ${formData.deskNumber}!`);
   };
