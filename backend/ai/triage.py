@@ -43,6 +43,11 @@ URGENT_RESPONSE_HEADER = (
     "While this may not be an immediate life-threatening emergency, please contact an urgent care clinic or your doctor soon.\n\n"
 )
 
+def is_negated(text: str, match_start: int) -> bool:
+    """Checks if a pattern match is preceded by negation words like 'no', 'not', 'without', etc."""
+    prefix = text[max(0, match_start - 40):match_start].lower()
+    return bool(re.search(r"\b(no|not|without|denies|denying|free of|negative for)\b(?:\s+\w+){0,4}\s*(?:or|and)?\s*$", prefix))
+
 def evaluate_medical_triage(user_text: str, patient_context: Optional[Dict[str, Any]] = None) -> Tuple[str, Optional[str]]:
     """
     Evaluates text for medical emergency red flags.
@@ -53,13 +58,15 @@ def evaluate_medical_triage(user_text: str, patient_context: Optional[Dict[str, 
 
     # 1. Check Emergency Patterns
     for pattern in EMERGENCY_PATTERNS:
-        if re.search(pattern, text_lower):
-            return "EMERGENCY", EMERGENCY_RESPONSE
+        for match in re.finditer(pattern, text_lower):
+            if not is_negated(text_lower, match.start()):
+                return "EMERGENCY", EMERGENCY_RESPONSE
 
     # 2. Check Urgent Patterns
     for pattern in URGENT_PATTERNS:
-        if re.search(pattern, text_lower):
-            return "URGENT_EVALUATION", None
+        for match in re.finditer(pattern, text_lower):
+            if not is_negated(text_lower, match.start()):
+                return "URGENT_EVALUATION", None
 
     # 3. Routine / General check
     if any(term in text_lower for term in ["pain", "fever", "fewer", "fevr", "cough", "caugh", "tired", "fatigue", "fatig", "nausea", "headache", "hedache", "rash", "dizzy", "dizy", "throat", "stomach", "stomac", "chills", "breath"]):

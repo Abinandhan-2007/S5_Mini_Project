@@ -1,6 +1,6 @@
 """
 CarePulse Vision AI & Document Parser.
-Handles Prescription and Lab Report Image Analysis using Gemini 1.5 Flash Vision or OCR Parser Fallback.
+Handles Prescription and Lab Report Image Analysis using Cloud ML Mistral Vision or OCR Parser Fallback.
 """
 
 import os
@@ -11,8 +11,6 @@ import httpx
 from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 def analyze_medical_document_image(
     image_base64_or_text: str,
@@ -51,7 +49,7 @@ def analyze_medical_document_image(
         elif "pdf" in header:
             mime_type = "application/pdf"
 
-    # 1. Attempt Mistral Vision (pixtral-12b-2409) if MISTRAL_API_KEY configured
+    # 1. Attempt Cloud ML Mistral Vision (pixtral-12b-2409) if MISTRAL_API_KEY configured
     mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
     if mistral_key and is_base64:
         try:
@@ -81,43 +79,10 @@ def analyze_medical_document_image(
                         res_text = re.sub(r"^```(?:json)?\s*", "", res_text)
                         res_text = re.sub(r"\s*```$", "", res_text)
                     parsed_json = json.loads(res_text)
-                    parsed_json["analysis_engine"] = "Mistral Vision AI (Document Scanner)"
+                    parsed_json["analysis_engine"] = "Cloud ML Mistral Vision AI"
                     return parsed_json
         except Exception as e:
-            logger.warning(f"Mistral Vision API document scan note: {e}")
-
-    # 2. Attempt Gemini 1.5 Flash Multimodal Vision API if key exists and base64 provided
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
-    if gemini_key and is_base64:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inlineData": {
-                                    "mimeType": mime_type,
-                                    "data": raw_b64
-                                }
-                            }
-                        ]
-                    }
-                ],
-                "generationConfig": {"responseMimeType": "application/json"}
-            }
-
-            with httpx.Client(timeout=15.0) as client:
-                res = client.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    res_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed_json = json.loads(res_text)
-                    parsed_json["analysis_engine"] = "Gemini 1.5 Flash Vision"
-                    return parsed_json
-        except Exception as e:
-            logger.warning(f"Gemini Vision API failed or timed out: {e}. Falling back to OCR parser.")
+            logger.warning(f"Cloud ML Mistral Vision API document scan note: {e}")
 
     # 2. Rule-Based Fallback OCR Parser
     text_content = image_base64_or_text

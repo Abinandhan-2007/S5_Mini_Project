@@ -1,7 +1,7 @@
 """
 CarePulse / Med AI Conversational LLM Engine.
 Provides multi-turn medical conversation synthesis, RAG-grounded clinician responses,
-and robust fallbacks across Gemini, Groq, OpenRouter, and CarePulse multi-agent clinical rule engines.
+and robust clinical dialogue handling powered exclusively by Cloud ML (Mistral Agent API).
 """
 
 import json
@@ -78,16 +78,16 @@ SYMPTOM_TYPO_MAP = {
 }
 
 def detect_symptom_key(text: str) -> Optional[str]:
-    """Detects symptom category with fuzzy matching and typo normalization."""
+    """Detects symptom category with fuzzy matching, typo normalization, and negation awareness."""
     text_lower = text.lower()
+    
     for sym_key, variants in SYMPTOM_TYPO_MAP.items():
         for variant in variants:
-            # Word boundary check or substring match for phrases
-            if " " in variant or len(variant) > 4:
-                if variant in text_lower:
-                    return sym_key
-            else:
-                if re.search(rf"\b{re.escape(variant)}\b", text_lower):
+            pattern = rf"\b{re.escape(variant)}\b" if (" " not in variant and len(variant) <= 4) else re.escape(variant)
+            for match in re.finditer(pattern, text_lower):
+                start = match.start()
+                prefix = text_lower[max(0, start - 40):start]
+                if not re.search(r"\b(no|not|without|denies|denying|free of|negative for)\b(?:\s+\w+){0,4}\s*(?:or|and)?\s*$", prefix):
                     return sym_key
     return None
 
@@ -96,13 +96,17 @@ def generate_contextual_chips(user_text: str, department: str = "General Medicin
     sym_key = detect_symptom_key(user_text)
     text_lower = user_text.lower()
 
-    if sym_key == "chest_pain" or "emergency" in text_lower or "shortness of breath" in text_lower:
+    if sym_key == "chest_pain" or "emergency" in text_lower or ("shortness of breath" in text_lower and not ("no shortness of breath" in text_lower or "without shortness of breath" in text_lower)):
         return ["🚨 Call 108 Emergency", "Find Nearest ER", "Emergency Alert Contact"]
 
     if sym_key == "fever":
+        if any(k in text_lower for k in ["chills", "body ache", "101", "102", "100", "days"]):
+            return ["Book Doctor Visit", "Review SOAP Note", "Home Care Guidance", "Hydration Tips"]
         return ["Check Temperature", "Duration: 1-2 days", "Body aches & Chills", "Book Doctor Visit"]
 
     if sym_key == "headache":
+        if any(k in text_lower for k in ["throbbing", "dull", "sharp", "nausea", "no nausea", "left side", "right side"]):
+            return ["Book Doctor Visit", "Review SOAP Note", "Pain Relief Tips", "Consult Specialist"]
         return ["Throbbing pain", "Pain relief tips", "Light sensitivity", "Book Telehealth"]
 
     if sym_key == "neck_pain":
@@ -118,6 +122,8 @@ def generate_contextual_chips(user_text: str, department: str = "General Medicin
         return ["Itchy skin", "Topical soothing", "Allergy check", "Book Dermatology"]
 
     if sym_key == "cough":
+        if any(k in text_lower for k in ["dry", "phlegm", "mucus", "no fever"]):
+            return ["Home remedies", "Review SOAP Note", "Book Pulmonology", "Consult Specialist"]
         return ["Dry cough", "Cough with phlegm", "Home remedies", f"Consult {department}"]
 
     if sym_key == "stomach":
@@ -138,10 +144,12 @@ def call_mistral_agent(
     rag_context_str: str = ""
 ) -> Optional[str]:
     """
-    Calls the official Mistral Agent API (ag_01a062cbadc977cf85c1546ff60ad68e)
+    Calls the official Cloud ML Mistral Agent API (ag_01a062cbadc977cf85c1546ff60ad68e)
     using MISTRAL_API_KEY and MISTRAL_AGENT_ID loaded from environment variables.
     Preserves full multi-turn conversation context.
     """
+    import time
+
     mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
     if not mistral_key:
         try:
@@ -200,9 +208,31 @@ def call_mistral_agent(
                     if reply:
                         return reply
             else:
-                logger.error(f"Mistral Agent API call ({url}) returned status {res.status_code}: {res.text}")
+                logger.warning(f"Mistral Agent API ({url}) returned status {res.status_code}. Attempting Cloud ML Chat Completions fallback...")
     except Exception as e:
-        logger.error(f"Error calling Mistral Agent API ({url}): {e}")
+        logger.warning(f"Mistral Agent API call notice: {e}")
+
+    # Fallback to Cloud ML Chat Completions (open-mistral-7b / open-mistral-nemo)
+    chat_url = "https://api.mistral.ai/v1/chat/completions"
+    for model_name in ["open-mistral-7b", "open-mistral-nemo", "mistral-small-latest"]:
+        chat_payload = {
+            "model": model_name,
+            "messages": api_msgs,
+            "max_tokens": 600,
+            "temperature": 0.3
+        }
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                res = client.post(chat_url, headers=headers, json=chat_payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    choices = data.get("choices", [])
+                    if choices and "message" in choices[0]:
+                        reply = choices[0]["message"].get("content", "").strip()
+                        if reply:
+                            return reply
+        except Exception as e:
+            logger.warning(f"Cloud ML fallback model '{model_name}' failed: {e}")
 
     return None
 
@@ -213,7 +243,7 @@ def generate_conversational_response(
     rag_context_str: str = ""
 ) -> str:
     """
-    Generates medical symptom guidance using the Mistral Agent API with a clinical rule engine fallback.
+    Generates medical symptom guidance using ONLY the Cloud ML Mistral Agent API.
     """
     last_user_msg = ""
     for m in reversed(messages):
@@ -222,9 +252,9 @@ def generate_conversational_response(
             break
 
     if not last_user_msg:
-        return "Hello! How can I assist you with your health today? Please feel free to describe any symptoms you are experiencing."
+        return "Hello! I'm CarePulse Health AI, here to help guide you through your health concerns. Could you please tell me what symptoms or health issues you're experiencing today?"
 
-    # 1. Primary AI Provider: New Mistral Agent Integration
+    # Primary & ONLY AI Provider: Cloud ML Mistral Agent Integration
     mistral_reply = call_mistral_agent(
         messages=messages,
         patient_context_str=patient_context_str,
@@ -233,140 +263,12 @@ def generate_conversational_response(
     if mistral_reply:
         return mistral_reply
 
-    # 4. Multi-Turn Clinical Dialogue Engine (Local Offline Engine)
-    user_turns = [m.get("content", "") for m in messages if m.get("role") == "user"]
-    turn_num = len(user_turns)
-    all_user_text = " ".join(user_turns).lower()
+    # Safety check for emergency red flags
     last_lower = last_user_msg.lower()
-
-    # Determine primary symptom context across history (NO hardcoded fallback!)
-    sym_key = detect_symptom_key(last_user_msg)
-    if not sym_key:
-        sym_key = detect_symptom_key(all_user_text)
-
-    # Emergency check
     if any(k in last_lower for k in ["chest pain", "cannot breathe", "severe breathlessness", "unconscious"]):
         return (
             "🚨 **CRITICAL SAFETY ALERT**: Severe chest pain, pressure, or acute shortness of breath requires IMMEDIATE emergency medical attention. "
             "Please call 108 / 911 or proceed to the nearest Emergency Room right away."
         )
 
-    # TURN 1: Initial Symptom Presentation
-    if turn_num <= 1:
-        if sym_key == "fever":
-            return (
-                "I understand you are experiencing a fever. Elevated temperature is typically your body's immune response to an infection.\n\n"
-                "To evaluate this properly: **How many days have you had the fever, and have you checked your temperature with a thermometer?**"
-            )
-        elif sym_key == "headache":
-            return (
-                "I hear you have a headache. Headaches are frequently triggered by tension, dehydration, lack of sleep, or eye strain.\n\n"
-                "To evaluate this: **Is the pain throbbing, dull, or sharp, and does bright light or noise make it worse?**"
-            )
-        elif sym_key == "neck_pain":
-            return (
-                "I hear you are experiencing neck pain or stiffness. Neck discomfort is commonly related to muscle strain, poor posture, or sleeping position.\n\n"
-                "To evaluate this properly: **How long have you had this neck pain, and are you able to turn your head side-to-side without severe pain or fever?**"
-            )
-        elif sym_key == "back_pain":
-            return (
-                "I note you are experiencing back pain. Back discomfort can result from muscle strain, lifting, or posture.\n\n"
-                "To evaluate this: **Where is the pain located (upper or lower back), and does it radiate down your legs?**"
-            )
-        elif sym_key == "joint_pain":
-            return (
-                "I note you are experiencing joint pain or body aches.\n\n"
-                "To evaluate this: **Which joints are affected, and is there any swelling, redness, or warmth in the joints?**"
-            )
-        elif sym_key == "skin_rash":
-            return (
-                "I understand you are noticing a skin rash or irritation.\n\n"
-                "To evaluate this: **Is the rash itchy or painful, and have you been exposed to any new soaps, foods, or environmental triggers?**"
-            )
-        elif sym_key == "cough":
-            return (
-                "I understand you are dealing with a cough. Acute coughs are commonly caused by viral upper respiratory infections or airway irritation.\n\n"
-                "To help assess this: **Is it a dry tickly cough, or are you bringing up mucus or phlegm?**"
-            )
-        elif sym_key == "stomach":
-            return (
-                "I hear you are having stomach or abdominal discomfort.\n\n"
-                "To help assess this: **Where is the discomfort situated (upper or lower), and is it a burning acid sensation or sharp cramps?**"
-            )
-        elif sym_key == "fatigue":
-            return (
-                "I note you are experiencing fatigue and low energy.\n\n"
-                "To help assess this: **How long have you felt this persistent tiredness, and does a full night's sleep help you feel rested?**"
-            )
-        else:
-            return (
-                "I've noted the symptoms you described. To help determine the appropriate care pathway:\n\n"
-                "**Approximately how many days have you experienced this, and how severe is the discomfort?**"
-            )
-
-    # TURN 2: Duration / Temperature / Severity Answered
-    if turn_num == 2 or any(k in last_lower for k in ["day", "today", "yesterday", "week", "101", "102", "100", "mild", "moderate", "severe"]):
-        duration_note = "noted the timeline"
-        for d in ["started today", "1-2 days", "1–2 days", "3-5 days", "a week", "2 weeks"]:
-            if d in last_lower:
-                duration_note = f"noted the {d} duration"
-                break
-
-        if sym_key == "fever":
-            return (
-                f"Thank you for sharing that, I have {duration_note}.\n\n"
-                "**Are you experiencing any accompanying symptoms — like body chills, headache, sore throat, or body aches?**"
-            )
-        elif sym_key == "headache":
-            return (
-                f"Thank you, I have {duration_note}.\n\n"
-                "**Are you having any nausea, dizziness, neck stiffness, or vision changes alongside the headache?**"
-            )
-        elif sym_key == "cough":
-            return (
-                f"Thank you, I have {duration_note}.\n\n"
-                "**Are you experiencing any fever, shortness of breath, or chest tightness with the cough?**"
-            )
-        else:
-            return (
-                f"Thank you, I have {duration_note}.\n\n"
-                "**Are you experiencing any other symptoms, such as fever, dizziness, or nausea?**"
-            )
-
-    # TURN 3+: Full Clinical Impression & Synthesis
-    if sym_key == "fever":
-        return (
-            "Thank you for providing those details. Based on your fever and accompanying symptoms, this is consistent with an **Acute Febrile Syndrome** (likely viral in origin).\n\n"
-            "**Recommended Care Steps:**\n"
-            "• **Hydration**: Drink plenty of water, electrolyte fluids, and clear broths.\n"
-            "• **Rest**: Allow your body adequate bed rest in a cool, well-ventilated room.\n"
-            "• **Temperature Monitoring**: Check and log your temperature twice daily.\n"
-            "• **Clinical Evaluation**: Consult a General Physician if your fever exceeds 102°F (38.9°C) or lasts beyond 48 hours.\n\n"
-            "You can review your generated **SOAP Clinical Note** above or schedule a consultation with our verified **General Medicine** specialists."
-        )
-    elif sym_key == "headache":
-        return (
-            "Thank you for the details. Based on your symptoms, this is consistent with a **Tension-Type Headache or Fatigue-Related Cephalea**.\n\n"
-            "**Recommended Care Steps:**\n"
-            "• Rest in a quiet, dimly lit room and take a screen break.\n"
-            "• Hydrate with a full glass of water.\n"
-            "• Apply a cool compress to your forehead or temples.\n"
-            "• Consult a physician if pain becomes sudden and severe.\n\n"
-            "You can review your **SOAP Note** or book an appointment with our specialists."
-        )
-    elif sym_key == "cough":
-        return (
-            "Thank you for the details. Your symptoms are consistent with an **Upper Respiratory Tract Infection / Bronchial Hyperreactivity**.\n\n"
-            "**Recommended Care Steps:**\n"
-            "• Sip warm liquids with honey and lemon.\n"
-            "• Use steam inhalation to soothe airway irritation.\n"
-            "• Seek prompt care if you notice wheezing, chest pain, or breathlessness.\n\n"
-            "Recommended routing: **Pulmonology or General Medicine**."
-        )
-    else:
-        return (
-            "Thank you for sharing your symptoms. Based on your report, I have synthesized your preliminary clinical intake evaluation.\n\n"
-            "**Next Recommended Steps:**\n"
-            "• Review your synthesized **SOAP Note** for a structured summary of your symptoms.\n"
-            "• Schedule a consultation with our recommended medical specialist for definitive examination."
-        )
+    return "Cloud ML Agent service is currently unavailable. Please verify your MISTRAL_API_KEY and active internet connection."

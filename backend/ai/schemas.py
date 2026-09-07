@@ -36,7 +36,7 @@ class AIVisionRequest(BaseModel):
 
 
 class AIVisionResponse(BaseModel):
-    analysis_engine: str = Field(..., description="Engine used for extraction (Gemini Vision or OCR Fallback)")
+    analysis_engine: str = Field(..., description="Engine used for extraction (Cloud ML Vision AI or OCR Fallback)")
     document_type: str = Field(..., description="Extracted document classification")
     patient_name: Optional[str] = Field(None, description="Extracted patient name")
     date: Optional[str] = Field(None, description="Document date")

@@ -22,7 +22,7 @@ This module contains the complete, production-ready AI & Multi-Agent RAG engine 
    - **Report Agent**: Doctor-ready SOAP (Subjective, Objective, Assessment, Plan) clinical note generation.
    - **Care Agent**: Medication reminders and discharge guidance.
 7. **Conversational LLM Engine (`llm.py`)**:
-   - Multi-provider fallback chain (Gemini 1.5 Flash, Groq Llama-3.3-70B, OpenRouter, and clinical dialogue rule trees).
+   - Cloud ML Mistral Agent API integration for multi-turn medical intake and clinical guidance.
 
 ---
 

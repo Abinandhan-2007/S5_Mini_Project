@@ -223,53 +223,12 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
                             "how_to_take": how_to_take,
                             "warnings": warnings,
                             "side_effects": side_effects,
-                            "engine": "Mistral Vision AI (Google Lens Engine)"
+                            "engine": "Cloud ML Mistral Vision AI"
                         }
         except Exception as e:
-            logger.warning(f"Mistral Vision packaging scan note: {e}")
+            logger.warning(f"Cloud ML Mistral Vision packaging scan note: {e}")
 
-    # 3. Priority 2: Gemini 1.5 Flash Vision (if GEMINI_API_KEY configured)
-    gemini_key = (os.getenv("GEMINI_API_KEY") or "").strip()
-    if gemini_key:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            g_payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": system_prompt},
-                            {"inlineData": {"mimeType": mime_type, "data": raw_b64}}
-                        ]
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": 0.1,
-                    "responseMimeType": "application/json"
-                }
-            }
-            with httpx.Client(timeout=10.0) as client:
-                res = client.post(url, json=g_payload)
-                if res.status_code == 200:
-                    g_data = res.json()
-                    g_text = g_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    parsed = json.loads(g_text)
-                    return {
-                        "drug_name": str(parsed.get("drug_name") or "").strip(),
-                        "generic_name": str(parsed.get("generic_name") or "").strip(),
-                        "strength": str(parsed.get("strength") or "").strip(),
-                        "dosage_form": str(parsed.get("dosage_form") or "").strip(),
-                        "all_text": str(parsed.get("all_text") or "").strip(),
-                        "purpose": str(parsed.get("purpose") or "").strip(),
-                        "main_uses": parsed.get("main_uses") or [],
-                        "how_to_take": parsed.get("how_to_take") or [],
-                        "warnings": parsed.get("warnings") or [],
-                        "side_effects": parsed.get("side_effects") or [],
-                        "engine": "Gemini 1.5 Flash Vision"
-                    }
-        except Exception as e:
-            logger.warning(f"Gemini Vision packaging scan note: {e}")
-
-    # 4. Priority 3: Local Tesseract OCR (if installed in environment)
+    # 3. Priority 2: Local Tesseract OCR (if installed in environment)
     try:
         raw_bytes = base64.b64decode(raw_b64)
         image = Image.open(io.BytesIO(raw_bytes))

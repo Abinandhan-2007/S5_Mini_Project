@@ -162,14 +162,22 @@ def predict_drug_guard(request: AIDrugGuardRequest) -> AIDrugGuardResponse:
 def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
     """Generates RAG-grounded conversational medical guidance with dynamic triage and SOAP note."""
     msgs = [{"role": m.role, "content": m.content} for m in request.messages]
-    last_msg = msgs[-1]["content"] if msgs else ""
+    user_turns = [m["content"] for m in msgs if m.get("role") == "user"]
+    last_msg = user_turns[-1] if user_turns else ""
+    full_user_text = " ".join(user_turns) if user_turns else ""
     
     # 1. Emergency Safety Override Check
     triage_level, emergency_msg = evaluate_medical_triage(last_msg)
+    if triage_level != "EMERGENCY" and full_user_text:
+        triage_level_full, emergency_msg_full = evaluate_medical_triage(full_user_text)
+        if triage_level_full == "EMERGENCY":
+            triage_level = "EMERGENCY"
+            emergency_msg = emergency_msg_full
+
     is_emergency = (triage_level == "EMERGENCY")
     
-    # 2. 4-Step Clinical Triage & Department Routing
-    triage_assessment = run_triage_assessment(last_msg)
+    # 2. 4-Step Clinical Triage & Department Routing (passes accumulated symptom context across turns)
+    triage_assessment = run_triage_assessment(full_user_text or last_msg)
     dept = triage_assessment.get("department", "General Medicine")
     conf_score = round(triage_assessment.get("confidence_score", 0.92) * 100.0, 1)
     
@@ -181,7 +189,7 @@ def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
         risk_level = "low"
 
     # 3. RAG Knowledge Base Semantic Search
-    rag_docs, _ = rag_engine.search(last_msg, top_k=3)
+    rag_docs, _ = rag_engine.search(full_user_text or last_msg, top_k=3)
     rag_ctx = "\n".join([f"- Document {d['document_name']}: {d.get('content', d.get('content_snippet', ''))[:300]}" for d in rag_docs])
     
     # 4. Multi-turn Conversational LLM Synthesizer
@@ -194,11 +202,11 @@ def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
             patient_context_str=request.patient_context or "",
             rag_context_str=rag_ctx
         )
-        chips = generate_contextual_chips(last_msg, dept)
+        chips = generate_contextual_chips(full_user_text or last_msg, dept)
 
     # 5. Generate structured SOAP note for clinical documentation
     soap_note = generate_soap_clinical_note(
-        patient_text=last_msg,
+        patient_text=full_user_text or last_msg,
         extracted_context=triage_assessment.get("extracted_context", {}),
         triage_info=triage_assessment
     )
