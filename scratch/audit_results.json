@@ -1,0 +1,1699 @@
+{
+  "interfaces": [
+    {
+      "file": "lib\\googleAuth.ts",
+      "line": 13,
+      "interface": "Window",
+      "field": "client_id",
+      "raw": "client_id: string;"
+    },
+    {
+      "file": "lib\\googleAuth.ts",
+      "line": 15,
+      "interface": "Window",
+      "field": "auto_select",
+      "raw": "auto_select?: boolean;"
+    },
+    {
+      "file": "lib\\googleAuth.ts",
+      "line": 16,
+      "interface": "Window",
+      "field": "cancel_on_tap_outside",
+      "raw": "cancel_on_tap_outside?: boolean;"
+    },
+    {
+      "file": "lib\\googleAuth.ts",
+      "line": 27,
+      "interface": "Window",
+      "field": "logo_alignment",
+      "raw": "logo_alignment?: 'left' | 'center';"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 3,
+      "interface": "User",
+      "field": "patient_code",
+      "raw": "patient_code?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 26,
+      "interface": "Doctor",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 32,
+      "interface": "Doctor",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 34,
+      "interface": "Doctor",
+      "field": "hospital_name",
+      "raw": "hospital_name?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 39,
+      "interface": "Doctor",
+      "field": "reviews_count",
+      "raw": "reviews_count?: number;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 41,
+      "interface": "Doctor",
+      "field": "experience_years",
+      "raw": "experience_years?: number;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 43,
+      "interface": "Doctor",
+      "field": "consultation_fee",
+      "raw": "consultation_fee?: number;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 47,
+      "interface": "Doctor",
+      "field": "room_number",
+      "raw": "room_number?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 50,
+      "interface": "Doctor",
+      "field": "is_available",
+      "raw": "is_available?: boolean;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 52,
+      "interface": "Doctor",
+      "field": "available_days",
+      "raw": "available_days?: string[];"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 54,
+      "interface": "Doctor",
+      "field": "slot_capacities",
+      "raw": "slot_capacities?: any[];"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 59,
+      "interface": "Hospital",
+      "field": "hospital_code",
+      "raw": "hospital_code?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 81,
+      "interface": "Appointment",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 108,
+      "interface": "DrugInfoData",
+      "field": "drug_name",
+      "raw": "drug_name: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 111,
+      "interface": "DrugInfoData",
+      "field": "indications_and_usage",
+      "raw": "indications_and_usage?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 164,
+      "interface": "MedicineSearchResultItem",
+      "field": "generic_name",
+      "raw": "generic_name: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 165,
+      "interface": "MedicineSearchResultItem",
+      "field": "dosage_form",
+      "raw": "dosage_form?: string;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 169,
+      "interface": "MedicineSearchResultItem",
+      "field": "match_type",
+      "raw": "match_type: 'exact' | 'prefix' | 'contains' | 'fuzzy';"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 170,
+      "interface": "MedicineSearchResultItem",
+      "field": "similarity_score",
+      "raw": "similarity_score: number;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 176,
+      "interface": "MedicineSearchResponse",
+      "field": "did_you_mean",
+      "raw": "did_you_mean?: string | null;"
+    },
+    {
+      "file": "lib\\types.ts",
+      "line": 214,
+      "interface": "MedicalHistoryItem",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 96,
+      "interface": "ConsultationTab",
+      "field": "has_vitals",
+      "raw": "has_vitals: boolean;"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 98,
+      "interface": "ConsultationTab",
+      "field": "abnormal_flags",
+      "raw": "abnormal_flags: string[];"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 99,
+      "interface": "ConsultationTab",
+      "field": "lab_tests",
+      "raw": "lab_tests: any[];"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 31,
+      "interface": "VitalsRecord",
+      "field": "appointment_id",
+      "raw": "appointment_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 32,
+      "interface": "VitalsRecord",
+      "field": "patient_id",
+      "raw": "patient_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 33,
+      "interface": "VitalsRecord",
+      "field": "height_cm",
+      "raw": "height_cm?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 34,
+      "interface": "VitalsRecord",
+      "field": "weight_kg",
+      "raw": "weight_kg?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 36,
+      "interface": "VitalsRecord",
+      "field": "bp_systolic",
+      "raw": "bp_systolic?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 37,
+      "interface": "VitalsRecord",
+      "field": "bp_diastolic",
+      "raw": "bp_diastolic?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 38,
+      "interface": "VitalsRecord",
+      "field": "heart_rate",
+      "raw": "heart_rate?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 40,
+      "interface": "VitalsRecord",
+      "field": "temperature_unit",
+      "raw": "temperature_unit?: 'C' | 'F';"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 41,
+      "interface": "VitalsRecord",
+      "field": "respiratory_rate",
+      "raw": "respiratory_rate?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 43,
+      "interface": "VitalsRecord",
+      "field": "blood_glucose",
+      "raw": "blood_glucose?: number | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 44,
+      "interface": "VitalsRecord",
+      "field": "glucose_context",
+      "raw": "glucose_context?: GlucoseContext | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 46,
+      "interface": "VitalsRecord",
+      "field": "abnormal_flags",
+      "raw": "abnormal_flags?: string[];"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 47,
+      "interface": "VitalsRecord",
+      "field": "recorded_by",
+      "raw": "recorded_by?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 48,
+      "interface": "VitalsRecord",
+      "field": "recorded_by_name",
+      "raw": "recorded_by_name?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 49,
+      "interface": "VitalsRecord",
+      "field": "recorded_at",
+      "raw": "recorded_at?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 53,
+      "interface": "VitalsFormData",
+      "field": "appointment_id",
+      "raw": "appointment_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 54,
+      "interface": "VitalsFormData",
+      "field": "patient_id",
+      "raw": "patient_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 55,
+      "interface": "VitalsFormData",
+      "field": "height_cm",
+      "raw": "height_cm?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 56,
+      "interface": "VitalsFormData",
+      "field": "weight_kg",
+      "raw": "weight_kg?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 57,
+      "interface": "VitalsFormData",
+      "field": "bp_systolic",
+      "raw": "bp_systolic?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 58,
+      "interface": "VitalsFormData",
+      "field": "bp_diastolic",
+      "raw": "bp_diastolic?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 59,
+      "interface": "VitalsFormData",
+      "field": "heart_rate",
+      "raw": "heart_rate?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 61,
+      "interface": "VitalsFormData",
+      "field": "temperature_unit",
+      "raw": "temperature_unit?: 'C' | 'F';"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 62,
+      "interface": "VitalsFormData",
+      "field": "respiratory_rate",
+      "raw": "respiratory_rate?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 64,
+      "interface": "VitalsFormData",
+      "field": "blood_glucose",
+      "raw": "blood_glucose?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 65,
+      "interface": "VitalsFormData",
+      "field": "glucose_context",
+      "raw": "glucose_context?: GlucoseContext;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 71,
+      "interface": "LabTestRecord",
+      "field": "appointment_id",
+      "raw": "appointment_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 72,
+      "interface": "LabTestRecord",
+      "field": "patient_id",
+      "raw": "patient_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 73,
+      "interface": "LabTestRecord",
+      "field": "test_type",
+      "raw": "test_type: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 74,
+      "interface": "LabTestRecord",
+      "field": "structured_results",
+      "raw": "structured_results?: Record<string, any>;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 75,
+      "interface": "LabTestRecord",
+      "field": "free_text_result",
+      "raw": "free_text_result?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 76,
+      "interface": "LabTestRecord",
+      "field": "file_url",
+      "raw": "file_url?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 78,
+      "interface": "LabTestRecord",
+      "field": "ordered_by",
+      "raw": "ordered_by?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 79,
+      "interface": "LabTestRecord",
+      "field": "recorded_by",
+      "raw": "recorded_by?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 80,
+      "interface": "LabTestRecord",
+      "field": "recorded_by_name",
+      "raw": "recorded_by_name?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 81,
+      "interface": "LabTestRecord",
+      "field": "recorded_at",
+      "raw": "recorded_at?: string | null;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 85,
+      "interface": "LabTestFormData",
+      "field": "appointment_id",
+      "raw": "appointment_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 86,
+      "interface": "LabTestFormData",
+      "field": "patient_id",
+      "raw": "patient_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 87,
+      "interface": "LabTestFormData",
+      "field": "test_type",
+      "raw": "test_type: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 88,
+      "interface": "LabTestFormData",
+      "field": "structured_results",
+      "raw": "structured_results?: Record<string, any>;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 89,
+      "interface": "LabTestFormData",
+      "field": "free_text_result",
+      "raw": "free_text_result?: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 90,
+      "interface": "LabTestFormData",
+      "field": "file_url",
+      "raw": "file_url?: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 99,
+      "interface": "NurseQueuePatient",
+      "field": "blood_group",
+      "raw": "blood_group?: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 101,
+      "interface": "NurseQueuePatient",
+      "field": "patient_code",
+      "raw": "patient_code?: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 108,
+      "interface": "NurseQueueDoctor",
+      "field": "room_number",
+      "raw": "room_number?: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 112,
+      "interface": "NurseQueueItem",
+      "field": "appointment_id",
+      "raw": "appointment_id: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 113,
+      "interface": "NurseQueueItem",
+      "field": "token_number",
+      "raw": "token_number?: number;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 114,
+      "interface": "NurseQueueItem",
+      "field": "queue_status",
+      "raw": "queue_status: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 115,
+      "interface": "NurseQueueItem",
+      "field": "vitals_status",
+      "raw": "vitals_status: VitalsStatus;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 118,
+      "interface": "NurseQueueItem",
+      "field": "appointment_type",
+      "raw": "appointment_type: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 119,
+      "interface": "NurseQueueItem",
+      "field": "chief_complaint",
+      "raw": "chief_complaint: string;"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 123,
+      "interface": "NurseQueueItem",
+      "field": "abnormal_flags",
+      "raw": "abnormal_flags?: string[];"
+    },
+    {
+      "file": "types\\nurse.ts",
+      "line": 124,
+      "interface": "NurseQueueItem",
+      "field": "lab_test_count",
+      "raw": "lab_test_count?: number;"
+    },
+    {
+      "file": "types\\receptionist.ts",
+      "line": 20,
+      "interface": "DoctorRecord",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "types\\receptionist.ts",
+      "line": 25,
+      "interface": "DoctorRecord",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "types\\receptionist.ts",
+      "line": 79,
+      "interface": "ReceptionistProfile",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 7,
+      "interface": "Staff",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 16,
+      "interface": "Staff",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 19,
+      "interface": "Staff",
+      "field": "doctor_id",
+      "raw": "doctor_id?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 25,
+      "interface": "AdminProfile",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 37,
+      "interface": "AdminProfile",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 42,
+      "interface": "ReceptionistRecord",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 52,
+      "interface": "ReceptionistRecord",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 64,
+      "interface": "NurseRecord",
+      "field": "staff_code",
+      "raw": "staff_code?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 73,
+      "interface": "NurseRecord",
+      "field": "hospital_id",
+      "raw": "hospital_id?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 79,
+      "interface": "NurseRecord",
+      "field": "created_at",
+      "raw": "created_at?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 99,
+      "interface": "HospitalBranch",
+      "field": "hospital_code",
+      "raw": "hospital_code?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 140,
+      "interface": "SuperAdminStats",
+      "field": "total_hospitals",
+      "raw": "total_hospitals: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 141,
+      "interface": "SuperAdminStats",
+      "field": "active_hospitals",
+      "raw": "active_hospitals: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 142,
+      "interface": "SuperAdminStats",
+      "field": "total_admins",
+      "raw": "total_admins: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 143,
+      "interface": "SuperAdminStats",
+      "field": "hospitals_with_admin",
+      "raw": "hospitals_with_admin: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 144,
+      "interface": "SuperAdminStats",
+      "field": "hospitals_without_admin",
+      "raw": "hospitals_without_admin: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 145,
+      "interface": "SuperAdminStats",
+      "field": "total_doctors",
+      "raw": "total_doctors: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 146,
+      "interface": "SuperAdminStats",
+      "field": "total_receptionists",
+      "raw": "total_receptionists: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 147,
+      "interface": "SuperAdminStats",
+      "field": "total_patients",
+      "raw": "total_patients: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 152,
+      "interface": "SuperAdminHospital",
+      "field": "hospital_code",
+      "raw": "hospital_code: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 157,
+      "interface": "SuperAdminHospital",
+      "field": "facility_type",
+      "raw": "facility_type?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 159,
+      "interface": "SuperAdminHospital",
+      "field": "reviews_count",
+      "raw": "reviews_count?: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 160,
+      "interface": "SuperAdminHospital",
+      "field": "emergency_available",
+      "raw": "emergency_available?: boolean;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 161,
+      "interface": "SuperAdminHospital",
+      "field": "image_url",
+      "raw": "image_url?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 163,
+      "interface": "SuperAdminHospital",
+      "field": "is_active",
+      "raw": "is_active: boolean;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 164,
+      "interface": "SuperAdminHospital",
+      "field": "created_at",
+      "raw": "created_at?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 165,
+      "interface": "SuperAdminHospital",
+      "field": "has_active_admin",
+      "raw": "has_active_admin: boolean;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 166,
+      "interface": "SuperAdminHospital",
+      "field": "doctor_count",
+      "raw": "doctor_count: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 167,
+      "interface": "SuperAdminHospital",
+      "field": "receptionist_count",
+      "raw": "receptionist_count: number;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 170,
+      "interface": "SuperAdminHospital",
+      "field": "full_name",
+      "raw": "full_name: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 172,
+      "interface": "SuperAdminHospital",
+      "field": "staff_code",
+      "raw": "staff_code: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 174,
+      "interface": "SuperAdminHospital",
+      "field": "is_active",
+      "raw": "is_active: boolean;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 175,
+      "interface": "SuperAdminHospital",
+      "field": "created_at",
+      "raw": "created_at?: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 181,
+      "interface": "SuperAdminAdmin",
+      "field": "staff_code",
+      "raw": "staff_code: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 182,
+      "interface": "SuperAdminAdmin",
+      "field": "full_name",
+      "raw": "full_name: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 187,
+      "interface": "SuperAdminAdmin",
+      "field": "is_active",
+      "raw": "is_active: boolean;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 188,
+      "interface": "SuperAdminAdmin",
+      "field": "hospital_id",
+      "raw": "hospital_id: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 189,
+      "interface": "SuperAdminAdmin",
+      "field": "hospital_name",
+      "raw": "hospital_name: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 190,
+      "interface": "SuperAdminAdmin",
+      "field": "hospital_code",
+      "raw": "hospital_code: string;"
+    },
+    {
+      "file": "types\\staff.ts",
+      "line": 191,
+      "interface": "SuperAdminAdmin",
+      "field": "created_at",
+      "raw": "created_at?: string;"
+    }
+  ],
+  "dual_checks": [
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 66,
+      "code": "setDidYouMean(data.did_you_mean || null);"
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 67,
+      "code": "setIsOpen((data.matches && data.matches.length > 0) || Boolean(data.did_you_mean));"
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 293,
+      "code": "item.match_type === 'exact'"
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 295,
+      "code": ": item.match_type === 'prefix'"
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 300,
+      "code": "{item.match_type === 'exact'"
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 302,
+      "code": ": item.match_type === 'prefix'"
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 318,
+      "code": "{(item.dosage_form || (item.strengths && item.strengths.length > 0)) && ("
+    },
+    {
+      "file": "components\\medicines\\MedicineAutocompleteInput.tsx",
+      "line": 323,
+      "code": "{item.dosage_form || 'Tablet'}"
+    },
+    {
+      "file": "components\\ui\\AppLockModal.tsx",
+      "line": 207,
+      "code": "const localPass = match?.password || match?.password_hash || (user as any)?.password;"
+    },
+    {
+      "file": "components\\ui\\AppLockModal.tsx",
+      "line": 225,
+      "code": "const localPass = match?.password || match?.password_hash || (user as any)?.password;"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 151,
+      "code": "if (s.isAvailable === false || s.is_available === false) {"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 152,
+      "code": "allBlocked.push(s.timeSlot || s.time_slot || '');"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 159,
+      "code": "const timeStr = slot.timeSlot || slot.time_slot || slot.time || '';"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 164,
+      "code": "const isExplicitlyDisabled = slot.isAvailable === false || slot.is_available === false;"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 201,
+      "code": "const slots = slotCapacities || (doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities || [];"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 204,
+      "code": "if (s.isAvailable === false || s.is_available === false) {"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 205,
+      "code": "list.push(s.timeSlot || s.time_slot || '');"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 213,
+      "code": "const isDoctorOffDuty = doctor?.isAvailable === false || doctor?.is_available === false;"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 236,
+      "code": "const timeStr = cap.timeSlot || cap.time_slot || '';"
+    },
+    {
+      "file": "components\\ui\\TimeSlotGrid.tsx",
+      "line": 241,
+      "code": "const isExplicitlyDisabled = cap.isAvailable === false || cap.is_available === false;"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 54,
+      "code": "(d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 66,
+      "code": "(d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 87,
+      "code": "staffCode: staffDoc.staffCode || staffDoc.staff_code,"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 88,
+      "code": "staff_code: staffDoc.staffCode || staffDoc.staff_code,"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 96,
+      "code": "(d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 141,
+      "code": "const caps = (doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities;"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 147,
+      "code": "const caps = (initialDoctor as any)?.slotCapacities || (initialDoctor as any)?.slot_capacities;"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 333,
+      "code": "{doctor.isAvailable === false || doctor.is_available === false ? ("
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 349,
+      "code": "{(doctor.staff_code || doctor.staffCode) && ("
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 351,
+      "code": "{doctor.staff_code || doctor.staffCode}"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 440,
+      "code": "slotCapacities={(doctor as any)?.slotCapacities || (doctor as any)?.slot_capacities}"
+    },
+    {
+      "file": "features\\appointments\\BookAppointmentScreen.tsx",
+      "line": 462,
+      "code": "{doctor.isAvailable === false || doctor.is_available === false ? ("
+    },
+    {
+      "file": "features\\hospitals\\FindHospitalsScreen.tsx",
+      "line": 351,
+      "code": "{(hosp.hospital_code || hosp.hospitalCode) && ("
+    },
+    {
+      "file": "features\\hospitals\\FindHospitalsScreen.tsx",
+      "line": 353,
+      "code": "{hosp.hospital_code || hosp.hospitalCode}"
+    },
+    {
+      "file": "features\\hospitals\\HospitalDetailScreen.tsx",
+      "line": 63,
+      "code": "const availableCount = doctors.filter((d) => d.isAvailable !== false && d.is_available !== false).length;"
+    },
+    {
+      "file": "features\\hospitals\\HospitalDetailScreen.tsx",
+      "line": 81,
+      "code": "const isOffDuty = d.isAvailable === false || d.is_available === false;"
+    },
+    {
+      "file": "features\\hospitals\\HospitalDetailScreen.tsx",
+      "line": 90,
+      "code": "const isOffDuty = doctor.isAvailable === false || doctor.is_available === false;"
+    },
+    {
+      "file": "features\\hospitals\\HospitalDetailScreen.tsx",
+      "line": 338,
+      "code": "const isOffDuty = doc.isAvailable === false || doc.is_available === false;"
+    },
+    {
+      "file": "features\\hospitals\\HospitalDetailScreen.tsx",
+      "line": 370,
+      "code": "{(doc.staff_code || doc.staffCode) && ("
+    },
+    {
+      "file": "features\\hospitals\\HospitalDetailScreen.tsx",
+      "line": 372,
+      "code": "{doc.staff_code || doc.staffCode}"
+    },
+    {
+      "file": "features\\prescriptions\\ScanMedicineScreen.tsx",
+      "line": 276,
+      "code": "const sGen = (item.generic_name || '').toLowerCase();"
+    },
+    {
+      "file": "features\\profile\\ProfileScreen.tsx",
+      "line": 270,
+      "code": "user.patient_code ||"
+    },
+    {
+      "file": "lib\\apiFetch.ts",
+      "line": 14,
+      "code": "const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim().replace(/\\/+$/, '');"
+    },
+    {
+      "file": "lib\\googleAuth.ts",
+      "line": 46,
+      "code": "import.meta.env.VITE_GOOGLE_CLIENT_ID ||"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 630,
+      "code": "confidence: aiData.confidence_score ?? 88,"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 631,
+      "code": "riskLevel: aiData.risk_level ?? 'low',"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 632,
+      "code": "specialty: (aiData.suggested_specialties && aiData.suggested_specialties[0]) || 'General Medicine',"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 633,
+      "code": "isEmergency: aiData.is_emergency ?? false,"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 640,
+      "code": "subjective: aiData.soap_note.subjective || msg.text,"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 641,
+      "code": "objective: aiData.soap_note.objective || 'Pending in-person clinical examination.',"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 642,
+      "code": "assessmentDiagnosis: aiData.soap_note.assessment || `${aiData.suggested_specialties?.[0] || 'General Medicine'} Evaluation`,"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 643,
+      "code": "plan: aiData.soap_note.plan || 'Schedule specialist consultation for formal assessment.',"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 644,
+      "code": "confidence: aiData.confidence_score ?? 88,"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 645,
+      "code": "riskLevel: aiData.risk_level ?? 'low',"
+    },
+    {
+      "file": "lib\\store.ts",
+      "line": 646,
+      "code": "specialty: aiData.suggested_specialties?.[0] || 'General Medicine',"
+    },
+    {
+      "file": "lib\\versionChecker.ts",
+      "line": 115,
+      "code": "const downloadUrl = data.download_url || '';"
+    },
+    {
+      "file": "lib\\versionChecker.ts",
+      "line": 116,
+      "code": "const releaseNotes = data.release_notes || 'Performance improvements and bug fixes.';"
+    },
+    {
+      "file": "lib\\versionChecker.ts",
+      "line": 117,
+      "code": "const releasedAt = data.released_at || '';"
+    },
+    {
+      "file": "portals\\admin\\AdminDoctorManagement.tsx",
+      "line": 374,
+      "code": "{(doc.staff_code || doc.staffCode) && ("
+    },
+    {
+      "file": "portals\\admin\\AdminDoctorManagement.tsx",
+      "line": 376,
+      "code": "{doc.staff_code || doc.staffCode}"
+    },
+    {
+      "file": "portals\\admin\\AdminDoctorManagement.tsx",
+      "line": 514,
+      "code": "{(doc.staff_code || doc.staffCode) && ("
+    },
+    {
+      "file": "portals\\admin\\AdminDoctorManagement.tsx",
+      "line": 516,
+      "code": "{doc.staff_code || doc.staffCode}"
+    },
+    {
+      "file": "portals\\admin\\AdminHospitalManagement.tsx",
+      "line": 176,
+      "code": "{(hosp.hospital_code || hosp.hospitalCode) && ("
+    },
+    {
+      "file": "portals\\admin\\AdminHospitalManagement.tsx",
+      "line": 178,
+      "code": "{hosp.hospital_code || hosp.hospitalCode}"
+    },
+    {
+      "file": "portals\\admin\\AdminLayout.tsx",
+      "line": 398,
+      "code": "{currentStaff?.staff_code || currentStaff?.staffCode || 'A001101'}"
+    },
+    {
+      "file": "portals\\admin\\AdminLayout.tsx",
+      "line": 527,
+      "code": "Admin ID: {currentStaff?.staff_code || currentStaff?.staffCode || 'A001101'}"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 179,
+      "code": "const apptId = (patient as any).appointmentId || (patient as any).appointment_id || (patient as any).id || patient.id;"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 188,
+      "code": "bpSys: nv.bp_systolic || 120,"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 189,
+      "code": "bpDia: nv.bp_diastolic || 80,"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 190,
+      "code": "heartRate: nv.heart_rate || 74,"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 193,
+      "code": "weight: nv.weight_kg || 68,"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 200,
+      "code": "objective: `Nurse Intake Vitals: BP ${updatedVitals.bpSys}/${updatedVitals.bpDia} mmHg, HR ${updatedVitals.heartRate} bpm, SpO2 ${updatedVitals.spo2}%, Temp ${updatedVitals.temperature}\u00b0${nv.temperature_unit || 'C'}, Weight ${updatedVitals.weight} kg, BMI ${nv.bmi || '--'}${nv.blood_glucose ? `, Glucose ${nv.blood_glucose} mg/dL (${nv.glucose_context || ''})` : ''}.${nv.notes ? ` Nurse Notes: ${nv.notes}` : ''}`,"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 389,
+      "code": "<p class=\"credentials\">Cabin 102 \u00b7 Reg: ${currentStaff?.staff_code || 'MCI-84920'}</p>"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 544,
+      "code": "doctorId: currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id || 'doc-current',"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 779,
+      "code": "{nursePrep && (nursePrep.has_vitals || (nursePrep.lab_tests && nursePrep.lab_tests.length > 0)) && ("
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 827,
+      "code": "{nursePrep.vitals.blood_glucose} mg/dL ({nursePrep.vitals.glucose_context || 'random'})"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 863,
+      "code": "<span className=\"text-[10px] text-slate-500\">{lt.free_text_result || 'Completed'}</span>"
+    },
+    {
+      "file": "portals\\doctor\\ActiveConsultation.tsx",
+      "line": 1427,
+      "code": "Cabin 102 \u00b7 Reg: {currentStaff?.staff_code || 'MCI-84920'}"
+    },
+    {
+      "file": "portals\\doctor\\DoctorDashboard.tsx",
+      "line": 40,
+      "code": "const activeDocId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;"
+    },
+    {
+      "file": "portals\\doctor\\DoctorLayout.tsx",
+      "line": 86,
+      "code": "const activeDoctorId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;"
+    },
+    {
+      "file": "portals\\doctor\\DoctorProfile.tsx",
+      "line": 34,
+      "code": "const activeDocId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;"
+    },
+    {
+      "file": "portals\\doctor\\DoctorProfile.tsx",
+      "line": 181,
+      "code": "{currentStaff?.staff_code || 'D001101'}"
+    },
+    {
+      "file": "portals\\nurse\\NurseLayout.tsx",
+      "line": 50,
+      "code": "<span>{currentStaff?.hospital_id === 'hosp-bag' ? 'BAG Hospital' : 'St. Jude Heart & Medical Center'}</span>"
+    },
+    {
+      "file": "portals\\nurse\\NurseLayout.tsx",
+      "line": 53,
+      "code": "{currentStaff?.staff_code || currentStaff?.staffCode || 'N007101'}"
+    },
+    {
+      "file": "portals\\nurse\\NurseLogin.tsx",
+      "line": 41,
+      "code": "const hospId = data.staff.hospitalId || data.staff.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "portals\\nurse\\NurseLogin.tsx",
+      "line": 52,
+      "code": "staff_code: data.staff.staff_code || data.staff.staffCode || 'N007101',"
+    },
+    {
+      "file": "portals\\nurse\\NurseLogin.tsx",
+      "line": 53,
+      "code": "staffCode: data.staff.staffCode || data.staff.staff_code || 'N007101',"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 36,
+      "code": "const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId;"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 60,
+      "code": "(item.patient.patient_code && item.patient.patient_code.toLowerCase().includes(q)) ||"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 61,
+      "code": "String(item.token_number || '').includes(q) ||"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 66,
+      "code": "const matchesStatus = statusFilter === 'all' || item.vitals_status === statusFilter;"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 73,
+      "code": "const pendingCount = queue.filter((i) => i.vitals_status === 'pending').length;"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 74,
+      "code": "const recordedCount = queue.filter((i) => i.vitals_status === 'recorded').length;"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 75,
+      "code": "const flaggedCount = queue.filter((i) => i.vitals_status === 'abnormal_flagged').length;"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 228,
+      "code": "const hasVitals = item.vitals_status !== 'pending';"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 229,
+      "code": "const isFlagged = item.vitals_status === 'abnormal_flagged';"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 256,
+      "code": "<span className=\"text-base font-black leading-none\">{item.token_number || '--'}</span>"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 264,
+      "code": "{item.patient.patient_code || 'PT-REG'}"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 285,
+      "code": "<span>Blood Group: <strong className=\"text-slate-700\">{item.patient.blood_group || 'O+'}</strong></span>"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 312,
+      "code": "{item.lab_test_count !== undefined && item.lab_test_count > 0 && ("
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 356,
+      "code": "Temp: <strong>{item.vitals.temperature}\u00b0{item.vitals.temperature_unit || 'C'}</strong>"
+    },
+    {
+      "file": "portals\\nurse\\NurseQueueDashboard.tsx",
+      "line": 366,
+      "code": "Glucose: <strong>{item.vitals.blood_glucose}</strong> mg/dL ({item.vitals.glucose_context || 'random'})"
+    },
+    {
+      "file": "portals\\nurse\\VitalsEntryModal.tsx",
+      "line": 57,
+      "code": "setTemperatureUnit(v.temperature_unit || 'C');"
+    },
+    {
+      "file": "portals\\nurse\\VitalsEntryModal.tsx",
+      "line": 61,
+      "code": "setGlucoseContext((v.glucose_context as GlucoseContext) || 'random');"
+    },
+    {
+      "file": "portals\\nurse\\VitalsEntryModal.tsx",
+      "line": 182,
+      "code": "Pre-Consultation Clinical Screening &bull; Token #{queueItem.token_number || '--'}"
+    },
+    {
+      "file": "portals\\nurse\\VitalsEntryModal.tsx",
+      "line": 199,
+      "code": "{queueItem.patient.patient_code || 'PT-REG'}"
+    },
+    {
+      "file": "portals\\nurse\\VitalsEntryModal.tsx",
+      "line": 205,
+      "code": "<span>Blood: <strong className=\"text-slate-800\">{queueItem.patient.blood_group || 'O+'}</strong></span>"
+    },
+    {
+      "file": "portals\\receptionist\\DoctorManagement.tsx",
+      "line": 166,
+      "code": "{(doctor.staff_code || doctor.staffCode) && ("
+    },
+    {
+      "file": "portals\\receptionist\\DoctorManagement.tsx",
+      "line": 168,
+      "code": "{doctor.staff_code || doctor.staffCode}"
+    },
+    {
+      "file": "portals\\receptionist\\NurseManagement.tsx",
+      "line": 40,
+      "code": "const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId || 'hosp-bag';"
+    },
+    {
+      "file": "portals\\receptionist\\NurseManagement.tsx",
+      "line": 71,
+      "code": "const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId || 'hosp-bag';"
+    },
+    {
+      "file": "portals\\receptionist\\NurseManagement.tsx",
+      "line": 88,
+      "code": "onShowToast(`Nurse account created! Staff Code: ${created.staff_code || created.staffCode || 'N-Code'}`);"
+    },
+    {
+      "file": "portals\\receptionist\\NurseManagement.tsx",
+      "line": 101,
+      "code": "(n.staff_code && n.staff_code.toLowerCase().includes(q)) ||"
+    },
+    {
+      "file": "portals\\receptionist\\NurseManagement.tsx",
+      "line": 181,
+      "code": "{nurse.staff_code || nurse.staffCode || 'N-Code'}"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 58,
+      "code": "const hospId = data.staff.hospitalId || data.staff.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 69,
+      "code": "doctorId: data.staff.doctorId || data.staff.doctor_id,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 70,
+      "code": "doctor_id: data.staff.doctor_id || data.staff.doctorId,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 71,
+      "code": "staff_code: data.staff.staff_code || data.staff.staffCode,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 72,
+      "code": "staffCode: data.staff.staffCode || data.staff.staff_code,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 156,
+      "code": "(d.staff_code && d.staff_code.toLowerCase() === cleanId) ||"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 160,
+      "code": "const hospId = matchedDoc.hospital_id || matchedDoc.hospitalId || 'hosp-bag';"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 173,
+      "code": "staff_code: matchedDoc.staff_code || matchedDoc.staffCode,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 174,
+      "code": "staffCode: matchedDoc.staffCode || matchedDoc.staff_code,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 187,
+      "code": "(r.staff_code && r.staff_code.toLowerCase() === cleanId) ||"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 191,
+      "code": "const hospId = matchedRec.hospital_id || matchedRec.hospitalId || 'hosp-bag';"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 201,
+      "code": "staff_code: matchedRec.staff_code || matchedRec.staffCode,"
+    },
+    {
+      "file": "portals\\shared\\StaffPortalLogin.tsx",
+      "line": 202,
+      "code": "staffCode: matchedRec.staffCode || matchedRec.staff_code,"
+    },
+    {
+      "file": "portals\\superadmin\\AdminManagement.tsx",
+      "line": 137,
+      "code": "const selectedHospitalHasAdmin = selectedHospitalObj?.has_active_admin ?? false;"
+    },
+    {
+      "file": "portals\\superadmin\\AdminManagement.tsx",
+      "line": 141,
+      "code": "admin.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||"
+    },
+    {
+      "file": "portals\\superadmin\\AdminManagement.tsx",
+      "line": 142,
+      "code": "admin.staff_code.toLowerCase().includes(searchQuery.toLowerCase()) ||"
+    },
+    {
+      "file": "portals\\superadmin\\AdminManagement.tsx",
+      "line": 144,
+      "code": "(admin.hospital_name && admin.hospital_name.toLowerCase().includes(searchQuery.toLowerCase())) ||"
+    },
+    {
+      "file": "portals\\superadmin\\AdminManagement.tsx",
+      "line": 148,
+      "code": "hospitalFilter === 'all' || admin.hospital_id === hospitalFilter;"
+    },
+    {
+      "file": "portals\\superadmin\\AdminManagement.tsx",
+      "line": 298,
+      "code": "{admin.hospital_name || 'Hospital Facility'}"
+    },
+    {
+      "file": "portals\\superadmin\\HospitalManagement.tsx",
+      "line": 140,
+      "code": "h.hospital_code.toLowerCase().includes(searchQuery.toLowerCase()) ||"
+    },
+    {
+      "file": "portals\\superadmin\\HospitalManagement.tsx",
+      "line": 145,
+      "code": "(filterType === 'with_admin' && h.has_active_admin) ||"
+    },
+    {
+      "file": "portals\\superadmin\\HospitalManagement.tsx",
+      "line": 146,
+      "code": "(filterType === 'without_admin' && !h.has_active_admin);"
+    },
+    {
+      "file": "portals\\superadmin\\HospitalManagement.tsx",
+      "line": 261,
+      "code": "<div className=\"text-xs text-teal-700 font-medium mt-0.5\">{hosp.facility_type || 'General Hospital'}</div>"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 189,
+      "code": "<div className=\"text-3xl font-bold text-slate-900\">{stats?.total_hospitals || 0}</div>"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 191,
+      "code": "<span className=\"font-semibold text-emerald-600\">{stats?.active_hospitals || 0} Active</span>"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 210,
+      "code": "({stats?.hospitals_with_admin || 0}/{stats?.total_hospitals || 0})"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 229,
+      "code": "{(stats?.total_doctors || 0) + (stats?.total_receptionists || 0)}"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 232,
+      "code": "<span className=\"font-semibold text-slate-700\">{stats?.total_doctors || 0}</span> Doctors,{' '}"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 233,
+      "code": "<span className=\"font-semibold text-slate-700\">{stats?.total_receptionists || 0}</span> Front Desk"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 247,
+      "code": "<div className=\"text-3xl font-bold text-slate-900\">{stats?.total_patients || 0}</div>"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 300,
+      "code": "{hosp.hospital_code || 'H---'}"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminDashboard.tsx",
+      "line": 311,
+      "code": "{hosp.admin.full_name?.charAt(0) || 'A'}"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminLayout.tsx",
+      "line": 143,
+      "code": "{currentStaff.staff_code || 'SA101'}"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminLogin.tsx",
+      "line": 50,
+      "code": "staff_code: data.staff.staff_code || 'SA101',"
+    },
+    {
+      "file": "portals\\superadmin\\SuperAdminLogin.tsx",
+      "line": 51,
+      "code": "staffCode: data.staff.staff_code || 'SA101',"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 29,
+      "code": "(s) => s.id === doc.id || s.staffCode === doc.id || s.staff_code === doc.id"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 53,
+      "code": "staffCode: s.staffCode || s.staff_code,"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 54,
+      "code": "staff_code: s.staffCode || s.staff_code,"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 58,
+      "code": "hospitalId: (s as any).hospitalId || (s as any).hospital_id || '',"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 59,
+      "code": "hospitalName: (s as any).hospitalName || (s as any).hospital_name || '',"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 100,
+      "code": "(d) => d.id === id || d.staffCode === id || d.staff_code === id"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 128,
+      "code": "staffCode: staffDoc.staffCode || staffDoc.staff_code,"
+    },
+    {
+      "file": "services\\doctorService.ts",
+      "line": 129,
+      "code": "staff_code: staffDoc.staffCode || staffDoc.staff_code,"
+    },
+    {
+      "file": "services\\receptionistService.ts",
+      "line": 17,
+      "code": "photo: d.photo || d.photoUrl || d.photo_url || '/doctor_default.jpg',"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 237,
+      "code": "const hospId = staff.hospitalId || staff.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 250,
+      "code": "employeeId: staff.staff_code || staff.staffCode || staff.id,"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 292,
+      "code": "const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 393,
+      "code": "const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 414,
+      "code": "const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 533,
+      "code": "const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';"
+    },
+    {
+      "file": "store\\staffStore.ts",
+      "line": 547,
+      "code": "const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';"
+    }
+  ]
+}

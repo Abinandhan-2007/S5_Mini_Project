@@ -160,24 +160,23 @@ def get_nurse_queue(
                     query = """
                         SELECT 
                             a.id AS appointment_id,
-                            a.token_number,
-                            a.queue_status,
+                            a.ticket_number AS token_number,
+                            a.status AS queue_status,
                             a.date,
-                            a.time,
-                            a.appointment_type,
-                            a.chief_complaint,
+                            a.time_slot AS time,
+                            a.type AS appointment_type,
                             a.hospital_id,
                             p.id AS patient_id,
-                            p.full_name AS patient_name,
+                            COALESCE(p.full_name, 'Patient') AS patient_name,
                             p.dob AS patient_dob,
                             p.gender AS patient_gender,
                             p.blood_group AS patient_blood_group,
                             p.phone AS patient_phone,
                             p.patient_code,
                             d.id AS doctor_id,
-                            d.name AS doctor_name,
-                            d.specialty AS doctor_specialty,
-                            d.room_number,
+                            COALESCE(d.name, a.doctor_name, 'Attending Doctor') AS doctor_name,
+                            COALESCE(d.specialty, a.doctor_specialty, 'General Medicine') AS doctor_specialty,
+                            COALESCE(d.room_number, 'Cabin 101') AS room_number,
                             v.id AS vitals_id,
                             v.height_cm,
                             v.weight_kg,
@@ -196,8 +195,8 @@ def get_nurse_queue(
                             vs.full_name AS vitals_recorded_by_name,
                             (SELECT COUNT(*) FROM lab_tests lt WHERE lt.appointment_id = a.id) AS lab_test_count
                         FROM appointments a
-                        JOIN patients p ON a.patient_id = p.id
-                        JOIN doctors d ON a.doctor_id = d.id
+                        LEFT JOIN patients p ON a.patient_id = p.id
+                        LEFT JOIN doctors d ON a.doctor_id = d.id
                         LEFT JOIN vitals v ON v.appointment_id = a.id
                         LEFT JOIN staff vs ON v.recorded_by = vs.id
                         WHERE 1=1
@@ -207,7 +206,7 @@ def get_nurse_queue(
                         query += " AND (a.hospital_id = %s OR (a.hospital_id IS NULL AND d.hospital_id = %s))"
                         params.extend([effective_hosp_id, effective_hosp_id])
 
-                    query += " ORDER BY a.date DESC, a.token_number ASC NULLS LAST"
+                    query += " ORDER BY a.created_at DESC NULLS LAST, a.date DESC"
                     cur.execute(query, tuple(params))
                     rows = cur.fetchall()
 
