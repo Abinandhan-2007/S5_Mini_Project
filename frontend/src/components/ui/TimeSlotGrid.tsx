@@ -19,17 +19,6 @@ export interface TimeSlotGridProps {
   selectedDate?: string;
 }
 
-const DEFAULT_SLOTS: TimeSlot[] = [
-  // Morning
-  { time: '09:00 AM - 10:00 AM', period: 'Morning' },
-  { time: '10:00 AM - 11:00 AM', period: 'Morning' },
-  { time: '11:00 AM - 12:00 PM', period: 'Morning' },
-  // Afternoon
-  { time: '02:00 PM - 03:00 PM', period: 'Afternoon' },
-  { time: '03:00 PM - 04:00 PM', period: 'Afternoon' },
-  { time: '04:00 PM - 05:00 PM', period: 'Afternoon' },
-];
-
 /**
  * Extract starting time from a slot string (e.g. "09:00 AM - 10:00 AM" -> "09:00 AM")
  */
@@ -141,9 +130,9 @@ export const areAllTodaySlotsCompleted = (
     ((doctor as any)?.slot_capacities && (doctor as any).slot_capacities.length > 0
       ? (doctor as any).slot_capacities
       : null) ||
-    DEFAULT_SLOTS;
+    [];
 
-  if (!rawSlots || rawSlots.length === 0) return true;
+  if (!rawSlots || rawSlots.length === 0) return false;
 
   const allBlocked: string[] = [...blockedSlots];
   if (Array.isArray(rawSlots)) {
@@ -274,23 +263,8 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
       });
     }
 
-    // 2. Default fallback slots if no custom slots configured
-    return DEFAULT_SLOTS.map((slot) => {
-      const isPastOrTooSoon = isToday && parseTimeToMinutes(slot.time) < minAllowedMinutes;
-      const isBlocked = effectiveBlockedList.some((blocked) => isTimeInWindow(slot.time, blocked));
-      const isFrozen = isPastOrTooSoon || isBlocked;
-
-      return {
-        ...slot,
-        isFrozen,
-        isPastOrTooSoon,
-        isBlocked,
-        isFull: false,
-        statusBadge: isBlocked ? 'Closed' : isPastOrTooSoon ? 'Completed' : 'Available',
-        availableSeats: 3,
-        maxSeats: 6,
-      };
-    });
+    // No slots configured by receptionist for this doctor
+    return [];
   }, [effectiveBlockedList, isDoctorOffDuty, selectedDate, slotCapacities, doctor]);
 
   // List of valid, selectable slots
@@ -378,10 +352,14 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
 
       {/* Slots Grid with Dynamic Receptionist Slots */}
       {slotsWithState.length === 0 ? (
-        <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1.5">
-          <AlertCircle className="w-6 h-6 text-slate-400 mx-auto" />
-          <p className="text-xs font-bold text-slate-700">No Slots Available</p>
-          <p className="text-[11px] text-slate-400">Please choose another date or doctor.</p>
+        <div className="p-6 text-center bg-slate-50/80 rounded-3xl border border-dashed border-slate-200 space-y-2">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-2xs">
+            <Clock className="w-5 h-5 text-amber-600" />
+          </div>
+          <p className="text-xs font-black text-slate-800 font-heading">No Time Slots Configured</p>
+          <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+            Hospital reception has not added consultation time slots for {doctor?.name || 'this specialist'} yet.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">

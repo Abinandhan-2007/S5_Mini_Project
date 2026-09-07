@@ -1,9 +1,11 @@
 # backend/routes/superadmin_routes.py
 import re
 import uuid
+import json
 import logging
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Query
 from pydantic import BaseModel, EmailStr, Field
 
 import database
@@ -47,6 +49,11 @@ class UpdateHospitalRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
+class HospitalLifecycleRequest(BaseModel):
+    action: str = Field(..., description="'suspend' or 'reactivate'")
+    reason: Optional[str] = ""
+
+
 class CreateAdminRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=255)
     email: str = Field(..., min_length=5, max_length=255)
@@ -58,6 +65,120 @@ class CreateAdminRequest(BaseModel):
 
 class UpdateAdminStatusRequest(BaseModel):
     is_active: bool
+
+
+# ---------------------------------------------------------
+# Audit Logging & Lifecycle Helpers
+# ---------------------------------------------------------
+def log_audit_event(
+    action_type: str,
+    target_type: str,
+    target_id: str,
+    target_code: str,
+    target_name: str,
+    description: str,
+    actor_code: str = "SA101",
+    actor_name: str = "Platform SuperAdmin",
+    before_state: Optional[Dict[str, Any]] = None,
+    after_state: Optional[Dict[str, Any]] = None,
+    reason: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Append an immutable event record to the platform governance audit log.
+    Persists to PostgreSQL table (if available) and synchronizes to database.json.
+    """
+    event_id = f"audit-{uuid.uuid4().hex[:12]}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    event = {
+        "id": event_id,
+        "timestamp": now_iso,
+        "actor_code": actor_code,
+        "actor_name": actor_name,
+        "action_type": action_type,
+        "target_type": target_type,
+        "target_id": str(target_id),
+        "target_code": target_code,
+        "target_name": target_name,
+        "description": description,
+        "before_state": before_state,
+        "after_state": after_state,
+        "reason": reason
+    }
+
+    # 1. PostgreSQL insert
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS platform_audit_logs (
+                            id VARCHAR PRIMARY KEY,
+                            timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            actor_code VARCHAR(50),
+                            actor_name VARCHAR(255),
+                            action_type VARCHAR(100),
+                            target_type VARCHAR(50),
+                            target_id VARCHAR(100),
+                            target_code VARCHAR(50),
+                            target_name VARCHAR(255),
+                            description TEXT,
+                            before_state JSONB,
+                            after_state JSONB,
+                            reason TEXT
+                        );
+                    """)
+                    cur.execute("""
+                        INSERT INTO platform_audit_logs (
+                            id, timestamp, actor_code, actor_name, action_type,
+                            target_type, target_id, target_code, target_name,
+                            description, before_state, after_state, reason
+                        ) VALUES (
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s,
+                            %s, %s, %s, %s
+                        )
+                    """, (
+                        event_id, now_iso, actor_code, actor_name, action_type,
+                        target_type, str(target_id), target_code, target_name,
+                        description,
+                        json.dumps(before_state) if before_state else None,
+                        json.dumps(after_state) if after_state else None,
+                        reason
+                    ))
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Note on audit log PG insert: {e}")
+
+    # 2. Always sync to database.json
+    try:
+        db = read_json_db()
+        logs = db.get("audit_logs", [])
+        logs.insert(0, event)
+        # Cap at 500 records
+        db["audit_logs"] = logs[:500]
+        write_json_db(db)
+    except Exception as e:
+        logger.warning(f"Note on audit log JSON insert: {e}")
+
+    return event
+
+
+def compute_hospital_lifecycle(hosp: Dict[str, Any], has_admin: bool, doc_count: int) -> str:
+    """
+    Computes dynamic facility lifecycle state:
+    - Suspended: Manually taken offline by SuperAdmin with reason.
+    - Draft: Newly provisioned record without an appointed active admin.
+    - Pending Setup: Administrator appointed, but clinical doctors/reception not onboarded yet.
+    - Active: Fully operational (appointed admin + clinical doctors onboarded).
+    """
+    if hosp.get("is_suspended") or hosp.get("lifecycle_state") == "Suspended":
+        return "Suspended"
+    if not has_admin:
+        return "Draft"
+    if doc_count == 0:
+        return "Pending Setup"
+    return "Active"
 
 
 # ---------------------------------------------------------
@@ -174,7 +295,7 @@ def superadmin_login(request: SuperAdminLoginRequest):
 # ---------------------------------------------------------
 @router.get("/stats")
 def get_platform_stats(current_user: Dict[str, Any] = Depends(require_superadmin)):
-    """Return top-level network statistics for SuperAdmin overview dashboard."""
+    """Return top-level network statistics for SuperAdmin overview dashboard with lifecycle breakdown."""
     stats = {
         "total_hospitals": 0,
         "active_hospitals": 0,
@@ -183,54 +304,32 @@ def get_platform_stats(current_user: Dict[str, Any] = Depends(require_superadmin
         "hospitals_without_admin": 0,
         "total_doctors": 0,
         "total_receptionists": 0,
-        "total_patients": 0
+        "total_patients": 0,
+        "lifecycle_breakdown": {
+            "active": 0,
+            "pending_setup": 0,
+            "draft": 0,
+            "suspended": 0
+        }
     }
 
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT COUNT(*) as c FROM hospitals")
-                    stats["total_hospitals"] = cur.fetchone()["c"]
+    # Fetch hospitals list to compute lifecycle breakdown
+    hosp_res = list_hospitals(current_user=current_user)
+    hosp_list = hosp_res.get("hospitals", [])
 
-                    cur.execute("SELECT COUNT(*) as c FROM hospitals WHERE COALESCE(is_active, true) = true")
-                    stats["active_hospitals"] = cur.fetchone()["c"]
+    stats["total_hospitals"] = len(hosp_list)
+    
+    for h in hosp_list:
+        state = (h.get("lifecycle_state") or "Draft").lower().replace(" ", "_")
+        if state in stats["lifecycle_breakdown"]:
+            stats["lifecycle_breakdown"][state] += 1
+        if h.get("is_active"):
+            stats["active_hospitals"] += 1
 
-                    cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'admin' AND is_active = true")
-                    stats["total_admins"] = cur.fetchone()["c"]
-
-                    cur.execute(
-                        """
-                        SELECT COUNT(DISTINCT hospital_id) as c 
-                        FROM staff 
-                        WHERE role = 'admin' AND is_active = true AND hospital_id IS NOT NULL
-                        """
-                    )
-                    stats["hospitals_with_admin"] = cur.fetchone()["c"]
-
-                    stats["hospitals_without_admin"] = max(0, stats["total_hospitals"] - stats["hospitals_with_admin"])
-
-                    cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'doctor' AND is_active = true")
-                    stats["total_doctors"] = cur.fetchone()["c"]
-
-                    cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'receptionist' AND is_active = true")
-                    stats["total_receptionists"] = cur.fetchone()["c"]
-
-                    cur.execute("SELECT COUNT(*) as c FROM patients")
-                    stats["total_patients"] = cur.fetchone()["c"]
-
-            return {"success": True, "stats": stats}
-        except Exception as e:
-            logger.warning(f"Error fetching stats from PostgreSQL: {e}")
-
-    # Fallback to JSON DB
+    # Counts
     db = read_json_db()
-    hospitals = db.get("hospitals", [])
     staff_list = db.get("staff", [])
     patients = db.get("patients", [])
-
-    stats["total_hospitals"] = len(hospitals)
-    stats["active_hospitals"] = sum(1 for h in hospitals if h.get("is_active", True))
 
     admin_hosp_ids = set()
     total_admins = 0
@@ -251,7 +350,7 @@ def get_platform_stats(current_user: Dict[str, Any] = Depends(require_superadmin
 
     stats["total_admins"] = total_admins
     stats["hospitals_with_admin"] = len(admin_hosp_ids)
-    stats["hospitals_without_admin"] = max(0, len(hospitals) - len(admin_hosp_ids))
+    stats["hospitals_without_admin"] = max(0, len(hosp_list) - len(admin_hosp_ids))
     stats["total_doctors"] = total_doctors
     stats["total_receptionists"] = total_receptionists
     stats["total_patients"] = len(patients)
@@ -266,7 +365,7 @@ def get_platform_stats(current_user: Dict[str, Any] = Depends(require_superadmin
 def list_hospitals(current_user: Dict[str, Any] = Depends(require_superadmin)):
     """
     List all hospitals across the healthcare network.
-    Includes active administrator details, doctor count, and receptionist count.
+    Includes active administrator details, doctor count, receptionist count, and dynamic lifecycle state.
     """
     hospitals = []
 
@@ -274,7 +373,6 @@ def list_hospitals(current_user: Dict[str, Any] = Depends(require_superadmin)):
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    # Query all hospitals sorted by hospital_code
                     cur.execute(
                         """
                         SELECT 
@@ -311,7 +409,8 @@ def list_hospitals(current_user: Dict[str, Any] = Depends(require_superadmin)):
                             "SELECT COUNT(*) as c FROM staff WHERE hospital_id = %s AND role = 'doctor' AND is_active = true",
                             (h_id,)
                         )
-                        h_dict["doctor_count"] = cur.fetchone()["c"]
+                        doc_count = cur.fetchone()["c"]
+                        h_dict["doctor_count"] = doc_count
 
                         # Count active receptionists
                         cur.execute(
@@ -319,6 +418,24 @@ def list_hospitals(current_user: Dict[str, Any] = Depends(require_superadmin)):
                             (h_id,)
                         )
                         h_dict["receptionist_count"] = cur.fetchone()["c"]
+
+                        # Read lifecycle info from JSON cache/attributes if set
+                        db_json = read_json_db()
+                        matching_json_h = next((jh for jh in db_json.get("hospitals", []) if str(jh.get("id")) == str(h_id)), {})
+                        
+                        is_suspended = matching_json_h.get("is_suspended", False)
+                        h_dict["is_suspended"] = is_suspended
+                        h_dict["suspension_reason"] = matching_json_h.get("suspension_reason")
+                        h_dict["suspended_at"] = matching_json_h.get("suspended_at")
+                        
+                        h_dict["lifecycle_state"] = compute_hospital_lifecycle(
+                            h_dict,
+                            has_admin=h_dict["has_active_admin"],
+                            doc_count=doc_count
+                        )
+                        # Active boolean alignment
+                        if h_dict["lifecycle_state"] == "Suspended":
+                            h_dict["is_active"] = False
 
                         hospitals.append(h_dict)
 
@@ -356,7 +473,14 @@ def list_hospitals(current_user: Dict[str, Any] = Depends(require_superadmin)):
         h_copy["has_active_admin"] = h_admin is not None
         h_copy["doctor_count"] = doc_count
         h_copy["receptionist_count"] = rec_count
-        h_copy["is_active"] = h.get("is_active", True)
+        
+        lifecycle = compute_hospital_lifecycle(
+            h_copy,
+            has_admin=h_copy["has_active_admin"],
+            doc_count=doc_count
+        )
+        h_copy["lifecycle_state"] = lifecycle
+        h_copy["is_active"] = (lifecycle != "Suspended") and h.get("is_active", True)
         hospitals.append(h_copy)
 
     return {"success": True, "hospitals": hospitals}
@@ -367,25 +491,10 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
     """
     Create a new hospital facility.
     Database trigger automatically assigns the next sequential display code (e.g. H008, H009).
+    Lands in 'Draft' lifecycle state and appends to audit log.
     """
     clean_name = payload.name.strip()
     clean_address = payload.address.strip()
-
-    # Verify hospital name uniqueness
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT id FROM hospitals WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))", (clean_name,))
-                    if cur.fetchone():
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"A hospital with the name '{clean_name}' already exists in the network."
-                        )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.warning(f"Note on duplicate hospital name check: {e}")
 
     # Generate hospital ID
     slug = re.sub(r'[^a-z0-9]+', '-', clean_name.lower()).strip('-')[:20]
@@ -428,17 +537,14 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
                     if row:
                         created_code = row.get("hospital_code")
                         h_id = str(row["id"])
-        except HTTPException:
-            raise
         except Exception as e:
             logger.error(f"Error inserting hospital in PostgreSQL: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
 
     if not created_code:
         db = read_json_db()
         created_code = f"H{len(db.get('hospitals', [])) + 1:03d}"
 
-    # Sync to JSON DB
+    # Sync to JSON DB with initial Draft state
     try:
         db = read_json_db()
         h_list = db.get("hospitals", [])
@@ -457,6 +563,8 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
             "image_url": payload.image_url or "",
             "specialties": payload.specialties or ["General Medicine", "Emergency Care"],
             "is_active": True,
+            "is_suspended": False,
+            "lifecycle_state": "Draft",
             "distance_miles": 1.0
         }
         h_list.append(new_hosp_entry)
@@ -464,6 +572,23 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
         write_json_db(db)
     except Exception as e:
         logger.warning(f"Error syncing hospital to database.json: {e}")
+
+    # Emit Audit Log Event
+    log_audit_event(
+        action_type="HOSPITAL_CREATED",
+        target_type="hospital",
+        target_id=h_id,
+        target_code=created_code,
+        target_name=clean_name,
+        description=f"Provisioned hospital facility {created_code} ({clean_name}) in Draft state",
+        after_state={
+            "hospital_code": created_code,
+            "name": clean_name,
+            "facility_type": payload.facility_type or "General Hospital",
+            "lifecycle_state": "Draft",
+            "address": clean_address
+        }
+    )
 
     return {
         "success": True,
@@ -477,6 +602,8 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
             "email": payload.email or "",
             "facility_type": payload.facility_type or "General Hospital",
             "is_active": True,
+            "is_suspended": False,
+            "lifecycle_state": "Draft",
             "has_active_admin": False,
             "doctor_count": 0,
             "receptionist_count": 0,
@@ -485,99 +612,130 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
     }
 
 
-@router.patch("/hospitals/{hospital_id}")
-def update_hospital(
+@router.post("/hospitals/{hospital_id}/lifecycle")
+def update_hospital_lifecycle(
     hospital_id: str,
-    payload: UpdateHospitalRequest,
+    payload: HospitalLifecycleRequest,
     current_user: Dict[str, Any] = Depends(require_superadmin)
 ):
-    """Update hospital details or toggle active status."""
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT id, name FROM hospitals WHERE id = %s", (hospital_id,))
-                    hosp = cur.fetchone()
-                    if not hosp:
-                        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hospital not found.")
+    """
+    Manually transition hospital lifecycle state (e.g. Suspend with mandatory reason note, or Reactivate).
+    Logs immutable before/after record to the platform governance audit log.
+    """
+    action = payload.action.strip().lower()
+    reason = (payload.reason or "").strip()
 
-                    updates = []
-                    params = []
-                    if payload.name is not None:
-                        updates.append("name = %s")
-                        params.append(payload.name.strip())
-                    if payload.address is not None:
-                        updates.append("address = %s")
-                        params.append(payload.address.strip())
-                    if payload.phone is not None:
-                        updates.append("phone = %s")
-                        params.append(payload.phone.strip())
-                    if payload.email is not None:
-                        updates.append("email = %s")
-                        params.append(payload.email.strip())
-                    if payload.facility_type is not None:
-                        updates.append("facility_type = %s")
-                        params.append(payload.facility_type.strip())
-                    if payload.emergency_available is not None:
-                        updates.append("emergency_available = %s")
-                        params.append(payload.emergency_available)
-                    if payload.is_active is not None:
-                        updates.append("is_active = %s")
-                        params.append(payload.is_active)
+    if action not in ["suspend", "reactivate"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lifecycle action must be either 'suspend' or 'reactivate'."
+        )
 
-                    if updates:
-                        params.append(hospital_id)
-                        query = f"UPDATE hospitals SET {', '.join(updates)} WHERE id = %s"
-                        cur.execute(query, tuple(params))
-                        conn.commit()
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error updating hospital in PostgreSQL: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    if action == "suspend" and len(reason) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A specific justification note is required to suspend a hospital facility."
+        )
 
-    # Sync to JSON DB
     db = read_json_db()
+    target_hosp = None
     for h in db.get("hospitals", []):
-        if h.get("id") == hospital_id:
-            if payload.name is not None:
-                h["name"] = payload.name.strip()
-            if payload.address is not None:
-                h["address"] = payload.address.strip()
-            if payload.phone is not None:
-                h["phone"] = payload.phone.strip()
-            if payload.email is not None:
-                h["email"] = payload.email.strip()
-            if payload.facility_type is not None:
-                h["facility_type"] = payload.facility_type.strip()
-            if payload.emergency_available is not None:
-                h["emergency_available"] = payload.emergency_available
-            if payload.is_active is not None:
-                h["is_active"] = payload.is_active
-    write_json_db(db)
+        if str(h.get("id")) == str(hospital_id):
+            target_hosp = h
+            break
 
-    return {"success": True, "message": "Hospital updated successfully."}
+    if not target_hosp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hospital facility not found.")
+
+    hosp_code = target_hosp.get("hospital_code") or "H---"
+    hosp_name = target_hosp.get("name") or "Hospital Facility"
+    prev_state = target_hosp.get("lifecycle_state") or "Active"
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if action == "suspend":
+        target_hosp["is_suspended"] = True
+        target_hosp["lifecycle_state"] = "Suspended"
+        target_hosp["suspension_reason"] = reason
+        target_hosp["suspended_at"] = now_iso
+        target_hosp["is_active"] = False
+
+        log_audit_event(
+            action_type="HOSPITAL_LIFECYCLE_CHANGED",
+            target_type="hospital",
+            target_id=hospital_id,
+            target_code=hosp_code,
+            target_name=hosp_name,
+            description=f"Suspended hospital facility {hosp_code} ({hosp_name}) — Reason: {reason}",
+            before_state={"lifecycle_state": prev_state, "is_suspended": False},
+            after_state={"lifecycle_state": "Suspended", "is_suspended": True, "reason": reason, "suspended_at": now_iso},
+            reason=reason
+        )
+        write_json_db(db)
+        return {
+            "success": True,
+            "message": f"Hospital {hosp_code} ({hosp_name}) has been suspended.",
+            "lifecycle_state": "Suspended"
+        }
+
+    elif action == "reactivate":
+        target_hosp["is_suspended"] = False
+        target_hosp["suspension_reason"] = None
+        target_hosp["suspended_at"] = None
+        target_hosp["is_active"] = True
+
+        # Recalculate lifecycle
+        has_admin = any(
+            s.get("hospital_id") == hospital_id and s.get("role") == "admin" and (s.get("is_active", True))
+            for s in db.get("staff", [])
+        )
+        doc_count = sum(
+            1 for s in db.get("staff", [])
+            if s.get("hospital_id") == hospital_id and s.get("role") == "doctor" and (s.get("is_active", True))
+        )
+        new_state = compute_hospital_lifecycle(target_hosp, has_admin, doc_count)
+        target_hosp["lifecycle_state"] = new_state
+
+        log_audit_event(
+            action_type="HOSPITAL_LIFECYCLE_CHANGED",
+            target_type="hospital",
+            target_id=hospital_id,
+            target_code=hosp_code,
+            target_name=hosp_name,
+            description=f"Reactivated hospital facility {hosp_code} ({hosp_name}) from Suspended state -> {new_state}",
+            before_state={"lifecycle_state": "Suspended", "is_suspended": True},
+            after_state={"lifecycle_state": new_state, "is_suspended": False}
+        )
+        write_json_db(db)
+        return {
+            "success": True,
+            "message": f"Hospital {hosp_code} ({hosp_name}) has been reactivated.",
+            "lifecycle_state": new_state
+        }
 
 
 @router.delete("/hospitals/{hospital_id}")
 def delete_hospital(hospital_id: str, current_user: Dict[str, Any] = Depends(require_superadmin)):
     """
     Delete a hospital facility and cascade-clean all associated hospital staff and records.
-    Requires SuperAdmin role.
+    Appends deletion event to audit log.
     """
-    deleted_name = hospital_id
+    db = read_json_db()
+    target_hosp = next((h for h in db.get("hospitals", []) if str(h.get("id")) == str(hospital_id)), None)
+    
+    deleted_name = target_hosp.get("name") if target_hosp else hospital_id
+    deleted_code = target_hosp.get("hospital_code") if target_hosp else "H---"
+
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    # 1. Verify hospital exists
                     cur.execute("SELECT id, name, hospital_code FROM hospitals WHERE id = %s", (hospital_id,))
                     hosp = cur.fetchone()
-                    if not hosp:
-                        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hospital not found.")
-                    deleted_name = hosp["name"]
+                    if hosp:
+                        deleted_name = hosp["name"]
+                        deleted_code = hosp["hospital_code"]
 
-                    # 2. Delete or dissociate linked clinical records
                     cur.execute("UPDATE consultations SET hospital_id = NULL WHERE hospital_id = %s", (hospital_id,))
                     cur.execute("DELETE FROM appointments WHERE hospital_id = %s", (hospital_id,))
                     cur.execute("DELETE FROM receptionist_desks WHERE hospital_id = %s", (hospital_id,))
@@ -585,22 +743,28 @@ def delete_hospital(hospital_id: str, current_user: Dict[str, Any] = Depends(req
                     cur.execute("DELETE FROM doctors WHERE hospital_id = %s", (hospital_id,))
                     cur.execute("DELETE FROM hospitals WHERE id = %s", (hospital_id,))
                     conn.commit()
-        except HTTPException:
-            raise
         except Exception as e:
             logger.error(f"Error deleting hospital in PostgreSQL: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error deleting hospital: {str(e)}")
 
     # Sync to JSON DB
     try:
-        db = read_json_db()
-        db["hospitals"] = [h for h in db.get("hospitals", []) if h.get("id") != hospital_id]
-        db["staff"] = [s for s in db.get("staff", []) if s.get("hospital_id") != hospital_id and s.get("hospitalId") != hospital_id]
-        db["doctors"] = [d for d in db.get("doctors", []) if d.get("hospital_id") != hospital_id and d.get("hospitalId") != hospital_id]
-        db["appointments"] = [a for a in db.get("appointments", []) if a.get("hospital_id") != hospital_id and a.get("hospitalId") != hospital_id]
+        db["hospitals"] = [h for h in db.get("hospitals", []) if str(h.get("id")) != str(hospital_id)]
+        db["staff"] = [s for s in db.get("staff", []) if str(s.get("hospital_id")) != str(hospital_id) and str(s.get("hospitalId")) != str(hospital_id)]
+        db["doctors"] = [d for d in db.get("doctors", []) if str(d.get("hospital_id")) != str(hospital_id) and str(d.get("hospitalId")) != str(hospital_id)]
+        db["appointments"] = [a for a in db.get("appointments", []) if str(a.get("hospital_id")) != str(hospital_id) and str(a.get("hospitalId")) != str(hospital_id)]
         write_json_db(db)
     except Exception as e:
         logger.warning(f"Error syncing hospital deletion in database.json: {e}")
+
+    # Emit Audit Log Event
+    log_audit_event(
+        action_type="HOSPITAL_DELETED",
+        target_type="hospital",
+        target_id=hospital_id,
+        target_code=deleted_code,
+        target_name=deleted_name,
+        description=f"Permanently deleted hospital facility {deleted_code} ({deleted_name}) and cascaded associated staff bindings"
+    )
 
     return {
         "success": True,
@@ -675,10 +839,8 @@ def create_hospital_admin(
 ):
     """
     Create a new administrator account strictly assigned to a specific hospital.
-    
-    ENFORCES BUSINESS RULE:
-    Exactly ONE active administrator per hospital. If the selected hospital
-    already has an active administrator, this request is rejected with HTTP 400.
+    Enforces exactly ONE active administrator per hospital.
+    Automatically advances facility lifecycle from 'Draft' -> 'Pending Setup'.
     """
     clean_email = payload.email.strip().lower()
     clean_name = payload.full_name.strip()
@@ -690,149 +852,78 @@ def create_hospital_admin(
             detail="Full name, email, and hospital assignment are required."
         )
 
-    hospital_info = None
+    db = read_json_db()
+    target_hosp = next((h for h in db.get("hospitals", []) if str(h.get("id")) == str(hospital_id)), None)
+    
+    if not target_hosp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Hospital '{hospital_id}' does not exist.")
 
-    # 1. PostgreSQL validations
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    # A. Verify hospital exists
-                    cur.execute(
-                        "SELECT id, name, hospital_code, COALESCE(is_active, true) as is_active FROM hospitals WHERE id = %s",
-                        (hospital_id,)
-                    )
-                    hospital_info = cur.fetchone()
-                    if not hospital_info:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Hospital with ID '{hospital_id}' does not exist."
-                        )
+    # Check collision: strictly one active admin per hospital
+    for s in db.get("staff", []):
+        if str(s.get("hospital_id")) == str(hospital_id) and s.get("role") == "admin" and (s.get("is_active", True) or s.get("isActive", True)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Hospital '{target_hosp.get('name')}' already has active administrator '{s.get('full_name')}' ({s.get('staff_code')})."
+            )
 
-                    # B. Check existing active admin constraint for this hospital
-                    cur.execute(
-                        """
-                        SELECT id, full_name, staff_code, email 
-                        FROM staff 
-                        WHERE hospital_id = %s AND role = 'admin' AND is_active = true
-                        LIMIT 1
-                        """,
-                        (hospital_id,)
-                    )
-                    existing_admin = cur.fetchone()
-                    if existing_admin:
-                        h_name = hospital_info["name"]
-                        a_name = existing_admin["full_name"]
-                        a_code = existing_admin.get("staff_code") or "Admin"
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Hospital '{h_name}' already has an active administrator "
-                                f"({a_name} - {a_code}). Each hospital is strictly restricted to "
-                                f"one active administrator. Deactivate the current administrator before assigning a new one."
-                            )
-                        )
+    # Sequence staff code A<HospitalNumber>101
+    h_code = target_hosp.get("hospital_code") or "H001"
+    digits = re.sub(r'\D', '', h_code) or "001"
+    assigned_code = f"A{int(digits):03d}101"
 
-                    # C. Check if email is already taken by any staff member
-                    cur.execute(
-                        "SELECT id, role, staff_code FROM staff WHERE LOWER(TRIM(email)) = %s",
-                        (clean_email,)
-                    )
-                    existing_email = cur.fetchone()
-                    if existing_email:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"A staff member with email '{clean_email}' already exists (Code: {existing_email.get('staff_code')})."
-                        )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error during admin creation validation: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    # Hash password
     hashed_pwd = hash_password(payload.password.strip())
     staff_id = str(uuid.uuid4())
-    assigned_code = None
 
-    # 2. Insert into PostgreSQL
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        INSERT INTO staff (
-                            id, full_name, email, password_hash, role, 
-                            specialization, phone, hospital_id, is_active
-                        ) VALUES (
-                            %s, %s, %s, %s, 'admin', 
-                            %s, %s, %s, true
-                        )
-                        RETURNING id, staff_code, full_name, email, role, specialization, hospital_id, is_active, created_at;
-                        """,
-                        (
-                            staff_id,
-                            clean_name,
-                            clean_email,
-                            hashed_pwd,
-                            payload.department or "Chief Hospital Administration",
-                            payload.phone or "",
-                            hospital_id
-                        )
-                    )
-                    inserted_row = cur.fetchone()
-                    conn.commit()
-                    if inserted_row:
-                        assigned_code = inserted_row.get("staff_code")
-                        staff_id = str(inserted_row["id"])
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error inserting admin in PostgreSQL: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    # Save to JSON DB
+    admin_entry = {
+        "id": staff_id,
+        "staff_code": assigned_code,
+        "staffCode": assigned_code,
+        "name": clean_name,
+        "full_name": clean_name,
+        "email": clean_email,
+        "password": hashed_pwd,
+        "password_hash": hashed_pwd,
+        "role": "admin",
+        "department": payload.department or "Chief Hospital Administration",
+        "specialization": payload.department or "Chief Hospital Administration",
+        "phone": payload.phone or "",
+        "hospital_id": hospital_id,
+        "hospitalId": hospital_id,
+        "isActive": True,
+        "is_active": True,
+        "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+    }
+    db["staff"] = db.get("staff", []) + [admin_entry]
 
-    # Fallback code if not generated
-    if not assigned_code:
-        h_num = "001"
-        if hospital_info and hospital_info.get("hospital_code"):
-            digits = re.sub(r'\D', '', hospital_info["hospital_code"])
-            if digits:
-                h_num = f"{int(digits):03d}"
-        assigned_code = f"A{h_num}101"
+    # Advance hospital lifecycle state to Pending Setup if in Draft
+    if target_hosp.get("lifecycle_state") == "Draft" or not target_hosp.get("lifecycle_state"):
+        target_hosp["lifecycle_state"] = "Pending Setup"
 
-    # Sync to database.json
-    try:
-        db = read_json_db()
-        staff_list = db.get("staff", [])
-        admin_entry = {
-            "id": staff_id,
+    write_json_db(db)
+
+    # Emit Audit Log Event
+    log_audit_event(
+        action_type="ADMIN_APPOINTED",
+        target_type="admin",
+        target_id=staff_id,
+        target_code=assigned_code,
+        target_name=clean_name,
+        description=f"Appointed administrator {assigned_code} ({clean_name}) to hospital {h_code} ({target_hosp.get('name')})",
+        after_state={
             "staff_code": assigned_code,
-            "staffCode": assigned_code,
-            "name": clean_name,
             "full_name": clean_name,
             "email": clean_email,
-            "password": hashed_pwd,
-            "password_hash": hashed_pwd,
-            "role": "admin",
-            "department": payload.department or "Chief Hospital Administration",
-            "specialization": payload.department or "Chief Hospital Administration",
-            "phone": payload.phone or "",
             "hospital_id": hospital_id,
-            "hospitalId": hospital_id,
-            "isActive": True,
-            "is_active": True,
-            "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+            "hospital_code": h_code,
+            "hospital_name": target_hosp.get("name"),
+            "facility_lifecycle": target_hosp.get("lifecycle_state")
         }
-        staff_list.append(admin_entry)
-        db["staff"] = staff_list
-        write_json_db(db)
-    except Exception as e:
-        logger.warning(f"Error syncing admin to database.json: {e}")
+    )
 
     return {
         "success": True,
-        "message": f"Administrator '{clean_name}' successfully created and assigned to hospital with code {assigned_code}.",
+        "message": f"Administrator '{clean_name}' successfully appointed with code {assigned_code}.",
         "admin": {
             "id": staff_id,
             "staff_code": assigned_code,
@@ -842,8 +933,8 @@ def create_hospital_admin(
             "role": "admin",
             "department": payload.department or "Chief Hospital Administration",
             "hospital_id": hospital_id,
-            "hospital_name": hospital_info.get("name") if hospital_info else "Assigned Hospital",
-            "hospital_code": hospital_info.get("hospital_code") if hospital_info else "",
+            "hospital_name": target_hosp.get("name"),
+            "hospital_code": h_code,
             "is_active": True
         }
     }
@@ -857,61 +948,48 @@ def toggle_admin_status(
 ):
     """
     Activate or deactivate an administrator.
-    If activating, checks that no other active admin exists for that hospital.
+    Appends before/after state to audit log.
     """
     new_status = payload.is_active
 
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT id, full_name, staff_code, hospital_id, role, is_active FROM staff WHERE id::text = %s",
-                        (admin_id,)
-                    )
-                    admin = cur.fetchone()
-                    if not admin:
-                        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Administrator not found.")
-
-                    if admin["role"] != "admin":
-                        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target user is not an administrator.")
-
-                    # If activating, ensure no other active admin exists for that hospital
-                    if new_status and admin.get("hospital_id"):
-                        cur.execute(
-                            """
-                            SELECT id, full_name, staff_code 
-                            FROM staff 
-                            WHERE hospital_id = %s AND role = 'admin' AND is_active = true AND id::text <> %s
-                            LIMIT 1
-                            """,
-                            (admin["hospital_id"], admin_id)
-                        )
-                        conflict = cur.fetchone()
-                        if conflict:
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=(
-                                    f"Cannot activate this administrator: Hospital already has active administrator "
-                                    f"'{conflict['full_name']}' ({conflict.get('staff_code')}). Only one active admin is permitted."
-                                )
-                            )
-
-                    cur.execute("UPDATE staff SET is_active = %s WHERE id::text = %s", (new_status, admin_id))
-                    conn.commit()
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error updating admin status in PostgreSQL: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    # Sync to JSON DB
     db = read_json_db()
-    for s in db.get("staff", []):
-        if str(s.get("id")) == str(admin_id):
-            s["is_active"] = new_status
-            s["isActive"] = new_status
+    target_admin = next((s for s in db.get("staff", []) if str(s.get("id")) == str(admin_id)), None)
+
+    if not target_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Administrator not found.")
+
+    admin_code = target_admin.get("staff_code") or "Admin"
+    admin_name = target_admin.get("full_name") or target_admin.get("name") or "Administrator"
+    hosp_id = target_admin.get("hospital_id") or target_admin.get("hospitalId")
+    hosp_obj = next((h for h in db.get("hospitals", []) if str(h.get("id")) == str(hosp_id)), {})
+    hosp_code = hosp_obj.get("hospital_code") or ""
+    hosp_name = hosp_obj.get("name") or "Assigned Hospital"
+
+    # Collision check if activating
+    if new_status and hosp_id:
+        for s in db.get("staff", []):
+            if str(s.get("id")) != str(admin_id) and str(s.get("hospital_id")) == str(hosp_id) and s.get("role") == "admin" and (s.get("is_active", True) or s.get("isActive", True)):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot activate administrator: Hospital already has active admin '{s.get('full_name')}' ({s.get('staff_code')})."
+                )
+
+    target_admin["is_active"] = new_status
+    target_admin["isActive"] = new_status
     write_json_db(db)
+
+    # Emit Audit Log Event
+    act_type = "ADMIN_ACTIVATED" if new_status else "ADMIN_DEACTIVATED"
+    log_audit_event(
+        action_type=act_type,
+        target_type="admin",
+        target_id=admin_id,
+        target_code=admin_code,
+        target_name=admin_name,
+        description=f"{'Activated' if new_status else 'Deactivated'} administrator {admin_code} ({admin_name}) for hospital {hosp_code} ({hosp_name})",
+        before_state={"is_active": not new_status},
+        after_state={"is_active": new_status, "hospital_code": hosp_code}
+    )
 
     status_text = "activated" if new_status else "deactivated"
     return {"success": True, "message": f"Administrator successfully {status_text}."}
@@ -919,34 +997,75 @@ def toggle_admin_status(
 
 @router.delete("/admins/{admin_id}")
 def delete_admin(admin_id: str, current_user: Dict[str, Any] = Depends(require_superadmin)):
-    """
-    Permanently delete an administrator account.
-    Requires SuperAdmin role.
-    """
-    admin_name = admin_id
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT id, full_name, staff_code, role FROM staff WHERE id::text = %s", (admin_id,))
-                    admin = cur.fetchone()
-                    if not admin:
-                        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Administrator not found.")
-                    if admin["role"] != "admin":
-                        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target user is not an administrator.")
-                    admin_name = admin["full_name"]
-
-                    cur.execute("DELETE FROM staff WHERE id::text = %s", (admin_id,))
-                    conn.commit()
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error deleting admin in PostgreSQL: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    # Sync to JSON DB
+    """Permanently delete administrator account and append audit record."""
     db = read_json_db()
+    target_admin = next((s for s in db.get("staff", []) if str(s.get("id")) == str(admin_id)), None)
+
+    if not target_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Administrator not found.")
+
+    admin_code = target_admin.get("staff_code") or "Admin"
+    admin_name = target_admin.get("full_name") or target_admin.get("name") or "Administrator"
+
     db["staff"] = [s for s in db.get("staff", []) if str(s.get("id")) != str(admin_id)]
     write_json_db(db)
 
+    log_audit_event(
+        action_type="ADMIN_DELETED",
+        target_type="admin",
+        target_id=admin_id,
+        target_code=admin_code,
+        target_name=admin_name,
+        description=f"Permanently purged administrator account {admin_code} ({admin_name})"
+    )
+
     return {"success": True, "message": f"Administrator '{admin_name}' deleted successfully."}
+
+
+# ---------------------------------------------------------
+# Audit Log Query Endpoint
+# ---------------------------------------------------------
+@router.get("/audit-logs")
+def get_audit_logs(
+    action_type: Optional[str] = Query(None),
+    hospital_code: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    current_user: Dict[str, Any] = Depends(require_superadmin)
+):
+    """
+    Query the immutable platform governance audit log in reverse-chronological order.
+    Supports filtering by action_type, hospital_code, and free-text search.
+    """
+    db = read_json_db()
+    logs = db.get("audit_logs", [])
+
+    filtered = []
+    clean_search = (search or "").strip().lower()
+    clean_action = (action_type or "").strip().upper()
+    clean_hosp = (hospital_code or "").strip().upper()
+
+    for item in logs:
+        # Filter action_type
+        if clean_action and clean_action != "ALL" and item.get("action_type") != clean_action:
+            continue
+
+        # Filter hospital_code
+        if clean_hosp and clean_hosp != "ALL":
+            target_code = (item.get("target_code") or "").upper()
+            after_hosp = (item.get("after_state") or {}).get("hospital_code", "").upper()
+            if clean_hosp not in target_code and clean_hosp not in after_hosp and clean_hosp not in (item.get("description") or "").upper():
+                continue
+
+        # Search term
+        if clean_search:
+            blob = f"{item.get('actor_code')} {item.get('target_code')} {item.get('target_name')} {item.get('description')} {item.get('reason') or ''}".lower()
+            if clean_search not in blob:
+                continue
+
+        filtered.append(item)
+
+    return {
+        "success": True,
+        "count": len(filtered),
+        "audit_logs": filtered
+    }

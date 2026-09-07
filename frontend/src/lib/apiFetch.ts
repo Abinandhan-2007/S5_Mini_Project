@@ -166,6 +166,19 @@ export async function apiFetch(
           throw new Error('Received HTML instead of JSON API response');
         }
 
+        // Handle 401 Unauthorized token expiry gracefully
+        if (res.status === 401 && authHeader) {
+          try {
+            const token = localStorage.getItem('staff_token');
+            if (token && authHeader.includes(token)) {
+              console.warn('Staff session token expired or invalidated. Clearing token.');
+              localStorage.removeItem('staff_token');
+            }
+          } catch {
+            // ignore localStorage access issues
+          }
+        }
+
         // Automatically clear offline fallback mode on any successful backend call
         useCarePulseStore.getState().setIsOfflineMode(false);
         return res;

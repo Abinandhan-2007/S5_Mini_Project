@@ -70,12 +70,12 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
     onShowToast?.(`Seat capacity for ${slot.timeSlot} updated to ${updatedSeats}.`);
   };
 
-  const handleAddNewSlotSubmit = (e: React.FormEvent) => {
+  const handleAddNewSlotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeDoctorInModal) return;
 
     const formattedSlotString = `${startTime} - ${endTime}`;
-    addTimeSlot(activeDoctorInModal.id, formattedSlotString, newSlotMaxSeats);
+    await addTimeSlot(activeDoctorInModal.id, formattedSlotString, newSlotMaxSeats);
     setIsAddingNewSlot(false);
     onShowToast?.(`New time slot ${formattedSlotString} added for Dr. ${activeDoctorInModal.name}.`);
   };
@@ -289,67 +289,79 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
 
             {/* Simple Slots List */}
             <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1 no-scrollbar">
-              {activeDoctorInModal.slotCapacities?.map((slot) => {
-                const maxSeats = slot.maxSeats || 6;
-                const onlineMax = slot.onlineMaxSeats ?? Math.ceil(maxSeats / 2);
-                const offlineMax = slot.offlineMaxSeats ?? Math.floor(maxSeats / 2);
-                return (
-                  <div
-                    key={slot.id}
-                    className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all flex items-center justify-between gap-3"
-                  >
-                    {/* Left: Time & 50/50 split */}
-                    <div className="space-y-0.5 min-w-[130px]">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 font-mono">
-                        <Clock className="w-3.5 h-3.5 text-[#0B5A54]" />
-                        <span>{slot.timeSlot}</span>
-                      </div>
-                      <p className="text-[10.5px] text-slate-500 font-medium">
-                        📱 {onlineMax} App • 🚶 {offlineMax} Walk-In
-                      </p>
-                    </div>
-
-                    {/* Center: Total Seats Stepper */}
-                    <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Seats:</span>
-                      <button
-                        onClick={() => handleUpdateSeatLimit(slot, -1)}
-                        disabled={maxSeats <= (slot.bookedSeats || 0)}
-                        className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs disabled:opacity-30 cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="font-mono font-black text-slate-900 text-xs w-4 text-center">{maxSeats}</span>
-                      <button
-                        onClick={() => handleUpdateSeatLimit(slot, 1)}
-                        className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Right: Delete */}
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => {
-                          if (activeDoctorInModal) {
-                            setSlotToDelete({
-                              doctorId: activeDoctorInModal.id,
-                              doctorName: activeDoctorInModal.name,
-                              slotId: slot.id,
-                              timeSlot: slot.timeSlot,
-                            });
-                          }
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete slot"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {(!activeDoctorInModal.slotCapacities || activeDoctorInModal.slotCapacities.length === 0) ? (
+                <div className="py-8 px-4 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center mx-auto shadow-2xs">
+                    <Clock className="w-5 h-5 text-[#0B5A54]" />
                   </div>
-                );
-              })}
+                  <p className="text-xs font-black text-slate-800 font-heading">No Time Slots Configured</p>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                    This doctor currently has no configured time slots. Click <strong className="text-slate-700 font-bold">"+ Add Time Slot"</strong> below to create custom consultation slots.
+                  </p>
+                </div>
+              ) : (
+                activeDoctorInModal.slotCapacities.map((slot) => {
+                  const maxSeats = slot.maxSeats || 6;
+                  const onlineMax = slot.onlineMaxSeats ?? Math.ceil(maxSeats / 2);
+                  const offlineMax = slot.offlineMaxSeats ?? Math.floor(maxSeats / 2);
+                  return (
+                    <div
+                      key={slot.id}
+                      className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all flex items-center justify-between gap-3"
+                    >
+                      {/* Left: Time & 50/50 split */}
+                      <div className="space-y-0.5 min-w-[130px]">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 font-mono">
+                          <Clock className="w-3.5 h-3.5 text-[#0B5A54]" />
+                          <span>{slot.timeSlot}</span>
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 font-medium">
+                          📱 {onlineMax} App • 🚶 {offlineMax} Walk-In
+                        </p>
+                      </div>
+
+                      {/* Center: Total Seats Stepper */}
+                      <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Seats:</span>
+                        <button
+                          onClick={() => handleUpdateSeatLimit(slot, -1)}
+                          disabled={maxSeats <= (slot.bookedSeats || 0)}
+                          className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs disabled:opacity-30 cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <span className="font-mono font-black text-slate-900 text-xs w-4 text-center">{maxSeats}</span>
+                        <button
+                          onClick={() => handleUpdateSeatLimit(slot, 1)}
+                          className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Right: Delete */}
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => {
+                            if (activeDoctorInModal) {
+                              setSlotToDelete({
+                                doctorId: activeDoctorInModal.id,
+                                doctorName: activeDoctorInModal.name,
+                                slotId: slot.id,
+                                timeSlot: slot.timeSlot,
+                              });
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete slot"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Add New Custom Slot Form */}
@@ -506,10 +518,12 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  removeTimeSlot(slotToDelete.doctorId, slotToDelete.slotId);
-                  onShowToast?.(`Time slot "${slotToDelete.timeSlot}" removed.`);
-                  setSlotToDelete(null);
+                onClick={async () => {
+                  if (slotToDelete) {
+                    await removeTimeSlot(slotToDelete.doctorId, slotToDelete.slotId);
+                    onShowToast?.(`Time slot "${slotToDelete.timeSlot}" removed.`);
+                    setSlotToDelete(null);
+                  }
                 }}
                 className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-2xl text-xs shadow-md transition-all cursor-pointer active:scale-95"
               >

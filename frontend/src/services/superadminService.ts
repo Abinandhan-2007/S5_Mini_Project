@@ -1,6 +1,11 @@
-// frontend/src/services/superadminService.ts
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/apiFetch';
-import type { SuperAdminHospital, SuperAdminAdmin, SuperAdminStats, Staff } from '../types/staff';
+import type {
+  SuperAdminHospital,
+  SuperAdminAdmin,
+  SuperAdminStats,
+  SuperAdminAuditEvent,
+  Staff
+} from '../types/staff';
 
 export const superadminService = {
   login: async (credentials: { email: string; password: string }): Promise<{ token: string; staff: Staff }> => {
@@ -55,6 +60,19 @@ export const superadminService = {
     }
   },
 
+  updateHospitalLifecycle: async (
+    hospitalId: string,
+    action: 'suspend' | 'reactivate',
+    reason?: string
+  ): Promise<{ message: string; lifecycle_state: string }> => {
+    const res = await apiPost(`/superadmin/hospitals/${hospitalId}/lifecycle`, { action, reason });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Failed to update facility lifecycle state');
+    }
+    return data;
+  },
+
   getAdmins: async (): Promise<SuperAdminAdmin[]> => {
     const res = await apiGet('/superadmin/admins');
     const data = await res.json();
@@ -105,4 +123,29 @@ export const superadminService = {
     }
     return data;
   },
+
+  getAuditLogs: async (params?: {
+    action_type?: string;
+    hospital_code?: string;
+    search?: string;
+  }): Promise<SuperAdminAuditEvent[]> => {
+    const queryParts: string[] = [];
+    if (params?.action_type && params.action_type !== 'ALL') {
+      queryParts.push(`action_type=${encodeURIComponent(params.action_type)}`);
+    }
+    if (params?.hospital_code && params.hospital_code !== 'ALL') {
+      queryParts.push(`hospital_code=${encodeURIComponent(params.hospital_code)}`);
+    }
+    if (params?.search) {
+      queryParts.push(`search=${encodeURIComponent(params.search)}`);
+    }
+    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+    const res = await apiGet(`/superadmin/audit-logs${queryString}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Failed to fetch platform audit logs');
+    }
+    return data.audit_logs || [];
+  },
 };
+

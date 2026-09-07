@@ -15,7 +15,7 @@ import {
   KeyRound,
   ShieldCheck,
 } from 'lucide-react';
-import { useStaffStore, createSplitSlot } from '../../store/staffStore';
+import { useStaffStore } from '../../store/staffStore';
 import type { DoctorRecord } from '../../types/receptionist';
 
 interface AdminDoctorManagementProps {
@@ -121,7 +121,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
     setFormPhone(doc.phone || '+91 98765 11000');
     setFormEmail(doc.email || 'doctor@carepulse.com');
     setFormUsername(doc.username || doc.email.split('@')[0] || 'doctor');
-    setFormPassword(doc.password || 'doc123');
+    setFormPassword(doc.password || '');
     setShowFormPassword(false);
     setFormRoom(doc.roomNumber);
     setFormDays(doc.availableDays || DEFAULT_DAYS);
@@ -135,7 +135,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
       return;
     }
 
-    const calculatedUsername = formUsername.trim() || formEmail.split('@')[0] || 'doctor';
+    const calculatedUsername = formUsername.trim() || formEmail.split('@')[0] || formName.toLowerCase().replace(/\s+/g, '.');
 
     await createDoctor({
       name: formName.trim(),
@@ -150,14 +150,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
       roomNumber: formRoom.trim(),
       availableDays: formDays,
       isAvailable: true,
-      slotCapacities: [
-        createSplitSlot('slot-1', '09:00 AM - 10:00 AM', 6, 0, 0, true),
-        createSplitSlot('slot-2', '10:00 AM - 11:00 AM', 6, 0, 0, true),
-        createSplitSlot('slot-3', '11:00 AM - 12:00 PM', 6, 0, 0, true),
-        createSplitSlot('slot-4', '02:00 PM - 03:00 PM', 6, 0, 0, true),
-        createSplitSlot('slot-5', '03:00 PM - 04:00 PM', 6, 0, 0, true),
-        createSplitSlot('slot-6', '04:00 PM - 05:00 PM', 6, 0, 0, true),
-      ],
+      slotCapacities: [],
     });
 
     setIsAddModalOpen(false);
@@ -168,7 +161,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
     e.preventDefault();
     if (!selectedDoctor) return;
 
-    await updateDoctor(selectedDoctor.id, {
+    const updates: Partial<DoctorRecord> = {
       name: formName.trim(),
       specialty: formSpecialty,
       department: formDepartment,
@@ -177,10 +170,14 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
       phone: formPhone.trim(),
       email: formEmail.trim(),
       username: formUsername.trim() || selectedDoctor.username || formEmail.split('@')[0],
-      password: formPassword.trim() || selectedDoctor.password || 'doc123',
       roomNumber: formRoom.trim(),
       availableDays: formDays,
-    });
+    };
+    if (formPassword.trim()) {
+      updates.password = formPassword.trim();
+    }
+
+    await updateDoctor(selectedDoctor.id, updates);
 
     setIsEditModalOpen(false);
     setSelectedDoctor(null);

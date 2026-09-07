@@ -5,11 +5,14 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Header, status
+import math
 from pydantic import BaseModel
 from schemas import (
     DoctorCreateRequest,
     DoctorAvailabilityUpdate,
     SlotCapacityUpdate,
+    SlotAddRequest,
+    SlotCapacitySchema,
     TokenStatusUpdate,
     WalkInAppointmentCreate,
     NurseCreateRequest
@@ -20,14 +23,27 @@ logger = logging.getLogger("carepulse.receptionist")
 
 router = APIRouter(prefix="/api/receptionist", tags=["Receptionist Portal"])
 
-DEFAULT_SLOTS = [
-    {"id": "slot-1", "timeSlot": "09:00 AM - 10:00 AM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
-    {"id": "slot-2", "timeSlot": "10:00 AM - 11:00 AM", "maxSeats": 6, "bookedSeats": 0, "availableSeats": 6, "isAvailable": True},
-    {"id": "slot-3", "timeSlot": "11:00 AM - 12:00 PM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
-    {"id": "slot-4", "timeSlot": "02:00 PM - 03:00 PM", "maxSeats": 6, "bookedSeats": 0, "availableSeats": 6, "isAvailable": True},
-    {"id": "slot-5", "timeSlot": "03:00 PM - 04:00 PM", "maxSeats": 4, "bookedSeats": 0, "availableSeats": 4, "isAvailable": True},
-    {"id": "slot-6", "timeSlot": "04:00 PM - 05:00 PM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
-]
+def make_split_slot(slot_id: str, time_slot: str, max_seats: int = 6, booked: int = 0, is_avail: bool = True) -> dict:
+    online_max = math.ceil(max_seats / 2)
+    offline_max = math.floor(max_seats / 2)
+    online_booked = min(online_max, booked)
+    offline_booked = max(0, booked - online_booked)
+    return {
+        "id": slot_id,
+        "timeSlot": time_slot,
+        "maxSeats": max_seats,
+        "bookedSeats": booked,
+        "availableSeats": max(0, max_seats - booked),
+        "onlineMaxSeats": online_max,
+        "onlineBookedSeats": online_booked,
+        "onlineAvailableSeats": max(0, online_max - online_booked),
+        "offlineMaxSeats": offline_max,
+        "offlineBookedSeats": offline_booked,
+        "offlineAvailableSeats": max(0, offline_max - offline_booked),
+        "isAvailable": is_avail
+    }
+
+DEFAULT_SLOTS = []
 
 
 def format_receptionist_doctor(d: dict) -> dict:
@@ -38,14 +54,49 @@ def format_receptionist_doctor(d: dict) -> dict:
         except Exception:
             days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
-    slots = d.get("slot_capacities") or d.get("slotCapacities") or []
-    if isinstance(slots, str):
+    raw_slots = d.get("slot_capacities") or d.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
         try:
-            slots = json.loads(slots)
+            raw_slots = json.loads(raw_slots)
         except Exception:
-            slots = []
-    if not slots or len(slots) == 0:
-        slots = [dict(s) for s in DEFAULT_SLOTS]
+            raw_slots = []
+
+    formatted_slots = []
+    for s in raw_slots:
+        slot_dict = dict(s)
+        max_seats = int(slot_dict.get("maxSeats") or 6)
+        booked = int(slot_dict.get("bookedSeats") or 0)
+        online_max = slot_dict.get("onlineMaxSeats")
+        if online_max is None:
+            online_max = math.ceil(max_seats / 2)
+        else:
+            online_max = int(online_max)
+        offline_max = slot_dict.get("offlineMaxSeats")
+        if offline_max is None:
+            offline_max = math.floor(max_seats / 2)
+        else:
+            offline_max = int(offline_max)
+
+        online_booked = int(slot_dict.get("onlineBookedSeats") or min(online_max, booked))
+        offline_booked = int(slot_dict.get("offlineBookedSeats") or max(0, booked - online_booked))
+        online_avail = max(0, online_max - online_booked)
+        offline_avail = max(0, offline_max - offline_booked)
+        is_avail = bool(slot_dict.get("isAvailable") if slot_dict.get("isAvailable") is not None else True)
+
+        formatted_slots.append({
+            "id": slot_dict.get("id") or f"slot-{uuid.uuid4().hex[:6]}",
+            "timeSlot": slot_dict.get("timeSlot") or slot_dict.get("time_slot") or "09:00 AM - 10:00 AM",
+            "maxSeats": max_seats,
+            "bookedSeats": booked,
+            "availableSeats": online_avail + offline_avail,
+            "onlineMaxSeats": online_max,
+            "onlineBookedSeats": online_booked,
+            "onlineAvailableSeats": online_avail,
+            "offlineMaxSeats": offline_max,
+            "offlineBookedSeats": offline_booked,
+            "offlineAvailableSeats": offline_avail,
+            "isAvailable": is_avail
+        })
 
     photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "/doctor_default.jpg"
     is_avail = bool(d.get("is_available") if d.get("is_available") is not None else d.get("isAvailable", True))
@@ -56,6 +107,9 @@ def format_receptionist_doctor(d: dict) -> dict:
     hosp_name = d.get("hospital_name") or d.get("hospitalName") or "St. Jude Heart & Medical Center"
 
     stf_code = d.get("staff_code") or d.get("staffCode")
+    email = d.get("email") or f"{d['name'].lower().replace(' ', '.')}@carepulse.com"
+    username = d.get("username") or email.split("@")[0]
+    password = d.get("password") or ""
 
     return {
         "id": str(d["id"]),
@@ -72,11 +126,14 @@ def format_receptionist_doctor(d: dict) -> dict:
         "consultationFee": fee,
         "photo": photo,
         "phone": d.get("phone") or "+91 98765 00000",
-        "email": d.get("email") or f"{d['name'].lower().replace(' ', '.')}@carepulse.com",
+        "email": email,
+        "username": username,
+        "password": password,
         "roomNumber": room,
         "isAvailable": is_avail,
         "availableDays": days,
-        "slotCapacities": slots
+        "slotCapacities": formatted_slots,
+        "slot_capacities": formatted_slots
     }
 
 @router.get("/doctors")
@@ -144,7 +201,7 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
     from routes.staff_auth import get_current_staff, hash_password
 
     new_id = f"doc-{uuid.uuid4().hex[:6]}"
-    slots = payload.slotCapacities if payload.slotCapacities else [dict(s) for s in DEFAULT_SLOTS]
+    slots = payload.slotCapacities if payload.slotCapacities else []
     slots_json = [s if isinstance(s, dict) else s.dict() for s in slots]
 
     # Derive hospital_id from payload or staff context
@@ -199,7 +256,7 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
     if not username:
         username = email.split("@")[0]
 
-    raw_pass = payload.password or "doc123"
+    raw_pass = payload.password.strip() if (payload.password and payload.password.strip()) else "doc123"
     hashed_pass = hash_password(raw_pass)
 
     doctor_obj = {
@@ -219,6 +276,7 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
         "phone": payload.phone or "+91 98765 00000",
         "email": email,
         "username": username,
+        "password": raw_pass,
         "roomNumber": payload.roomNumber or "Cabin 105",
         "isAvailable": payload.isAvailable if payload.isAvailable is not None else True,
         "availableDays": payload.availableDays or ["Mon", "Tue", "Wed", "Thu", "Fri"],
@@ -227,13 +285,15 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
 
     new_staff_entry = {
         "id": new_id,
+        "doctor_id": new_id,
+        "doctorId": new_id,
         "staff_code": staff_code,
         "staffCode": staff_code,
         "name": payload.name,
         "full_name": payload.name,
         "email": email,
         "username": username,
-        "password": hashed_pass,
+        "password": raw_pass,
         "password_hash": hashed_pass,
         "role": "doctor",
         "specialization": payload.specialty,
@@ -368,6 +428,9 @@ def update_slot_capacity(
                 detail="Access denied: Nurse accounts are not authorized to modify doctor availability or schedules."
             )
 
+    online_max = math.ceil(payload.maxSeats / 2)
+    offline_max = math.floor(payload.maxSeats / 2)
+
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
@@ -383,63 +446,209 @@ def update_slot_capacity(
                             except Exception:
                                 slots = []
                         if not slots:
-                            slots = [dict(s) for s in DEFAULT_SLOTS]
+                            slots = []
 
                         target_slot = None
                         for s in slots:
-                            if s.get("timeSlot") == payload.timeSlot:
+                            if s.get("timeSlot") == payload.timeSlot or s.get("id") == payload.timeSlot:
                                 s["maxSeats"] = payload.maxSeats
+                                s["onlineMaxSeats"] = online_max
+                                s["offlineMaxSeats"] = offline_max
                                 if payload.isAvailable is not None:
                                     s["isAvailable"] = payload.isAvailable
-                                s["availableSeats"] = max(0, s["maxSeats"] - s.get("bookedSeats", 0))
+                                booked = s.get("bookedSeats", 0)
+                                online_booked = s.get("onlineBookedSeats", min(online_max, booked))
+                                offline_booked = s.get("offlineBookedSeats", max(0, booked - online_booked))
+                                s["onlineBookedSeats"] = online_booked
+                                s["offlineBookedSeats"] = offline_booked
+                                s["onlineAvailableSeats"] = max(0, online_max - online_booked)
+                                s["offlineAvailableSeats"] = max(0, offline_max - offline_booked)
+                                s["availableSeats"] = s["onlineAvailableSeats"] + s["offlineAvailableSeats"]
                                 target_slot = s
                                 break
 
                         if not target_slot:
-                            target_slot = {
-                                "id": f"slot-{uuid.uuid4().hex[:6]}",
-                                "timeSlot": payload.timeSlot,
-                                "maxSeats": payload.maxSeats,
-                                "bookedSeats": 0,
-                                "availableSeats": payload.maxSeats,
-                                "isAvailable": payload.isAvailable if payload.isAvailable is not None else True
-                            }
+                            target_slot = make_split_slot(
+                                f"slot-{uuid.uuid4().hex[:6]}",
+                                payload.timeSlot,
+                                payload.maxSeats,
+                                0,
+                                payload.isAvailable if payload.isAvailable is not None else True
+                            )
                             slots.append(target_slot)
 
                         cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), doctor_id))
                         conn.commit()
                         doc["slotCapacities"] = slots
+                        doc["slot_capacities"] = slots
                         return {"success": True, "slot": target_slot, "doctor": format_receptionist_doctor(doc)}
         except Exception as e:
-            print("DB update slot note:", e)
+            logger.warning(f"DB update slot note: {e}")
 
     db = database.read_json_db()
     for doc in db.get("doctors", []):
         if doc.get("id") == doctor_id:
-            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or [dict(s) for s in DEFAULT_SLOTS]
+            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or []
             target_slot = None
             for slot in slots:
-                if slot.get("timeSlot") == payload.timeSlot:
+                if slot.get("timeSlot") == payload.timeSlot or slot.get("id") == payload.timeSlot:
                     slot["maxSeats"] = payload.maxSeats
+                    slot["onlineMaxSeats"] = online_max
+                    slot["offlineMaxSeats"] = offline_max
                     if payload.isAvailable is not None:
                         slot["isAvailable"] = payload.isAvailable
-                    slot["availableSeats"] = max(0, slot["maxSeats"] - slot.get("bookedSeats", 0))
+                    booked = slot.get("bookedSeats", 0)
+                    online_booked = slot.get("onlineBookedSeats", min(online_max, booked))
+                    offline_booked = slot.get("offlineBookedSeats", max(0, booked - online_booked))
+                    slot["onlineBookedSeats"] = online_booked
+                    slot["offlineBookedSeats"] = offline_booked
+                    slot["onlineAvailableSeats"] = max(0, online_max - online_booked)
+                    slot["offlineAvailableSeats"] = max(0, offline_max - offline_booked)
+                    slot["availableSeats"] = slot["onlineAvailableSeats"] + slot["offlineAvailableSeats"]
                     target_slot = slot
                     break
             if not target_slot:
-                target_slot = {
-                    "id": f"slot-{uuid.uuid4().hex[:6]}",
-                    "timeSlot": payload.timeSlot,
-                    "maxSeats": payload.maxSeats,
-                    "bookedSeats": 0,
-                    "availableSeats": payload.maxSeats,
-                    "isAvailable": payload.isAvailable if payload.isAvailable is not None else True
-                }
+                target_slot = make_split_slot(
+                    f"slot-{uuid.uuid4().hex[:6]}",
+                    payload.timeSlot,
+                    payload.maxSeats,
+                    0,
+                    payload.isAvailable if payload.isAvailable is not None else True
+                )
                 slots.append(target_slot)
             doc["slotCapacities"] = slots
             doc["slot_capacities"] = slots
             database.write_json_db(db)
             return {"success": True, "slot": target_slot, "doctor": format_receptionist_doctor(doc)}
+
+    raise HTTPException(status_code=404, detail="Doctor not found")
+
+
+@router.post("/doctors/{doctor_id}/slots")
+def add_doctor_slot(
+    doctor_id: str,
+    payload: SlotAddRequest,
+    authorization: Optional[str] = Header(None)
+):
+    """Add a new customized time slot for a doctor in database."""
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("role") == "nurse":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Nurse accounts are not authorized to modify doctor schedules."
+            )
+
+    new_slot = make_split_slot(
+        f"slot-{uuid.uuid4().hex[:6]}",
+        payload.timeSlot,
+        payload.maxSeats or 6,
+        0,
+        payload.isAvailable if payload.isAvailable is not None else True
+    )
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
+                    row = cur.fetchone()
+                    if row:
+                        doc = dict(row)
+                        slots = doc.get("slot_capacities") or []
+                        if isinstance(slots, str):
+                            try:
+                                slots = json.loads(slots)
+                            except Exception:
+                                slots = []
+                        if not slots:
+                            slots = []
+
+                        # Check if duplicate slot exists
+                        existing = [s for s in slots if s.get("timeSlot") == payload.timeSlot]
+                        if not existing:
+                            slots.append(new_slot)
+                        else:
+                            new_slot = existing[0]
+
+                        cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), doctor_id))
+                        conn.commit()
+                        doc["slotCapacities"] = slots
+                        doc["slot_capacities"] = slots
+                        return {"success": True, "slot": new_slot, "doctor": format_receptionist_doctor(doc)}
+        except Exception as e:
+            logger.warning(f"DB add slot note: {e}")
+
+    db = database.read_json_db()
+    for doc in db.get("doctors", []):
+        if doc.get("id") == doctor_id:
+            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or []
+            existing = [s for s in slots if s.get("timeSlot") == payload.timeSlot]
+            if not existing:
+                slots.append(new_slot)
+            else:
+                new_slot = existing[0]
+            doc["slotCapacities"] = slots
+            doc["slot_capacities"] = slots
+            database.write_json_db(db)
+            return {"success": True, "slot": new_slot, "doctor": format_receptionist_doctor(doc)}
+
+    raise HTTPException(status_code=404, detail="Doctor not found")
+
+
+@router.delete("/doctors/{doctor_id}/slots/{slot_id}")
+def delete_doctor_slot(
+    doctor_id: str,
+    slot_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """Delete a time slot from a doctor schedule in database."""
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("role") == "nurse":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Nurse accounts are not authorized to modify doctor schedules."
+            )
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
+                    row = cur.fetchone()
+                    if row:
+                        doc = dict(row)
+                        slots = doc.get("slot_capacities") or []
+                        if isinstance(slots, str):
+                            try:
+                                slots = json.loads(slots)
+                            except Exception:
+                                slots = []
+                        if not slots:
+                            slots = []
+
+                        # Filter out slot by id or timeSlot
+                        slots = [s for s in slots if s.get("id") != slot_id and s.get("timeSlot") != slot_id]
+                        cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), doctor_id))
+                        conn.commit()
+                        doc["slotCapacities"] = slots
+                        doc["slot_capacities"] = slots
+                        return {"success": True, "slotId": slot_id, "doctor": format_receptionist_doctor(doc)}
+        except Exception as e:
+            logger.warning(f"DB delete slot note: {e}")
+
+    db = database.read_json_db()
+    for doc in db.get("doctors", []):
+        if doc.get("id") == doctor_id:
+            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or []
+            slots = [s for s in slots if s.get("id") != slot_id and s.get("timeSlot") != slot_id]
+            doc["slotCapacities"] = slots
+            doc["slot_capacities"] = slots
+            database.write_json_db(db)
+            return {"success": True, "slotId": slot_id, "doctor": format_receptionist_doctor(doc)}
 
     raise HTTPException(status_code=404, detail="Doctor not found")
 

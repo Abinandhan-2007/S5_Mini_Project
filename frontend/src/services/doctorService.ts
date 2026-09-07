@@ -22,24 +22,10 @@ export const doctorService = {
       if (res && res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Merge with live staffStore slots if present
-          const staffDocs = useStaffStore.getState().doctors;
-          return data.map((doc: any) => {
-            const staffDoc = staffDocs.find(
-              (s) => s.id === doc.id || s.staffCode === doc.id || s.staff_code === doc.id
-            );
-            if (staffDoc) {
-              return {
-                ...doc,
-                isAvailable: staffDoc.isAvailable,
-                is_available: staffDoc.isAvailable,
-                slotCapacities: staffDoc.slotCapacities,
-                slot_capacities: staffDoc.slotCapacities,
-                availableDays: staffDoc.availableDays,
-              };
-            }
-            return doc;
-          });
+          return data.map((doc: any) => ({
+            ...doc,
+            photoUrl: doc.photo || doc.photoUrl || doc.photo_url || '/doctor_default.jpg',
+          }));
         }
       }
     } catch (err) {
@@ -105,17 +91,10 @@ export const doctorService = {
       if (res && res.ok) {
         const data = await res.json();
         if (data && data.id) {
-          if (staffDoc) {
-            return {
-              ...data,
-              isAvailable: staffDoc.isAvailable,
-              is_available: staffDoc.isAvailable,
-              slotCapacities: staffDoc.slotCapacities,
-              slot_capacities: staffDoc.slotCapacities,
-              availableDays: staffDoc.availableDays,
-            };
-          }
-          return data;
+          return {
+            ...data,
+            photoUrl: data.photo || data.photoUrl || data.photo_url || '/doctor_default.jpg',
+          };
         }
       }
     } catch (err) {
@@ -150,5 +129,33 @@ export const doctorService = {
     }
 
     return null;
+  },
+
+  /**
+   * Fetch live date-specific slot capacity directly from database (/api/doctors/:id/slots?date=...)
+   */
+  async getDoctorSlots(doctorId: string, date?: string): Promise<any[]> {
+    try {
+      const q = date ? `?date=${encodeURIComponent(date)}` : '';
+      const res = await apiGet(`/doctors/${doctorId}/slots${q}`);
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.slots)) {
+          return data.slots;
+        }
+      }
+    } catch (err) {
+      console.warn(`Backend fetch doctor slots for ${doctorId} failed:`, err);
+    }
+
+    // Fallback to local store doctor slots
+    const staffDoc = useStaffStore.getState().doctors.find(
+      (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
+    );
+    if (staffDoc?.slotCapacities && staffDoc.slotCapacities.length > 0) {
+      return staffDoc.slotCapacities;
+    }
+
+    return [];
   },
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Search,
@@ -19,6 +19,7 @@ import {
 import { useCarePulseStore } from '../../lib/store';
 import { Avatar } from '../../components/ui/Avatar';
 import type { Appointment } from '../../lib/types';
+import { doctorService } from '../../services/doctorService';
 
 interface AppointmentScheduleModalProps {
   isOpen: boolean;
@@ -40,8 +41,9 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
 
   // Reschedule modal sub-state
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
-  const [newDate, setNewDate] = useState('2026-08-15');
-  const [newSlot, setNewSlot] = useState('10:00 AM - 10:30 AM');
+  const [newDate, setNewDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newSlot, setNewSlot] = useState('10:00 AM - 11:00 AM');
+  const [rescheduleSlots, setRescheduleSlots] = useState<any[]>([]);
 
   // Cancel modal sub-state
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -50,6 +52,20 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
   // Selected appointment
   const currentApp: Appointment | null =
     appointments.find((a) => a.id === selectedAppId) || activeAppointment || (appointments.length > 0 ? appointments[0] : null);
+
+  useEffect(() => {
+    if (isRescheduleOpen && currentApp?.doctorId) {
+      doctorService.getDoctorSlots(currentApp.doctorId, newDate).then((slots) => {
+        if (slots && slots.length > 0) {
+          setRescheduleSlots(slots);
+          const firstAvailable = slots.find((s) => s.isAvailable !== false);
+          if (firstAvailable) {
+            setNewSlot(firstAvailable.timeSlot);
+          }
+        }
+      });
+    }
+  }, [isRescheduleOpen, currentApp?.doctorId, newDate]);
 
   if (!isOpen || !currentApp) return null;
 
@@ -341,13 +357,30 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
                 <select
                   value={newSlot}
                   onChange={(e) => setNewSlot(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 cursor-pointer"
                 >
-                  <option value="09:00 AM - 09:30 AM">09:00 AM - 09:30 AM</option>
-                  <option value="10:00 AM - 10:30 AM">10:00 AM - 10:30 AM</option>
-                  <option value="11:00 AM - 11:30 AM">11:00 AM - 11:30 AM</option>
-                  <option value="02:00 PM - 02:30 PM">02:00 PM - 02:30 PM</option>
-                  <option value="04:00 PM - 04:30 PM">04:00 PM - 04:30 PM</option>
+                  {rescheduleSlots.length > 0 ? (
+                    rescheduleSlots.map((s) => {
+                      const avail = s.onlineAvailableSeats !== undefined ? s.onlineAvailableSeats : s.availableSeats;
+                      const isFull = avail !== undefined && avail <= 0;
+                      const isClosed = s.isAvailable === false;
+                      const disabled = isFull || isClosed;
+                      return (
+                        <option key={s.id || s.timeSlot} value={s.timeSlot} disabled={disabled}>
+                          {s.timeSlot} {isClosed ? '(Closed)' : isFull ? '(Full)' : avail !== undefined ? `(${avail} seats available)` : ''}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <>
+                      <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
+                      <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+                      <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+                      <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM</option>
+                      <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM</option>
+                      <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>

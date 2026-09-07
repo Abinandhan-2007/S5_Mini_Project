@@ -71,30 +71,33 @@ export const SuperAdminLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
-      {/* Dynamic Background Accents */}
-      <div className="absolute top-[-15%] left-[-10%] w-96 h-96 bg-[#0B5A54]/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-10%] w-96 h-96 bg-teal-600/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#041613] flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans selection:bg-[#00DC82] selection:text-[#051B17]">
+      {/* Dynamic Background Grid & Glows */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#00DC82_1px,transparent_1px)] [background-size:24px_24px]" />
+      <div className="absolute top-[-10%] left-[-10%] w-[450px] h-[450px] bg-[#00DC82]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[450px] h-[450px] bg-[#0B5A54]/25 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Login Card */}
+      {/* Main Command Console Card */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-2xl shadow-2xl p-8 z-10"
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-md bg-[#051B17] border border-[#0D3831] backdrop-blur-2xl rounded-2xl shadow-2xl p-8 z-10"
       >
         {/* Top Header Badge */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-600 flex items-center justify-center text-white shadow-lg shadow-[#0B5A54]/40 mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0D3831] to-[#051B17] border border-[#16564B] flex items-center justify-center text-[#00DC82] shadow-inner mb-4">
             <Globe2 className="w-7 h-7" />
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-semibold uppercase tracking-wider mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded font-mono text-[10px] font-bold tracking-widest bg-[#00DC82]/15 text-[#00DC82] border border-[#00DC82]/30 uppercase mb-2">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Global Platform Root
+            ROOT INFRASTRUCTURE LEVEL 0
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">SuperAdmin Portal</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Top-level authority over hospitals, facilities, and administrators
+          <h1 className="text-2xl font-extrabold text-white tracking-tight font-heading">
+            SuperAdmin Console
+          </h1>
+          <p className="text-xs text-slate-400 mt-1 font-sans">
+            Platform governance, hospital provisioning &amp; administrator credentialing
           </p>
         </div>
 
@@ -103,9 +106,9 @@ export const SuperAdminLogin: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="mb-6 p-3.5 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-sm flex items-start gap-2.5"
+            className="mb-6 p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs font-mono flex items-start gap-2.5"
           >
-            <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
             <span>{error}</span>
           </motion.div>
         )}
@@ -113,8 +116,8 @@ export const SuperAdminLogin: React.FC = () => {
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              SuperAdmin Email or Code
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+              Root Identifier / Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -126,14 +129,14 @@ export const SuperAdminLogin: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="superadmin@carepulse.com or SA101"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] focus:border-transparent transition-all placeholder:text-slate-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Master Password
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+              Master Access Key
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -145,7 +148,7 @@ export const SuperAdminLogin: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••••••"
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] focus:border-transparent transition-all placeholder:text-slate-500"
+                className="w-full pl-10 pr-10 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
               />
               <button
                 type="button"
@@ -160,13 +163,13 @@ export const SuperAdminLogin: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 mt-2 bg-gradient-to-r from-[#0B5A54] to-teal-600 hover:from-[#094843] hover:to-teal-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-[#0B5A54]/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full py-3 px-4 mt-2 bg-[#00DC82] hover:bg-[#00c776] text-[#051B17] font-bold rounded-xl text-xs font-mono shadow-lg shadow-[#00DC82]/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-[#051B17]/30 border-t-[#051B17] rounded-full animate-spin" />
             ) : (
               <>
-                <span>Access Network Control</span>
+                <span>AUTHENTICATE ROOT ACCESS</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -174,30 +177,30 @@ export const SuperAdminLogin: React.FC = () => {
         </form>
 
         {/* Quick Demo Credentials Assistant */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>Root Credentials:</span>
+        <div className="mt-6 pt-5 border-t border-[#0D3831] text-center">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
+            <span>Demo Root Access:</span>
             <button
               type="button"
               onClick={handleQuickFill}
-              className="text-teal-400 hover:text-teal-300 font-medium inline-flex items-center gap-1 cursor-pointer"
+              className="text-[#00DC82] hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
             >
               <CheckCircle2 className="w-3 h-3" />
-              Auto Fill Demo
+              Auto-Fill
             </button>
           </div>
-          <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 text-left font-mono text-xs text-slate-300 space-y-1">
+          <div className="bg-[#03110E] p-3 rounded-xl border border-[#0D3831] text-left font-mono text-[11px] text-slate-300 space-y-1">
             <div className="flex justify-between">
-              <span className="text-slate-500">Email:</span>
-              <span>superadmin@carepulse.com</span>
+              <span className="text-slate-500">Identity:</span>
+              <span className="text-slate-300">superadmin@carepulse.com</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Code:</span>
-              <span className="text-teal-400 font-bold">SA101</span>
+              <span className="text-slate-500">Role Code:</span>
+              <span className="text-[#00DC82] font-bold">SA101</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Password:</span>
-              <span>SuperAdmin@123</span>
+              <span className="text-slate-500">Key:</span>
+              <span className="text-slate-300">SuperAdmin@123</span>
             </div>
           </div>
         </div>
@@ -207,10 +210,10 @@ export const SuperAdminLogin: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/staff/login')}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1 cursor-pointer"
+            className="text-xs text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 cursor-pointer font-mono"
           >
-            <Building2 className="w-3.5 h-3.5" />
-            Switch to Hospital Staff Portal (Admin / Doctor / Receptionist)
+            <Building2 className="w-3.5 h-3.5 text-[#00DC82]" />
+            <span>Switch to Hospital Staff Portal</span>
           </button>
         </div>
       </motion.div>

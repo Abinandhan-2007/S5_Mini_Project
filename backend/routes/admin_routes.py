@@ -936,35 +936,38 @@ def delete_doctor_record(doctor_id: str):
 
 @router.put("/doctors/{doctor_id}")
 def update_doctor_record(doctor_id: str, payload: Dict[str, Any]):
-    """Update doctor profile and corresponding staff account."""
+    """Update doctor profile and corresponding staff account credentials."""
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
                     fields = []
                     vals = []
-                    if "name" in payload:
+                    if "name" in payload and payload["name"]:
                         fields.append("name = %s")
                         vals.append(payload["name"])
-                    if "specialty" in payload:
+                    if "specialty" in payload and payload["specialty"]:
                         fields.append("specialty = %s")
                         vals.append(payload["specialty"])
-                    if "department" in payload:
+                    if "department" in payload and payload["department"]:
                         fields.append("department = %s")
                         vals.append(payload["department"])
-                    if "consultationFee" in payload:
+                    if "consultationFee" in payload and payload["consultationFee"] is not None:
                         fields.append("consultation_fee = %s")
                         vals.append(payload["consultationFee"])
-                    if "experienceYears" in payload:
+                    if "experienceYears" in payload and payload["experienceYears"] is not None:
                         fields.append("experience_years = %s")
                         vals.append(payload["experienceYears"])
-                    if "phone" in payload:
+                    if "phone" in payload and payload["phone"] is not None:
                         fields.append("phone = %s")
                         vals.append(payload["phone"])
-                    if "roomNumber" in payload:
+                    if "email" in payload and payload["email"]:
+                        fields.append("email = %s")
+                        vals.append(payload["email"])
+                    if "roomNumber" in payload and payload["roomNumber"] is not None:
                         fields.append("room_number = %s")
                         vals.append(payload["roomNumber"])
-                    if "isAvailable" in payload:
+                    if "isAvailable" in payload and payload["isAvailable"] is not None:
                         fields.append("is_available = %s")
                         vals.append(payload["isAvailable"])
                     if fields:
@@ -976,24 +979,77 @@ def update_doctor_record(doctor_id: str, payload: Dict[str, Any]):
                         cur.execute("UPDATE staff SET password_hash = %s WHERE doctor_id = %s OR id::text = %s", (h, doctor_id, doctor_id))
                     if "name" in payload and payload["name"]:
                         cur.execute("UPDATE staff SET full_name = %s WHERE doctor_id = %s OR id::text = %s", (payload["name"], doctor_id, doctor_id))
+                    if "email" in payload and payload["email"]:
+                        cur.execute("UPDATE staff SET email = %s WHERE doctor_id = %s OR id::text = %s", (payload["email"], doctor_id, doctor_id))
+                    if "specialty" in payload and payload["specialty"]:
+                        cur.execute("UPDATE staff SET specialization = %s WHERE doctor_id = %s OR id::text = %s", (payload["specialty"], doctor_id, doctor_id))
+                    if "department" in payload and payload["department"]:
+                        cur.execute("UPDATE staff SET department = %s WHERE doctor_id = %s OR id::text = %s", (payload["department"], doctor_id, doctor_id))
                 conn.commit()
         except Exception as e:
             database.logger.warning(f"Could not update doctor in Postgres: {e}")
 
     db = read_json_db()
+    target_doc = None
     for d in db.get("doctors", []):
         if str(d.get("id")) == str(doctor_id):
             d.update(payload)
+            if "password" in payload and payload["password"]:
+                d["password"] = payload["password"]
+            if "username" in payload and payload["username"]:
+                d["username"] = payload["username"]
+            target_doc = d
             break
+
+    staff_found = False
     for s in db.get("staff", []):
         if str(s.get("id")) == str(doctor_id) or str(s.get("doctor_id")) == str(doctor_id):
-            if "name" in payload:
+            staff_found = True
+            if "name" in payload and payload["name"]:
                 s["name"] = payload["name"]
                 s["full_name"] = payload["name"]
+            if "username" in payload and payload["username"]:
+                s["username"] = payload["username"]
+            if "email" in payload and payload["email"]:
+                s["email"] = payload["email"]
+            if "phone" in payload and payload["phone"]:
+                s["phone"] = payload["phone"]
+            if "specialty" in payload and payload["specialty"]:
+                s["specialization"] = payload["specialty"]
+            if "department" in payload and payload["department"]:
+                s["department"] = payload["department"]
             if "password" in payload and payload["password"]:
                 s["password_hash"] = hash_password(payload["password"])
-                s["password"] = hash_password(payload["password"])
+                s["password"] = payload["password"]
             break
+
+    if not staff_found and target_doc:
+        doc_pwd = payload.get("password") or target_doc.get("password") or "doc123"
+        db["staff"].append({
+            "id": doctor_id,
+            "doctor_id": doctor_id,
+            "doctorId": doctor_id,
+            "staff_code": target_doc.get("staff_code") or target_doc.get("staffCode") or f"D{doctor_id[-4:]}",
+            "staffCode": target_doc.get("staffCode") or target_doc.get("staff_code") or f"D{doctor_id[-4:]}",
+            "name": target_doc.get("name"),
+            "full_name": target_doc.get("name"),
+            "email": target_doc.get("email") or f"{target_doc.get('name', 'doctor').lower().replace(' ', '.')}@carepulse.com",
+            "username": target_doc.get("username") or target_doc.get("name", "doctor").lower().replace(" ", "."),
+            "password": doc_pwd,
+            "password_hash": hash_password(doc_pwd),
+            "role": "doctor",
+            "specialization": target_doc.get("specialty", "General Medicine"),
+            "department": target_doc.get("department", "General Medicine"),
+            "phone": target_doc.get("phone", "+91 98765 00000"),
+            "avatar": target_doc.get("photo", "/doctor_default.jpg"),
+            "avatar_url": target_doc.get("photo", "/doctor_default.jpg"),
+            "avatarUrl": target_doc.get("photo", "/doctor_default.jpg"),
+            "hospital_id": target_doc.get("hospital_id") or target_doc.get("hospitalId") or "hosp-bag",
+            "hospitalId": target_doc.get("hospitalId") or target_doc.get("hospital_id") or "hosp-bag",
+            "is_active": True,
+            "isActive": True
+        })
+
     write_json_db(db)
     return {"success": True, "message": "Doctor updated successfully"}
 

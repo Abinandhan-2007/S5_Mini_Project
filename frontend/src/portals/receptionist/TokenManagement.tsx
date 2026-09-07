@@ -171,19 +171,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     return selectedDoctorId === 'ALL' ? null : doctors.find((d) => d.id === selectedDoctorId) || null;
   }, [doctors, selectedDoctorId]);
 
-  // Standard fallback slots
-  const standardSlots = useMemo(
-    () => [
-      '09:00 AM - 10:00 AM',
-      '10:00 AM - 11:00 AM',
-      '11:00 AM - 12:00 PM',
-      '02:00 PM - 03:00 PM',
-      '03:00 PM - 04:00 PM',
-      '04:00 PM - 05:00 PM',
-    ],
-    []
-  );
-
   // Compute all available time slots dynamically based on doctor selectivity
   const availableTimeSlots = useMemo(() => {
     const slotSet = new Set<string>();
@@ -197,9 +184,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
       tokens.forEach((t) => {
         if (t.timeSlot) slotSet.add(t.timeSlot);
       });
-      if (slotSet.size === 0) {
-        standardSlots.forEach((s) => slotSet.add(s));
-      }
     } else {
       const doc = doctors.find((d) => d.id === selectedDoctorId);
       if (doc?.slotCapacities && doc.slotCapacities.length > 0) {
@@ -212,13 +196,10 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         .forEach((t) => {
           if (t.timeSlot) slotSet.add(t.timeSlot);
         });
-      if (slotSet.size === 0) {
-        standardSlots.forEach((s) => slotSet.add(s));
-      }
     }
 
     return Array.from(slotSet);
-  }, [selectedDoctorId, doctors, tokens, standardSlots]);
+  }, [selectedDoctorId, doctors, tokens]);
 
   // Resilient slot matching helper
   const isSlotMatching = (tokenSlot: string | undefined, targetSlot: string) => {

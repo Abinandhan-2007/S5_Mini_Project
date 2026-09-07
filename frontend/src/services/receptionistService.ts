@@ -65,6 +65,31 @@ export const receptionistService = {
     }
   },
 
+  async addSlot(doctorId: string, timeSlot: string, maxSeats: number = 6, isAvailable: boolean = true): Promise<boolean> {
+    try {
+      const res = await apiFetch(`/receptionist/doctors/${doctorId}/slots`, {
+        method: 'POST',
+        body: JSON.stringify({ timeSlot, maxSeats, isAvailable }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to add slot', e);
+      return false;
+    }
+  },
+
+  async deleteSlot(doctorId: string, slotId: string): Promise<boolean> {
+    try {
+      const res = await apiFetch(`/receptionist/doctors/${doctorId}/slots/${encodeURIComponent(slotId)}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to delete slot', e);
+      return false;
+    }
+  },
+
   async getTokenQueue(doctorId?: string, hospitalId?: string): Promise<TokenQueueItem[]> {
     try {
       const params = new URLSearchParams();

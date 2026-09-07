@@ -10,8 +10,9 @@ import logging
 import uuid
 import re
 from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 import json
+import math
 
 def normalize_phone_number(p: str) -> str:
     """Normalize phone numbers by keeping digits and extracting the last 10 digits."""
@@ -2573,12 +2574,49 @@ def format_doctor(d: dict) -> DoctorResponse:
         except Exception:
             days = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
-    slots = d.get("slot_capacities") or d.get("slotCapacities") or []
-    if isinstance(slots, str):
+    raw_slots = d.get("slot_capacities") or d.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
         try:
-            slots = json.loads(slots)
+            raw_slots = json.loads(raw_slots)
         except Exception:
-            slots = []
+            raw_slots = []
+
+    formatted_slots = []
+    for s in raw_slots:
+        slot_dict = dict(s)
+        max_seats = int(slot_dict.get("maxSeats") or 6)
+        booked = int(slot_dict.get("bookedSeats") or 0)
+        online_max = slot_dict.get("onlineMaxSeats")
+        if online_max is None:
+            online_max = math.ceil(max_seats / 2)
+        else:
+            online_max = int(online_max)
+        offline_max = slot_dict.get("offlineMaxSeats")
+        if offline_max is None:
+            offline_max = math.floor(max_seats / 2)
+        else:
+            offline_max = int(offline_max)
+
+        online_booked = int(slot_dict.get("onlineBookedSeats") or min(online_max, booked))
+        offline_booked = int(slot_dict.get("offlineBookedSeats") or max(0, booked - online_booked))
+        online_avail = max(0, online_max - online_booked)
+        offline_avail = max(0, offline_max - offline_booked)
+        is_avail = bool(slot_dict.get("isAvailable") if slot_dict.get("isAvailable") is not None else True)
+
+        formatted_slots.append({
+            "id": slot_dict.get("id") or f"slot-{uuid.uuid4().hex[:6]}",
+            "timeSlot": slot_dict.get("timeSlot") or slot_dict.get("time_slot") or "09:00 AM - 10:00 AM",
+            "maxSeats": max_seats,
+            "bookedSeats": booked,
+            "availableSeats": online_avail + offline_avail,
+            "onlineMaxSeats": online_max,
+            "onlineBookedSeats": online_booked,
+            "onlineAvailableSeats": online_avail,
+            "offlineMaxSeats": offline_max,
+            "offlineBookedSeats": offline_booked,
+            "offlineAvailableSeats": offline_avail,
+            "isAvailable": is_avail
+        })
 
     photo = d.get("photo") or d.get("photo_url") or d.get("photoUrl") or "/doctor_default.jpg"
     is_avail = bool(d.get("is_available") if d.get("is_available") is not None else d.get("isAvailable", True))
@@ -2620,7 +2658,8 @@ def format_doctor(d: dict) -> DoctorResponse:
         is_available=is_avail,
         about=d.get("about") or "",
         availableDays=days,
-        slotCapacities=slots
+        slotCapacities=formatted_slots,
+        slot_capacities=formatted_slots
     )
 
 @app.get("/api/hospitals", response_model=List[HospitalResponse])
@@ -2778,6 +2817,143 @@ def get_doctor_by_id(doctor_id: str):
                 return format_doctor(d)
 
     raise HTTPException(status_code=404, detail="Doctor not found")
+
+
+@app.get("/api/doctors/{doctor_id}/slots")
+def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
+    """
+    Retrieve live slot availability for a doctor for a specific date directly from DB.
+    Calculates live booked seats from appointments and tokens.
+    """
+    from routes.receptionist_routes import DEFAULT_SLOTS
+    doc = None
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
+                    row = cur.fetchone()
+                    if row:
+                        doc = dict(row)
+        except Exception as e:
+            logger.warning(f"Error fetching doctor for slots from pg: {e}")
+
+    if not doc:
+        db = read_json_db()
+        for d in db.get("doctors", []):
+            if d.get("id") == doctor_id:
+                doc = d
+                break
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    raw_slots = doc.get("slot_capacities") or doc.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
+        try:
+            raw_slots = json.loads(raw_slots)
+        except Exception:
+            raw_slots = []
+    if not raw_slots:
+        return {
+            "success": True,
+            "doctorId": doctor_id,
+            "date": date,
+            "slots": []
+        }
+
+    # Map booked counts by timeSlot if date is specified
+    online_booked_counts = {}
+    offline_booked_counts = {}
+
+    if date:
+        if database.use_pg:
+            try:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        # Count online appointments
+                        cur.execute(
+                            "SELECT time_slot, COUNT(*) as cnt FROM appointments WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' GROUP BY time_slot",
+                            (doctor_id, date)
+                        )
+                        for r in cur.fetchall():
+                            online_booked_counts[r["time_slot"]] = int(r["cnt"])
+
+                        # Count walk-in tokens
+                        cur.execute(
+                            "SELECT time_slot, COUNT(*) as cnt FROM tokens WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' GROUP BY time_slot",
+                            (doctor_id, date)
+                        )
+                        for r in cur.fetchall():
+                            offline_booked_counts[r["time_slot"]] = int(r["cnt"])
+            except Exception as e:
+                logger.warning(f"Error querying slot bookings from pg: {e}")
+        else:
+            db = read_json_db()
+            for app in db.get("appointments", []):
+                if app.get("doctor_id") == doctor_id or app.get("doctorId") == doctor_id:
+                    if str(app.get("date")) == date and app.get("status") != "Cancelled":
+                        ts = app.get("time_slot") or app.get("timeSlot")
+                        if ts:
+                            online_booked_counts[ts] = online_booked_counts.get(ts, 0) + 1
+            for tok in db.get("tokens", []):
+                if tok.get("doctor_id") == doctor_id or tok.get("doctorId") == doctor_id:
+                    if str(tok.get("date")) == date and tok.get("status") != "Cancelled":
+                        ts = tok.get("time_slot") or tok.get("timeSlot")
+                        if ts:
+                            offline_booked_counts[ts] = offline_booked_counts.get(ts, 0) + 1
+
+    computed_slots = []
+    for s in raw_slots:
+        slot_dict = dict(s)
+        time_slot = slot_dict.get("timeSlot") or slot_dict.get("time_slot") or "09:00 AM - 10:00 AM"
+        max_seats = int(slot_dict.get("maxSeats") or 6)
+
+        online_max = slot_dict.get("onlineMaxSeats")
+        if online_max is None:
+            online_max = math.ceil(max_seats / 2)
+        else:
+            online_max = int(online_max)
+
+        offline_max = slot_dict.get("offlineMaxSeats")
+        if offline_max is None:
+            offline_max = math.floor(max_seats / 2)
+        else:
+            offline_max = int(offline_max)
+
+        if date:
+            online_booked = online_booked_counts.get(time_slot, 0)
+            offline_booked = offline_booked_counts.get(time_slot, 0)
+        else:
+            online_booked = int(slot_dict.get("onlineBookedSeats") or 0)
+            offline_booked = int(slot_dict.get("offlineBookedSeats") or 0)
+
+        online_avail = max(0, online_max - online_booked)
+        offline_avail = max(0, offline_max - offline_booked)
+        is_slot_avail = bool(slot_dict.get("isAvailable") if slot_dict.get("isAvailable") is not None else True)
+        is_doc_avail = bool(doc.get("is_available") if doc.get("is_available") is not None else doc.get("isAvailable", True))
+
+        computed_slots.append({
+            "id": slot_dict.get("id") or f"slot-{uuid.uuid4().hex[:6]}",
+            "timeSlot": time_slot,
+            "maxSeats": max_seats,
+            "bookedSeats": online_booked + offline_booked,
+            "availableSeats": online_avail + offline_avail,
+            "onlineMaxSeats": online_max,
+            "onlineBookedSeats": online_booked,
+            "onlineAvailableSeats": online_avail,
+            "offlineMaxSeats": offline_max,
+            "offlineBookedSeats": offline_booked,
+            "offlineAvailableSeats": offline_avail,
+            "isAvailable": is_slot_avail and is_doc_avail,
+        })
+
+    return {
+        "success": True,
+        "doctorId": doctor_id,
+        "date": date,
+        "slots": computed_slots
+    }
 
 
 @app.delete("/api/doctors/{doctor_id}")
