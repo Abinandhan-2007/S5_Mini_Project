@@ -11,11 +11,14 @@ import {
   X,
   SlidersHorizontal,
   XCircle,
+  QrCode,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { TriagePriority } from '../../types/doctor';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
 import { useStaffStore } from '../../store/staffStore';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
+import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 
 export interface DoctorQueueProps {
   queue: TokenQueueItem[];
@@ -34,6 +37,47 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
   const [slotFilter, setSlotFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [callingTokenId, setCallingTokenId] = useState<string | null>(null);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [scannedPatientRecord, setScannedPatientRecord] = useState<any>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+
+  const handlePatientQrLoaded = (data: any) => {
+    setScannedPatientRecord(data);
+    setIsDossierOpen(true);
+  };
+
+  const handleStartConsultationFromDossier = (patientDto: any) => {
+    setIsDossierOpen(false);
+    const matched = queue.find(
+      (t) =>
+        t.patientName.toLowerCase() === patientDto.fullName.toLowerCase() ||
+        (patientDto.patientCode && t.tokenNumber.toLowerCase().includes(patientDto.patientCode.toLowerCase()))
+    );
+    if (matched) {
+      onSelectPatient(matched);
+    } else {
+      onSelectPatient({
+        id: patientDto.id || `tok-${Date.now()}`,
+        patientId: patientDto.id,
+        tokenNumber: patientDto.patientCode || '#PAT-001',
+        ticketNumber: patientDto.patientCode || '#PAT-001',
+        patientName: patientDto.fullName,
+        patientPhone: patientDto.phone || '',
+        doctorId: currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id || 'doc-1',
+        doctorName: currentStaff?.name || 'Doctor',
+        doctorSpecialty: currentStaff?.department || 'General Medicine',
+        timeSlot: 'Immediate Consultation',
+        status: 'In Consultation',
+        type: 'In-Person',
+        arrivalTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        issueTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        age: patientDto.age,
+        bloodGroup: patientDto.bloodGroup,
+        healthIssue: patientDto.preExistingConditions || 'Consultation via QR Scan',
+      });
+    }
+  };
 
   // Extract unique time slots
   const uniqueSlots = useMemo(() => {
@@ -312,6 +356,17 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
             </div>
           </div>
 
+          {/* Scan Patient QR Button */}
+          <button
+            type="button"
+            onClick={() => setIsQrScannerOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Scan Patient QR Code"
+          >
+            <QrCode className="w-4 h-4 text-emerald-700" />
+            <span className="hidden sm:inline">Scan QR</span>
+          </button>
+
           {/* View Mode Switcher */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200/90 shrink-0 self-start md:self-auto shadow-2xs">
             <button
@@ -585,6 +640,24 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
         </div>
       )}
 
+      {/* ── Patient QR Scanner Modal ── */}
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        hospitalId={currentStaff?.hospitalId || currentStaff?.hospital_id}
+        hospitalName={currentStaff?.hospitalName || currentStaff?.hospital_name}
+        portalRole="doctor"
+        onPatientLoaded={handlePatientQrLoaded}
+      />
+
+      {/* ── Patient 360 Record Modal ── */}
+      <Patient360RecordModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        data={scannedPatientRecord}
+        portalRole="doctor"
+        onStartConsultation={handleStartConsultationFromDossier}
+      />
     </div>
   );
 };

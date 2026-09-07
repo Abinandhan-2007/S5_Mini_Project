@@ -10,9 +10,11 @@ import {
   Flame,
   Droplet,
   UserCheck,
+  QrCode,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { TokenQueueItem } from '../../types/receptionist';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
 
 interface PatientCheckInProps {
   onShowToast?: (msg: string) => void;
@@ -23,11 +25,36 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
   onShowToast,
   onOpenNewAppointment,
 }) => {
+  const currentStaff = useStaffStore((s) => s.currentStaff);
   const tokens = useStaffStore((s) => s.tokens);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenQueueItem | null>(null);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+
+  const handlePatientQrScanned = (patientData: any) => {
+    setIsQrScannerOpen(false);
+    const pat = patientData.patient;
+    if (!pat) return;
+
+    // 1. Try matching with active token in queue
+    const matched = tokens.find(
+      (t) =>
+        t.patientName.toLowerCase() === pat.fullName.toLowerCase() ||
+        (pat.phone && t.patientPhone && t.patientPhone.includes(pat.phone)) ||
+        (pat.patientCode && t.tokenNumber.toLowerCase().includes(pat.patientCode.toLowerCase()))
+    );
+
+    if (matched) {
+      handleSelectPatient(matched);
+      onShowToast?.(`Matched active booking for ${pat.fullName} (${matched.tokenNumber})`);
+    } else {
+      setSearchQuery(pat.fullName);
+      setIntakeNotes(`Patient ${pat.fullName} (${pat.patientCode}) presented via QR code check-in.`);
+      onShowToast?.(`Patient ${pat.fullName} verified via QR code.`);
+    }
+  };
 
   // Vitals State
   const [systolicBP, setSystolicBP] = useState('120');
@@ -118,15 +145,26 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 font-mono">
                 Find Scheduled Patient
               </h3>
-              {onOpenNewAppointment && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={onOpenNewAppointment}
-                  className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
+                  type="button"
+                  onClick={() => setIsQrScannerOpen(true)}
+                  className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                  title="Scan Patient QR Code"
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>+ Walk-In</span>
+                  <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Scan QR</span>
                 </button>
-              )}
+                {onOpenNewAppointment && (
+                  <button
+                    onClick={onOpenNewAppointment}
+                    className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>+ Walk-In</span>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -457,6 +495,15 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
           )}
         </div>
       </div>
+
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        hospitalId={currentStaff?.hospitalId || currentStaff?.hospital_id}
+        hospitalName={currentStaff?.hospitalName || currentStaff?.hospital_name}
+        portalRole="receptionist"
+        onPatientLoaded={handlePatientQrScanned}
+      />
     </div>
   );
 };

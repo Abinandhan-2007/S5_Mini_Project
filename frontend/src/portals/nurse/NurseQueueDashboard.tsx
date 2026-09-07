@@ -10,13 +10,16 @@ import {
   CheckCircle2,
   Clock,
   Check,
-  ChevronRight
+  ChevronRight,
+  QrCode,
 } from 'lucide-react';
 import { nurseService } from '../../services/nurseService';
 import { useStaffStore } from '../../store/staffStore';
 import type { NurseQueueItem, VitalsStatus } from '../../types/nurse';
 import { VitalsEntryModal } from './VitalsEntryModal';
 import { TestEntryModal } from './TestEntryModal';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
+import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 
 export const NurseQueueDashboard: React.FC = () => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
@@ -29,6 +32,54 @@ export const NurseQueueDashboard: React.FC = () => {
   // Modals state
   const [selectedItemForVitals, setSelectedItemForVitals] = useState<NurseQueueItem | null>(null);
   const [selectedItemForTests, setSelectedItemForTests] = useState<NurseQueueItem | null>(null);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [scannedPatientRecord, setScannedPatientRecord] = useState<any>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+
+  const handlePatientQrLoaded = (data: any) => {
+    setScannedPatientRecord(data);
+    setIsDossierOpen(true);
+  };
+
+  const handleRecordVitalsFromDossier = (patientDto: any) => {
+    setIsDossierOpen(false);
+    const matched = queue.find(
+      (q) =>
+        q.patient.id === patientDto.id ||
+        q.patient.name.toLowerCase() === patientDto.fullName.toLowerCase() ||
+        (patientDto.patientCode && q.patient.patient_code && q.patient.patient_code.toLowerCase() === patientDto.patientCode.toLowerCase())
+    );
+
+    if (matched) {
+      setSelectedItemForVitals(matched);
+    } else {
+      setSelectedItemForVitals({
+        appointment_id: patientDto.id || `appt-${Date.now()}`,
+        token_number: typeof patientDto.patientCode === 'number' ? patientDto.patientCode : 101,
+        queue_status: 'waiting',
+        vitals_status: 'pending',
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        appointment_type: 'In-Person',
+        chief_complaint: patientDto.preExistingConditions || 'Triage vitals',
+        patient: {
+          id: patientDto.id || `pat-${Date.now()}`,
+          name: patientDto.fullName,
+          patient_code: patientDto.patientCode,
+          gender: patientDto.gender,
+          dob: patientDto.dob,
+          phone: patientDto.phone,
+          blood_group: patientDto.bloodGroup,
+        },
+        doctor: {
+          id: 'doc-1',
+          name: 'OPD Duty Doctor',
+          specialty: 'General Medicine',
+          room_number: 'Cabin 101',
+        },
+      });
+    }
+  };
 
   const fetchQueue = async () => {
     setIsLoading(true);
@@ -199,6 +250,17 @@ export const NurseQueueDashboard: React.FC = () => {
             Abnormal ({flaggedCount})
           </button>
         </div>
+
+        {/* Scan Patient QR Button */}
+        <button
+          type="button"
+          onClick={() => setIsQrScannerOpen(true)}
+          className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs shrink-0"
+          title="Scan Patient Health QR Code"
+        >
+          <QrCode className="w-4 h-4 text-emerald-600" />
+          <span>Scan QR</span>
+        </button>
 
         {/* Refresh Button */}
         <button
@@ -404,6 +466,24 @@ export const NurseQueueDashboard: React.FC = () => {
         queueItem={selectedItemForTests}
         onSuccess={fetchQueue}
       />
+
+      {/* ── Patient QR Scanner Modal ── */}
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        onPatientLoaded={handlePatientQrLoaded}
+      />
+
+      {/* ── Patient 360 Comprehensive Medical Record Modal ── */}
+      {scannedPatientRecord && (
+        <Patient360RecordModal
+          isOpen={isDossierOpen}
+          onClose={() => setIsDossierOpen(false)}
+          data={scannedPatientRecord}
+          portalRole="nurse"
+          onRecordVitals={handleRecordVitalsFromDossier}
+        />
+      )}
     </div>
   );
 };

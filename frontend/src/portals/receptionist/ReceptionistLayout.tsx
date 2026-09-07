@@ -19,6 +19,7 @@ import {
   UserPlus,
   AlertTriangle,
   HeartPulse,
+  QrCode,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
@@ -29,6 +30,8 @@ import { NurseManagement } from './NurseManagement';
 import { PatientCheckIn } from './PatientCheckIn';
 import { ReceptionistProfile } from './ReceptionistProfile';
 import { NewAppointmentModal } from './NewAppointmentModal';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
+import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import { usePolling } from '../../lib/usePolling';
 import { LiveIndicator } from '../../components/ui/LiveIndicator';
 
@@ -61,6 +64,9 @@ export const ReceptionistLayout: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [scannedPatientRecord, setScannedPatientRecord] = useState<any>(null);
+  const [isPatientDossierOpen, setIsPatientDossierOpen] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -73,8 +79,30 @@ export const ReceptionistLayout: React.FC = () => {
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
   const callNextToken = useStaffStore((s) => s.callNextToken);
+  const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
+
+  const handlePatientLoaded = (patientData: any) => {
+    setScannedPatientRecord(patientData);
+    setIsPatientDossierOpen(true);
+    showToast(`Loaded records for ${patientData.patient?.fullName}`);
+  };
+
+  const handleCheckInFromDossier = async (patient: any, appt?: any) => {
+    if (appt?.id) {
+      await updateTokenStatus(appt.id, 'Checked In');
+      showToast(`Checked in ${patient.fullName} for ticket ${appt.ticketNumber}!`);
+    } else {
+      showToast(`Patient ${patient.fullName} checked in at reception desk.`);
+    }
+    setIsPatientDossierOpen(false);
+  };
+
+  const handleNewAppointmentFromDossier = (_patient: any) => {
+    setIsPatientDossierOpen(false);
+    setIsNewAppointmentOpen(true);
+  };
 
   // Automatic robust background polling for receptionist token queue & doctors
   const { isPolling, lastUpdated, refetch } = usePolling(
@@ -430,6 +458,16 @@ export const ReceptionistLayout: React.FC = () => {
               </kbd>
             </div>
 
+            {/* Quick Action: Scan Patient QR Code */}
+            <button
+              onClick={() => setIsQrScannerOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-extrabold rounded-xl border border-emerald-200 text-xs shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+              title="Scan Patient Health ID QR Code"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Scan QR</span>
+            </button>
+
             {/* Quick Action: Call Next Token */}
             <button
               onClick={handleQuickCallNext}
@@ -653,6 +691,26 @@ export const ReceptionistLayout: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Patient QR Scanner Modal ── */}
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        hospitalId={currentStaff?.hospitalId || currentStaff?.hospital_id}
+        hospitalName={currentStaff?.hospitalName || currentStaff?.hospital_name || profile?.clinicName}
+        portalRole="receptionist"
+        onPatientLoaded={handlePatientLoaded}
+      />
+
+      {/* ── Patient 360 Medical Record Dossier Modal ── */}
+      <Patient360RecordModal
+        isOpen={isPatientDossierOpen}
+        onClose={() => setIsPatientDossierOpen(false)}
+        data={scannedPatientRecord}
+        portalRole="receptionist"
+        onCheckInPatient={handleCheckInFromDossier}
+        onNewAppointment={handleNewAppointmentFromDossier}
+      />
     </div>
   );
 };

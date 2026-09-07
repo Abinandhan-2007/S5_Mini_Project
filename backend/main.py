@@ -86,6 +86,7 @@ from routes.doctor_routes import router as doctor_router
 from routes.superadmin_routes import router as superadmin_router
 from routes.nurse_routes import router as nurse_router
 from routes.ai_routes import router as ai_router
+from routes.patient_qr_routes import router as patient_qr_router
 from notifications.fcm_service import register_device_token, send_push_notification, broadcast_app_update_notification
 from notifications.scheduler import start_scheduler, shutdown_scheduler
 
@@ -143,6 +144,7 @@ app.include_router(staff_auth_router)
 app.include_router(doctor_router)
 app.include_router(superadmin_router)
 app.include_router(nurse_router)
+app.include_router(patient_qr_router)
 
 # Mount static downloads directory for lab reports and documents
 downloads_dir = backend_dir / "static_downloads"

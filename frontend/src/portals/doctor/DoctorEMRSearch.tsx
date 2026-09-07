@@ -6,9 +6,12 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
+  QrCode,
 } from 'lucide-react';
 import type { PatientEMRRecord } from '../../types/doctor';
 import { staffConsultationService } from '../../services/consultationService';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
+import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 
 export const DoctorEMRSearch: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,6 +20,9 @@ export const DoctorEMRSearch: React.FC = () => {
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [scannedPatientRecord, setScannedPatientRecord] = useState<any>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
 
   useEffect(() => {
     loadAllRecords();
@@ -54,6 +60,21 @@ export const DoctorEMRSearch: React.FC = () => {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handlePatientQrLoaded = (data: any) => {
+    setScannedPatientRecord(data);
+    setIsDossierOpen(true);
+    if (data.patient?.fullName) {
+      setSearchQuery(data.patient.fullName);
+      staffConsultationService.searchEMR(data.patient.fullName).then((res) => {
+        setRecords(res);
+        if (res.length > 0) {
+          setSelectedPatientId(res[0].patientId);
+          setExpandedVisitId(res[0].id);
+        }
+      });
+    }
   };
 
   // Group records by unique patient
@@ -116,6 +137,15 @@ export const DoctorEMRSearch: React.FC = () => {
             className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
           >
             Search EMR
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsQrScannerOpen(true)}
+            className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+            title="Scan Patient Health QR Code"
+          >
+            <QrCode className="w-4 h-4 text-emerald-700" />
+            <span>Scan QR</span>
           </button>
         </form>
       </div>
@@ -370,9 +400,23 @@ export const DoctorEMRSearch: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
 
+      {/* ── Patient QR Scanner Modal ── */}
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        portalRole="doctor"
+        onPatientLoaded={handlePatientQrLoaded}
+      />
+
+      {/* ── Patient 360 Record Modal ── */}
+      <Patient360RecordModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        data={scannedPatientRecord}
+        portalRole="doctor"
+      />
     </div>
   );
 };

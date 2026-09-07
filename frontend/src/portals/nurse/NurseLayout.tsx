@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut,
   HeartPulse,
   Building2,
-  CalendarCheck
+  CalendarCheck,
+  QrCode,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
+import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 
 interface NurseLayoutProps {
   children: ReactNode;
@@ -17,6 +20,15 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
+
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [scannedPatientRecord, setScannedPatientRecord] = useState<any>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+
+  const handlePatientLoaded = (patientData: any) => {
+    setScannedPatientRecord(patientData);
+    setIsDossierOpen(true);
+  };
 
   const handleLogout = () => {
     logoutStaff();
@@ -44,14 +56,27 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Center Hospital Badge */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/15 border border-white/10 text-xs font-semibold text-teal-100">
-            <Building2 className="w-3.5 h-3.5 text-teal-300" />
-            <span>{currentStaff?.hospitalName || currentStaff?.hospital_name || 'Hospital Facility'}</span>
-            <span className="text-white/40">•</span>
-            <span className="text-[11px] text-teal-300 font-mono font-bold">
-              {currentStaff?.staff_code || currentStaff?.staffCode || 'Nurse'}
-            </span>
+          {/* Center Actions: Scan Patient QR & Hospital Badge */}
+          <div className="flex items-center gap-2.5">
+            {/* Quick Action: Scan Patient QR */}
+            <button
+              onClick={() => setIsQrScannerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-400/20 hover:bg-teal-400/30 text-white font-bold text-xs border border-teal-300/40 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="Scan Patient Health ID QR Code"
+            >
+              <QrCode className="w-3.5 h-3.5 text-teal-200" />
+              <span>Scan Patient QR</span>
+            </button>
+
+            {/* Center Hospital Badge */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/15 border border-white/10 text-xs font-semibold text-teal-100">
+              <Building2 className="w-3.5 h-3.5 text-teal-300" />
+              <span>{currentStaff?.hospitalName || currentStaff?.hospital_name || 'Hospital Facility'}</span>
+              <span className="text-white/40">•</span>
+              <span className="text-[11px] text-teal-300 font-mono font-bold">
+                {currentStaff?.staff_code || currentStaff?.staffCode || 'Nurse'}
+              </span>
+            </div>
           </div>
 
           {/* Right Staff Profile & Actions */}
@@ -119,6 +144,24 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
           </span>
         </div>
       </footer>
+
+      {/* ── Patient QR Scanner Modal ── */}
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        hospitalId={currentStaff?.hospitalId || currentStaff?.hospital_id}
+        hospitalName={currentStaff?.hospitalName || currentStaff?.hospital_name}
+        portalRole="nurse"
+        onPatientLoaded={handlePatientLoaded}
+      />
+
+      {/* ── Patient 360 Record Modal ── */}
+      <Patient360RecordModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        data={scannedPatientRecord}
+        portalRole="nurse"
+      />
     </div>
   );
 };

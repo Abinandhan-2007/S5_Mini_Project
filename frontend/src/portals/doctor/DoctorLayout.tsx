@@ -19,6 +19,7 @@ import {
   Check,
   Radio,
   BellRing,
+  QrCode,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
@@ -29,6 +30,8 @@ import { DoctorEMRSearch } from './DoctorEMRSearch';
 import { DoctorProfile } from './DoctorProfile';
 import { DoctorNotificationView } from './DoctorNotificationView';
 import { DoctorNotificationCenter } from './DoctorNotificationCenter';
+import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
+import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import type { DoctorTab } from '../../types/doctor';
 import type { TokenQueueItem, DoctorRecord } from '../../types/receptionist';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
@@ -65,6 +68,9 @@ export const DoctorLayout: React.FC = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showLogoutWarning, setShowLogoutWarning] = useState(false);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [scannedPatientRecord, setScannedPatientRecord] = useState<any>(null);
+  const [isPatientDossierOpen, setIsPatientDossierOpen] = useState(false);
 
   // Availability Reason Modal State
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
@@ -82,6 +88,39 @@ export const DoctorLayout: React.FC = () => {
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
+
+  const handlePatientLoaded = (patientData: any) => {
+    setScannedPatientRecord(patientData);
+    setIsPatientDossierOpen(true);
+    showToast(`Loaded medical record for ${patientData.patient?.fullName}`);
+  };
+
+  const handleStartConsultationFromDossier = (patientDto: any) => {
+    setIsPatientDossierOpen(false);
+    const token: TokenQueueItem = {
+      id: patientDto.id || `tok-${Date.now()}`,
+      patientId: patientDto.id,
+      tokenNumber: patientDto.patientCode || '#PAT-001',
+      ticketNumber: patientDto.patientCode || '#PAT-001',
+      patientName: patientDto.fullName,
+      patientPhone: patientDto.phone || '',
+      doctorId: activeDoctorId || 'doc-1',
+      doctorName: currentStaff?.name || 'Consulting Physician',
+      doctorSpecialty: currentStaff?.department || 'General Medicine',
+      timeSlot: 'Immediate Consultation',
+      status: 'In Consultation',
+      type: 'In-Person',
+      arrivalTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      issueTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      age: patientDto.age,
+      bloodGroup: patientDto.bloodGroup,
+      healthIssue: patientDto.preExistingConditions || 'Consultation initiated via QR scan',
+    };
+    setActivePatient(token);
+    setActiveTab('consultation');
+    showToast(`Initiated clinical consultation for ${patientDto.fullName}`);
+  };
 
   const activeDoctorId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
 
@@ -555,6 +594,16 @@ export const DoctorLayout: React.FC = () => {
               </button>
             </div>
 
+            {/* Quick Action: Scan Patient QR */}
+            <button
+              onClick={() => setIsQrScannerOpen(true)}
+              className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+              title="Scan Patient Health ID QR Code"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Scan QR</span>
+            </button>
+
             {/* Quick Call Next Action Button */}
             <button
               onClick={handleQuickCallNext}
@@ -928,6 +977,25 @@ export const DoctorLayout: React.FC = () => {
         }}
         onNavigateTab={(tab) => setActiveTab(tab)}
         showToast={showToast}
+      />
+
+      {/* ── Patient QR Scanner Modal ── */}
+      <PatientQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        hospitalId={currentStaff?.hospitalId || currentStaff?.hospital_id}
+        hospitalName={currentStaff?.hospitalName || currentStaff?.hospital_name || 'CarePulse Hospital'}
+        portalRole="doctor"
+        onPatientLoaded={handlePatientLoaded}
+      />
+
+      {/* ── Patient 360 Medical Record Dossier Modal ── */}
+      <Patient360RecordModal
+        isOpen={isPatientDossierOpen}
+        onClose={() => setIsPatientDossierOpen(false)}
+        data={scannedPatientRecord}
+        portalRole="doctor"
+        onStartConsultation={handleStartConsultationFromDossier}
       />
     </div>
   );
