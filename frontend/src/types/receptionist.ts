@@ -79,13 +79,20 @@ export interface ReceptionistProfile {
   staff_code?: string;
   staffCode?: string;
   name: string;
+  fullName?: string;
   username?: string;
   email: string;
   phone: string;
   employeeId: string;
   clinicName: string;
+  hospitalName?: string;
+  hospitalId?: string;
   deskName?: string;
   department: string;
   shift: string;
   avatarUrl: string;
+  operationalStatus?: string;
+  twoFactorEnabled?: boolean;
+  isActive?: boolean;
 }
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Building2,
@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { receptionistService } from '../../services/receptionistService';
 import { useNavigate } from 'react-router-dom';
 
 interface ReceptionistProfileProps {
@@ -25,19 +26,49 @@ interface ReceptionistProfileProps {
 
 export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShowToast }) => {
   const profile = useStaffStore((s) => s.receptionistProfile);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
+  const fetchReceptionistProfile = useStaffStore((s) => s.fetchReceptionistProfile);
   const updateProfile = useStaffStore((s) => s.updateReceptionistProfile);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
+  // Load real profile from backend on mount
+  useEffect(() => {
+    fetchReceptionistProfile();
+  }, [fetchReceptionistProfile]);
+
   // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [name, setName] = useState(profile.name);
-  const [username, setUsername] = useState(profile.username || 'rec');
-  const [email, setEmail] = useState(profile.email);
-  const [clinicName, setClinicName] = useState(profile.clinicName || 'CarePulse Central Hospital');
-  const [deskName, setDeskName] = useState(profile.deskName || 'Main Reception & OPD Queue Desk 01');
-  const [department, setDepartment] = useState(profile.department);
+  const [name, setName] = useState(profile.name || currentStaff?.name || 'REP1');
+  const [username, setUsername] = useState(
+    profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : 'rep1')
+  );
+  const [email, setEmail] = useState(profile.email || currentStaff?.email || 'bag@bitsathy');
+  const [clinicName, setClinicName] = useState(
+    profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'BAG Hospital'
+  );
+  const [deskName, setDeskName] = useState(
+    profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Queue Desk 01'
+  );
+  const [department, setDepartment] = useState(
+    profile.department || currentStaff?.department || 'Main Reception & OPD Queue'
+  );
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync state when profile or session loads
+  useEffect(() => {
+    setName(profile.name || currentStaff?.name || 'REP1');
+    setUsername(
+      profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : 'rep1')
+    );
+    setEmail(profile.email || currentStaff?.email || 'bag@bitsathy');
+    setClinicName(
+      profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'BAG Hospital'
+    );
+    setDeskName(profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Queue Desk 01');
+    setDepartment(profile.department || currentStaff?.department || 'Main Reception & OPD Queue');
+  }, [profile, currentStaff, hospitalSettings]);
 
   // Password Reset / Forgot Password Modal State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -71,7 +102,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
     });
     setIsSaving(false);
     setIsEditModalOpen(false);
-    onShowToast?.('✓ Receptionist desk profile updated successfully.');
+    onShowToast?.('✓ Receptionist desk profile updated successfully in database.');
   };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -89,15 +120,35 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
     }
 
     setIsUpdatingPassword(true);
-    await new Promise((res) => setTimeout(res, 600));
-
+    const res = await receptionistService.changePassword(currentPassword, newPassword);
     setIsUpdatingPassword(false);
+
+    if (!res.success) {
+      setPasswordError(res.message || 'Failed to update password. Current password may be incorrect.');
+      return;
+    }
+
     setIsPasswordModalOpen(false);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    onShowToast?.('🔒 Password updated successfully. Use your new credentials for next login.');
+    onShowToast?.('🔒 Password updated successfully in database. Use your new credentials for next login.');
   };
+
+  const effectiveClinicName =
+    profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'BAG Hospital';
+  const effectiveDeskName =
+    profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Queue Desk 01';
+  const effectiveDepartment =
+    profile.department || currentStaff?.department || 'Main Reception & OPD Queue';
+  const effectiveEmployeeId =
+    profile.employeeId || profile.staffCode || currentStaff?.staffCode || currentStaff?.staff_code || 'R007101';
+  const effectiveUsername =
+    profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : (currentStaff?.email ? currentStaff.email.split('@')[0] : 'rep1'));
+  const effectiveEmail =
+    profile.email || currentStaff?.email || 'bag@bitsathy';
+  const effectiveStatus =
+    profile.operationalStatus || (currentStaff?.isActive !== false ? 'Active On Duty' : 'Inactive');
 
   return (
     <div className="space-y-6 pb-12 text-left animate-in fade-in duration-300">
@@ -105,20 +156,31 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
           SYMMETRIC BALANCED DUAL-FRAMEWORK CARDS
       ══════════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Card 1: Workstation & Facility Assignment */}
+        {/* Card 1: Workstation & Hospital Facility */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
-          <div className="flex items-center gap-2.5 pb-3.5 border-b border-slate-100 min-h-[48px]">
-            <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center shadow-2xs">
-              <Building2 className="w-4 h-4" />
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 min-h-[48px]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center shadow-2xs">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">
+                  Workstation & Hospital Facility
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Physical workstation configuration & desk details
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">
-                Workstation & Hospital Facility
-              </h3>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Physical workstation configuration & desk details
-              </p>
-            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-2.5 py-1 text-[11px] font-bold text-[#0B5A54] bg-teal-50 hover:bg-teal-100 rounded-lg border border-teal-200 transition-colors cursor-pointer flex items-center gap-1 hover:scale-105 active:scale-95"
+            >
+              <Edit3 className="w-3 h-3 text-[#0B5A54]" />
+              <span>Edit Desk</span>
+            </button>
           </div>
 
           <div className="space-y-2.5 text-xs flex-1 flex flex-col justify-between">
@@ -128,7 +190,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <span>Hospital / Clinic Name:</span>
               </span>
               <span className="font-extrabold text-slate-900 text-right">
-                {profile.clinicName || 'CarePulse Central Hospital'}
+                {effectiveClinicName}
               </span>
             </div>
 
@@ -138,7 +200,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <span>Desk Station Name:</span>
               </span>
               <span className="font-extrabold text-[#0B5A54] text-right">
-                {profile.deskName || 'Main Reception & OPD Queue Desk 01'}
+                {effectiveDeskName}
               </span>
             </div>
 
@@ -147,7 +209,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span>Department / OPD Wing:</span>
               </span>
-              <span className="font-extrabold text-slate-900 text-right">{profile.department}</span>
+              <span className="font-extrabold text-slate-900 text-right">{effectiveDepartment}</span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
@@ -157,7 +219,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
               </span>
               <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-right text-[11px] flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Active On Duty</span>
+                <span>{effectiveStatus}</span>
               </span>
             </div>
           </div>
@@ -197,7 +259,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <span>Receptionist ID:</span>
               </span>
               <span className="font-extrabold text-slate-900 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 text-right">
-                {profile.employeeId}
+                {effectiveEmployeeId}
               </span>
             </div>
 
@@ -207,7 +269,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <span>Account Username:</span>
               </span>
               <span className="font-extrabold text-slate-900 font-mono bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 text-right">
-                @{profile.username || 'rec'}
+                @{effectiveUsername}
               </span>
             </div>
 
@@ -216,7 +278,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                 <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span>Staff Email Address:</span>
               </span>
-              <span className="font-extrabold text-slate-900 font-mono text-right">{profile.email}</span>
+              <span className="font-extrabold text-slate-900 font-mono text-right">{effectiveEmail}</span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-200/80 gap-1.5 transition-colors">
@@ -281,7 +343,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Emily Watson"
+                    placeholder="REP1"
                     className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                   />
                 </div>
@@ -294,7 +356,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="rec"
+                      placeholder="rep1"
                       className="w-full pl-7 pr-3 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                     />
                   </div>
@@ -309,7 +371,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                     required
                     value={clinicName}
                     onChange={(e) => setClinicName(e.target.value)}
-                    placeholder="CarePulse Central Hospital"
+                    placeholder="BAG Hospital"
                     className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                   />
                 </div>
@@ -334,7 +396,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="rec@carepulse.com"
+                    placeholder="bag@bitsathy"
                     className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                   />
                 </div>
@@ -387,7 +449,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
                     Reset Terminal Password
                   </h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Set a new password for @{profile.username || 'rec'}
+                    Set a new password for @{effectiveUsername}
                   </p>
                 </div>
               </div>
@@ -546,7 +608,7 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 You are about to sign out from the Receptionist Desk terminal at{' '}
-                <strong className="text-slate-900 font-extrabold">{profile.clinicName || 'CarePulse Central Hospital'}</strong>.
+                <strong className="text-slate-900 font-extrabold">{effectiveClinicName}</strong>.
               </p>
               <p className="text-[11px] text-slate-500 font-semibold bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                 Live queues, token counts, and doctor cabin schedules will remain saved.

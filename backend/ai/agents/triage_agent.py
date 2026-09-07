@@ -132,6 +132,17 @@ def run_triage_assessment(user_text: str, patient_context_dict: Optional[Dict[st
     if dept_scores[best_dept] == 0:
         best_dept = "General Medicine"
 
+    # Refine department alignment for general symptoms
+    if any(k in text_lower for k in ["cough", "caugh", "couph", "wheezing", "asthma", "phlegm", "mucus"]):
+        if not any(k in text_lower for k in ["chest pain", "palpitations", "heart"]):
+            best_dept = "Pulmonology"
+    elif any(k in text_lower for k in ["headache", "migraine", "temple pain", "head hurts"]):
+        if not any(k in text_lower for k in ["chest pain", "palpitations", "heart"]):
+            best_dept = "General Medicine"
+    elif any(k in text_lower for k in ["fever", "fewer", "fevr", "chills", "body ache"]):
+        if not any(k in text_lower for k in ["cough", "wheezing", "asthma", "stomach pain", "acid reflux"]):
+            best_dept = "General Medicine"
+
     # 4. Generate Ranked Possibilities dynamically
     possible_conditions = resolve_dynamic_condition(user_text, best_dept)
     ranked_list = []

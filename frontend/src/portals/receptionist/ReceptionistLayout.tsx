@@ -510,7 +510,7 @@ export const ReceptionistLayout: React.FC = () => {
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="font-black text-slate-900 font-heading">{staffDisplayName}</p>
                     <p className="text-[10px] text-slate-400 font-medium truncate">
-                      {profile.email || 'receptionist@carepulse.com'}
+                      {currentStaff?.email || profile.email || 'bag@bitsathy'}
                     </p>
                     <p className="text-[9px] text-[#0B5A54] font-extrabold mt-0.5">
                       {profile.shift || 'Morning Shift'}

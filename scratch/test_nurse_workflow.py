@@ -127,8 +127,8 @@ def run_tests():
                 test_doc_id = str(d_row['id']) if (d_row and 'id' in d_row) else (str(d_row[0]) if d_row else "doc-bag-1")
                 test_appt_id = str(uuid.uuid4())
                 cur.execute("""
-                    INSERT INTO appointments (id, patient_id, doctor_id, hospital_id, date, time, status, queue_status, token_number)
-                    VALUES (%s, %s, %s, 'hosp-bag', CURRENT_DATE, '10:00 AM', 'Confirmed', 'Checked In', 101)
+                    INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, hospital_id, hospital_name, date, time_slot, type, status)
+                    VALUES (%s, %s, '#TOK-101', %s, 'Dr. Attending', 'General Medicine', 'hosp-bag', 'Apollo Hospital Bangalore', CURRENT_DATE, '10:00 AM', 'Walk-In', 'Waiting')
                     ON CONFLICT (id) DO NOTHING
                 """, (test_appt_id, test_patient_id, test_doc_id))
                 conn.commit()
@@ -250,7 +250,9 @@ def run_tests():
     rec_write_res = client.post("/api/receptionist/doctors", json={
         "name": "Dr. Hacker Unauthorized",
         "specialty": "Cardiology",
-        "department": "Cardiology"
+        "department": "Cardiology",
+        "experienceYears": 10,
+        "consultationFee": 500.0
     }, headers=nurse_headers)
     print(f"     Status: {rec_write_res.status_code} (Expected: 403 Forbidden)")
     assert rec_write_res.status_code == 403, f"SECURITY VIOLATION: Nurse was NOT rejected with 403 on create doctor! Got: {rec_write_res.status_code}"

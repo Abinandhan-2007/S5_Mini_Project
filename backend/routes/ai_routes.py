@@ -176,6 +176,8 @@ async def generate_soap_note_endpoint(payload: Dict[str, Any]):
         if not notes:
             raise HTTPException(status_code=400, detail="consultation_notes parameter is required.")
         return generate_soap_summary(notes, payload.get("patient_id"))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -331,6 +331,26 @@ def staff_login(request: StaffLoginRequest):
         except Exception as e:
             logger.warning(f"Could not sync staff hospital_id: {e}")
 
+    hosp_name = "BAG Hospital"
+    if resolved_hospital_id:
+        if database.use_pg:
+            try:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT name FROM hospitals WHERE id = %s LIMIT 1", (resolved_hospital_id,))
+                        h_row = cur.fetchone()
+                        if h_row and h_row.get("name"):
+                            hosp_name = h_row["name"]
+            except Exception as e:
+                logger.warning(f"Error fetching hospital name: {e}")
+        else:
+            db = read_json_db()
+            for h in db.get("hospitals", []):
+                if h.get("id") == resolved_hospital_id:
+                    hosp_name = h.get("name", hosp_name)
+                    break
+
+    email_user = (found_staff.get("email") or "").split("@")[0] if found_staff.get("email") else "staff"
     staff_profile = {
         "id": str(found_staff.get("id")),
         "name": found_staff.get("name") or found_staff.get("full_name") or "Staff Member",
@@ -340,11 +360,15 @@ def staff_login(request: StaffLoginRequest):
         "avatarUrl": found_staff.get("avatarUrl") or found_staff.get("avatar") or found_staff.get("avatar_url") or "",
         "hospitalId": resolved_hospital_id,
         "hospital_id": resolved_hospital_id,
+        "hospitalName": hosp_name,
+        "hospital_name": hosp_name,
         "doctorId": doc_id,
         "doctor_id": doc_id,
         "staff_code": found_staff.get("staff_code") or found_staff.get("staffCode") or "",
         "staffCode": found_staff.get("staff_code") or found_staff.get("staffCode") or "",
         "phone": found_staff.get("phone") or "",
+        "username": found_staff.get("username") or email_user,
+        "deskName": found_staff.get("desk_name") or found_staff.get("deskName") or "Main Reception & OPD Queue Desk 01",
     }
 
     session_token = create_jwt({
@@ -354,6 +378,8 @@ def staff_login(request: StaffLoginRequest):
         "email": staff_profile["email"],
         "hospital_id": resolved_hospital_id,
         "hospitalId": resolved_hospital_id,
+        "hospital_name": hosp_name,
+        "hospitalName": hosp_name,
         "doctor_id": doc_id,
         "doctorId": doc_id,
         "type": "staff"
