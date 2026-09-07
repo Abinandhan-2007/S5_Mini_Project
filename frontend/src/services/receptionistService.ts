@@ -5,7 +5,10 @@ export const receptionistService = {
   async getDoctors(hospitalId?: string): Promise<DoctorRecord[]> {
     try {
       const q = hospitalId ? `?hospital_id=${encodeURIComponent(hospitalId)}` : '';
-      let res = await apiFetch(`/receptionist/doctors${q}`, { method: 'GET' });
+      let res = await apiFetch(`/admin/doctors${q}`, { method: 'GET' });
+      if (!res.ok) {
+        res = await apiFetch(`/receptionist/doctors${q}`, { method: 'GET' });
+      }
       if (!res.ok) {
         res = await apiFetch(`/doctors${q}`, { method: 'GET' });
       }
@@ -14,7 +17,11 @@ export const receptionistService = {
         const docs = Array.isArray(data) ? data : (data.doctors || []);
         return docs.map((d: any) => ({
           ...d,
+          isAvailable: d.isAvailable !== false && d.is_available !== false,
+          department: d.department || d.specialty || 'General Medicine',
+          specialty: d.specialty || d.department || 'General Medicine',
           photo: d.photo || d.photoUrl || d.photo_url || '/doctor_default.jpg',
+          password: d.password || 'doc123',
         }));
       }
     } catch (e) {
@@ -25,13 +32,29 @@ export const receptionistService = {
 
   async createDoctor(payload: Partial<DoctorRecord>): Promise<DoctorRecord | null> {
     try {
-      const res = await apiFetch('/receptionist/doctors', {
+      let res = await apiFetch('/admin/doctors', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        res = await apiFetch('/receptionist/doctors', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
       if (res.ok) {
         const data = await res.json();
-        return data.doctor;
+        const doc = data.doctor;
+        if (doc) {
+          return {
+            ...doc,
+            isAvailable: doc.isAvailable !== false && doc.is_available !== false,
+            department: doc.department || doc.specialty || 'General Medicine',
+            specialty: doc.specialty || doc.department || 'General Medicine',
+            photo: doc.photo || doc.photoUrl || doc.photo_url || '/doctor_default.jpg',
+            password: doc.password || payload.password || 'doc123',
+          };
+        }
       }
     } catch (e) {
       console.warn('Failed to create doctor via backend API', e);

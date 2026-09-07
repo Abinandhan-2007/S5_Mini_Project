@@ -30,7 +30,7 @@ import { DoctorProfile } from './DoctorProfile';
 import { DoctorNotificationView } from './DoctorNotificationView';
 import { DoctorNotificationCenter } from './DoctorNotificationCenter';
 import type { DoctorTab } from '../../types/doctor';
-import type { TokenQueueItem } from '../../types/receptionist';
+import type { TokenQueueItem, DoctorRecord } from '../../types/receptionist';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
 
 const REASON_PRESETS = [
@@ -115,7 +115,7 @@ export const DoctorLayout: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const currentDoctor = doctors.find((d) => 
+  const currentDoctor: DoctorRecord = doctors.find((d) => 
     (activeDoctorId && d.id === activeDoctorId) ||
     (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
     (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
@@ -123,10 +123,22 @@ export const DoctorLayout: React.FC = () => {
     id: activeDoctorId || 'doc-current',
     name: currentStaff?.name || 'Doctor',
     specialty: currentStaff?.department || 'General Medicine',
+    department: currentStaff?.department || 'General Medicine',
+    hospitalId: currentStaff?.hospitalId || currentStaff?.hospital_id,
+    hospital_id: currentStaff?.hospital_id || currentStaff?.hospitalId,
+    hospitalName: currentStaff?.hospitalName || currentStaff?.hospital_name,
+    hospital_name: currentStaff?.hospital_name || currentStaff?.hospitalName,
+    experienceYears: 5,
+    consultationFee: 500,
+    photo: '/doctor_default.jpg',
+    phone: '+91 98765 00000',
+    email: currentStaff?.email || 'doctor@carepulse.com',
     roomNumber: 'Cabin 101',
     isAvailable: true,
     availabilityReason: '',
     unavailableUntil: '',
+    availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    slotCapacities: [],
   };
 
   const handleOpenUnavailableModal = () => {
@@ -286,12 +298,23 @@ export const DoctorLayout: React.FC = () => {
     navigate('/staff/login');
   };
 
+  const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
+
+  const hospitalDisplayName =
+    currentStaff?.hospitalName ||
+    currentStaff?.hospital_name ||
+    currentDoctor.hospitalName ||
+    currentDoctor.hospital_name ||
+    (currentStaff?.hospitalId === 'hosp-bag' || currentDoctor.hospitalId === 'hosp-bag' ? 'BAG Hospital' : null) ||
+    hospitalSettings?.name ||
+    'BAG Hospital';
+
   const getHeaderContext = () => {
     switch (activeTab) {
       case 'dashboard':
         return {
-          title: 'Physician Clinical Command',
-          breadcrumb: 'Doctor Portal / Live Overview',
+          title: hospitalDisplayName,
+          breadcrumb: '',
         };
       case 'consultation':
         return {
@@ -320,7 +343,7 @@ export const DoctorLayout: React.FC = () => {
         };
       default:
         return {
-          title: 'Doctor Clinical Workspace',
+          title: hospitalDisplayName,
           breadcrumb: 'Doctor Portal / CarePulse',
         };
     }
@@ -489,9 +512,11 @@ export const DoctorLayout: React.FC = () => {
             </button>
 
             <div>
-              <p className="text-[11px] font-bold text-slate-400 hidden sm:block">
-                {headerContext.breadcrumb}
-              </p>
+              {headerContext.breadcrumb ? (
+                <p className="text-[11px] font-bold text-slate-400 hidden sm:block">
+                  {headerContext.breadcrumb}
+                </p>
+              ) : null}
               <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading tracking-tight leading-tight">
                 {headerContext.title}
               </h2>

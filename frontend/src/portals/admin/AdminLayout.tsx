@@ -195,51 +195,58 @@ export const AdminLayout: React.FC = () => {
 
   // Header Title & Contextual CTA Mapping
   const getHeaderContext = () => {
+    const hospName =
+      currentStaff?.hospitalName ||
+      currentStaff?.hospital_name ||
+      adminProfile.hospitalName ||
+      hospitalSettings.name ||
+      'CarePulse Central';
+
     switch (activeTab) {
       case 'dashboard':
         return {
           title: 'Hospital Dashboard',
-          breadcrumb: 'CarePulse Central / Overview',
+          breadcrumb: `${hospName} / Overview`,
         };
       case 'doctors':
         return {
           title: 'Doctor Management',
-          breadcrumb: 'CarePulse Central / Physicians & Schedules',
+          breadcrumb: `${hospName} / Physicians & Schedules`,
         };
       case 'receptionists':
         return {
           title: 'Receptionist Management',
-          breadcrumb: 'CarePulse Central / Front-Desk Desks',
+          breadcrumb: `${hospName} / Front-Desk Desks`,
         };
       case 'departments':
         return {
           title: 'Department Management',
-          breadcrumb: 'CarePulse Central / Clinical Specialties',
+          breadcrumb: `${hospName} / Clinical Specialties`,
         };
       case 'appointments':
         return {
           title: 'Appointment Overview',
-          breadcrumb: 'CarePulse Central / Calendar & Master List',
+          breadcrumb: `${hospName} / Calendar & Master List`,
         };
       case 'reports':
         return {
           title: 'Reports & Analytics',
-          breadcrumb: 'CarePulse Central / KPI Intelligence',
+          breadcrumb: `${hospName} / KPI Intelligence`,
         };
       case 'announcements':
         return {
           title: 'Hospital Notifications',
-          breadcrumb: 'CarePulse Central / Broadcast Alerts',
+          breadcrumb: `${hospName} / Broadcast Alerts`,
         };
       case 'settings':
         return {
           title: 'Settings & Profile',
-          breadcrumb: 'CarePulse Central / System Configuration',
+          breadcrumb: `${hospName} / System Configuration`,
         };
       default:
         return {
           title: 'Hospital Administrative Portal',
-          breadcrumb: 'CarePulse Central',
+          breadcrumb: hospName,
         };
     }
   };

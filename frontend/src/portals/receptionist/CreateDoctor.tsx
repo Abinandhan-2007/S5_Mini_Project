@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Stethoscope, User, Phone, Mail, MapPin, DollarSign, Upload, CheckCircle2, FileText, ChevronDown, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { X, Building2, User, Phone, Mail, MapPin, Upload, CheckCircle2, FileText, ChevronDown, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 
 interface CreateDoctorProps {
@@ -8,14 +8,34 @@ interface CreateDoctorProps {
   onSuccess?: () => void;
 }
 
+const DEFAULT_DEPARTMENTS = [
+  'General Medicine',
+  'Cardiology',
+  'Dermatology',
+  'Pediatrics',
+  'Neurology',
+  'Orthopedics',
+  'Gynecology',
+  'ENT',
+  'Ophthalmology',
+  'Gastroenterology',
+  'Urology',
+  'Emergency Care',
+];
+
 export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onSuccess }) => {
   const createDoctor = useStaffStore((s) => s.createDoctor);
+  const departments = useStaffStore((s) => s.departments);
+
+  const availableDepartments = React.useMemo(() => {
+    const list = departments.map((d) => d.name).filter(Boolean);
+    const set = new Set([...list, ...DEFAULT_DEPARTMENTS]);
+    return Array.from(set);
+  }, [departments]);
 
   const [name, setName] = useState('');
-  const [specialty, setSpecialty] = useState('');
-  const [department, setDepartment] = useState('');
-  const [experienceYears, setExperienceYears] = useState<string>('');
-  const [consultationFee, setConsultationFee] = useState<string>('');
+  const [department, setDepartment] = useState('General Medicine');
+  const [experienceYears, setExperienceYears] = useState<string>('5');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -46,26 +66,24 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
     e.preventDefault();
     if (!name.trim()) return;
 
-    const expNum = parseInt(experienceYears, 10) || 1;
-    const feeNum = parseFloat(consultationFee) || 500;
-    const selectedSpecialty = specialty || 'General Physician';
-    const selectedDept = department || selectedSpecialty;
+    const expNum = parseInt(experienceYears, 10) || 5;
+    const selectedDept = department.trim() || 'General Medicine';
     const assignedUsername = username.trim() || email.split('@')[0] || name.toLowerCase().replace(/\s+/g, '.');
     const assignedPassword = password.trim() || 'doc123';
 
     setIsSubmitting(true);
     await createDoctor({
-      name,
-      specialty: selectedSpecialty,
+      name: name.trim().startsWith('Dr.') ? name.trim() : `Dr. ${name.trim()}`,
+      specialty: selectedDept,
       department: selectedDept,
       experienceYears: expNum,
-      consultationFee: feeNum,
+      consultationFee: 500,
       phone: phone || '+91 98765 00000',
-      email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@carepulse.com`,
+      email: email || `${assignedUsername}@carepulse.com`,
       username: assignedUsername,
       password: assignedPassword,
       roomNumber: roomNumber || 'Cabin 101 - 1st Floor',
-      about: about || `Senior ${selectedSpecialty} with clinical experience in medical consultations and patient care.`,
+      about: about || `Senior physician with clinical experience in medical consultations and patient care.`,
       photo: photo || '/doctor_default.jpg',
       isAvailable: true,
       availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -74,10 +92,8 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
 
     // Reset form fields
     setName('');
-    setSpecialty('');
-    setDepartment('');
-    setExperienceYears('');
-    setConsultationFee('');
+    setDepartment('General Medicine');
+    setExperienceYears('5');
     setPhone('');
     setEmail('');
     setUsername('');
@@ -170,71 +186,38 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Specialty</label>
-              <div className="relative">
-                <Stethoscope className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                <select
-                  required
-                  value={specialty}
-                  onChange={(e) => {
-                    setSpecialty(e.target.value);
-                    setDepartment(e.target.value);
-                  }}
-                  className={`w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer appearance-none ${
-                    !specialty ? 'text-slate-400 font-normal' : 'text-slate-900 font-semibold'
-                  }`}
-                >
-                  <option value="" disabled>Select Specialty...</option>
-                  <option value="Cardiologist">Cardiologist</option>
-                  <option value="Dermatologist">Dermatologist</option>
-                  <option value="Pediatrician">Pediatrician</option>
-                  <option value="Neurologist">Neurologist</option>
-                  <option value="General Physician">General Physician</option>
-                  <option value="Orthopedic Surgeon">Orthopedic Surgeon</option>
-                  <option value="Gynecologist">Gynecologist</option>
-                  <option value="ENT Specialist">ENT Specialist</option>
-                  <option value="Ophthalmologist">Ophthalmologist</option>
-                  <option value="Psychiatrist">Psychiatrist</option>
-                  <option value="Oncologist">Oncologist</option>
-                  <option value="Radiologist">Radiologist</option>
-                  <option value="Urologist">Urologist</option>
-                  <option value="Endocrinologist">Endocrinologist</option>
-                  <option value="Gastroenterologist">Gastroenterologist</option>
-                  <option value="Dentist">Dentist</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
-              </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+            <div className="relative">
+              <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              <select
+                required
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer appearance-none text-slate-900"
+              >
+                {availableDepartments.map((deptName) => (
+                  <option key={deptName} value={deptName}>
+                    {deptName}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Experience (Years)</label>
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={50}
                 placeholder="e.g. 5"
                 value={experienceYears}
                 onChange={(e) => setExperienceYears(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Consultation Fee (₹)</label>
-              <div className="relative">
-                <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <input
-                  type="number"
-                  placeholder="e.g. 750"
-                  value={consultationFee}
-                  onChange={(e) => setConsultationFee(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-                />
-              </div>
             </div>
 
             <div>
