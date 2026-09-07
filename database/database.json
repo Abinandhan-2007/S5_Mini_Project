@@ -168,6 +168,30 @@
       ],
       "is_active": true,
       "distance_miles": 1.0
+    },
+    {
+      "id": "hosp-ss-3d7fee",
+      "hospital_code": "H014",
+      "hospitalCode": "H014",
+      "name": "ss",
+      "address": "cbs",
+      "phone": "53123",
+      "email": "ss@gmail.com",
+      "facility_type": "Multi-Specialty Research Hospital",
+      "rating": 4.8,
+      "reviews_count": 0,
+      "emergency_available": true,
+      "image_url": "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800&auto=format&fit=crop&q=80",
+      "specialties": [
+        "Cardiology",
+        "General Medicine",
+        "Pediatrics",
+        "Emergency Care"
+      ],
+      "is_active": true,
+      "is_suspended": false,
+      "lifecycle_state": "Pending Setup",
+      "distance_miles": 1.0
     }
   ],
   "doctors": [
@@ -515,6 +539,93 @@
       ],
       "slotCapacities": [],
       "slot_capacities": []
+    },
+    {
+      "id": "doc-4a09dc",
+      "staff_code": "D122101",
+      "staffCode": "D122101",
+      "name": "kuppusamy",
+      "specialty": "Ophthalmologist",
+      "department": "Ophthalmologist",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "hospital_name": "CarePulse Hospital",
+      "hospitalName": "CarePulse Hospital",
+      "experienceYears": 5,
+      "consultationFee": 500.0,
+      "photo": "/doctor_default.jpg",
+      "phone": "+91 98765 00000",
+      "email": "kuppusamy@gmail.com",
+      "username": "kuppu",
+      "password": "kuppu",
+      "roomNumber": "5",
+      "isAvailable": true,
+      "availableDays": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
+      "slotCapacities": []
+    },
+    {
+      "id": "doc-c40ce3",
+      "staff_code": "D122102",
+      "staffCode": "D122102",
+      "name": "kuppusamy",
+      "specialty": "Ophthalmologist",
+      "department": "Ophthalmologist",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "hospital_name": "CarePulse Hospital",
+      "hospitalName": "CarePulse Hospital",
+      "experienceYears": 5,
+      "consultationFee": 145.0,
+      "photo": "/doctor_default.jpg",
+      "phone": "+91 98765 00000",
+      "email": "kuppu@gmail.com",
+      "username": "kuppusamy",
+      "password": "kuppu",
+      "roomNumber": "4",
+      "isAvailable": true,
+      "availableDays": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
+      "slotCapacities": []
+    },
+    {
+      "id": "doc-162737",
+      "staff_code": "D122103",
+      "staffCode": "D122103",
+      "name": "kuppusamy",
+      "specialty": "Ophthalmologist",
+      "department": "Ophthalmologist",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "hospital_name": "CarePulse Hospital",
+      "hospitalName": "CarePulse Hospital",
+      "experienceYears": 5,
+      "consultationFee": 145.0,
+      "photo": "/doctor_default.jpg",
+      "phone": "+91 98765 00000",
+      "email": "kuppu@gmail.com",
+      "username": "kuppusamy",
+      "password": "kuppu",
+      "roomNumber": "4",
+      "isAvailable": true,
+      "availableDays": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
+      "slotCapacities": []
     }
   ],
   "staff": [
@@ -591,8 +702,8 @@
       "full_name": "Platform SuperAdmin",
       "email": "superadmin@carepulse.com",
       "username": "superadmin",
-      "password": "$2b$12$8lEkYabRYydjE/xA1baYuOA.0vO7xEeWmQRX1/tf70K9FnxoW/MUW",
-      "password_hash": "$2b$12$8lEkYabRYydjE/xA1baYuOA.0vO7xEeWmQRX1/tf70K9FnxoW/MUW",
+      "password": "$2b$12$QAxBWARtDge8vtgsLSkAe.8.Ja5FVdJmvx9kARGLEyyPWyeff3wBe",
+      "password_hash": "$2b$12$QAxBWARtDge8vtgsLSkAe.8.Ja5FVdJmvx9kARGLEyyPWyeff3wBe",
       "role": "superadmin",
       "department": "Global Platform Operations",
       "specialization": "Global Platform Operations",
@@ -784,8 +895,8 @@
       "phone": "+916382357771",
       "hospital_id": "hosp-kmch-a31aa8",
       "hospitalId": "hosp-kmch-a31aa8",
-      "isActive": true,
-      "is_active": true,
+      "isActive": false,
+      "is_active": false,
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
     },
     {
@@ -850,6 +961,135 @@
       "hospitalId": "hosp-bit-8bef29",
       "is_active": true,
       "isActive": true
+    },
+    {
+      "id": "doc-4a09dc",
+      "doctor_id": "doc-4a09dc",
+      "doctorId": "doc-4a09dc",
+      "staff_code": "D122101",
+      "staffCode": "D122101",
+      "name": "kuppusamy",
+      "full_name": "kuppusamy",
+      "email": "kuppusamy@gmail.com",
+      "username": "kuppu",
+      "password": "kuppu",
+      "password_hash": "$2b$12$/9NoWx2.hKh6z0Ir7U3RF.LQud4PvZJqd.zkNnCPqiz4n4wGKcJ1u",
+      "role": "doctor",
+      "specialization": "Ophthalmologist",
+      "department": "Ophthalmologist",
+      "phone": "+91 98765 00000",
+      "avatar": "/doctor_default.jpg",
+      "avatar_url": "/doctor_default.jpg",
+      "avatarUrl": "/doctor_default.jpg",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "rec-18c8ab04",
+      "staff_code": "R122101",
+      "staffCode": "R122101",
+      "name": "desk 1",
+      "full_name": "desk 1",
+      "email": "desk1@gmail.com",
+      "password": "$2b$12$V8Kg7mdo1CoHm9SpjNSYQu18p94A.dB4Rd6hrJOfYIre5wsP5Xxwm",
+      "password_hash": "$2b$12$V8Kg7mdo1CoHm9SpjNSYQu18p94A.dB4Rd6hrJOfYIre5wsP5Xxwm",
+      "role": "receptionist",
+      "department": "Main Reception",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "rec-c5fd3291",
+      "staff_code": "R122102",
+      "staffCode": "R122102",
+      "name": "desk2",
+      "full_name": "desk2",
+      "email": "desk2@gmail.com",
+      "password": "$2b$12$z2eEeU/l16moKGXXKQ9VfeaqzWg9SyXP34MY9SN39KPFNRPL/Wx5i",
+      "password_hash": "$2b$12$z2eEeU/l16moKGXXKQ9VfeaqzWg9SyXP34MY9SN39KPFNRPL/Wx5i",
+      "role": "receptionist",
+      "department": "Main Reception",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "doc-c40ce3",
+      "doctor_id": "doc-c40ce3",
+      "doctorId": "doc-c40ce3",
+      "staff_code": "D122102",
+      "staffCode": "D122102",
+      "name": "kuppusamy",
+      "full_name": "kuppusamy",
+      "email": "kuppu@gmail.com",
+      "username": "kuppusamy",
+      "password": "kuppu",
+      "password_hash": "$2b$12$HaHzTGQWlpDZZbaD2WL9x.IbILHwq8WE6oF0bhshVTo1e1HgGJpxy",
+      "role": "doctor",
+      "specialization": "Ophthalmologist",
+      "department": "Ophthalmologist",
+      "phone": "+91 98765 00000",
+      "avatar": "/doctor_default.jpg",
+      "avatar_url": "/doctor_default.jpg",
+      "avatarUrl": "/doctor_default.jpg",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "doc-162737",
+      "doctor_id": "doc-162737",
+      "doctorId": "doc-162737",
+      "staff_code": "D122103",
+      "staffCode": "D122103",
+      "name": "kuppusamy",
+      "full_name": "kuppusamy",
+      "email": "kuppu@gmail.com",
+      "username": "kuppusamy",
+      "password": "kuppu",
+      "password_hash": "$2b$12$sA81zfrUFomXtiALw1pgJOV4r.yGm4NR6uFft1xeOjUg.tHpd7oNG",
+      "role": "doctor",
+      "specialization": "Ophthalmologist",
+      "department": "Ophthalmologist",
+      "phone": "+91 98765 00000",
+      "avatar": "/doctor_default.jpg",
+      "avatar_url": "/doctor_default.jpg",
+      "avatarUrl": "/doctor_default.jpg",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "d1d06df5-5980-4bda-a04e-8faa3fa575f7",
+      "staff_code": "A014101",
+      "staffCode": "A014101",
+      "name": "ssadmin",
+      "full_name": "ssadmin",
+      "email": "ss@gmail.com",
+      "password": "$2b$12$keLBmHEvRj7djvelJM9JTeC1CJoYIlW4GKol7kjA2XyqVDrFBNux2",
+      "password_hash": "$2b$12$keLBmHEvRj7djvelJM9JTeC1CJoYIlW4GKol7kjA2XyqVDrFBNux2",
+      "role": "admin",
+      "department": "Chief Hospital Administration",
+      "specialization": "Chief Hospital Administration",
+      "phone": "655456456",
+      "hospital_id": "hosp-ss-3d7fee",
+      "hospitalId": "hosp-ss-3d7fee",
+      "isActive": true,
+      "is_active": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
     }
   ],
   "hospital_settings": {
@@ -916,6 +1156,40 @@
       "assignedDoctorsCount": 3,
       "hospital_id": "hosp-bit-8bef29",
       "hospitalId": "hosp-bit-8bef29",
+      "joinDate": "2026-09-07"
+    },
+    {
+      "id": "rec-18c8ab04",
+      "staff_code": "R122101",
+      "staffCode": "R122101",
+      "name": "desk 1",
+      "email": "desk1@gmail.com",
+      "phone": "+91 98765 43220",
+      "department": "Main Reception",
+      "deskNumber": "Desk A-1 (Ground Floor)",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 3,
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "joinDate": "2026-09-07"
+    },
+    {
+      "id": "rec-c5fd3291",
+      "staff_code": "R122102",
+      "staffCode": "R122102",
+      "name": "desk2",
+      "email": "desk2@gmail.com",
+      "phone": "+91 98765 43220",
+      "department": "Main Reception",
+      "deskNumber": "Desk A-1 (Ground Floor)",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 3,
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
       "joinDate": "2026-09-07"
     }
   ],
@@ -3491,6 +3765,388 @@
   ],
   "device_tokens": [],
   "audit_logs": [
+    {
+      "id": "audit-6ef8afa6aa94",
+      "timestamp": "2026-09-07T09:33:06.393331+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_APPOINTED",
+      "target_type": "admin",
+      "target_id": "d1d06df5-5980-4bda-a04e-8faa3fa575f7",
+      "target_code": "A014101",
+      "target_name": "ssadmin",
+      "description": "Appointed administrator A014101 (ssadmin) to hospital H014 (ss)",
+      "before_state": null,
+      "after_state": {
+        "staff_code": "A014101",
+        "full_name": "ssadmin",
+        "email": "ss@gmail.com",
+        "hospital_id": "hosp-ss-3d7fee",
+        "hospital_code": "H014",
+        "hospital_name": "ss",
+        "facility_lifecycle": "Pending Setup"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-56d20b4eb126",
+      "timestamp": "2026-09-07T09:31:49.974747+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_CREATED",
+      "target_type": "hospital",
+      "target_id": "hosp-ss-3d7fee",
+      "target_code": "H014",
+      "target_name": "ss",
+      "description": "Provisioned hospital facility H014 (ss) in Draft state",
+      "before_state": null,
+      "after_state": {
+        "hospital_code": "H014",
+        "name": "ss",
+        "facility_type": "Multi-Specialty Research Hospital",
+        "lifecycle_state": "Draft",
+        "address": "cbs"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-e3595ec5b1bd",
+      "timestamp": "2026-09-07T09:31:25.105313+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_DELETED",
+      "target_type": "hospital",
+      "target_id": "hosp-royalcare-9c7d0f",
+      "target_code": "H013",
+      "target_name": "royalcare",
+      "description": "Permanently deleted hospital facility H013 (royalcare) and cascaded associated staff bindings",
+      "before_state": null,
+      "after_state": null,
+      "reason": null
+    },
+    {
+      "id": "audit-e902b5e5d2cf",
+      "timestamp": "2026-09-07T09:26:02.716856+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_APPOINTED",
+      "target_type": "admin",
+      "target_id": "658350dd-d183-4899-8607-10c588545910",
+      "target_code": "A013101",
+      "target_name": "royaladmin",
+      "description": "Appointed administrator A013101 (royaladmin) to hospital H013 (royalcare)",
+      "before_state": null,
+      "after_state": {
+        "staff_code": "A013101",
+        "full_name": "royaladmin",
+        "email": "royaladmin@gmail.com",
+        "hospital_id": "hosp-royalcare-9c7d0f",
+        "hospital_code": "H013",
+        "hospital_name": "royalcare",
+        "facility_lifecycle": "Pending Setup"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-76690cd19185",
+      "timestamp": "2026-09-07T09:25:15.529417+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_CREATED",
+      "target_type": "hospital",
+      "target_id": "hosp-royalcare-9c7d0f",
+      "target_code": "H013",
+      "target_name": "royalcare",
+      "description": "Provisioned hospital facility H013 (royalcare) in Draft state",
+      "before_state": null,
+      "after_state": {
+        "hospital_code": "H013",
+        "name": "royalcare",
+        "facility_type": "Multi-Specialty Research Hospital",
+        "lifecycle_state": "Draft",
+        "address": "cbe"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-dfb66db6ccbe",
+      "timestamp": "2026-09-07T09:24:41.590046+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_DELETED",
+      "target_type": "hospital",
+      "target_id": "hosp-royalcare-d71efd",
+      "target_code": "H012",
+      "target_name": "ROYALCARE",
+      "description": "Permanently deleted hospital facility H012 (ROYALCARE) and cascaded associated staff bindings",
+      "before_state": null,
+      "after_state": null,
+      "reason": null
+    },
+    {
+      "id": "audit-0b3def720ca2",
+      "timestamp": "2026-09-07T09:23:27.261708+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-f643b399f8b4",
+      "timestamp": "2026-09-07T09:03:29.627407+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_APPOINTED",
+      "target_type": "admin",
+      "target_id": "7022b75f-3708-431b-84b8-9fbd47f96da7",
+      "target_code": "A012101",
+      "target_name": "royaladmin",
+      "description": "Appointed administrator A012101 (royaladmin) to hospital H012 (ROYALCARE)",
+      "before_state": null,
+      "after_state": {
+        "staff_code": "A012101",
+        "full_name": "royaladmin",
+        "email": "royaladmin@gmail.com",
+        "hospital_id": "hosp-royalcare-d71efd",
+        "hospital_code": "H012",
+        "hospital_name": "ROYALCARE",
+        "facility_lifecycle": "Pending Setup"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-203bc7934a92",
+      "timestamp": "2026-09-07T09:02:53.273220+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_CREATED",
+      "target_type": "hospital",
+      "target_id": "hosp-royalcare-d71efd",
+      "target_code": "H012",
+      "target_name": "ROYALCARE",
+      "description": "Provisioned hospital facility H012 (ROYALCARE) in Draft state",
+      "before_state": null,
+      "after_state": {
+        "hospital_code": "H012",
+        "name": "ROYALCARE",
+        "facility_type": "Multi-Specialty Research Hospital",
+        "lifecycle_state": "Draft",
+        "address": "coimbatore"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-be4399f0e4ad",
+      "timestamp": "2026-09-07T08:09:28.588307+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-036b21fe3c18",
+      "timestamp": "2026-09-07T08:09:08.546906+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-517d8885754e",
+      "timestamp": "2026-09-07T08:09:05.070469+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-605e054e4649",
+      "timestamp": "2026-09-07T08:09:02.047941+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-b79127e43228",
+      "timestamp": "2026-09-07T08:09:01.727518+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-a6fc67c0a83c",
+      "timestamp": "2026-09-07T08:09:01.600230+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-c7a0340d53cf",
+      "timestamp": "2026-09-07T08:09:00.944672+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-4cef9885c1c4",
+      "timestamp": "2026-09-07T08:08:58.949715+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-b70d1863858f",
+      "timestamp": "2026-09-07T08:08:57.782451+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-356410f2548b",
+      "timestamp": "2026-09-07T08:08:56.738987+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_DEACTIVATED",
+      "target_type": "admin",
+      "target_id": "ad5d969e-47c6-4e83-aa45-a3f2aa1ac4a8",
+      "target_code": "A011101",
+      "target_name": "KMCH",
+      "description": "Deactivated administrator A011101 (KMCH) for hospital H011 (KMCH)",
+      "before_state": {
+        "is_active": true
+      },
+      "after_state": {
+        "is_active": false,
+        "hospital_code": "H011"
+      },
+      "reason": null
+    },
     {
       "id": "audit-fecc84b22298",
       "timestamp": "2026-09-07T05:48:46.941763+00:00",

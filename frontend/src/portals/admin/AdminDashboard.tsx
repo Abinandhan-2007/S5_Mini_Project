@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Stethoscope,
   UserCheck,
@@ -10,6 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { apiFetch } from '../../lib/apiFetch';
 
 interface AdminDashboardProps {
   onNavigateTab: (tab: string, autoOpenModal?: boolean) => void;
@@ -19,9 +20,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
   const doctors = useStaffStore((s) => s.doctors);
   const receptionists = useStaffStore((s) => s.receptionists);
   const tokens = useStaffStore((s) => s.tokens);
+  const adminProfile = useStaffStore((s) => s.adminProfile);
 
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
+
+  // Live database aggregation trends from PostgreSQL
+  const [trends, setTrends] = useState<{
+    weeklyData: { label: string; appointments: number; patients: number; heightPct: number }[];
+    monthlyData: { label: string; appointments: number; patients: number; heightPct: number }[];
+  } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveTrends = async () => {
+      try {
+        const hospId = adminProfile.hospitalId;
+        const q = hospId ? `?hospital_id=${encodeURIComponent(hospId)}` : '';
+        const res = await apiFetch(`/admin/overview${q}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.weeklyData && data.monthlyData) {
+            setTrends({
+              weeklyData: data.weeklyData,
+              monthlyData: data.monthlyData,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load live admin trends from PostgreSQL:', err);
+      }
+    };
+    fetchLiveTrends();
+    return () => {
+      isMounted = false;
+    };
+  }, [adminProfile.hospitalId, tokens.length]);
 
   // Computed Real-time Stats
   const totalDoctorsCount = doctors.length;
@@ -29,26 +63,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
   const totalBookingsToday = tokens.length;
   const totalPatientsCount = tokens.length;
 
-  // Chart Data: Weekly & Monthly
-  const weeklyData = [
-    { label: 'Mon', appointments: 42, patients: 38, heightPct: 65 },
-    { label: 'Tue', appointments: 56, patients: 49, heightPct: 84 },
-    { label: 'Wed', appointments: 68, patients: 60, heightPct: 98 },
-    { label: 'Thu', appointments: 51, patients: 45, heightPct: 75 },
-    { label: 'Fri', appointments: 64, patients: 58, heightPct: 92 },
-    { label: 'Sat', appointments: 38, patients: 30, heightPct: 58 },
-    { label: 'Sun', appointments: 22, patients: 18, heightPct: 35 },
-  ];
+  const defaultWeekly = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => ({
+    label,
+    appointments: 0,
+    patients: 0,
+    heightPct: 0,
+  }));
+  const defaultMonthly = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'].map((label) => ({
+    label,
+    appointments: 0,
+    patients: 0,
+    heightPct: 0,
+  }));
 
-  const monthlyData = [
-    { label: 'Mar', appointments: 380, patients: 340, heightPct: 50 },
-    { label: 'Apr', appointments: 460, patients: 410, heightPct: 62 },
-    { label: 'May', appointments: 540, patients: 490, heightPct: 72 },
-    { label: 'Jun', appointments: 620, patients: 570, heightPct: 84 },
-    { label: 'Jul', appointments: 710, patients: 640, heightPct: 94 },
-    { label: 'Aug', appointments: 742, patients: 690, heightPct: 100 },
-  ];
-
+  const weeklyData = trends?.weeklyData || defaultWeekly;
+  const monthlyData = trends?.monthlyData || defaultMonthly;
   const currentChart = timeRange === 'week' ? weeklyData : monthlyData;
 
   // Live Dynamic Recent Operations Activities
@@ -367,12 +396,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
                     <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full">
                       {/* Appointments Bar */}
                       <div
-                        style={{ height: `${item.heightPct}%` }}
+                        style={{ height: `${item.appointments > 0 ? Math.max(8, item.heightPct) : 0}%` }}
                         className="w-full max-w-[20px] rounded-t-lg bg-gradient-to-t from-[#0B5A54] to-teal-400 transition-all duration-300 group-hover:opacity-90 shadow-2xs"
                       />
                       {/* Patients Footfall Bar */}
                       <div
-                        style={{ height: `${Math.max(15, item.heightPct * 0.82)}%` }}
+                        style={{ height: `${item.patients > 0 ? Math.max(6, item.heightPct * 0.82) : 0}%` }}
                         className="w-full max-w-[20px] rounded-t-lg bg-gradient-to-t from-teal-200 to-teal-100 transition-all duration-300 group-hover:opacity-90"
                       />
                     </div>

@@ -89,7 +89,7 @@ def get_admin_overview(
     authorization: Optional[str] = Header(None)
 ):
     """Retrieve hospital high-level executive KPIs. Global if super-admin, or scoped to hospital_id."""
-    staff_ctx = get_current_staff(authorization) if authorization else None
+    staff_ctx = get_current_staff(authorization) if (authorization and isinstance(authorization, str)) else None
     effective_hosp_id = hospital_id
     if staff_ctx and staff_ctx.get("hospital_id"):
         effective_hosp_id = staff_ctx["hospital_id"]
@@ -126,6 +126,60 @@ def get_admin_overview(
                     cur.execute("SELECT COUNT(*) as c FROM patients")
                     total_patients = cur.fetchone()["c"]
 
+                    # Real PostgreSQL aggregation for Weekly Trend (Mon - Sun of current week)
+                    cur.execute(
+                        """
+                        SELECT 
+                            to_char(d, 'Dy') as label,
+                            d::date as full_date,
+                            COUNT(a.id) as appointments,
+                            COUNT(DISTINCT a.patient_id) as patients
+                        FROM generate_series(date_trunc('week', CURRENT_DATE), date_trunc('week', CURRENT_DATE) + INTERVAL '6 days', '1 day'::interval) d
+                        LEFT JOIN appointments a ON a.date = d::date AND (%s::text IS NULL OR a.hospital_id = %s)
+                        GROUP BY d
+                        ORDER BY d;
+                        """,
+                        (effective_hosp_id, effective_hosp_id)
+                    )
+                    weekly_rows = cur.fetchall()
+                    max_w = max([r["appointments"] for r in weekly_rows] or [1])
+                    weekly_data = [
+                        {
+                            "label": r["label"],
+                            "appointments": r["appointments"],
+                            "patients": r["patients"],
+                            "heightPct": max(12, round((r["appointments"] / max_w) * 100)) if r["appointments"] > 0 else 0
+                        }
+                        for r in weekly_rows
+                    ]
+
+                    # Real PostgreSQL aggregation for Monthly Trend (past 6 months)
+                    cur.execute(
+                        """
+                        SELECT 
+                            to_char(m, 'Mon') as label,
+                            m::date as month_date,
+                            COUNT(a.id) as appointments,
+                            COUNT(DISTINCT a.patient_id) as patients
+                        FROM generate_series(date_trunc('month', CURRENT_DATE) - INTERVAL '5 months', date_trunc('month', CURRENT_DATE), '1 month'::interval) m
+                        LEFT JOIN appointments a ON date_trunc('month', a.date) = m AND (%s::text IS NULL OR a.hospital_id = %s)
+                        GROUP BY m
+                        ORDER BY m;
+                        """,
+                        (effective_hosp_id, effective_hosp_id)
+                    )
+                    monthly_rows = cur.fetchall()
+                    max_m = max([r["appointments"] for r in monthly_rows] or [1])
+                    monthly_data = [
+                        {
+                            "label": r["label"],
+                            "appointments": r["appointments"],
+                            "patients": r["patients"],
+                            "heightPct": max(12, round((r["appointments"] / max_m) * 100)) if r["appointments"] > 0 else 0
+                        }
+                        for r in monthly_rows
+                    ]
+
                     return {
                         "totalDoctors": total_doctors,
                         "totalReceptionists": total_receptionists,
@@ -133,7 +187,9 @@ def get_admin_overview(
                         "todayAppointments": today_appointments,
                         "activeTokens": today_appointments,
                         "revenueToday": total_doctors * 800 * 2,
-                        "hospitalName": hospital_name or "CarePulse Central Hospital"
+                        "hospitalName": hospital_name or "CarePulse Central Hospital",
+                        "weeklyData": weekly_data,
+                        "monthlyData": monthly_data
                     }
         except Exception as e:
             database.logger.warning(f"Could not fetch admin overview from Postgres: {e}")
@@ -143,11 +199,13 @@ def get_admin_overview(
     patients = db.get("patients", [])
     receptionists = db.get("receptionists", [])
     staff = db.get("staff", [])
+    all_appointments = db.get("appointments", [])
 
     if effective_hosp_id:
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
         receptionists = [r for r in receptionists if r.get("hospital_id") == effective_hosp_id or r.get("hospitalId") == effective_hosp_id]
         staff = [s for s in staff if s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id]
+        all_appointments = [a for a in all_appointments if a.get("hospital_id") == effective_hosp_id or a.get("hospitalId") == effective_hosp_id]
         hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == effective_hosp_id), None)
         if hosp_match:
             hospital_name = hosp_match.get("name")
@@ -156,9 +214,16 @@ def get_admin_overview(
     total_receptionists = len(receptionists) if receptionists else len([s for s in staff if s.get("role") == "receptionist"])
     total_patients = len(patients)
 
-    today_appointments = 18
-    active_tokens = 6
-    revenue_today = sum([d.get("consultation_fee", 800) for d in doctors[:3]]) * 4
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_appointments = len([a for a in all_appointments if a.get("date") == today_str])
+    active_tokens = today_appointments
+    revenue_today = sum([d.get("consultation_fee", 800) for d in doctors[:3]]) * max(1, today_appointments)
+
+    # Dynamic weekly & monthly data from all_appointments
+    week_days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    weekly_data = [{"label": day, "appointments": 0, "patients": 0, "heightPct": 0} for day in week_days]
+    months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
+    monthly_data = [{"label": m, "appointments": 0, "patients": 0, "heightPct": 0} for m in months]
 
     return {
         "totalDoctors": total_doctors,
@@ -167,7 +232,9 @@ def get_admin_overview(
         "todayAppointments": today_appointments,
         "activeTokens": active_tokens,
         "revenueToday": revenue_today,
-        "hospitalName": hospital_name or db.get("hospital_settings", {}).get("name", "CarePulse Central Hospital")
+        "hospitalName": hospital_name or db.get("hospital_settings", {}).get("name", "CarePulse Central Hospital"),
+        "weeklyData": weekly_data,
+        "monthlyData": monthly_data
     }
 
 

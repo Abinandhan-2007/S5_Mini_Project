@@ -165,10 +165,17 @@ def staff_login(request: StaffLoginRequest):
 
     # 1. Check PostgreSQL staff table if available
     found_staff = None
+    staff_table_is_empty = False
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # Check if staff table is genuinely empty (0 rows) for bootstrap eligibility
+                    cur.execute("SELECT COUNT(*) as cnt FROM staff")
+                    cnt_res = cur.fetchone()
+                    total_staff_rows = cnt_res["cnt"] if cnt_res else 0
+                    staff_table_is_empty = (total_staff_rows == 0)
+
                     cur.execute(
                         """
                         SELECT id, full_name, email, password_hash, role, specialization, avatar_url, hospital_id, doctor_id, is_active, staff_code, phone
@@ -189,12 +196,18 @@ def staff_login(request: StaffLoginRequest):
                         if "specialization" in found_staff and not found_staff.get("department"):
                             found_staff["department"] = found_staff["specialization"]
         except Exception as e:
-            logger.warning(f"Note on PostgreSQL staff query fallback: {e}")
+            logger.error(f"Critical error during PostgreSQL staff authentication: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable due to a database error. Please retry shortly."
+            )
 
-    # 2. Check JSON database staff collection
-    if not found_staff:
+    # 2. Check JSON database staff collection only when ALLOW_JSON_FALLBACK is enabled or not use_pg
+    if not found_staff and (not database.use_pg or getattr(database, "ALLOW_JSON_FALLBACK", False)):
         db = read_json_db()
         staff_list = db.get("staff", [])
+        if not database.use_pg:
+            staff_table_is_empty = (len(staff_list) == 0 and len(db.get("doctors", [])) == 0)
         for s in staff_list:
             s_email = (s.get("email") or "").strip().lower()
             s_code = (s.get("staff_code") or s.get("staffCode") or "").strip().lower()
@@ -252,15 +265,17 @@ def staff_login(request: StaffLoginRequest):
                     }
                     break
 
-    # 3. Default fallback for initial Admin / Nurse access
-    if not found_staff and (raw_email in ["admin@carepulse.com", "admin"]):
-        found_staff = dict(DEFAULT_ADMIN)
-    elif not found_staff and (raw_email in ["bag@carepulse.com", "bag"]):
-        found_staff = dict(DEFAULT_BAG_ADMIN)
-    elif not found_staff and (raw_email in ["superadmin@carepulse.com", "superadmin"]):
-        found_staff = dict(DEFAULT_SUPERADMIN)
-    elif not found_staff and (raw_email in ["nurse@carepulse.com", "nurse"]):
-        found_staff = dict(DEFAULT_NURSE)
+    # 3. Default fallback for initial Admin / Nurse access ONLY if staff table is verified genuinely empty (0 rows)
+    if not found_staff and staff_table_is_empty:
+        logger.warning(f"Staff database is verified empty (0 rows). Activating bootstrap credentials for: {raw_email}")
+        if raw_email in ["admin@carepulse.com", "admin"]:
+            found_staff = dict(DEFAULT_ADMIN)
+        elif raw_email in ["bag@carepulse.com", "bag"]:
+            found_staff = dict(DEFAULT_BAG_ADMIN)
+        elif raw_email in ["superadmin@carepulse.com", "superadmin"]:
+            found_staff = dict(DEFAULT_SUPERADMIN)
+        elif raw_email in ["nurse@carepulse.com", "nurse"]:
+            found_staff = dict(DEFAULT_NURSE)
 
     if not found_staff:
         raise HTTPException(
