@@ -67,8 +67,8 @@ const getStoredStaff = (): Staff | null => {
 export const getInitialReceptionistProfile = (): ReceptionistProfile => {
   const storedStaff = getStoredStaff();
   if (storedStaff && storedStaff.role === 'receptionist') {
-    const hospName = storedStaff.hospitalName || (storedStaff.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'CarePulse Hospital');
-    const empId = storedStaff.staffCode || storedStaff.staff_code || 'R007101';
+    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || (storedStaff.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+    const empId = storedStaff.staffCode || storedStaff.staff_code || (storedStaff.hospitalId === 'hosp-bag' ? 'R007101' : 'R010101');
     const emailPrefix = storedStaff.email ? storedStaff.email.split('@')[0] : 'rep1';
     return {
       id: storedStaff.id,
@@ -81,7 +81,7 @@ export const getInitialReceptionistProfile = (): ReceptionistProfile => {
       staffCode: empId,
       clinicName: hospName,
       hospitalName: hospName,
-      hospitalId: storedStaff.hospitalId || 'hosp-bag',
+      hospitalId: storedStaff.hospitalId || undefined,
       deskName: storedStaff.deskName || 'Main Reception & OPD Queue Desk 01',
       department: storedStaff.department || 'Main Reception & OPD Queue',
       shift: 'Morning Shift (08:00 AM - 04:00 PM)',
@@ -113,8 +113,6 @@ export const getInitialReceptionistProfile = (): ReceptionistProfile => {
   };
 };
 
-const DEFAULT_RECEPTIONIST_PROFILE: ReceptionistProfile = getInitialReceptionistProfile();
-
 const DEFAULT_ADMIN_PROFILE: AdminProfile = {
   id: 'admin-bag',
   name: 'BAG Hospital Administrator',
@@ -127,6 +125,27 @@ const DEFAULT_ADMIN_PROFILE: AdminProfile = {
   avatarUrl: '',
   hospitalName: 'BAG Hospital',
   hospitalId: 'hosp-bag',
+};
+
+export const getInitialAdminProfile = (): AdminProfile => {
+  const storedStaff = getStoredStaff();
+  if (storedStaff && storedStaff.role === 'admin') {
+    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || (storedStaff.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+    return {
+      id: storedStaff.id,
+      name: storedStaff.name || 'Hospital Administrator',
+      email: storedStaff.email || 'admin@carepulse.com',
+      username: storedStaff.username || (storedStaff.email ? storedStaff.email.split('@')[0] : 'admin'),
+      password: 'Admin@123',
+      phone: storedStaff.phone || '+91 4295 226000',
+      role: 'admin',
+      department: storedStaff.department || 'Chief Hospital Administration',
+      avatarUrl: storedStaff.avatarUrl || '',
+      hospitalName: hospName,
+      hospitalId: storedStaff.hospitalId || undefined,
+    };
+  }
+  return DEFAULT_ADMIN_PROFILE;
 };
 
 const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
@@ -142,6 +161,15 @@ const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
   enableAiTriage: true,
   enableSmsReminders: true,
   enableAutoCancellation: false,
+};
+
+export const getInitialHospitalSettings = (): HospitalSettings => {
+  const storedStaff = getStoredStaff();
+  const hospName = storedStaff?.hospitalName || storedStaff?.hospital_name || (storedStaff?.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+  return {
+    ...DEFAULT_HOSPITAL_SETTINGS,
+    name: hospName,
+  };
 };
 
 const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [];
@@ -257,9 +285,9 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     role: 'admin',
     email: 'admin@carepulse.com',
   },
-  receptionistProfile: DEFAULT_RECEPTIONIST_PROFILE,
-  adminProfile: DEFAULT_ADMIN_PROFILE,
-  hospitalSettings: DEFAULT_HOSPITAL_SETTINGS,
+  receptionistProfile: getInitialReceptionistProfile(),
+  adminProfile: getInitialAdminProfile(),
+  hospitalSettings: getInitialHospitalSettings(),
   receptionists: DEFAULT_RECEPTIONISTS,
   hospitals: DEFAULT_HOSPITALS,
   departments: DEFAULT_DEPARTMENTS,
@@ -272,13 +300,27 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   setStaffAuth: (staff, token) => {
     if (token) localStorage.setItem('staff_token', token);
     if (staff) {
-      localStorage.setItem('carepulse_staff', JSON.stringify(staff));
-      const hospId = staff.hospitalId || staff.hospital_id || 'hosp-bag';
-      const hospName = hospId === 'hosp-bag' ? 'BAG Hospital' : 'CarePulse Hospital';
+      const hospId = staff.hospitalId || staff.hospital_id;
+      const hospName = staff.hospitalName || staff.hospital_name || (hospId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+      const updatedStaff = {
+        ...staff,
+        hospitalId: hospId,
+        hospital_id: hospId,
+        hospitalName: hospName,
+        hospital_name: hospName,
+      };
+      localStorage.setItem('carepulse_staff', JSON.stringify(updatedStaff));
+
+      set((state) => ({
+        hospitalSettings: {
+          ...state.hospitalSettings,
+          name: hospName,
+        },
+      }));
 
       if (staff.role === 'receptionist') {
         const emailPrefix = staff.email ? staff.email.split('@')[0] : 'rep1';
-        const empId = staff.staff_code || staff.staffCode || staff.id || 'R007101';
+        const empId = staff.staff_code || staff.staffCode || staff.id || (hospId === 'hosp-bag' ? 'R007101' : 'R010101');
         set((state) => ({
           receptionistProfile: {
             ...state.receptionistProfile,
@@ -350,7 +392,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   fetchDoctors: async (silent?: boolean) => {
     if (!silent) set({ isLoading: true });
     try {
-      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
       const doctors = await receptionistService.getDoctors(hospId);
       set({ doctors: doctors || [], isLoading: false });
     } catch {
@@ -451,7 +493,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   createDoctor: async (doctorData: Partial<DoctorRecord>) => {
-    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
     try {
       const created = await receptionistService.createDoctor({
         ...doctorData,
@@ -472,7 +514,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   fetchTokens: async (doctorId?: string, silent?: boolean) => {
     if (!silent) set({ isLoading: true });
     try {
-      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
       const fetchedTokens = await receptionistService.getTokenQueue(doctorId, hospId);
       set({ tokens: fetchedTokens || [], isLoading: false });
     } catch {
@@ -591,8 +633,9 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   // Admin Actions Implementation
   fetchReceptionists: async () => {
     try {
-      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
-      const res = await apiGet(`/admin/receptionists?hospital_id=${encodeURIComponent(hospId)}`);
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
+      const q = hospId ? `?hospital_id=${encodeURIComponent(hospId)}` : '';
+      const res = await apiGet(`/admin/receptionists${q}`);
       if (res.ok) {
         const data = await res.json();
         set({ receptionists: Array.isArray(data) ? data : [] });
@@ -605,7 +648,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   createReceptionist: async (recData: Partial<ReceptionistRecord>) => {
-    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
+    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
     try {
       const res = await apiPost('/admin/receptionists', {
         name: recData.name || 'New Receptionist',

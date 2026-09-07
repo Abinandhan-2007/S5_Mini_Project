@@ -94,6 +94,50 @@ def get_admin_overview(
     if staff_ctx and staff_ctx.get("hospital_id"):
         effective_hosp_id = staff_ctx["hospital_id"]
 
+    hospital_name = None
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if effective_hosp_id:
+                        cur.execute("SELECT name FROM hospitals WHERE id = %s LIMIT 1", (effective_hosp_id,))
+                        h_row = cur.fetchone()
+                        if h_row and h_row.get("name"):
+                            hospital_name = h_row["name"]
+
+                        cur.execute("SELECT COUNT(*) as c FROM doctors WHERE hospital_id = %s", (effective_hosp_id,))
+                        total_doctors = cur.fetchone()["c"]
+
+                        cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'receptionist' AND hospital_id = %s", (effective_hosp_id,))
+                        total_receptionists = cur.fetchone()["c"]
+
+                        cur.execute("SELECT COUNT(*) as c FROM appointments WHERE hospital_id = %s", (effective_hosp_id,))
+                        today_appointments = cur.fetchone()["c"]
+                    else:
+                        cur.execute("SELECT COUNT(*) as c FROM doctors")
+                        total_doctors = cur.fetchone()["c"]
+
+                        cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'receptionist'")
+                        total_receptionists = cur.fetchone()["c"]
+
+                        cur.execute("SELECT COUNT(*) as c FROM appointments")
+                        today_appointments = cur.fetchone()["c"]
+
+                    cur.execute("SELECT COUNT(*) as c FROM patients")
+                    total_patients = cur.fetchone()["c"]
+
+                    return {
+                        "totalDoctors": total_doctors,
+                        "totalReceptionists": total_receptionists,
+                        "totalPatients": total_patients,
+                        "todayAppointments": today_appointments,
+                        "activeTokens": today_appointments,
+                        "revenueToday": total_doctors * 800 * 2,
+                        "hospitalName": hospital_name or "CarePulse Central Hospital"
+                    }
+        except Exception as e:
+            database.logger.warning(f"Could not fetch admin overview from Postgres: {e}")
+
     db = read_json_db()
     doctors = db.get("doctors", [])
     patients = db.get("patients", [])
@@ -104,6 +148,9 @@ def get_admin_overview(
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
         receptionists = [r for r in receptionists if r.get("hospital_id") == effective_hosp_id or r.get("hospitalId") == effective_hosp_id]
         staff = [s for s in staff if s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id]
+        hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == effective_hosp_id), None)
+        if hosp_match:
+            hospital_name = hosp_match.get("name")
 
     total_doctors = len(doctors)
     total_receptionists = len(receptionists) if receptionists else len([s for s in staff if s.get("role") == "receptionist"])
@@ -120,7 +167,7 @@ def get_admin_overview(
         "todayAppointments": today_appointments,
         "activeTokens": active_tokens,
         "revenueToday": revenue_today,
-        "hospitalName": db.get("hospital_settings", {}).get("name", "CarePulse Central Hospital")
+        "hospitalName": hospital_name or db.get("hospital_settings", {}).get("name", "CarePulse Central Hospital")
     }
 
 
@@ -131,9 +178,13 @@ def list_receptionists(
 ):
     """List receptionist staff accounts scoped to the hospital."""
     staff_ctx = get_current_staff(authorization) if authorization else None
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
     effective_hosp_id = hospital_id
     if staff_ctx and staff_ctx.get("hospital_id"):
         effective_hosp_id = staff_ctx["hospital_id"]
+
+    if not is_superadmin and not effective_hosp_id:
+        return []
 
     results = []
     if database.use_pg:
@@ -147,7 +198,7 @@ def list_receptionists(
                             WHERE role = 'receptionist' AND hospital_id = %s
                             ORDER BY id
                         """, (effective_hosp_id,))
-                    else:
+                    elif is_superadmin:
                         cur.execute("""
                             SELECT id, full_name, email, role, phone, avatar_url, specialization, hospital_id, staff_code
                             FROM staff
@@ -219,7 +270,15 @@ def list_receptionists(
 def create_receptionist(payload: ReceptionistCreate, authorization: Optional[str] = Header(None)):
     """Create a new receptionist account linked to hospital."""
     staff_ctx = get_current_staff(authorization) if authorization else None
-    effective_hosp_id = payload.hospital_id or (staff_ctx.get("hospital_id") if staff_ctx else None) or "hosp-bag"
+    
+    # Authoritative hospital scoping:
+    # If caller is an Admin, their session hospital_id is strictly authoritative (adversarial client overrides are ignored)
+    if staff_ctx and staff_ctx.get("role") == "admin" and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+    elif staff_ctx and staff_ctx.get("role") == "superadmin":
+        effective_hosp_id = payload.hospital_id or "hosp-bag"
+    else:
+        effective_hosp_id = (staff_ctx.get("hospital_id") if staff_ctx else None) or payload.hospital_id or "hosp-bag"
 
     db = read_json_db()
     receptionists = db.get("receptionists", [])

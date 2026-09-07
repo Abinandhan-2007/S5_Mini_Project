@@ -47,7 +47,7 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
           {/* Center Hospital Badge */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/15 border border-white/10 text-xs font-semibold text-teal-100">
             <Building2 className="w-3.5 h-3.5 text-teal-300" />
-            <span>{currentStaff?.hospital_id === 'hosp-bag' ? 'BAG Hospital' : 'St. Jude Heart & Medical Center'}</span>
+            <span>{currentStaff?.hospitalName || currentStaff?.hospital_name || (currentStaff?.hospital_id === 'hosp-bag' ? 'BAG Hospital' : 'Hospital Facility')}</span>
             <span className="text-white/40">•</span>
             <span className="text-[11px] text-teal-300 font-mono font-bold">
               {currentStaff?.staff_code || currentStaff?.staffCode || 'N007101'}

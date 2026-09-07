@@ -55,7 +55,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.staff) {
-          const hospId = data.staff.hospitalId || data.staff.hospital_id || 'hosp-bag';
+          const hospId = data.staff.hospitalId || data.staff.hospital_id;
+          const hospName = data.staff.hospitalName || data.staff.hospital_name || (hospId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
           setStaffAuth(
             {
               id: data.staff.id,
@@ -66,6 +67,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               avatarUrl: data.staff.avatarUrl,
               hospitalId: hospId,
               hospital_id: hospId,
+              hospitalName: hospName,
+              hospital_name: hospName,
               doctorId: data.staff.doctorId || data.staff.doctor_id,
               doctor_id: data.staff.doctor_id || data.staff.doctorId,
               staff_code: data.staff.staff_code || data.staff.staffCode,

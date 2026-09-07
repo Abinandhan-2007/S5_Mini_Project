@@ -281,7 +281,7 @@ export const ReceptionistLayout: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 font-semibold tracking-tight truncate max-w-[135px]">
-                  {hospitalSettings.name || 'OPD Reception Center'}
+                  {currentStaff?.hospitalName || currentStaff?.hospital_name || profile?.clinicName || profile?.hospitalName || hospitalSettings.name || 'OPD Reception Center'}
                 </p>
               </div>
             </div>

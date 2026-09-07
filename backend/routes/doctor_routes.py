@@ -26,12 +26,15 @@ def get_doctor_appointments(
     Fails safely returning [] if doctor's hospital_id=NULL.
     """
     staff_ctx = get_current_staff(authorization) if authorization else None
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
     effective_hosp_id = None
     target_doc_id = doctor_id
 
     if staff_ctx:
         role = staff_ctx.get("role")
-        if role in ["doctor", "receptionist"]:
+        if role == "superadmin":
+            effective_hosp_id = None  # Superadmin views globally across all hospitals
+        elif role in ["doctor", "receptionist", "admin", "nurse"]:
             staff_hosp = staff_ctx.get("hospital_id")
             if not staff_hosp:
                 logger.warning(
@@ -42,6 +45,9 @@ def get_doctor_appointments(
             effective_hosp_id = staff_hosp
             if role == "doctor" and staff_ctx.get("doctor_id"):
                 target_doc_id = staff_ctx["doctor_id"]
+
+    if not is_superadmin and not effective_hosp_id:
+        return []
 
     if database.use_pg:
         try:
@@ -58,6 +64,8 @@ def get_doctor_appointments(
                     if effective_hosp_id:
                         query += " AND (a.hospital_id = %s OR (a.hospital_id IS NULL AND d.hospital_id = %s))"
                         params.extend([effective_hosp_id, effective_hosp_id])
+                    elif not is_superadmin:
+                        return []
                     if target_doc_id:
                         query += " AND a.doctor_id = %s"
                         params.append(target_doc_id)
@@ -97,6 +105,8 @@ def get_doctor_appointments(
         app_hosp = a.get("hospital_id") or a.get("hospitalId") or doc_hosp_map.get(a.get("doctor_id"))
         if effective_hosp_id and app_hosp != effective_hosp_id:
             continue
+        if not is_superadmin and not app_hosp:
+            continue
         if target_doc_id and a.get("doctor_id") != target_doc_id:
             continue
         result.append(AppointmentResponse(
@@ -129,12 +139,15 @@ def get_doctor_consultations(
     Fails safely returning [] if doctor's hospital_id=NULL.
     """
     staff_ctx = get_current_staff(authorization) if authorization else None
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
     effective_hosp_id = None
     target_doc_id = doctor_id
 
     if staff_ctx:
         role = staff_ctx.get("role")
-        if role in ["doctor", "receptionist"]:
+        if role == "superadmin":
+            effective_hosp_id = None
+        elif role in ["doctor", "receptionist", "admin", "nurse"]:
             staff_hosp = staff_ctx.get("hospital_id")
             if not staff_hosp:
                 logger.warning(
@@ -145,6 +158,9 @@ def get_doctor_consultations(
             effective_hosp_id = staff_hosp
             if role == "doctor" and staff_ctx.get("doctor_id"):
                 target_doc_id = staff_ctx["doctor_id"]
+
+    if not is_superadmin and not effective_hosp_id:
+        return []
 
     if database.use_pg:
         try:
@@ -162,6 +178,8 @@ def get_doctor_consultations(
                     if effective_hosp_id:
                         query += " AND (c.hospital_id = %s OR (c.hospital_id IS NULL AND d.hospital_id = %s))"
                         params.extend([effective_hosp_id, effective_hosp_id])
+                    elif not is_superadmin:
+                        return []
                     if target_doc_id:
                         query += " AND c.doctor_id = %s"
                         params.append(target_doc_id)
@@ -194,6 +212,8 @@ def get_doctor_consultations(
     for c in reversed(consultations):
         c_hosp = c.get("hospital_id") or c.get("hospitalId") or doc_hosp_map.get(c.get("doctor_id"))
         if effective_hosp_id and c_hosp != effective_hosp_id:
+            continue
+        if not is_superadmin and not c_hosp:
             continue
         if target_doc_id and c.get("doctor_id") != target_doc_id:
             continue

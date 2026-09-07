@@ -281,7 +281,7 @@ export const AdminLayout: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 font-semibold tracking-tight truncate max-w-[135px]">
-                  {hospitalSettings.name || 'Empathetic Healthcare'}
+                  {currentStaff?.hospitalName || currentStaff?.hospital_name || adminProfile.hospitalName || hospitalSettings.name || 'Hospital Administration'}
                 </p>
               </div>
             </div>

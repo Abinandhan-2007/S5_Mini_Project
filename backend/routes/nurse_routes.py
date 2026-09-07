@@ -147,11 +147,14 @@ def get_nurse_queue(
     Nurses have a read-only view of the patient appointment queue with
     computed vitals status ('pending', 'recorded', 'abnormal_flagged').
     """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
     effective_hosp_id = hospital_id
-    if authorization:
-        staff_ctx = get_current_staff(authorization)
-        if staff_ctx and staff_ctx.get("hospital_id"):
-            effective_hosp_id = staff_ctx["hospital_id"]
+    if staff_ctx and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+
+    if not is_superadmin and not effective_hosp_id:
+        return {"success": True, "queue": []}
 
     if database.use_pg:
         try:
@@ -205,6 +208,8 @@ def get_nurse_queue(
                     if effective_hosp_id:
                         query += " AND (a.hospital_id = %s OR (a.hospital_id IS NULL AND d.hospital_id = %s))"
                         params.extend([effective_hosp_id, effective_hosp_id])
+                    elif not is_superadmin:
+                        return {"success": True, "queue": []}
 
                     query += " ORDER BY a.created_at DESC NULLS LAST, a.date DESC"
                     cur.execute(query, tuple(params))
@@ -290,6 +295,8 @@ def get_nurse_queue(
     queue_items = []
     for a in appointments:
         if effective_hosp_id and a.get("hospital_id") != effective_hosp_id:
+            continue
+        if not is_superadmin and not a.get("hospital_id"):
             continue
         p = patients.get(a.get("patient_id"), {})
         d = doctors.get(a.get("doctor_id"), {})
