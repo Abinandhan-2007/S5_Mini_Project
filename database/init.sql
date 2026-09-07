@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS staff (
     password_hash VARCHAR(255),
     google_id VARCHAR(255) UNIQUE,
     auth_provider VARCHAR(50) DEFAULT 'local',
-    role VARCHAR(50) NOT NULL CHECK (role IN ('superadmin', 'admin', 'receptionist', 'doctor')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('superadmin', 'admin', 'receptionist', 'doctor', 'nurse')),
     specialization VARCHAR(255),
     phone VARCHAR(50) DEFAULT '',
     avatar_url TEXT DEFAULT '',
@@ -211,7 +211,7 @@ CREATE INDEX IF NOT EXISTS idx_staff_role ON staff(role);
 -- Business Rule: Exactly ONE active administrator per hospital
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_admin_per_hospital ON staff (hospital_id) WHERE role = 'admin' AND is_active = true;
 
--- Trigger Function for Auto-Generating Hierarchical Staff Display Codes (<RoleLetter><HospitalNumber><Seq101+>, e.g. A001101, D001101, R001101)
+-- Trigger Function for Auto-Generating Hierarchical Staff Display Codes (<RoleLetter><HospitalNumber><Seq101+>, e.g. A001101, D001101, R001101, N001101)
 CREATE OR REPLACE FUNCTION generate_staff_code()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -233,13 +233,15 @@ BEGIN
             RETURN NEW;
         END IF;
 
-        -- 1. Determine Role Letter
+        -- 1. Explicit Role Letter Mapping (Enforces 'N' strictly for nurse)
         IF NEW.role = 'admin' THEN
             role_letter := 'A';
         ELSIF NEW.role = 'doctor' THEN
             role_letter := 'D';
         ELSIF NEW.role = 'receptionist' THEN
             role_letter := 'R';
+        ELSIF NEW.role = 'nurse' THEN
+            role_letter := 'N';
         ELSE
             role_letter := 'S';
         END IF;
@@ -555,8 +557,46 @@ CREATE TABLE IF NOT EXISTS medicines (
 );
 
 CREATE INDEX IF NOT EXISTS idx_medicines_name_trgm ON medicines USING gin (name gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_medicines_generic_trgm ON medicines USING gin (generic_name gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_medicines_name_lower ON medicines (LOWER(name));
+-- ===================================================================
+-- Vitals & Lab Tests Tables (Nurse Pre-Consultation Entry)
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS vitals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+    height_cm NUMERIC,
+    weight_kg NUMERIC,
+    bmi NUMERIC GENERATED ALWAYS AS (
+        CASE WHEN height_cm > 0 THEN ROUND(weight_kg / ((height_cm/100.0) * (height_cm/100.0)), 1) ELSE NULL END
+    ) STORED,
+    bp_systolic INTEGER,
+    bp_diastolic INTEGER,
+    heart_rate INTEGER,
+    temperature NUMERIC,
+    temperature_unit VARCHAR(1) DEFAULT 'C',
+    respiratory_rate INTEGER,
+    spo2 INTEGER,
+    blood_glucose NUMERIC,
+    glucose_context VARCHAR(20), -- fasting, random, post-meal
+    notes TEXT,
+    recorded_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_vitals_appointment_id ON vitals(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_vitals_patient_id ON vitals(patient_id);
 
-
-
+CREATE TABLE IF NOT EXISTS lab_tests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+    test_type VARCHAR(100) NOT NULL,
+    structured_results JSONB DEFAULT '{}'::jsonb,
+    free_text_result TEXT,
+    file_url TEXT,
+    status VARCHAR(20) DEFAULT 'ordered', -- ordered, in_progress, completed
+    ordered_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+    recorded_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_lab_tests_appointment_id ON lab_tests(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_lab_tests_patient_id ON lab_tests(patient_id);

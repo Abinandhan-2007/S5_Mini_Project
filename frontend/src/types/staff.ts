@@ -1,6 +1,6 @@
 // src/types/staff.ts
 
-export type StaffRole = 'superadmin' | 'admin' | 'receptionist' | 'doctor';
+export type StaffRole = 'superadmin' | 'admin' | 'receptionist' | 'doctor' | 'nurse';
 
 export interface Staff {
   id: string;
@@ -57,6 +57,26 @@ export interface ReceptionistRecord {
   avatarUrl: string;
   assignedDoctorsCount?: number;
   joinDate: string;
+}
+
+export interface NurseRecord {
+  id: string;
+  staff_code?: string;
+  staffCode?: string;
+  name: string;
+  email: string;
+  username?: string;
+  phone: string;
+  password?: string;
+  hospitalName?: string;
+  hospitalId?: string;
+  hospital_id?: string;
+  department: string;
+  role: 'nurse';
+  isActive: boolean;
+  avatarUrl?: string;
+  photo?: string;
+  created_at?: string;
 }
 
 export interface HospitalSettings {

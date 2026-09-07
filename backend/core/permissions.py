@@ -41,3 +41,8 @@ def require_role(allowed_roles: List[str]) -> Callable:
 
 require_superadmin = require_role(["superadmin"])
 require_admin_or_superadmin = require_role(["superadmin", "admin"])
+require_nurse = require_role(["nurse", "admin", "superadmin"])
+require_nurse_only = require_role(["nurse"])
+require_doctor = require_role(["doctor", "admin", "superadmin"])
+require_receptionist = require_role(["receptionist", "admin", "superadmin"])
+require_clinical_staff = require_role(["nurse", "doctor", "admin", "superadmin"])

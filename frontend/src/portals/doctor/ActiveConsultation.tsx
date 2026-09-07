@@ -26,11 +26,13 @@ import {
   ChevronRight,
   Copy,
   Check,
+  Microscope,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { PrescriptionMedicine, SoapNotes, PatientVitals, PatientEMRRecord, TriagePriority } from '../../types/doctor';
 import { staffConsultationService } from '../../services/consultationService';
 import { useStaffStore } from '../../store/staffStore';
+import { apiFetch } from '../../lib/apiFetch';
 
 export interface ActiveConsultationProps {
   patient: TokenQueueItem | null;
@@ -88,6 +90,14 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     weight: 68,
     recordedAt: 'Today 09:30 AM',
   });
+
+  // Nurse Pre-Consultation Vitals & Diagnostics State
+  const [nursePrep, setNursePrep] = useState<{
+    has_vitals: boolean;
+    vitals: any;
+    abnormal_flags: string[];
+    lab_tests: any[];
+  } | null>(null);
 
   // SOAP Notes State
   const [soap, setSoap] = useState<SoapNotes>({
@@ -164,6 +174,37 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
         setIsLoadingHistory(false);
       })
       .catch(() => setIsLoadingHistory(false));
+
+    // 3. Fetch pre-consultation vitals and lab tests recorded by nurse
+    const apptId = (patient as any).appointmentId || (patient as any).appointment_id || (patient as any).id || patient.id;
+    if (apptId) {
+      apiFetch(`/doctor/consultation-prep/${encodeURIComponent(apptId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((prep) => {
+          if (prep && prep.has_vitals && prep.vitals) {
+            setNursePrep(prep);
+            const nv = prep.vitals;
+            const updatedVitals: PatientVitals = {
+              bpSys: nv.bp_systolic || 120,
+              bpDia: nv.bp_diastolic || 80,
+              heartRate: nv.heart_rate || 74,
+              temperature: nv.temperature || 98.6,
+              spo2: nv.spo2 || 99,
+              weight: nv.weight_kg || 68,
+              recordedAt: nv.recorded_by_name ? `Recorded by ${nv.recorded_by_name}` : 'Recorded by Nurse',
+            };
+            setVitals(updatedVitals);
+
+            setSoap((prev) => ({
+              ...prev,
+              objective: `Nurse Intake Vitals: BP ${updatedVitals.bpSys}/${updatedVitals.bpDia} mmHg, HR ${updatedVitals.heartRate} bpm, SpO2 ${updatedVitals.spo2}%, Temp ${updatedVitals.temperature}°${nv.temperature_unit || 'C'}, Weight ${updatedVitals.weight} kg, BMI ${nv.bmi || '--'}${nv.blood_glucose ? `, Glucose ${nv.blood_glucose} mg/dL (${nv.glucose_context || ''})` : ''}.${nv.notes ? ` Nurse Notes: ${nv.notes}` : ''}`,
+            }));
+          } else if (prep && prep.lab_tests && prep.lab_tests.length > 0) {
+            setNursePrep(prep);
+          }
+        })
+        .catch((err) => console.warn('Consultation prep fetch note:', err));
+    }
   }, [patient?.id]);
 
   const showToast = (msg: string) => {
@@ -733,6 +774,101 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
               </div>
             </div>
           </div>
+
+          {/* 1.5 Nurse Pre-Consultation Intake & Abnormal Alerts Banner */}
+          {nursePrep && (nursePrep.has_vitals || (nursePrep.lab_tests && nursePrep.lab_tests.length > 0)) && (
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-teal-200/90 shadow-xs p-5 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-[#0B5A54]" />
+                  <h3 className="font-black text-slate-900 text-xs uppercase tracking-wider font-heading">
+                    Nurse Pre-Consultation Intake
+                  </h3>
+                </div>
+                <span className="px-2 py-0.5 rounded-md bg-teal-50 text-[#0B5A54] border border-teal-200 text-[10px] font-bold">
+                  {nursePrep.vitals?.recorded_by_name ? `Recorded by ${nursePrep.vitals.recorded_by_name}` : 'Nurse Verified'}
+                </span>
+              </div>
+
+              {/* Abnormal Flags Alerts */}
+              {nursePrep.abnormal_flags && nursePrep.abnormal_flags.length > 0 && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 space-y-1">
+                  <div className="flex items-center gap-1.5 text-rose-800 text-xs font-bold">
+                    <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>Abnormal Vitals Screened ({nursePrep.abnormal_flags.length}):</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {nursePrep.abnormal_flags.map((flag: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md bg-rose-100/80 border border-rose-300 text-rose-800 text-[10px] font-bold"
+                      >
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Anthropometry & Glucose Details */}
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                {nursePrep.vitals?.bmi && (
+                  <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                    <span className="text-slate-400 font-bold block text-[10px]">Computed BMI</span>
+                    <span className="font-bold text-slate-800">
+                      {nursePrep.vitals.bmi} kg/m² ({nursePrep.vitals.bmi < 18.5 ? 'Underweight' : nursePrep.vitals.bmi <= 24.9 ? 'Normal' : nursePrep.vitals.bmi <= 29.9 ? 'Overweight' : 'Obese'})
+                    </span>
+                  </div>
+                )}
+                {nursePrep.vitals?.blood_glucose && (
+                  <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                    <span className="text-slate-400 font-bold block text-[10px]">Blood Glucose</span>
+                    <span className="font-bold text-slate-800">
+                      {nursePrep.vitals.blood_glucose} mg/dL ({nursePrep.vitals.glucose_context || 'random'})
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Nurse Observations */}
+              {nursePrep.vitals?.notes && (
+                <p className="text-[11px] text-slate-600 italic bg-slate-50 p-2 rounded-lg border border-slate-200">
+                  <strong className="not-italic text-slate-700">Triage Note:</strong> "{nursePrep.vitals.notes}"
+                </p>
+              )}
+
+              {/* Attached Lab Tests */}
+              {nursePrep.lab_tests && nursePrep.lab_tests.length > 0 && (
+                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Diagnostic Lab Reports ({nursePrep.lab_tests.length})
+                  </span>
+                  <div className="space-y-1">
+                    {nursePrep.lab_tests.map((lt: any, ltIdx: number) => (
+                      <div key={ltIdx} className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-teal-50/50 border border-teal-100">
+                        <div className="flex items-center gap-1.5">
+                          <Microscope className="w-3.5 h-3.5 text-[#0B5A54]" />
+                          <span className="font-bold text-slate-800">{lt.test_type}</span>
+                        </div>
+                        {lt.file_url ? (
+                          <a
+                            href={lt.file_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] font-bold text-[#0B5A54] hover:underline"
+                          >
+                            View Report &rarr;
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-slate-500">{lt.free_text_result || 'Completed'}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 2. Compact Vitals Strip with Sparklines & Trend Status Micro-Labels */}
           <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-3">

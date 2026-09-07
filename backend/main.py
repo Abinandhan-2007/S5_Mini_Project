@@ -83,6 +83,7 @@ from routes.admin_routes import router as admin_router
 from routes.staff_auth import router as staff_auth_router
 from routes.doctor_routes import router as doctor_router
 from routes.superadmin_routes import router as superadmin_router
+from routes.nurse_routes import router as nurse_router
 from routes.ai_routes import router as ai_router
 from notifications.fcm_service import register_device_token, send_push_notification, broadcast_app_update_notification
 from notifications.scheduler import start_scheduler, shutdown_scheduler
@@ -140,6 +141,12 @@ app.include_router(admin_router)
 app.include_router(staff_auth_router)
 app.include_router(doctor_router)
 app.include_router(superadmin_router)
+app.include_router(nurse_router)
+
+# Mount static downloads directory for lab reports and documents
+downloads_dir = backend_dir / "static_downloads"
+downloads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static_downloads", StaticFiles(directory=str(downloads_dir)), name="static_downloads")
 
 from routes.ai_routes import chat_medical_assistant
 from ai.schemas import AIChatRequest, AIChatResponse
@@ -1538,9 +1545,21 @@ def create_consultation(data: ConsultationCreate, authorization: Optional[str] =
     patient_id = data.patientId or "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
     date_val = data.date or datetime.now().strftime("%Y-%m-%d")
 
-    # Authoritative doctor hospital lookup (never trust client-supplied hospital_id)
+    # Authoritative doctor hospital lookup & RBAC verification
     doc_hospital_id = None
-    if database.use_pg:
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx:
+            if staff_ctx.get("role") == "nurse":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Nurse accounts are not authorized to create consultations or write prescriptions."
+                )
+            if staff_ctx.get("hospital_id"):
+                doc_hospital_id = staff_ctx["hospital_id"]
+
+    if not doc_hospital_id and database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
@@ -1557,13 +1576,6 @@ def create_consultation(data: ConsultationCreate, authorization: Optional[str] =
             if doc.get("id") == data.doctorId:
                 doc_hospital_id = doc.get("hospital_id") or doc.get("hospitalId")
                 break
-
-    # Fallback to staff hospital if doctor not found in db
-    if not doc_hospital_id and authorization:
-        from routes.staff_auth import get_current_staff
-        staff_ctx = get_current_staff(authorization)
-        if staff_ctx and staff_ctx.get("hospital_id"):
-            doc_hospital_id = staff_ctx["hospital_id"]
 
     if not doc_hospital_id:
         doc_hospital_id = "hosp-1"

@@ -229,8 +229,14 @@ def create_doctor_consultation(
 
     if authorization:
         staff_ctx = get_current_staff(authorization)
-        if staff_ctx and staff_ctx.get("hospital_id"):
-            derived_hospital_id = staff_ctx["hospital_id"]
+        if staff_ctx:
+            if staff_ctx.get("role") == "nurse":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Nurse accounts are not authorized to create doctor consultations or write prescriptions."
+                )
+            if staff_ctx.get("hospital_id"):
+                derived_hospital_id = staff_ctx["hospital_id"]
 
     if not derived_hospital_id:
         if database.use_pg:
@@ -255,6 +261,8 @@ def create_doctor_consultation(
         derived_hospital_id = "hosp-1"
 
     if database.use_pg:
+        new_id = str(uuid.uuid4())
+        soap_json = json.dumps(data.soapData)
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 # Ensure patient exists or link to first patient
@@ -268,20 +276,11 @@ def create_doctor_consultation(
                     else:
                         patient_id = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
 
-                if data.soapEmbedding:
-                    vector_str = f"[{','.join(str(x) for x in data.soapEmbedding)}]"
-                    cur.execute("""
-                        INSERT INTO consultations (patient_id, doctor_id, doctor_name, hospital_id, date, soap_data, soap_embedding)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        RETURNING id, doctor_name, hospital_id, date, soap_data
-                    """, (patient_id, data.doctorId, data.doctorName, derived_hospital_id, date_val, json.dumps(data.soapData), vector_str))
-                else:
-                    cur.execute("""
-                        INSERT INTO consultations (patient_id, doctor_id, doctor_name, hospital_id, date, soap_data)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        RETURNING id, doctor_name, hospital_id, date, soap_data
-                    """, (patient_id, data.doctorId, data.doctorName, derived_hospital_id, date_val, json.dumps(data.soapData)))
-
+                cur.execute("""
+                    INSERT INTO consultations (id, patient_id, doctor_id, doctor_name, hospital_id, date, soap_data)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
+                    RETURNING *
+                """, (new_id, patient_id, data.doctorId, data.doctorName, derived_hospital_id, date_val, soap_json))
                 row = cur.fetchone()
                 conn.commit()
                 return {
@@ -316,3 +315,126 @@ def create_doctor_consultation(
             "soap_data": new_record["soap_data"]
         }
 
+
+@router.get("/consultation-prep/{appointment_id}")
+def get_consultation_prep(
+    appointment_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Returns pre-consultation clinical data (vitals, auto-calculated BMI, abnormal flags,
+    and lab test reports) recorded by nurses for the given appointment.
+    """
+    result = {
+        "appointment_id": appointment_id,
+        "has_vitals": False,
+        "vitals": None,
+        "lab_tests": [],
+        "abnormal_flags": []
+    }
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # 1. Fetch vitals
+                    cur.execute("""
+                        SELECT v.*, s.full_name as recorded_by_name
+                        FROM vitals v
+                        LEFT JOIN staff s ON v.recorded_by = s.id
+                        WHERE v.appointment_id = %s
+                        ORDER BY v.recorded_at DESC LIMIT 1
+                    """, (appointment_id,))
+                    v_row = cur.fetchone()
+                    if v_row:
+                        v_dict = dict(v_row)
+                        # Format numeric and datetime fields
+                        v_dict["id"] = str(v_dict["id"])
+                        v_dict["appointment_id"] = str(v_dict["appointment_id"])
+                        v_dict["patient_id"] = str(v_dict["patient_id"])
+                        v_dict["recorded_by"] = str(v_dict["recorded_by"]) if v_dict.get("recorded_by") else None
+                        v_dict["recorded_at"] = str(v_dict["recorded_at"]) if v_dict.get("recorded_at") else None
+                        v_dict["bmi"] = float(v_dict["bmi"]) if v_dict.get("bmi") is not None else None
+                        v_dict["height_cm"] = float(v_dict["height_cm"]) if v_dict.get("height_cm") is not None else None
+                        v_dict["weight_kg"] = float(v_dict["weight_kg"]) if v_dict.get("weight_kg") is not None else None
+                        v_dict["temperature"] = float(v_dict["temperature"]) if v_dict.get("temperature") is not None else None
+                        v_dict["blood_glucose"] = float(v_dict["blood_glucose"]) if v_dict.get("blood_glucose") is not None else None
+
+                        # Compute abnormal flags
+                        flags = []
+                        sys = v_dict.get("bp_systolic")
+                        dia = v_dict.get("bp_diastolic")
+                        if sys and (sys > 140 or sys < 90):
+                            flags.append(f"Abnormal BP Systolic: {sys} mmHg")
+                        if dia and (dia > 90 or dia < 60):
+                            flags.append(f"Abnormal BP Diastolic: {dia} mmHg")
+                        hr = v_dict.get("heart_rate")
+                        if hr and (hr > 100 or hr < 60):
+                            flags.append(f"Abnormal Heart Rate: {hr} bpm")
+                        spo2 = v_dict.get("spo2")
+                        if spo2 and spo2 < 95:
+                            flags.append(f"Low SpO2: {spo2}%")
+                        temp = v_dict.get("temperature")
+                        if temp:
+                            c_temp = temp if v_dict.get("temperature_unit") != "F" else (temp - 32) * 5/9
+                            if c_temp > 38.0:
+                                flags.append(f"Fever: {temp}°{v_dict.get('temperature_unit', 'C')}")
+                            elif c_temp < 35.0:
+                                flags.append(f"Hypothermia: {temp}°{v_dict.get('temperature_unit', 'C')}")
+                        bg = v_dict.get("blood_glucose")
+                        ctx = (v_dict.get("glucose_context") or "").lower()
+                        if bg:
+                            if ctx == "fasting" and bg > 126:
+                                flags.append(f"Elevated Fasting Glucose: {bg} mg/dL")
+                            elif bg > 200:
+                                flags.append(f"Elevated Glucose: {bg} mg/dL")
+                            elif bg < 70:
+                                flags.append(f"Hypoglycemia: {bg} mg/dL")
+
+                        v_dict["abnormal_flags"] = flags
+                        result["has_vitals"] = True
+                        result["vitals"] = v_dict
+                        result["abnormal_flags"] = flags
+
+                    # 2. Fetch lab tests
+                    cur.execute("""
+                        SELECT l.*, s.full_name as recorded_by_name
+                        FROM lab_tests l
+                        LEFT JOIN staff s ON l.recorded_by = s.id
+                        WHERE l.appointment_id = %s
+                        ORDER BY l.recorded_at ASC
+                    """, (appointment_id,))
+                    l_rows = cur.fetchall()
+                    if l_rows:
+                        formatted_tests = []
+                        for lr in l_rows:
+                            ld = dict(lr)
+                            ld["id"] = str(ld["id"])
+                            ld["appointment_id"] = str(ld["appointment_id"])
+                            ld["patient_id"] = str(ld["patient_id"])
+                            ld["recorded_by"] = str(ld["recorded_by"]) if ld.get("recorded_by") else None
+                            ld["recorded_at"] = str(ld["recorded_at"]) if ld.get("recorded_at") else None
+                            if isinstance(ld.get("structured_results"), str):
+                                try:
+                                    ld["structured_results"] = json.loads(ld["structured_results"])
+                                except Exception:
+                                    ld["structured_results"] = {}
+                            formatted_tests.append(ld)
+                        result["lab_tests"] = formatted_tests
+
+                    return result
+        except Exception as e:
+            logger.warning(f"DB get consultation prep note: {e}")
+
+    # Fallback to JSON DB
+    db = read_json_db()
+    vitals_list = db.get("vitals", [])
+    for v in vitals_list:
+        if v.get("appointment_id") == appointment_id:
+            result["has_vitals"] = True
+            result["vitals"] = v
+            result["abnormal_flags"] = v.get("abnormal_flags", [])
+            break
+    lab_tests_list = db.get("lab_tests", [])
+    result["lab_tests"] = [t for t in lab_tests_list if t.get("appointment_id") == appointment_id]
+    return result

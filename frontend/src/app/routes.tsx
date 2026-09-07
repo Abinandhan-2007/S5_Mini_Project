@@ -31,6 +31,7 @@ import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { AdminLayout } from '../portals/admin/AdminLayout';
 import { SuperAdminLayout } from '../portals/superadmin/SuperAdminLayout';
 import { SuperAdminLogin } from '../portals/superadmin/SuperAdminLogin';
+import { NurseLayout, NurseQueueDashboard, NurseLogin } from '../portals/nurse';
 import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
@@ -349,6 +350,34 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/admin/login"
           element={<Navigate to="/staff/login" replace />}
+        />
+
+        {/* Nurse Portal Routes */}
+        <Route
+          path="/nurse"
+          element={
+            <PageTransition>
+              <NurseLayout>
+                <NurseQueueDashboard />
+              </NurseLayout>
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/nurse/login"
+          element={
+            <PageTransition>
+              <NurseLogin />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff/nurse"
+          element={
+            <PageTransition>
+              <NurseLogin />
+            </PageTransition>
+          }
         />
 
         {/* Unified Staff Portal Routes */}

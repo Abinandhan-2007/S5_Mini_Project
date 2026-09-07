@@ -63,13 +63,27 @@ DEFAULT_SUPERADMIN = {
     "staff_code": "SA101"
 }
 
+DEFAULT_NURSE = {
+    "id": "nurse-bag-1",
+    "name": "Nurse Sarah Jenkins",
+    "email": "nurse@carepulse.com",
+    "username": "nurse",
+    "password": "Nurse@123",
+    "role": "nurse",
+    "department": "Triage & Patient Vitals",
+    "avatar": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=400&auto=format&fit=crop&q=80",
+    "isActive": True,
+    "hospital_id": "hosp-bag",
+    "staff_code": "N007101"
+}
+
 
 def resolve_authoritative_hospital_id(role: str, staff_hospital_id: Optional[str], doctor_id: Optional[str]) -> Optional[str]:
     """
     Derives authoritative hospital_id:
     - For role='doctor': authoritative hospital_id MUST come from linked doctors.hospital_id record (via doctor_id),
       which takes precedence if they ever differ.
-    - For role='receptionist': hospital_id from staff record/session.
+    - For role='nurse' or 'receptionist': hospital_id from staff record/session.
     - For role='admin': hospital_id if set (scoped admin), or None (global super-admin).
     """
     if role == "doctor":
@@ -100,7 +114,7 @@ def resolve_authoritative_hospital_id(role: str, staff_hospital_id: Optional[str
         # Fallback to staff hospital_id if doctor lookup yielded nothing
         return staff_hospital_id
 
-    # For receptionists and admins
+    # For nurses, receptionists, and admins
     return staff_hospital_id
 
 
@@ -121,7 +135,7 @@ def get_current_staff(authorization: Optional[str] = Header(None)) -> Optional[D
     doctor_id = payload.get("doctor_id") or payload.get("doctorId")
     raw_hospital_id = payload.get("hospital_id") or payload.get("hospitalId")
 
-    # Authoritative resolution for doctor/receptionist
+    # Authoritative resolution for doctor/nurse/receptionist
     authoritative_hospital_id = resolve_authoritative_hospital_id(role, raw_hospital_id, doctor_id)
 
     return {
@@ -137,7 +151,7 @@ def get_current_staff(authorization: Optional[str] = Header(None)) -> Optional[D
 @router.post("/login", response_model=StaffAuthResponse)
 def staff_login(request: StaffLoginRequest):
     """
-    Authenticate staff members (Admin, Receptionist, Doctor) using bcrypt password verification.
+    Authenticate staff members (Admin, Receptionist, Doctor, Nurse) using bcrypt password verification.
     Resolves authoritative hospital_id and populates token and profile.
     """
     raw_email = (request.email or "").strip().lower()
@@ -195,17 +209,20 @@ def staff_login(request: StaffLoginRequest):
                 or (s_doc and s_doc == raw_email)
                 or (raw_email in ["admin", "bag"] and s.get("role") == "admin" and (s_user == raw_email or s_email.startswith(raw_email)))
                 or (raw_email in ["superadmin", "sa"] and s.get("role") == "superadmin")
+                or (raw_email in ["nurse"] and s.get("role") == "nurse")
             ):
                 found_staff = dict(s)
                 break
 
-    # 3. Default fallback for initial Admin access
+    # 3. Default fallback for initial Admin / Nurse access
     if not found_staff and (raw_email in ["admin@carepulse.com", "admin"]):
         found_staff = dict(DEFAULT_ADMIN)
     elif not found_staff and (raw_email in ["bag@carepulse.com", "bag"]):
         found_staff = dict(DEFAULT_BAG_ADMIN)
     elif not found_staff and (raw_email in ["superadmin@carepulse.com", "superadmin"]):
         found_staff = dict(DEFAULT_SUPERADMIN)
+    elif not found_staff and (raw_email in ["nurse@carepulse.com", "nurse"]):
+        found_staff = dict(DEFAULT_NURSE)
 
     if not found_staff:
         raise HTTPException(

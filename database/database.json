@@ -87,27 +87,6 @@
       "facility_type": "Multi-Specialty Hospital",
       "distanceMiles": 1.2,
       "distance_miles": 1.2
-    },
-    {
-      "id": "hosp-apex-medical-institu-f7b61f",
-      "hospital_code": "H008",
-      "hospitalCode": "H008",
-      "name": "Apex Medical Institute",
-      "address": "450 Health Parkway, Sector 9",
-      "phone": "+1-800-444-0199",
-      "email": "contact@apexmedical.org",
-      "facility_type": "Specialty Research Hospital",
-      "rating": 4.8,
-      "reviews_count": 0,
-      "emergency_available": true,
-      "image_url": "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800&auto=format&fit=crop&q=80",
-      "specialties": [
-        "Cardiology",
-        "Neurology",
-        "Emergency Care"
-      ],
-      "is_active": true,
-      "distance_miles": 1.0
     }
   ],
   "doctors": [
@@ -269,25 +248,6 @@
       "hospitalId": null,
       "doctor_id": null,
       "doctorId": null,
-      "isActive": true,
-      "is_active": true,
-      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
-    },
-    {
-      "id": "bb212a1c-050d-4832-b065-9ca5d4e52096",
-      "staff_code": "A008101",
-      "staffCode": "A008101",
-      "name": "Dr. Sarah Apex",
-      "full_name": "Dr. Sarah Apex",
-      "email": "admin.h008@carepulse.com",
-      "password": "$2b$12$CcQ5G1GEyMJ0ceulBK2xYOZxEzpqqkPAJYW1DEovxJe/Fxy.ydHu2",
-      "password_hash": "$2b$12$CcQ5G1GEyMJ0ceulBK2xYOZxEzpqqkPAJYW1DEovxJe/Fxy.ydHu2",
-      "role": "admin",
-      "department": "Chief Medical Operations",
-      "specialization": "Chief Medical Operations",
-      "phone": "+1-800-444-0101",
-      "hospital_id": "hosp-apex-medical-institu-f7b61f",
-      "hospitalId": "hosp-apex-medical-institu-f7b61f",
       "isActive": true,
       "is_active": true,
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"

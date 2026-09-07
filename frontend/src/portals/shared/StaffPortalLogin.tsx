@@ -78,6 +78,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
           if (data.staff.role === 'superadmin') navigate('/superadmin');
           else if (data.staff.role === 'admin') navigate('/admin');
           else if (data.staff.role === 'doctor') navigate('/doctor');
+          else if (data.staff.role === 'nurse') navigate('/nurse');
           else navigate('/receptionist');
           return;
         }
@@ -204,6 +205,30 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       );
       setIsLoading(false);
       navigate('/receptionist');
+      return;
+    }
+
+    // 5. Check Nurse Credentials fallback
+    if (
+      (cleanId === 'nurse' || cleanId === 'nurse@carepulse.com' || cleanId.startsWith('n00')) &&
+      (cleanPassword === 'Nurse@123' || cleanPassword === 'nurse123' || cleanPassword === 'nurse')
+    ) {
+      setStaffAuth(
+        {
+          id: 'nurse-bag-1',
+          name: 'Nurse Sarah Jenkins',
+          email: 'nurse@carepulse.com',
+          role: 'nurse',
+          department: 'Triage & Patient Vitals',
+          hospitalId: 'hosp-bag',
+          hospital_id: 'hosp-bag',
+          staff_code: 'N007101',
+          staffCode: 'N007101',
+        },
+        'token-nurse-session'
+      );
+      setIsLoading(false);
+      navigate('/nurse');
       return;
     }
 

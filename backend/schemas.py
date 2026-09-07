@@ -376,7 +376,106 @@ class MedicineSearchResponse(BaseModel):
     matches: List[MedicineSearchResultItem] = []
 
 
+# ===================================================================
+# Nurse Portal & Pre-Consultation Vitals / Lab Tests Schemas
+# ===================================================================
+
+class NurseCreateRequest(BaseModel):
+    name: str
+    email: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    department: Optional[str] = "Triage & Vitals"
+    phone: Optional[str] = ""
+    photo: Optional[str] = ""
+    hospital_id: Optional[str] = None
 
 
+class NurseResponse(BaseModel):
+    id: str
+    staff_code: Optional[str] = None
+    name: str
+    email: str
+    department: Optional[str] = "Triage & Vitals"
+    hospital_id: Optional[str] = None
+    hospital_name: Optional[str] = None
+    phone: Optional[str] = ""
+    photo: Optional[str] = ""
+    is_active: bool = True
 
 
+class VitalsCreateRequest(BaseModel):
+    appointment_id: str
+    patient_id: str
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    bp_systolic: Optional[int] = None
+    bp_diastolic: Optional[int] = None
+    heart_rate: Optional[int] = None
+    temperature: Optional[float] = None
+    temperature_unit: Optional[str] = "C"
+    respiratory_rate: Optional[int] = None
+    spo2: Optional[int] = None
+    blood_glucose: Optional[float] = None
+    glucose_context: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class VitalsResponse(BaseModel):
+    id: str
+    appointment_id: str
+    patient_id: str
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    bmi: Optional[float] = None
+    bp_systolic: Optional[int] = None
+    bp_diastolic: Optional[int] = None
+    heart_rate: Optional[int] = None
+    temperature: Optional[float] = None
+    temperature_unit: Optional[str] = "C"
+    respiratory_rate: Optional[int] = None
+    spo2: Optional[int] = None
+    blood_glucose: Optional[float] = None
+    glucose_context: Optional[str] = None
+    notes: Optional[str] = None
+    abnormal_flags: List[str] = []
+    recorded_by: Optional[str] = None
+    recorded_by_name: Optional[str] = None
+    recorded_at: Optional[str] = None
+
+
+class LabTestCreateRequest(BaseModel):
+    appointment_id: str
+    patient_id: str
+    test_type: str
+    structured_results: Optional[Dict[str, Any]] = {}
+    free_text_result: Optional[str] = None
+    file_url: Optional[str] = None
+    status: Optional[str] = "completed"
+
+
+class LabTestResponse(BaseModel):
+    id: str
+    appointment_id: str
+    patient_id: str
+    test_type: str
+    structured_results: Optional[Dict[str, Any]] = {}
+    free_text_result: Optional[str] = None
+    file_url: Optional[str] = None
+    status: Optional[str] = "completed"
+    ordered_by: Optional[str] = None
+    recorded_by: Optional[str] = None
+    recorded_by_name: Optional[str] = None
+    recorded_at: Optional[str] = None
+
+
+class ReportUploadRequest(BaseModel):
+    file_data: str
+    filename: Optional[str] = "report.png"
+    appointment_id: Optional[str] = None
+
+
+class ReportUploadResponse(BaseModel):
+    success: bool
+    file_url: str
+    filename: str

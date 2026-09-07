@@ -18,12 +18,14 @@ import {
   Volume2,
   UserPlus,
   AlertTriangle,
+  HeartPulse,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
 import { TokenManagement } from './TokenManagement';
 import { PatientBookings } from './PatientBookings';
 import { DoctorManagement } from './DoctorManagement';
+import { NurseManagement } from './NurseManagement';
 import { PatientCheckIn } from './PatientCheckIn';
 import { ReceptionistProfile } from './ReceptionistProfile';
 import { NewAppointmentModal } from './NewAppointmentModal';
@@ -36,6 +38,7 @@ export type ReceptionistTab =
   | 'bookings'
   | 'checkin'
   | 'doctors'
+  | 'nurses'
   | 'profile';
 
 interface NavSection {
@@ -173,6 +176,11 @@ export const ReceptionistLayout: React.FC = () => {
           badge: activeDoctorsCount > 0 ? `${activeDoctorsCount} On-Duty` : undefined,
           badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         },
+        {
+          id: 'nurses',
+          label: 'Nursing & Vitals Team',
+          icon: HeartPulse,
+        },
       ],
     },
     {
@@ -210,6 +218,11 @@ export const ReceptionistLayout: React.FC = () => {
         return {
           title: 'Doctor Directory & Slot Capacities',
           breadcrumb: 'Front Desk / Physicians & Cabin Seats',
+        };
+      case 'nurses':
+        return {
+          title: 'Hospital Nurses & Triage Staff',
+          breadcrumb: 'Front Desk / Appoint & Manage Nurses',
         };
       case 'profile':
         return {
@@ -562,6 +575,10 @@ export const ReceptionistLayout: React.FC = () => {
 
           {activeTab === 'doctors' && (
             <DoctorManagement onShowToast={showToast} />
+          )}
+
+          {activeTab === 'nurses' && (
+            <NurseManagement onShowToast={showToast} />
           )}
 
           {activeTab === 'profile' && (

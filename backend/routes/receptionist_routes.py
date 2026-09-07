@@ -10,7 +10,8 @@ from schemas import (
     DoctorAvailabilityUpdate,
     SlotCapacityUpdate,
     TokenStatusUpdate,
-    WalkInAppointmentCreate
+    WalkInAppointmentCreate,
+    NurseCreateRequest
 )
 import database
 
@@ -141,8 +142,14 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
     hosp_id = payload.hospital_id or "hosp-bag"
     if authorization:
         staff_ctx = get_current_staff(authorization)
-        if staff_ctx and staff_ctx.get("hospital_id"):
-            hosp_id = staff_ctx["hospital_id"]
+        if staff_ctx:
+            if staff_ctx.get("role") == "nurse":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Nurse accounts are not authorized to create doctor profiles or manage staff."
+                )
+            if staff_ctx.get("hospital_id"):
+                hosp_id = staff_ctx["hospital_id"]
 
     db = database.read_json_db()
     hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
@@ -286,8 +293,21 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
     return {"success": True, "doctor": doctor_obj, "staff": new_staff_entry}
 
 @router.patch("/doctors/{doctor_id}/availability")
-def toggle_doctor_availability(doctor_id: str, payload: DoctorAvailabilityUpdate):
+def toggle_doctor_availability(
+    doctor_id: str,
+    payload: DoctorAvailabilityUpdate,
+    authorization: Optional[str] = Header(None)
+):
     """Toggle Doctor Available or Not Available status in database."""
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("role") == "nurse":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Nurse accounts are not authorized to modify doctor availability or schedules."
+            )
+
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
@@ -311,8 +331,21 @@ def toggle_doctor_availability(doctor_id: str, payload: DoctorAvailabilityUpdate
     raise HTTPException(status_code=404, detail="Doctor not found")
 
 @router.put("/doctors/{doctor_id}/slots")
-def update_slot_capacity(doctor_id: str, payload: SlotCapacityUpdate):
+def update_slot_capacity(
+    doctor_id: str,
+    payload: SlotCapacityUpdate,
+    authorization: Optional[str] = Header(None)
+):
     """Update seat limits and availability for a specific time slot in database."""
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("role") == "nurse":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Nurse accounts are not authorized to modify doctor availability or schedules."
+            )
+
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
@@ -339,6 +372,7 @@ def update_slot_capacity(doctor_id: str, payload: SlotCapacityUpdate):
                                 s["availableSeats"] = max(0, s["maxSeats"] - s.get("bookedSeats", 0))
                                 target_slot = s
                                 break
+
                         if not target_slot:
                             target_slot = {
                                 "id": f"slot-{uuid.uuid4().hex[:6]}",
@@ -386,6 +420,145 @@ def update_slot_capacity(doctor_id: str, payload: SlotCapacityUpdate):
             return {"success": True, "slot": target_slot, "doctor": format_receptionist_doctor(doc)}
 
     raise HTTPException(status_code=404, detail="Doctor not found")
+
+
+def format_receptionist_nurse(s: dict) -> dict:
+    return {
+        "id": str(s["id"]),
+        "staff_code": s.get("staff_code"),
+        "staffCode": s.get("staff_code"),
+        "name": s.get("full_name") or s.get("name"),
+        "email": s.get("email"),
+        "phone": s.get("phone") or "",
+        "department": s.get("specialization") or s.get("department", "Triage & Vitals"),
+        "hospital_id": s.get("hospital_id"),
+        "hospitalId": s.get("hospital_id"),
+        "photo": s.get("avatar_url") or s.get("avatar") or "",
+        "avatar": s.get("avatar_url") or s.get("avatar") or "",
+        "isActive": s.get("is_active", True),
+        "created_at": str(s.get("created_at", ""))
+    }
+
+
+@router.get("/nurses")
+def get_nurses(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """List nurse records scoped to the hospital."""
+    effective_hosp_id = hospital_id
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("hospital_id"):
+            effective_hosp_id = staff_ctx["hospital_id"]
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if effective_hosp_id:
+                        cur.execute("SELECT * FROM staff WHERE role = 'nurse' AND hospital_id = %s ORDER BY created_at ASC", (effective_hosp_id,))
+                    else:
+                        cur.execute("SELECT * FROM staff WHERE role = 'nurse' ORDER BY created_at ASC")
+                    rows = cur.fetchall()
+                    if rows is not None:
+                        return {"success": True, "nurses": [format_receptionist_nurse(dict(r)) for r in rows]}
+        except Exception as e:
+            logger.warning(f"DB get nurses note: {e}")
+
+    db = database.read_json_db()
+    staff_list = db.get("staff", [])
+    nurses = [s for s in staff_list if s.get("role") == "nurse"]
+    if effective_hosp_id:
+        nurses = [s for s in nurses if s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id]
+    return {"success": True, "nurses": [format_receptionist_nurse(s) for s in nurses]}
+
+
+@router.post("/nurses")
+def create_nurse(payload: NurseCreateRequest, authorization: Optional[str] = Header(None)):
+    """Create a new nurse record in database with auto-generated staff code starting with N."""
+    from routes.staff_auth import get_current_staff, hash_password
+
+    # Enforce RBAC: nurse cannot create nurse or doctors
+    hosp_id = payload.hospital_id or "hosp-bag"
+    if authorization:
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx:
+            if staff_ctx.get("role") == "nurse":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Nurse accounts are not authorized to create nurse staff records."
+                )
+            if staff_ctx.get("hospital_id"):
+                hosp_id = staff_ctx["hospital_id"]
+
+    email = (payload.email or "").strip().lower()
+    username = (payload.username or "").strip()
+    if not email:
+        clean_name = payload.name.lower().replace("nurse", "").strip().replace(" ", ".")
+        email = f"{username.lower()}@carepulse.com" if username else f"{clean_name}@carepulse.com"
+    if not username:
+        username = email.split("@")[0]
+
+    raw_pass = payload.password or "Nurse@123"
+    hashed_pass = hash_password(raw_pass)
+    nurse_uuid = str(uuid.uuid4())
+    generated_staff_code = None
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # Let the trigger generate_staff_code() automatically compute the N-prefixed code
+                    cur.execute("""
+                        INSERT INTO staff (id, full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id)
+                        VALUES (%s, %s, %s, %s, 'nurse', %s, %s, %s, %s)
+                        RETURNING id, staff_code, full_name, email, role, specialization, phone, avatar_url, hospital_id, is_active, created_at
+                    """, (nurse_uuid, payload.name, email, hashed_pass, payload.department or "Triage & Vitals", payload.phone or "", payload.photo or "", hosp_id))
+                    row = cur.fetchone()
+                    conn.commit()
+                    if row:
+                        nurse_dict = dict(row)
+                        return {"success": True, "nurse": format_receptionist_nurse(nurse_dict)}
+        except Exception as e:
+            logger.error(f"DB insert nurse note: {e}")
+
+    # Fallback to JSON DB
+    db = database.read_json_db()
+    staff_list = db.get("staff", [])
+    existing_nurses = [s for s in staff_list if s.get("role") == "nurse" and (s.get("hospital_id") == hosp_id or s.get("hospitalId") == hosp_id)]
+    seq = 101 + len(existing_nurses)
+    hosp_num = "007" if "bag" in str(hosp_id).lower() else "001"
+    staff_code = generated_staff_code or f"N{hosp_num}{seq:03d}"
+
+    nurse_entry = {
+        "id": nurse_uuid,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
+        "name": payload.name,
+        "full_name": payload.name,
+        "email": email,
+        "username": username,
+        "password": hashed_pass,
+        "password_hash": hashed_pass,
+        "role": "nurse",
+        "specialization": payload.department or "Triage & Vitals",
+        "department": payload.department or "Triage & Vitals",
+        "phone": payload.phone or "",
+        "avatar": payload.photo or "",
+        "avatar_url": payload.photo or "",
+        "hospital_id": hosp_id,
+        "hospitalId": hosp_id,
+        "is_active": True,
+        "isActive": True
+    }
+    if "staff" not in db:
+        db["staff"] = []
+    db["staff"].append(nurse_entry)
+    database.write_json_db(db)
+
+    return {"success": True, "nurse": format_receptionist_nurse(nurse_entry)}
 
 def fetch_all_tokens_from_db(
     doctor_id: Optional[str] = None,
