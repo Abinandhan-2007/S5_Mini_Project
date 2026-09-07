@@ -29,8 +29,6 @@ DEFAULT_SLOTS = [
     {"id": "slot-6", "timeSlot": "04:00 PM - 05:00 PM", "maxSeats": 5, "bookedSeats": 0, "availableSeats": 5, "isAvailable": True},
 ]
 
-MOCK_TOKEN_QUEUE = []
-
 
 def format_receptionist_doctor(d: dict) -> dict:
     days = d.get("available_days") or d.get("availableDays") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
@@ -847,11 +845,6 @@ def update_token_status(token_id: str, payload: TokenStatusUpdate):
                 break
     except Exception as e:
         logger.warning(f"JSON update status note: {e}")
-
-    # 3. Update in memory mock if present
-    for tok in MOCK_TOKEN_QUEUE:
-        if tok.get("id") == token_id:
-            tok["status"] = payload.status
 
     return {"success": True, "tokenId": token_id, "status": payload.status}
 

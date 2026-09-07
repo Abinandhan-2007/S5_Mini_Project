@@ -50,9 +50,6 @@ export interface HistoryScreenProps {
   isLoading?: boolean;
 }
 
-// Curated realistic clinical visit records spanning multiple months
-export const DEFAULT_MOCK_VISITS: VisitRecord[] = [];
-
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   visits: propVisits,
   onSelectVisit,

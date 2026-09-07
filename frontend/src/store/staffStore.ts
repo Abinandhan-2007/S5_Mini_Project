@@ -51,9 +51,9 @@ export const DEFAULT_SLOTS: TimeSlotCapacity[] = [
   createSplitSlot('slot-6', '04:00 PM - 05:00 PM', 6, 1, 1, true),
 ];
 
-const MOCK_INITIAL_DOCTORS: DoctorRecord[] = [];
+const INITIAL_DOCTORS: DoctorRecord[] = [];
 
-const MOCK_INITIAL_TOKENS: TokenQueueItem[] = [];
+const INITIAL_TOKENS: TokenQueueItem[] = [];
 
 const getStoredStaff = (): Staff | null => {
   try {
@@ -67,46 +67,46 @@ const getStoredStaff = (): Staff | null => {
 export const getInitialReceptionistProfile = (): ReceptionistProfile => {
   const storedStaff = getStoredStaff();
   if (storedStaff && storedStaff.role === 'receptionist') {
-    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || (storedStaff.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
-    const empId = storedStaff.staffCode || storedStaff.staff_code || (storedStaff.hospitalId === 'hosp-bag' ? 'R007101' : 'R010101');
-    const emailPrefix = storedStaff.email ? storedStaff.email.split('@')[0] : 'rep1';
+    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || 'CarePulse Medical Center';
+    const empId = storedStaff.staffCode || storedStaff.staff_code || '';
+    const emailPrefix = storedStaff.email ? storedStaff.email.split('@')[0] : 'receptionist';
     return {
       id: storedStaff.id,
-      name: storedStaff.name || 'REP1',
-      fullName: storedStaff.name || 'REP1',
+      name: storedStaff.name || 'Reception Desk',
+      fullName: storedStaff.name || 'Reception Desk',
       username: storedStaff.username || emailPrefix,
-      email: storedStaff.email || 'bag@bitsathy',
-      phone: storedStaff.phone || '+91 98765 43220',
+      email: storedStaff.email || '',
+      phone: storedStaff.phone || '',
       employeeId: empId,
       staffCode: empId,
       clinicName: hospName,
       hospitalName: hospName,
       hospitalId: storedStaff.hospitalId || undefined,
-      deskName: storedStaff.deskName || 'Main Reception & OPD Queue Desk 01',
-      department: storedStaff.department || 'Main Reception & OPD Queue',
+      deskName: storedStaff.deskName || 'Main Reception & OPD Desk',
+      department: storedStaff.department || 'Front Desk & Patient Triage',
       shift: 'Morning Shift (08:00 AM - 04:00 PM)',
-      avatarUrl: storedStaff.avatarUrl || storedStaff.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+      avatarUrl: storedStaff.avatarUrl || storedStaff.avatar || '',
       operationalStatus: 'Active On Duty',
       twoFactorEnabled: true,
       isActive: true,
     };
   }
   return {
-    id: 'a708461f-e3fe-45b8-9ed1-b9848d064e29',
-    name: 'REP1',
-    fullName: 'REP1',
-    username: 'rep1',
-    email: 'bag@bitsathy',
-    phone: '+91 98765 43220',
-    employeeId: 'R007101',
-    staffCode: 'R007101',
-    clinicName: 'BAG Hospital',
-    hospitalName: 'BAG Hospital',
-    hospitalId: 'hosp-bag',
-    deskName: 'Main Reception & OPD Queue Desk 01',
-    department: 'Main Reception & OPD Queue',
+    id: '',
+    name: 'Reception Desk',
+    fullName: 'Reception Desk',
+    username: 'receptionist',
+    email: '',
+    phone: '',
+    employeeId: '',
+    staffCode: '',
+    clinicName: 'CarePulse Medical Center',
+    hospitalName: 'CarePulse Medical Center',
+    hospitalId: '',
+    deskName: 'Main Reception & OPD Desk',
+    department: 'Front Desk & Patient Triage',
     shift: 'Morning Shift (08:00 AM - 04:00 PM)',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+    avatarUrl: '',
     operationalStatus: 'Active On Duty',
     twoFactorEnabled: true,
     isActive: true,
@@ -114,30 +114,30 @@ export const getInitialReceptionistProfile = (): ReceptionistProfile => {
 };
 
 const DEFAULT_ADMIN_PROFILE: AdminProfile = {
-  id: 'admin-bag',
-  name: 'BAG Hospital Administrator',
-  email: 'bag@carepulse.com',
-  username: 'BAG',
-  password: 'bitsathy',
-  phone: '+91 4295 226000',
+  id: '',
+  name: 'Hospital Administrator',
+  email: '',
+  username: 'admin',
+  password: '',
+  phone: '',
   role: 'admin',
   department: 'Hospital Administration & Operations',
   avatarUrl: '',
-  hospitalName: 'BAG Hospital',
-  hospitalId: 'hosp-bag',
+  hospitalName: 'CarePulse Medical Center',
+  hospitalId: '',
 };
 
 export const getInitialAdminProfile = (): AdminProfile => {
   const storedStaff = getStoredStaff();
   if (storedStaff && storedStaff.role === 'admin') {
-    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || (storedStaff.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || 'CarePulse Medical Center';
     return {
       id: storedStaff.id,
       name: storedStaff.name || 'Hospital Administrator',
-      email: storedStaff.email || 'admin@carepulse.com',
+      email: storedStaff.email || '',
       username: storedStaff.username || (storedStaff.email ? storedStaff.email.split('@')[0] : 'admin'),
-      password: 'Admin@123',
-      phone: storedStaff.phone || '+91 4295 226000',
+      password: '',
+      phone: storedStaff.phone || '',
       role: 'admin',
       department: storedStaff.department || 'Chief Hospital Administration',
       avatarUrl: storedStaff.avatarUrl || '',
@@ -149,12 +149,12 @@ export const getInitialAdminProfile = (): AdminProfile => {
 };
 
 const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
-  name: 'BAG Hospital',
+  name: 'CarePulse Medical Center',
   tagline: 'Advanced Clinical Care & Patient Guidance Center',
-  address: 'Bannari Amman Group (BAG) Medical Complex, Sathyamangalam, Tamil Nadu 638401',
-  phone: '+91 4295 226000',
-  emergencyHotline: '+91 4295 226000',
-  email: 'bag@carepulse.com',
+  address: 'Healthcare Complex, Medical District',
+  phone: '+91 1800 123 4567',
+  emergencyHotline: '+91 1800 123 4567',
+  email: 'admin@carepulse.health',
   logoUrl: '/hospital_default.jpg',
   defaultSlotDurationMinutes: 30,
   maxOnlineBookingPercentage: 50,
@@ -165,7 +165,7 @@ const DEFAULT_HOSPITAL_SETTINGS: HospitalSettings = {
 
 export const getInitialHospitalSettings = (): HospitalSettings => {
   const storedStaff = getStoredStaff();
-  const hospName = storedStaff?.hospitalName || storedStaff?.hospital_name || (storedStaff?.hospitalId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+  const hospName = storedStaff?.hospitalName || storedStaff?.hospital_name || 'CarePulse Medical Center';
   return {
     ...DEFAULT_HOSPITAL_SETTINGS,
     name: hospName,
@@ -174,20 +174,7 @@ export const getInitialHospitalSettings = (): HospitalSettings => {
 
 const DEFAULT_RECEPTIONISTS: ReceptionistRecord[] = [];
 
-const DEFAULT_HOSPITALS: HospitalBranch[] = [
-  {
-    id: 'hosp-bag',
-    name: 'BAG Hospital',
-    address: 'Bannari Amman Group (BAG) Medical Complex, Alathukombai, Sathyamangalam, Tamil Nadu 638401',
-    city: 'Sathyamangalam',
-    phone: '+91 4295 226000',
-    operatingHours: '24/7 Emergency & OPD (08:00 AM - 10:00 PM)',
-    doctorsCount: 10,
-    receptionDesksCount: 4,
-    logoUrl: '/hospital_default.jpg',
-    isActive: true,
-  },
-];
+const DEFAULT_HOSPITALS: HospitalBranch[] = [];
 
 const DEFAULT_DEPARTMENTS: DepartmentRecord[] = [];
 
@@ -279,12 +266,7 @@ export interface StaffState {
 }
 
 export const useStaffStore = create<StaffState>((set, get) => ({
-  currentStaff: getStoredStaff() || {
-    id: 'admin-1',
-    name: 'Admin',
-    role: 'admin',
-    email: 'admin@carepulse.com',
-  },
+  currentStaff: getStoredStaff(),
   receptionistProfile: getInitialReceptionistProfile(),
   adminProfile: getInitialAdminProfile(),
   hospitalSettings: getInitialHospitalSettings(),
@@ -292,8 +274,8 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   hospitals: DEFAULT_HOSPITALS,
   departments: DEFAULT_DEPARTMENTS,
   announcements: DEFAULT_ANNOUNCEMENTS,
-  doctors: MOCK_INITIAL_DOCTORS,
-  tokens: MOCK_INITIAL_TOKENS,
+  doctors: INITIAL_DOCTORS,
+  tokens: INITIAL_TOKENS,
   isLoading: false,
   error: null,
 
@@ -301,7 +283,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     if (token) localStorage.setItem('staff_token', token);
     if (staff) {
       const hospId = staff.hospitalId || staff.hospital_id;
-      const hospName = staff.hospitalName || staff.hospital_name || (hospId === 'hosp-bag' ? 'BAG Hospital' : 'Empathetic Healthcare');
+      const hospName = staff.hospitalName || staff.hospital_name || 'CarePulse Medical Center';
       const updatedStaff = {
         ...staff,
         hospitalId: hospId,
@@ -319,8 +301,8 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       }));
 
       if (staff.role === 'receptionist') {
-        const emailPrefix = staff.email ? staff.email.split('@')[0] : 'rep1';
-        const empId = staff.staff_code || staff.staffCode || staff.id || (hospId === 'hosp-bag' ? 'R007101' : 'R010101');
+        const emailPrefix = staff.email ? staff.email.split('@')[0] : 'receptionist';
+        const empId = staff.staff_code || staff.staffCode || staff.id || '';
         set((state) => ({
           receptionistProfile: {
             ...state.receptionistProfile,
@@ -334,7 +316,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
             clinicName: hospName,
             hospitalName: hospName,
             hospitalId: hospId,
-            deskName: staff.deskName || state.receptionistProfile.deskName || 'Main Reception & OPD Queue Desk 01',
+            deskName: staff.deskName || state.receptionistProfile.deskName || 'Main Reception & OPD Desk',
             employeeId: empId,
             staffCode: empId,
           },

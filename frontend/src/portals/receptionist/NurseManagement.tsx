@@ -37,7 +37,7 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
   const fetchNurses = async () => {
     setIsLoading(true);
     try {
-      const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId || 'hosp-bag';
+      const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId || undefined;
       const list = await nurseService.getHospitalNurses(hospId);
       setNurses(list);
     } catch (err) {
@@ -68,7 +68,7 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
     setFormError(null);
 
     try {
-      const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId || 'hosp-bag';
+      const hospId = currentStaff?.hospital_id || currentStaff?.hospitalId || undefined;
       const created = await nurseService.createNurse({
         name,
         email,

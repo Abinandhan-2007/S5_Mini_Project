@@ -42,14 +42,14 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [name, setName] = useState(profile.name || currentStaff?.name || 'REP1');
   const [username, setUsername] = useState(
-    profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : 'rep1')
+    profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : 'receptionist')
   );
-  const [email, setEmail] = useState(profile.email || currentStaff?.email || 'bag@bitsathy');
+  const [email, setEmail] = useState(profile.email || currentStaff?.email || '');
   const [clinicName, setClinicName] = useState(
-    profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'BAG Hospital'
+    profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'CarePulse Medical Center'
   );
   const [deskName, setDeskName] = useState(
-    profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Queue Desk 01'
+    profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Desk'
   );
   const [department, setDepartment] = useState(
     profile.department || currentStaff?.department || 'Main Reception & OPD Queue'
@@ -58,15 +58,15 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
 
   // Sync state when profile or session loads
   useEffect(() => {
-    setName(profile.name || currentStaff?.name || 'REP1');
+    setName(profile.name || currentStaff?.name || 'Reception Desk');
     setUsername(
-      profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : 'rep1')
+      profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : 'receptionist')
     );
-    setEmail(profile.email || currentStaff?.email || 'bag@bitsathy');
+    setEmail(profile.email || currentStaff?.email || '');
     setClinicName(
-      profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'BAG Hospital'
+      profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'CarePulse Medical Center'
     );
-    setDeskName(profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Queue Desk 01');
+    setDeskName(profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Desk');
     setDepartment(profile.department || currentStaff?.department || 'Main Reception & OPD Queue');
   }, [profile, currentStaff, hospitalSettings]);
 
@@ -136,17 +136,17 @@ export const ReceptionistProfile: React.FC<ReceptionistProfileProps> = ({ onShow
   };
 
   const effectiveClinicName =
-    profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'BAG Hospital';
+    profile.clinicName || profile.hospitalName || currentStaff?.hospitalName || hospitalSettings.name || 'CarePulse Medical Center';
   const effectiveDeskName =
-    profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Queue Desk 01';
+    profile.deskName || currentStaff?.deskName || 'Main Reception & OPD Desk';
   const effectiveDepartment =
     profile.department || currentStaff?.department || 'Main Reception & OPD Queue';
   const effectiveEmployeeId =
-    profile.employeeId || profile.staffCode || currentStaff?.staffCode || currentStaff?.staff_code || 'R007101';
+    profile.employeeId || profile.staffCode || currentStaff?.staffCode || currentStaff?.staff_code || '';
   const effectiveUsername =
-    profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : (currentStaff?.email ? currentStaff.email.split('@')[0] : 'rep1'));
+    profile.username || currentStaff?.username || (profile.email ? profile.email.split('@')[0] : (currentStaff?.email ? currentStaff.email.split('@')[0] : 'receptionist'));
   const effectiveEmail =
-    profile.email || currentStaff?.email || 'bag@bitsathy';
+    profile.email || currentStaff?.email || '';
   const effectiveStatus =
     profile.operationalStatus || (currentStaff?.isActive !== false ? 'Active On Duty' : 'Inactive');
 

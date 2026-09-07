@@ -51,7 +51,7 @@ interface DoctorNotificationCenterProps {
   showToast: (msg: string) => void;
 }
 
-const INITIAL_MOCK_NOTIFICATIONS: ClinicalNotification[] = [];
+const INITIAL_NOTIFICATIONS: ClinicalNotification[] = [];
 
 export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> = ({
   isOpen,
@@ -62,7 +62,7 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
   showToast,
 }) => {
   const [activeCategory, setActiveCategory] = useState<NotificationCategory>('all');
-  const [notifications, setNotifications] = useState<ClinicalNotification[]>(INITIAL_MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<ClinicalNotification[]>(INITIAL_NOTIFICATIONS);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     return localStorage.getItem('carepulse_sound_notif') !== 'false';
   });

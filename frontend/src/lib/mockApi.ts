@@ -49,8 +49,8 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
     sender: 'bot',
-    text: "Hello Sarah! 👋 I'm CarePulse AI, your virtual health assistant. How are you feeling today? Tap a symptom below or describe what you're experiencing.",
-    timestamp: '10:00 AM',
+    text: "Hello! 👋 I'm CarePulse AI, your virtual health assistant. How are you feeling today? Tap a symptom below or describe what you're experiencing.",
+    timestamp: 'Just now',
     quickReplyChips: ['Fever & Chills', 'Headache', 'Shortness of breath', 'Body aches', 'Skin Rash'],
   },
 ];

@@ -177,15 +177,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     }
   };
 
-  // Mini calendar generator (current week)
-  const currentWeekDays = [
-    { day: 'Mon', date: 10 },
-    { day: 'Tue', date: 11 },
-    { day: 'Wed', date: 12 },
-    { day: 'Thu', date: 13, isToday: true },
-    { day: 'Fri', date: 14 },
-    { day: 'Sat', date: 15 },
-  ];
+  // Dynamic mini calendar generator (current week Mon - Sat)
+  const currentWeekDays = useMemo(() => {
+    const today = new Date();
+    const currentDayOfWeek = today.getDay();
+    const mondayOffset = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return dayLabels.map((day, idx) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + idx);
+      return {
+        day,
+        date: d.getDate(),
+        isToday: d.toDateString() === today.toDateString(),
+      };
+    });
+  }, []);
 
   return (
     <div className="space-y-6 font-sans">

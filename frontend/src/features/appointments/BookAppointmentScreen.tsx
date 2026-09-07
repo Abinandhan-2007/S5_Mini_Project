@@ -17,7 +17,6 @@ import { TimeSlotGrid, areAllTodaySlotsCompleted } from '../../components/ui/Tim
 import { Button } from '../../components/ui/Button';
 import { doctorService } from '../../services/doctorService';
 import type { Doctor } from '../../lib/types';
-import { MOCK_DOCTORS } from '../../lib/mockApi';
 import { useCarePulseStore } from '../../lib/store';
 import { useStaffStore } from '../../store/staffStore';
 import { apiFetch } from '../../lib/apiFetch';
@@ -53,8 +52,7 @@ export const BookAppointmentScreen: React.FC = () => {
   const matchedStaffDoc = staffDoctors.find(
     (d) => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId
   );
-  const matchedMockDoc = MOCK_DOCTORS.find((d) => d.id === doctorId);
-  const initialDoctor: Doctor = (matchedStaffDoc as any) || matchedMockDoc || staffDoctors[0] || EMPTY_DOCTOR;
+  const initialDoctor: Doctor = (matchedStaffDoc as any) || staffDoctors[0] || EMPTY_DOCTOR;
   const [doctor, setDoctor] = useState<Doctor>(initialDoctor);
 
   useEffect(() => {
