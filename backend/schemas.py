@@ -198,17 +198,17 @@ class SlotAddRequest(BaseModel):
 
 class DoctorCreateRequest(BaseModel):
     name: str
-    specialty: str
-    department: str
-    experienceYears: int
-    consultationFee: float
+    specialty: Optional[str] = "General Physician"
+    department: Optional[str] = "General Medicine"
+    experienceYears: Optional[int] = 5
+    consultationFee: Optional[float] = 500.0
     photo: Optional[str] = ""
     phone: Optional[str] = ""
     email: Optional[str] = ""
     username: Optional[str] = ""
     password: Optional[str] = None
     hospital_id: Optional[str] = None
-    roomNumber: Optional[str] = "Room 101"
+    roomNumber: Optional[str] = "Cabin 101"
     isAvailable: Optional[bool] = True
     availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
     slotCapacities: Optional[List[SlotCapacitySchema]] = []

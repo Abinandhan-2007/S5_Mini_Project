@@ -168,6 +168,30 @@
       ],
       "is_active": true,
       "distance_miles": 1.0
+    },
+    {
+      "id": "hosp-royal-care-bbb122",
+      "hospital_code": "H005",
+      "hospitalCode": "H005",
+      "name": "ROyal care",
+      "address": "coimbarore",
+      "phone": "9976989260",
+      "email": "royalcare@gmail.com",
+      "facility_type": "Multi-Specialty Research Hospital",
+      "rating": 4.8,
+      "reviews_count": 0,
+      "emergency_available": true,
+      "image_url": "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800&auto=format&fit=crop&q=80",
+      "specialties": [
+        "Cardiology",
+        "General Medicine",
+        "Pediatrics",
+        "Emergency Care"
+      ],
+      "is_active": true,
+      "is_suspended": false,
+      "lifecycle_state": "Pending Setup",
+      "distance_miles": 1.0
     }
   ],
   "doctors": [
@@ -515,6 +539,83 @@
       ],
       "slotCapacities": [],
       "slot_capacities": []
+    },
+    {
+      "id": "doc-c0c0ff",
+      "staff_code": "D122101",
+      "staffCode": "D122101",
+      "name": "Dr. arunraj",
+      "specialty": "Dermatology",
+      "department": "Dermatology",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "hospital_name": "ROyal care",
+      "hospitalName": "ROyal care",
+      "experienceYears": 5,
+      "consultationFee": 500.0,
+      "photo": "/doctor_default.jpg",
+      "phone": "+91 98765 00000",
+      "email": "arunraj@gmail.com",
+      "username": "arunraj",
+      "roomNumber": "Cabin 101",
+      "isAvailable": true,
+      "availableDays": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
+      "slotCapacities": [
+        {
+          "id": "slot-1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "availableSeats": 5,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "bookedSeats": 0,
+          "availableSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "availableSeats": 5,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-4",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "bookedSeats": 0,
+          "availableSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-5",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 4,
+          "bookedSeats": 0,
+          "availableSeats": 4,
+          "isAvailable": true
+        },
+        {
+          "id": "slot-6",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "availableSeats": 5,
+          "isAvailable": true
+        }
+      ]
     }
   ],
   "staff": [
@@ -567,8 +668,8 @@
       "name": "REP1",
       "full_name": "REP1",
       "email": "bag@bitsathy",
-      "password": "$2b$12$.BTRF8OYhSOyophZ6seDXOQ6nZf5o/lu5gbZymnebxUeo8xORDeq2",
-      "password_hash": "$2b$12$.BTRF8OYhSOyophZ6seDXOQ6nZf5o/lu5gbZymnebxUeo8xORDeq2",
+      "password": "bitsathy",
+      "password_hash": "$2b$12$qZ8x65.pBBxuduT1IOuaxezGPt0NBjVg4p.UMKkPFQlG95lZ.kO.q",
       "role": "receptionist",
       "department": "Main Reception & OPD Queue",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
@@ -694,8 +795,8 @@
       "name": "desk1",
       "full_name": "desk1",
       "email": "kmchdesk@gmail.com",
-      "password": "$2b$12$KTuRB0/ShKibQBCznPbV7.VdY1lM3Yy3Diz/8tDelh.66bPat4O72",
-      "password_hash": "$2b$12$KTuRB0/ShKibQBCznPbV7.VdY1lM3Yy3Diz/8tDelh.66bPat4O72",
+      "password": "desk123",
+      "password_hash": "$2b$12$2wjEmIg31xN99d9mj9AO8uUi4qF/BQTmcEaIK4BYh0RWuKW7epMG.",
       "role": "receptionist",
       "department": "Main Reception",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
@@ -839,8 +940,8 @@
       "name": "nagu",
       "full_name": "nagu",
       "email": "nagu@bitsathy",
-      "password": "$2b$12$KRU8JjwPCiQ8Oxy4BkHqiuNmZROMUX2gjg.PHox.39/ZW8ft69Knm",
-      "password_hash": "$2b$12$KRU8JjwPCiQ8Oxy4BkHqiuNmZROMUX2gjg.PHox.39/ZW8ft69Knm",
+      "password": "bitsathy",
+      "password_hash": "$2b$12$o74hwW9sS3mMF8fZek5/pu/ErUq0oIQTCH5CNDf/ch3wo4MfQ5192",
       "role": "receptionist",
       "department": "Main Reception",
       "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
@@ -848,6 +949,66 @@
       "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
       "hospital_id": "hosp-bit-8bef29",
       "hospitalId": "hosp-bit-8bef29",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "d74aa849-b444-4db0-88ce-7dea0689f2a7",
+      "staff_code": "A005101",
+      "staffCode": "A005101",
+      "name": "royalcare",
+      "full_name": "royalcare",
+      "email": "royalcare@gmail.com",
+      "password": "$2b$12$Xglu/s8T9pFkJCT9bUwmheizOdnbypKXSGwUvzLDCgXYD9UUfn7WC",
+      "password_hash": "$2b$12$Xglu/s8T9pFkJCT9bUwmheizOdnbypKXSGwUvzLDCgXYD9UUfn7WC",
+      "role": "admin",
+      "department": "Chief Hospital Administration",
+      "specialization": "Chief Hospital Administration",
+      "phone": "6382357771",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "isActive": true,
+      "is_active": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "doc-c0c0ff",
+      "staff_code": "D122101",
+      "staffCode": "D122101",
+      "name": "Dr. arunraj",
+      "full_name": "Dr. arunraj",
+      "email": "arunraj@gmail.com",
+      "username": "arunraj",
+      "password": "$2b$12$sZVND5x2gOF8G74smYl6VOtTz.n44JoZXsCn5SqRLi/Wp81oAe0mO",
+      "password_hash": "$2b$12$sZVND5x2gOF8G74smYl6VOtTz.n44JoZXsCn5SqRLi/Wp81oAe0mO",
+      "role": "doctor",
+      "specialization": "Dermatology",
+      "department": "Dermatology",
+      "phone": "+91 98765 00000",
+      "avatar": "/doctor_default.jpg",
+      "avatar_url": "/doctor_default.jpg",
+      "avatarUrl": "/doctor_default.jpg",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
+      "is_active": true,
+      "isActive": true
+    },
+    {
+      "id": "rec-c2ad4299",
+      "staff_code": "R122101",
+      "staffCode": "R122101",
+      "name": "desk1",
+      "full_name": "desk1",
+      "email": "desk1@gmail.com",
+      "password": "$2b$12$qRJaExqShMBqkO766EdH.OcMBKDKqqboJQglFVY2xBCylf/pAgBoy",
+      "password_hash": "$2b$12$qRJaExqShMBqkO766EdH.OcMBKDKqqboJQglFVY2xBCylf/pAgBoy",
+      "role": "receptionist",
+      "department": "Main Reception",
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
       "is_active": true,
       "isActive": true
     }
@@ -882,7 +1043,8 @@
       "assignedDoctorsCount": 3,
       "hospital_id": "hosp-bag",
       "hospitalId": "hosp-bag",
-      "joinDate": "2026-09-07"
+      "joinDate": "2026-09-07",
+      "password": "bitsathy"
     },
     {
       "id": "rec-597551c8",
@@ -899,7 +1061,8 @@
       "assignedDoctorsCount": 3,
       "hospital_id": "hosp-kmch-e46216",
       "hospitalId": "hosp-kmch-e46216",
-      "joinDate": "2026-09-07"
+      "joinDate": "2026-09-07",
+      "password": "desk123"
     },
     {
       "id": "933577d3-cd9a-46e8-a160-7a02760e623d",
@@ -916,6 +1079,24 @@
       "assignedDoctorsCount": 3,
       "hospital_id": "hosp-bit-8bef29",
       "hospitalId": "hosp-bit-8bef29",
+      "joinDate": "2026-09-07",
+      "password": "bitsathy"
+    },
+    {
+      "id": "rec-c2ad4299",
+      "staff_code": "R122101",
+      "staffCode": "R122101",
+      "name": "desk1",
+      "email": "desk1@gmail.com",
+      "phone": "+91 98765 43220",
+      "department": "Main Reception",
+      "deskNumber": "Desk A-1 (Ground Floor)",
+      "shift": "Morning",
+      "isActive": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+      "assignedDoctorsCount": 3,
+      "hospital_id": "hosp-royal-care-bbb122",
+      "hospitalId": "hosp-royal-care-bbb122",
       "joinDate": "2026-09-07"
     }
   ],
@@ -3491,6 +3672,50 @@
   ],
   "device_tokens": [],
   "audit_logs": [
+    {
+      "id": "audit-c3ec3bd122e8",
+      "timestamp": "2026-09-07T08:11:14.860904+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_APPOINTED",
+      "target_type": "admin",
+      "target_id": "d74aa849-b444-4db0-88ce-7dea0689f2a7",
+      "target_code": "A005101",
+      "target_name": "royalcare",
+      "description": "Appointed administrator A005101 (royalcare) to hospital H005 (ROyal care)",
+      "before_state": null,
+      "after_state": {
+        "staff_code": "A005101",
+        "full_name": "royalcare",
+        "email": "royalcare@gmail.com",
+        "hospital_id": "hosp-royal-care-bbb122",
+        "hospital_code": "H005",
+        "hospital_name": "ROyal care",
+        "facility_lifecycle": "Pending Setup"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-d214a7b6bf0b",
+      "timestamp": "2026-09-07T08:10:31.682682+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_CREATED",
+      "target_type": "hospital",
+      "target_id": "hosp-royal-care-bbb122",
+      "target_code": "H005",
+      "target_name": "ROyal care",
+      "description": "Provisioned hospital facility H005 (ROyal care) in Draft state",
+      "before_state": null,
+      "after_state": {
+        "hospital_code": "H005",
+        "name": "ROyal care",
+        "facility_type": "Multi-Specialty Research Hospital",
+        "lifecycle_state": "Draft",
+        "address": "coimbarore"
+      },
+      "reason": null
+    },
     {
       "id": "audit-fecc84b22298",
       "timestamp": "2026-09-07T05:48:46.941763+00:00",

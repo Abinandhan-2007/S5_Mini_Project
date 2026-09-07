@@ -301,13 +301,13 @@ def staff_login(request: StaffLoginRequest):
             if database.use_pg and found_staff.get("id"):
                 with get_pg_connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute("UPDATE staff SET password_hash = %s WHERE id::text = %s", (new_hash, str(found_staff.get("id"))))
+                        cur.execute("UPDATE staff SET password = %s, password_hash = %s WHERE id::text = %s", (raw_password, new_hash, str(found_staff.get("id"))))
                     conn.commit()
             db = read_json_db()
             staff_list = db.get("staff", [])
             for s in staff_list:
                 if s.get("id") == found_staff.get("id") or s.get("email", "").lower() == raw_email:
-                    s["password"] = new_hash
+                    s["password"] = raw_password
                     s["password_hash"] = new_hash
             write_json_db(db)
         except Exception as e:

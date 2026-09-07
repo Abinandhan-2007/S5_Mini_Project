@@ -369,7 +369,11 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     try {
       const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
       const doctors = await receptionistService.getDoctors(hospId);
-      set({ doctors: doctors || [], isLoading: false });
+      if (doctors) {
+        set({ doctors, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
     } catch {
       if (!silent) set({ isLoading: false });
     }
@@ -476,17 +480,25 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   createDoctor: async (doctorData: Partial<DoctorRecord>) => {
-    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
+    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-bag';
     try {
       const created = await receptionistService.createDoctor({
         ...doctorData,
-        hospital_id: hospId,
+        hospital_id: doctorData.hospital_id || hospId,
+        hospitalId: doctorData.hospitalId || hospId,
       });
       if (created) {
+        const formatted: DoctorRecord = {
+          ...created,
+          isAvailable: created.isAvailable !== false,
+          department: created.department || created.specialty || 'General Medicine',
+          specialty: created.specialty || created.department || 'General Medicine',
+          photo: created.photo || '/doctor_default.jpg',
+          password: created.password || doctorData.password || 'doc123',
+        };
         set((state) => ({
-          doctors: [created, ...state.doctors.filter((d) => d.id !== created.id)],
+          doctors: [formatted, ...state.doctors.filter((d) => d.id !== formatted.id)],
         }));
-        return;
       }
     } catch (e) {
       console.warn('Create doctor store error:', e);
@@ -636,7 +648,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       const res = await apiPost('/admin/receptionists', {
         name: recData.name || 'New Receptionist',
         email: recData.email || 'receptionist@carepulse.com',
-        password: recData.password || 'password123',
+        password: recData.password || undefined,
         phone: recData.phone || '+91 98765 00000',
         department: recData.department || 'Front Desk',
         deskNumber: recData.deskNumber || 'Desk A-1',

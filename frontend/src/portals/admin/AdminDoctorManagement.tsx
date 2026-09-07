@@ -24,6 +24,20 @@ interface AdminDoctorManagementProps {
 }
 
 const DEFAULT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const DEFAULT_DEPARTMENTS = [
+  'General Medicine',
+  'Cardiology',
+  'Dermatology',
+  'Pediatrics',
+  'Neurology',
+  'Orthopedics',
+  'Gynecology',
+  'ENT',
+  'Ophthalmology',
+  'Gastroenterology',
+  'Urology',
+  'Emergency Care',
+];
 
 export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
   onShowToast,
@@ -36,6 +50,12 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
   const updateDoctor = useStaffStore((s) => s.updateDoctor);
   const deleteDoctor = useStaffStore((s) => s.deleteDoctor);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
+
+  const availableDepartments = React.useMemo(() => {
+    const list = departments.map((d) => d.name).filter(Boolean);
+    const set = new Set([...list, ...DEFAULT_DEPARTMENTS]);
+    return Array.from(set);
+  }, [departments]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -59,16 +79,14 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
   // Form State
   const [formName, setFormName] = useState('');
-  const [formSpecialty, setFormSpecialty] = useState('Cardiologist');
-  const [formDepartment, setFormDepartment] = useState('Cardiology');
-  const [formFee, setFormFee] = useState(800);
-  const [formExperience, setFormExperience] = useState(10);
+  const [formDepartment, setFormDepartment] = useState('General Medicine');
+  const [formExperience, setFormExperience] = useState(5);
   const [formPhone, setFormPhone] = useState('+91 98765 00000');
   const [formEmail, setFormEmail] = useState('');
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('doc123');
   const [showFormPassword, setShowFormPassword] = useState(false);
-  const [formRoom, setFormRoom] = useState('Cabin 101 - 1st Floor');
+  const [formRoom, setFormRoom] = useState('Cabin 101');
   const [formDays, setFormDays] = useState<string[]>(DEFAULT_DAYS);
 
   const toggleShowPassword = (id: string) => {
@@ -77,35 +95,40 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
   // Filtered doctors
   const filteredDoctors = doctors.filter((doc) => {
+    const term = searchTerm.trim().toLowerCase();
     const matchesSearch =
-      doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doc.username && doc.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (doc.email && doc.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      doc.roomNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      doc.name.toLowerCase().includes(term) ||
+      (doc.specialty && doc.specialty.toLowerCase().includes(term)) ||
+      (doc.department && doc.department.toLowerCase().includes(term)) ||
+      (doc.username && doc.username.toLowerCase().includes(term)) ||
+      (doc.email && doc.email.toLowerCase().includes(term)) ||
+      (doc.roomNumber && doc.roomNumber.toLowerCase().includes(term));
 
-    const matchesDept = departmentFilter === 'All' || doc.department === departmentFilter;
+    const matchesDept =
+      departmentFilter === 'All' ||
+      (doc.department && doc.department.toLowerCase() === departmentFilter.toLowerCase()) ||
+      (doc.specialty && doc.specialty.toLowerCase() === departmentFilter.toLowerCase());
+
+    const isAvail = doc.isAvailable !== false;
     const matchesStatus =
       statusFilter === 'All' ||
-      (statusFilter === 'Available' && doc.isAvailable) ||
-      (statusFilter === 'Not Available' && !doc.isAvailable);
+      (statusFilter === 'Available' && isAvail) ||
+      (statusFilter === 'Not Available' && !isAvail);
 
     return matchesSearch && matchesDept && matchesStatus;
   });
 
   const handleOpenAdd = () => {
     setFormName('');
-    setFormSpecialty('');
-    setFormDepartment('');
-    setFormFee(0);
-    setFormExperience(1);
-    setFormPhone('');
+    setFormDepartment(availableDepartments[0] || 'General Medicine');
+    setFormExperience(5);
+    setFormPhone('+91 98765 00000');
     setFormEmail('');
     setFormUsername('');
-    setFormPassword('');
+    setFormPassword('doc123');
     setShowFormPassword(false);
-    setFormRoom('');
+    setFormRoom('Cabin 101');
     setFormDays(DEFAULT_DAYS);
     setIsAddModalOpen(true);
   };
@@ -114,16 +137,14 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
     e?.stopPropagation();
     setSelectedDoctor(doc);
     setFormName(doc.name);
-    setFormSpecialty(doc.specialty);
-    setFormDepartment(doc.department);
-    setFormFee(doc.consultationFee);
-    setFormExperience(doc.experienceYears);
+    setFormDepartment(doc.department || doc.specialty || 'General Medicine');
+    setFormExperience(doc.experienceYears || 5);
     setFormPhone(doc.phone || '+91 98765 11000');
     setFormEmail(doc.email || 'doctor@carepulse.com');
     setFormUsername(doc.username || doc.email.split('@')[0] || 'doctor');
     setFormPassword(doc.password || '');
     setShowFormPassword(false);
-    setFormRoom(doc.roomNumber);
+    setFormRoom(doc.roomNumber || 'Cabin 101');
     setFormDays(doc.availableDays || DEFAULT_DAYS);
     setIsEditModalOpen(true);
   };
@@ -135,42 +156,49 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
       return;
     }
 
-    const calculatedUsername = formUsername.trim() || formEmail.split('@')[0] || formName.toLowerCase().replace(/\s+/g, '.');
+    const dept = formDepartment.trim() || 'General Medicine';
+    const cleanName = formName.replace(/dr\.?\s*/i, '').trim();
+    const calculatedUsername = formUsername.trim() || formEmail.split('@')[0] || cleanName.toLowerCase().replace(/\s+/g, '.');
 
     await createDoctor({
-      name: formName.trim(),
-      specialty: formSpecialty,
-      department: formDepartment,
-      consultationFee: Number(formFee) || 500,
+      name: formName.trim().startsWith('Dr.') ? formName.trim() : `Dr. ${formName.trim()}`,
+      specialty: dept,
+      department: dept,
+      consultationFee: 500,
       experienceYears: Number(formExperience) || 5,
-      phone: formPhone.trim(),
-      email: formEmail.trim(),
+      phone: formPhone.trim() || '+91 98765 00000',
+      email: formEmail.trim() || `${calculatedUsername}@carepulse.com`,
       username: calculatedUsername,
       password: formPassword.trim() || 'doc123',
-      roomNumber: formRoom.trim(),
+      roomNumber: formRoom.trim() || 'Cabin 101',
       availableDays: formDays,
       isAvailable: true,
       slotCapacities: [],
     });
 
+    setSearchTerm('');
+    setDepartmentFilter('All');
+    setStatusFilter('All');
     setIsAddModalOpen(false);
-    onShowToast(`Dr. ${formName} added to the hospital directory! Credentials: ${calculatedUsername}`);
+    onShowToast(`Dr. ${cleanName} added to the hospital directory! Credentials: ${calculatedUsername}`);
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDoctor) return;
 
+    const dept = formDepartment.trim() || selectedDoctor.department || 'General Medicine';
+
     const updates: Partial<DoctorRecord> = {
       name: formName.trim(),
-      specialty: formSpecialty,
-      department: formDepartment,
-      consultationFee: Number(formFee),
-      experienceYears: Number(formExperience),
+      specialty: dept,
+      department: dept,
+      consultationFee: 500,
+      experienceYears: Number(formExperience) || 5,
       phone: formPhone.trim(),
       email: formEmail.trim(),
       username: formUsername.trim() || selectedDoctor.username || formEmail.split('@')[0],
-      roomNumber: formRoom.trim(),
+      roomNumber: formRoom.trim() || 'Cabin 101',
       availableDays: formDays,
     };
     if (formPassword.trim()) {
@@ -181,7 +209,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
     setIsEditModalOpen(false);
     setSelectedDoctor(null);
-    onShowToast(`Credentials and profile for ${formName} updated!`);
+    onShowToast(`Profile for ${formName} updated!`);
   };
 
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
@@ -274,9 +302,9 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
               className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
             >
               <option value="All">All Departments</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.name}>
-                  {dept.name}
+              {availableDepartments.map((deptName) => (
+                <option key={deptName} value={deptName}>
+                  {deptName}
                 </option>
               ))}
             </select>
@@ -331,9 +359,9 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-400">
                   <th className="py-3.5 px-5">Physician</th>
-                  <th className="py-3.5 px-4">Department & Specialty</th>
+                  <th className="py-3.5 px-4">Department</th>
                   <th className="py-3.5 px-4">Consultation Cabin</th>
-                  <th className="py-3.5 px-4">Fee / Experience</th>
+                  <th className="py-3.5 px-4">Experience</th>
                   <th className="py-3.5 px-4">Portal Credentials</th>
                   <th className="py-3.5 px-4 text-center">Availability Status</th>
                   <th className="py-3.5 px-4 text-center">Weekly Load</th>
@@ -379,20 +407,20 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                           </div>
                         </td>
 
-                        {/* Department & Specialty */}
+                        {/* Department */}
                         <td className="py-4 px-4">
                           <span className="inline-flex items-center gap-1 bg-gradient-to-r from-teal-600 to-[#0B5A54] text-white text-[11px] font-black px-3 py-1 rounded-full shadow-sm tracking-wide">
-                            {doc.specialty}
+                            {doc.department || doc.specialty}
                           </span>
                         </td>
 
                         {/* Room / Cabin */}
                         <td className="py-4 px-4 text-slate-600 font-semibold">{doc.roomNumber}</td>
 
-                        {/* Fee / Exp */}
+                        {/* Experience */}
                         <td className="py-4 px-4">
-                          <p className="text-slate-900 font-black">₹{doc.consultationFee}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">{doc.experienceYears} Years Exp.</p>
+                          <p className="text-slate-900 font-black">{doc.experienceYears} Years Exp.</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{doc.phone || '+91 98765 00000'}</p>
                         </td>
 
                         {/* Portal Credentials (Username & Masked Password) */}
@@ -514,7 +542,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 font-medium">{doc.specialty}</p>
+                      <p className="text-xs text-slate-500 font-medium">{doc.department || 'General Medicine'}</p>
                     </div>
                   </div>
 
@@ -536,9 +564,9 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                     <span className="font-black text-slate-800 truncate block">{doc.roomNumber}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Fee / Exp</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Experience</span>
                     <span className="font-black text-slate-800">
-                      ₹{doc.consultationFee} • {doc.experienceYears}y
+                      {doc.experienceYears} Years
                     </span>
                   </div>
                 </div>
@@ -568,7 +596,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-500">
                   <span className="text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200 text-[11px]">
-                    {doc.department}
+                    {doc.department || 'General Medicine'}
                   </span>
                   <span className="flex items-center gap-1 group-hover:text-slate-900 transition-colors">
                     View Schedule & Stats
@@ -595,7 +623,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                     {selectedDoctor.name}
                   </h3>
                   <p className="text-xs text-slate-500 font-semibold">
-                    {selectedDoctor.specialty} • {selectedDoctor.department}
+                    {selectedDoctor.department || 'General Medicine'}
                   </p>
                 </div>
               </div>
@@ -652,18 +680,14 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
             </div>
 
             {/* Metrics & Performance Stats */}
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                <p className="text-xl font-black text-slate-900">128</p>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Completed Appts</p>
+                <p className="text-xl font-black text-slate-900">{selectedDoctor.experienceYears} Years</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Clinical Experience</p>
               </div>
               <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-100">
-                <p className="text-xl font-black text-[#0B5A54]">96.4%</p>
-                <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Patient Satisfaction</p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100">
-                <p className="text-xl font-black text-emerald-700">₹{selectedDoctor.consultationFee}</p>
-                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Consultation Fee</p>
+                <p className="text-xl font-black text-[#0B5A54]">{selectedDoctor.department || selectedDoctor.specialty}</p>
+                <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Assigned Department</p>
               </div>
             </div>
 
@@ -812,62 +836,18 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block mb-1">Clinical Specialty</label>
-                  <select
-                    required
-                    value={formSpecialty}
-                    onChange={(e) => {
-                      setFormSpecialty(e.target.value);
-                      setFormDepartment(e.target.value);
-                    }}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer"
-                  >
-                    <option value="" disabled>Select Clinical Specialty...</option>
-                    <option value="Cardiologist">Cardiologist</option>
-                    <option value="Dermatologist">Dermatologist</option>
-                    <option value="Pediatrician">Pediatrician</option>
-                    <option value="Neurologist">Neurologist</option>
-                    <option value="General Physician">General Physician</option>
-                    <option value="Orthopedic Surgeon">Orthopedic Surgeon</option>
-                    <option value="Gynecologist">Gynecologist</option>
-                    <option value="ENT Specialist">ENT Specialist</option>
-                    <option value="Ophthalmologist">Ophthalmologist</option>
-                    <option value="Psychiatrist">Psychiatrist</option>
-                    <option value="Oncologist">Oncologist</option>
-                    <option value="Radiologist">Radiologist</option>
-                    <option value="Urologist">Urologist</option>
-                    <option value="Endocrinologist">Endocrinologist</option>
-                    <option value="Gastroenterologist">Gastroenterologist</option>
-                    <option value="Dentist">Dentist</option>
-                  </select>
-                </div>
-                <div>
                   <label className="block mb-1">Assigned Department</label>
                   <select
                     value={formDepartment}
                     onChange={(e) => setFormDepartment(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer"
                   >
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.name}>
-                        {dept.name}
+                    {availableDepartments.map((deptName) => (
+                      <option key={deptName} value={deptName}>
+                        {deptName}
                       </option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1">Consultation Fee (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={formFee}
-                    onChange={(e) => setFormFee(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
-                  />
                 </div>
                 <div>
                   <label className="block mb-1">Experience (Years)</label>
@@ -884,11 +864,12 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block mb-1">Contact Email</label>
+                  <label className="block mb-1">Contact Phone</label>
                   <input
-                    type="email"
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
+                    type="text"
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="+91 98765 00000"
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                   />
                 </div>
@@ -902,6 +883,17 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block mb-1">Contact Email</label>
+                <input
+                  type="email"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  placeholder="e.g. alexander.k@carepulse.com"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                />
               </div>
 
               {/* Weekly Availability Days */}

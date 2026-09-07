@@ -103,21 +103,24 @@ def format_receptionist_doctor(d: dict) -> dict:
     room = d.get("room_number") or d.get("roomNumber") or f"Cabin {d.get('id', '101')}"
     fee = float(d.get("consultation_fee") or d.get("consultationFee") or 500.0)
     exp = int(d.get("experience_years") or d.get("experienceYears") or 5)
-    hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-1"
-    hosp_name = d.get("hospital_name") or d.get("hospitalName") or "St. Jude Heart & Medical Center"
+    hosp_id = d.get("hospital_id") or d.get("hospitalId") or "hosp-bag"
+    hosp_name = d.get("hospital_name") or d.get("hospitalName") or "BAG Hospital"
 
     stf_code = d.get("staff_code") or d.get("staffCode")
-    email = d.get("email") or f"{d['name'].lower().replace(' ', '.')}@carepulse.com"
+    email = d.get("email") or f"{d.get('name', 'doctor').lower().replace(' ', '.')}@carepulse.com"
     username = d.get("username") or email.split("@")[0]
-    password = d.get("password") or ""
+    password = d.get("password") or "doc123"
+
+    dept = d.get("department") or d.get("specialty") or "General Medicine"
+    spec = d.get("specialty") or dept or "General Physician"
 
     return {
         "id": str(d["id"]),
         "staff_code": stf_code,
         "staffCode": stf_code,
-        "name": d["name"],
-        "specialty": d["specialty"],
-        "department": d.get("department", "General Medicine"),
+        "name": d.get("name", "Doctor"),
+        "specialty": spec,
+        "department": dept,
         "hospitalId": hosp_id,
         "hospital_id": hosp_id,
         "hospitalName": hosp_name,
@@ -136,15 +139,14 @@ def format_receptionist_doctor(d: dict) -> dict:
         "slot_capacities": formatted_slots
     }
 
+
 @router.get("/doctors")
 def get_doctors(
     hospital_id: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):
     """
-    List doctor records scoped to the receptionist's or doctor's own hospital.
-    Fails safely with empty results if a staff member has hospital_id=NULL.
-    Superadmin accounts retain global visibility across all hospitals.
+    List doctor records scoped to hospital or all doctors for admin/superadmin.
     """
     staff_ctx = None
     if authorization:
@@ -152,21 +154,16 @@ def get_doctors(
         staff_ctx = get_current_staff(authorization)
 
     is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
+    is_admin = bool(staff_ctx and staff_ctx.get("role") == "admin")
     effective_hosp_id = hospital_id
 
     if staff_ctx:
         role = staff_ctx.get("role")
-        if role == "superadmin":
-            effective_hosp_id = hospital_id  # Filter by hospital_id if provided, else None = global
-        elif role in ["receptionist", "doctor", "admin", "nurse"]:
+        if role in ["superadmin", "admin"]:
+            effective_hosp_id = hospital_id or staff_ctx.get("hospital_id")
+        elif role in ["receptionist", "doctor", "nurse"]:
             staff_hosp = staff_ctx.get("hospital_id")
-            if not staff_hosp:
-                logger.warning(f"Data integrity issue: Staff account {staff_ctx.get('staff_id')} ({role}) has hospital_id=NULL. Failing safely with empty result set.")
-                return {"success": True, "doctors": []}
-            effective_hosp_id = staff_hosp
-
-    if not is_superadmin and not effective_hosp_id:
-        return {"success": True, "doctors": []}
+            effective_hosp_id = staff_hosp or hospital_id
 
     if database.use_pg:
         try:
@@ -174,10 +171,8 @@ def get_doctors(
                 with conn.cursor() as cur:
                     if effective_hosp_id:
                         cur.execute("SELECT * FROM doctors WHERE hospital_id = %s ORDER BY id", (effective_hosp_id,))
-                    elif is_superadmin:
-                        cur.execute("SELECT * FROM doctors ORDER BY id")
                     else:
-                        return {"success": True, "doctors": []}
+                        cur.execute("SELECT * FROM doctors ORDER BY id")
                     rows = cur.fetchall()
                     if rows is not None:
                         return {"success": True, "doctors": [format_receptionist_doctor(dict(r)) for r in rows]}
@@ -188,10 +183,7 @@ def get_doctors(
     doctors = db.get("doctors", [])
     if effective_hosp_id:
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
-    elif is_superadmin:
-        pass
-    else:
-        doctors = []
+
     return {"success": True, "doctors": [format_receptionist_doctor(d) for d in doctors]}
 
 @router.post("/doctors")
@@ -259,25 +251,30 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
     raw_pass = payload.password.strip() if (payload.password and payload.password.strip()) else "doc123"
     hashed_pass = hash_password(raw_pass)
 
+    spec = payload.specialty or payload.department or "General Physician"
+    dept = payload.department or payload.specialty or "General Medicine"
+    exp = payload.experienceYears if payload.experienceYears is not None else 5
+    fee = payload.consultationFee if payload.consultationFee is not None else 500.0
+
     doctor_obj = {
         "id": new_id,
         "staff_code": staff_code,
         "staffCode": staff_code,
         "name": payload.name,
-        "specialty": payload.specialty,
-        "department": payload.department,
+        "specialty": spec,
+        "department": dept,
         "hospital_id": hosp_id,
         "hospitalId": hosp_id,
         "hospital_name": hosp_name,
         "hospitalName": hosp_name,
-        "experienceYears": payload.experienceYears,
-        "consultationFee": payload.consultationFee,
+        "experienceYears": exp,
+        "consultationFee": fee,
         "photo": payload.photo or "/doctor_default.jpg",
         "phone": payload.phone or "+91 98765 00000",
         "email": email,
         "username": username,
         "password": raw_pass,
-        "roomNumber": payload.roomNumber or "Cabin 105",
+        "roomNumber": payload.roomNumber or "Cabin 101",
         "isAvailable": payload.isAvailable if payload.isAvailable is not None else True,
         "availableDays": payload.availableDays or ["Mon", "Tue", "Wed", "Thu", "Fri"],
         "slotCapacities": slots_json

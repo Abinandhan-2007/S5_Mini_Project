@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/admin", tags=["Admin Portal"])
 class ReceptionistCreate(BaseModel):
     name: str
     email: str
-    password: Optional[str] = "password123"
+    password: Optional[str] = "desk123"
     phone: Optional[str] = "+91 98765 00000"
     department: Optional[str] = "Front Desk"
     deskNumber: Optional[str] = "Desk A-1"
@@ -58,6 +58,8 @@ class HospitalCreate(BaseModel):
 
 class ReceptionistUpdate(BaseModel):
     name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
     phone: Optional[str] = None
     department: Optional[str] = None
     deskNumber: Optional[str] = None
@@ -183,9 +185,6 @@ def list_receptionists(
     if staff_ctx and staff_ctx.get("hospital_id"):
         effective_hosp_id = staff_ctx["hospital_id"]
 
-    if not is_superadmin and not effective_hosp_id:
-        return []
-
     results = []
     if database.use_pg:
         try:
@@ -193,14 +192,14 @@ def list_receptionists(
                 with conn.cursor() as cur:
                     if effective_hosp_id:
                         cur.execute("""
-                            SELECT id, full_name, email, role, phone, avatar_url, specialization, hospital_id, staff_code
+                            SELECT id, full_name, email, role, phone, avatar_url, specialization, hospital_id, staff_code, password
                             FROM staff
                             WHERE role = 'receptionist' AND hospital_id = %s
                             ORDER BY id
                         """, (effective_hosp_id,))
                     elif is_superadmin:
                         cur.execute("""
-                            SELECT id, full_name, email, role, phone, avatar_url, specialization, hospital_id, staff_code
+                            SELECT id, full_name, email, role, phone, avatar_url, specialization, hospital_id, staff_code, password
                             FROM staff
                             WHERE role = 'receptionist'
                             ORDER BY id
@@ -208,12 +207,16 @@ def list_receptionists(
                     rows = cur.fetchall()
                     if rows:
                         for r in rows:
+                            raw_p = r.get("password") or ""
+                            if raw_p.startswith("$2b$"):
+                                raw_p = ""
                             results.append({
                                 "id": str(r["id"]),
                                 "staff_code": r.get("staff_code"),
                                 "staffCode": r.get("staff_code"),
                                 "name": r["full_name"],
                                 "email": r["email"],
+                                "password": raw_p,
                                 "phone": r.get("phone") or "+91 98765 00000",
                                 "department": r.get("specialization") or "Main Reception",
                                 "deskNumber": "Desk A-1 (Ground Floor)",
@@ -238,19 +241,30 @@ def list_receptionists(
     for r in recs:
         r_hosp = r.get("hospital_id") or r.get("hospitalId")
         if not effective_hosp_id or r_hosp == effective_hosp_id:
-            combined.append(r)
+            s_match = next((s for s in staff_list if s.get("id") == r.get("id") or (s.get("email") and s.get("email").lower() == str(r.get("email")).lower())), None)
+            rec_pass = r.get("password")
+            if not rec_pass or str(rec_pass).startswith("$2b$"):
+                if s_match and s_match.get("password") and not str(s_match.get("password")).startswith("$2b$"):
+                    rec_pass = s_match.get("password")
+                else:
+                    rec_pass = r.get("password") if r.get("password") and not str(r.get("password")).startswith("$2b$") else ""
+            r_entry = dict(r)
+            r_entry["password"] = rec_pass or ""
+            combined.append(r_entry)
             seen_ids.add(str(r.get("id")))
 
     for s in staff_list:
         if s.get("role") == "receptionist":
             s_hosp = s.get("hospital_id") or s.get("hospitalId")
             if (not effective_hosp_id or s_hosp == effective_hosp_id) and str(s.get("id")) not in seen_ids:
+                s_pass = s.get("password") if (s.get("password") and not str(s.get("password")).startswith("$2b$")) else ""
                 combined.append({
                     "id": str(s.get("id")),
                     "staff_code": s.get("staff_code") or s.get("staffCode"),
                     "staffCode": s.get("staff_code") or s.get("staffCode"),
                     "name": s.get("name") or s.get("full_name"),
                     "email": s.get("email"),
+                    "password": s_pass,
                     "phone": s.get("phone") or "+91 98765 00000",
                     "department": s.get("department") or s.get("specialization") or "Main Reception",
                     "deskNumber": s.get("deskNumber") or "Desk A-1",
@@ -302,13 +316,14 @@ def create_receptionist(payload: ReceptionistCreate, authorization: Optional[str
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        INSERT INTO staff (full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id)
-                        VALUES (%s, %s, %s, 'receptionist', %s, %s, %s, %s)
+                        INSERT INTO staff (full_name, email, password, password_hash, role, specialization, phone, avatar_url, hospital_id)
+                        VALUES (%s, %s, %s, %s, 'receptionist', %s, %s, %s, %s)
                         RETURNING id, staff_code
                         """,
                         (
                             payload.name,
                             payload.email,
+                            raw_pass,
                             hashed_pass,
                             payload.department,
                             payload.phone,
@@ -341,6 +356,7 @@ def create_receptionist(payload: ReceptionistCreate, authorization: Optional[str
         "staffCode": staff_code,
         "name": payload.name,
         "email": payload.email,
+        "password": raw_pass,
         "phone": payload.phone,
         "department": payload.department,
         "deskNumber": payload.deskNumber,
@@ -360,7 +376,7 @@ def create_receptionist(payload: ReceptionistCreate, authorization: Optional[str
         "name": payload.name,
         "full_name": payload.name,
         "email": payload.email,
-        "password": hashed_pass,
+        "password": raw_pass,
         "password_hash": hashed_pass,
         "role": "receptionist",
         "department": payload.department,
@@ -610,47 +626,81 @@ def create_hospital_record(payload: HospitalCreate):
 
 @router.put("/receptionists/{rec_id}")
 def update_receptionist(rec_id: str, payload: ReceptionistUpdate):
-    """Update receptionist information in staff and receptionist records."""
+    """Update receptionist information and credentials in staff and receptionist records."""
     db = read_json_db()
     receptionists = db.get("receptionists", [])
     staff = db.get("staff", [])
 
     rec_found = False
     updates = payload.dict(exclude_unset=True)
+    raw_pass = updates.get("password")
+    hashed_pass = hash_password(raw_pass) if (raw_pass and raw_pass.strip()) else None
+
     for r in receptionists:
-        if str(r.get("id")) == str(rec_id):
+        if str(r.get("id")) == str(rec_id) or str(r.get("email", "")).lower() == str(rec_id).lower() or str(r.get("staff_code", "")) == str(rec_id):
             for k, v in updates.items():
                 r[k] = v
+            if raw_pass and raw_pass.strip():
+                r["password"] = raw_pass.strip()
             rec_found = True
             break
 
     for s in staff:
-        if str(s.get("id")) == str(rec_id):
-            if "name" in updates:
+        if str(s.get("id")) == str(rec_id) or str(s.get("email", "")).lower() == str(rec_id).lower() or str(s.get("staff_code", "")) == str(rec_id):
+            if "name" in updates and updates["name"]:
                 s["name"] = updates["name"]
                 s["full_name"] = updates["name"]
+            if "email" in updates and updates["email"]:
+                s["email"] = updates["email"].lower()
             if "phone" in updates:
                 s["phone"] = updates["phone"]
-            if "department" in updates:
+            if "department" in updates and updates["department"]:
                 s["department"] = updates["department"]
                 s["specialization"] = updates["department"]
-            if "isActive" in updates:
+            if "isActive" in updates and updates["isActive"] is not None:
                 s["isActive"] = updates["isActive"]
                 s["is_active"] = updates["isActive"]
+            if raw_pass and raw_pass.strip():
+                s["password"] = raw_pass.strip()
+                s["password_hash"] = hashed_pass
             rec_found = True
+            break
 
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    if "name" in updates:
-                        cur.execute("UPDATE staff SET full_name = %s WHERE id = %s", (updates["name"], rec_id))
+                    fields = []
+                    vals = []
+                    if "name" in updates and updates["name"]:
+                        fields.append("full_name = %s")
+                        vals.append(updates["name"])
+                    if "email" in updates and updates["email"]:
+                        fields.append("email = %s")
+                        vals.append(updates["email"].lower())
                     if "phone" in updates:
-                        cur.execute("UPDATE staff SET phone = %s WHERE id = %s", (updates["phone"], rec_id))
-                    if "department" in updates:
-                        cur.execute("UPDATE staff SET specialization = %s WHERE id = %s", (updates["department"], rec_id))
-                    if "isActive" in updates:
-                        cur.execute("UPDATE staff SET is_active = %s WHERE id = %s", (updates["isActive"], rec_id))
+                        fields.append("phone = %s")
+                        vals.append(updates["phone"])
+                    if "department" in updates and updates["department"]:
+                        fields.append("specialization = %s")
+                        vals.append(updates["department"])
+                    if "isActive" in updates and updates["isActive"] is not None:
+                        fields.append("is_active = %s")
+                        vals.append(bool(updates["isActive"]))
+                    if raw_pass and raw_pass.strip():
+                        fields.append("password = %s")
+                        vals.append(raw_pass.strip())
+                        fields.append("password_hash = %s")
+                        vals.append(hashed_pass)
+
+                    if fields:
+                        vals.extend([rec_id, rec_id, rec_id.lower()])
+                        cur.execute(f"""
+                            UPDATE staff 
+                            SET {', '.join(fields)}
+                            WHERE (id::text = %s OR staff_code = %s OR LOWER(email) = %s)
+                              AND role = 'receptionist'
+                        """, tuple(vals))
                 conn.commit()
         except Exception as e:
             database.logger.warning(f"Could not update staff in Postgres: {e}")
@@ -661,30 +711,40 @@ def update_receptionist(rec_id: str, payload: ReceptionistUpdate):
     db["receptionists"] = receptionists
     db["staff"] = staff
     write_json_db(db)
-    return {"message": "Receptionist updated successfully"}
+    return {"success": True, "message": "Receptionist updated successfully"}
 
 
 @router.delete("/receptionists/{rec_id}")
 def delete_receptionist(rec_id: str):
-    """Remove a receptionist account from database."""
+    """Remove a receptionist account from database and staff."""
     db = read_json_db()
     receptionists = db.get("receptionists", [])
     staff = db.get("staff", [])
 
-    db["receptionists"] = [r for r in receptionists if str(r.get("id")) != str(rec_id)]
-    db["staff"] = [s for s in staff if str(s.get("id")) != str(rec_id)]
+    db["receptionists"] = [
+        r for r in receptionists 
+        if str(r.get("id")) != str(rec_id) and str(r.get("email", "")).lower() != str(rec_id).lower() and str(r.get("staff_code", "")) != str(rec_id)
+    ]
+    db["staff"] = [
+        s for s in staff 
+        if str(s.get("id")) != str(rec_id) and str(s.get("email", "")).lower() != str(rec_id).lower() and str(s.get("staff_code", "")) != str(rec_id)
+    ]
     write_json_db(db)
 
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("DELETE FROM staff WHERE id = %s AND role = 'receptionist'", (rec_id,))
+                    cur.execute("""
+                        DELETE FROM staff 
+                        WHERE (id::text = %s OR staff_code = %s OR LOWER(email) = %s)
+                          AND role = 'receptionist'
+                    """, (rec_id, rec_id, rec_id.lower()))
                 conn.commit()
         except Exception as e:
             database.logger.warning(f"Could not delete staff from Postgres: {e}")
 
-    return {"message": "Receptionist removed successfully"}
+    return {"success": True, "message": "Receptionist removed successfully"}
 
 
 # ==========================================
@@ -934,6 +994,25 @@ def delete_doctor_record(doctor_id: str):
     return {"success": True, "message": "Doctor deleted successfully"}
 
 
+@router.get("/doctors")
+def get_admin_doctors(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """List all doctors for the admin portal, scoped by hospital if specified."""
+    from routes.receptionist_routes import get_doctors
+    return get_doctors(hospital_id=hospital_id, authorization=authorization)
+
+
+@router.post("/doctors")
+def create_doctor_admin(payload: Dict[str, Any], authorization: Optional[str] = Header(None)):
+    """Create a new doctor profile through admin portal."""
+    from routes.receptionist_routes import create_doctor
+    from schemas import DoctorCreateRequest
+    req = DoctorCreateRequest(**payload)
+    return create_doctor(req, authorization)
+
+
 @router.put("/doctors/{doctor_id}")
 def update_doctor_record(doctor_id: str, payload: Dict[str, Any]):
     """Update doctor profile and corresponding staff account credentials."""
@@ -1053,102 +1132,4 @@ def update_doctor_record(doctor_id: str, payload: Dict[str, Any]):
     write_json_db(db)
     return {"success": True, "message": "Doctor updated successfully"}
 
-
-@router.delete("/receptionists/{receptionist_id}")
-def delete_receptionist_record(receptionist_id: str):
-    """Permanently delete a receptionist from database and remove associated staff account."""
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        DELETE FROM staff 
-                        WHERE (id::text = %s OR staff_code = %s OR LOWER(email) = %s)
-                          AND role = 'receptionist'
-                    """, (receptionist_id, receptionist_id, receptionist_id.lower()))
-                conn.commit()
-        except Exception as e:
-            database.logger.warning(f"Could not delete receptionist from Postgres: {e}")
-
-    db = read_json_db()
-    db["receptionists"] = [r for r in db.get("receptionists", []) if str(r.get("id")) != str(receptionist_id) and str(r.get("email", "")).lower() != str(receptionist_id).lower() and str(r.get("staff_code", "")) != str(receptionist_id)]
-    db["staff"] = [s for s in db.get("staff", []) if str(s.get("id")) != str(receptionist_id) and str(s.get("email", "")).lower() != str(receptionist_id).lower() and str(s.get("staff_code", "")) != str(receptionist_id)]
-    write_json_db(db)
-
-    return {"success": True, "message": "Receptionist deleted successfully"}
-
-
-@router.put("/receptionists/{receptionist_id}")
-def update_receptionist_record(receptionist_id: str, payload: Dict[str, Any]):
-    """Update receptionist profile and login credentials."""
-    name = payload.get("name") or payload.get("full_name")
-    email = payload.get("email")
-    phone = payload.get("phone")
-    dept = payload.get("department")
-    is_active = payload.get("isActive") if payload.get("isActive") is not None else payload.get("is_active")
-    raw_pass = payload.get("password")
-
-    if database.use_pg:
-        try:
-            with get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    fields = []
-                    vals = []
-                    if name:
-                        fields.append("full_name = %s")
-                        vals.append(name)
-                    if email:
-                        fields.append("email = %s")
-                        vals.append(email.lower())
-                    if phone:
-                        fields.append("phone = %s")
-                        vals.append(phone)
-                    if dept:
-                        fields.append("specialization = %s")
-                        vals.append(dept)
-                    if is_active is not None:
-                        fields.append("is_active = %s")
-                        vals.append(bool(is_active))
-                    if raw_pass:
-                        fields.append("password_hash = %s")
-                        vals.append(hash_password(raw_pass))
-
-                    if fields:
-                        vals.append(receptionist_id)
-                        vals.append(receptionist_id)
-                        vals.append(receptionist_id.lower())
-                        cur.execute(f"""
-                            UPDATE staff 
-                            SET {', '.join(fields)}
-                            WHERE (id::text = %s OR staff_code = %s OR LOWER(email) = %s)
-                              AND role = 'receptionist'
-                        """, tuple(vals))
-                conn.commit()
-        except Exception as e:
-            database.logger.warning(f"Could not update receptionist in Postgres: {e}")
-
-    db = read_json_db()
-    for r in db.get("receptionists", []):
-        if str(r.get("id")) == str(receptionist_id) or str(r.get("email", "")).lower() == str(receptionist_id).lower() or str(r.get("staff_code", "")) == str(receptionist_id):
-            r.update(payload)
-            if name: r["name"] = name
-            if is_active is not None: r["isActive"] = bool(is_active)
-            break
-    for s in db.get("staff", []):
-        if str(s.get("id")) == str(receptionist_id) or str(s.get("email", "")).lower() == str(receptionist_id).lower() or str(s.get("staff_code", "")) == str(receptionist_id):
-            if name:
-                s["name"] = name
-                s["full_name"] = name
-            if email: s["email"] = email.lower()
-            if phone: s["phone"] = phone
-            if dept: s["department"] = dept
-            if is_active is not None:
-                s["isActive"] = bool(is_active)
-                s["is_active"] = bool(is_active)
-            if raw_pass:
-                s["password_hash"] = hash_password(raw_pass)
-                s["password"] = hash_password(raw_pass)
-            break
-    write_json_db(db)
-    return {"success": True, "message": "Receptionist updated successfully"}
 
