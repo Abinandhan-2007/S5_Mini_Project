@@ -14,8 +14,6 @@ import {
   CheckCircle2,
   ChevronDown,
   AlertTriangle,
-  Clock,
-  Coffee,
   Check,
   Radio,
   BellRing,
@@ -35,17 +33,7 @@ import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal
 import type { DoctorTab } from '../../types/doctor';
 import type { TokenQueueItem, DoctorRecord } from '../../types/receptionist';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
-
-const REASON_PRESETS = [
-  { label: '☕ Lunch / Meal Break', duration: '30 mins' },
-  { label: '🏥 Emergency Ward Rounds / ICU Call', duration: '45 mins' },
-  { label: '👥 Department Clinical Meeting', duration: '1 hour' },
-  { label: '🔬 Procedure / In-Patient Review', duration: '45 mins' },
-  { label: '🩺 Cabin Sanitization & Prep', duration: '15 mins' },
-  { label: '🚗 Stepped Out Temporarily', duration: '20 mins' },
-];
-
-const DURATION_PRESETS = ['15 mins', '30 mins', '45 mins', '1 hour', '2 hours', 'End of Shift'];
+import { DoctorAvailabilityModal } from './DoctorAvailabilityModal';
 
 
 
@@ -74,8 +62,6 @@ export const DoctorLayout: React.FC = () => {
 
   // Availability Reason Modal State
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
-  const [absenceReason, setAbsenceReason] = useState('');
-  const [returnDuration, setReturnDuration] = useState('30 mins');
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -84,6 +70,7 @@ export const DoctorLayout: React.FC = () => {
   const doctors = useStaffStore((s) => s.doctors);
   const rawTokens = useStaffStore((s) => s.tokens);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
+  const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
@@ -124,13 +111,21 @@ export const DoctorLayout: React.FC = () => {
 
   const activeDoctorId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
 
-  // Background polling for real-time doctor queue
+  // Initial fetch for doctor availability state
+  useEffect(() => {
+    fetchDoctors(true);
+  }, [fetchDoctors]);
+
+  // Background polling for real-time doctor queue and availability sync
   usePolling(
     async () => {
-      await fetchTokens(activeDoctorId, true);
+      await Promise.all([
+        fetchTokens(activeDoctorId, true),
+        fetchDoctors(true),
+      ]);
     },
     {
-      interval: 7500,
+      interval: 5000,
       enabled: !!currentStaff && currentStaff.role === 'doctor',
     }
   );
@@ -154,7 +149,7 @@ export const DoctorLayout: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const currentDoctor: DoctorRecord = doctors.find((d) => 
+  const currentDoctor: DoctorRecord = doctors.find((d) =>
     (activeDoctorId && d.id === activeDoctorId) ||
     (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
     (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
@@ -181,22 +176,11 @@ export const DoctorLayout: React.FC = () => {
   };
 
   const handleOpenUnavailableModal = () => {
-    setAbsenceReason(currentDoctor.availabilityReason || '');
-    setReturnDuration(currentDoctor.unavailableUntil || '30 mins');
     setIsAvailabilityModalOpen(true);
   };
 
   const handleSetAvailable = async () => {
     await toggleDoctorAvailability(currentDoctor.id, true, '', '');
-    setIsAvailabilityModalOpen(false);
-    showToast(`Cabin status set to Active & Available`);
-  };
-
-  const handleSetUnavailable = async () => {
-    const finalReason = absenceReason.trim() || 'Temporarily Stepped Out';
-    await toggleDoctorAvailability(currentDoctor.id, false, finalReason, returnDuration);
-    setIsAvailabilityModalOpen(false);
-    showToast(`Cabin status set to Not Available (${finalReason})`);
   };
 
   // Map live tokens or fallback
@@ -397,7 +381,7 @@ export const DoctorLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFB] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white">
-      
+
       {/* Toast Feedback Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-[#0B5A54] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-400/30 flex items-center gap-2.5 font-bold text-xs animate-in slide-in-from-top-4 duration-300">
@@ -418,9 +402,8 @@ export const DoctorLayout: React.FC = () => {
           PERSISTENT EXECUTIVE CLINICAL SIDEBAR NAVIGATION
       ══════════════════════════════════════════════════════════════════ */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          }`}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
@@ -448,37 +431,6 @@ export const DoctorLayout: React.FC = () => {
             </button>
           </div>
 
-          {/* ── Cabin Room & Availability Status Card ── */}
-          <div className="p-3 mx-3 my-2.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Cabin Status</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentDoctor.isAvailable) {
-                    handleOpenUnavailableModal();
-                  } else {
-                    handleSetAvailable();
-                  }
-                }}
-                className={`text-[9px] font-black px-2 py-0.5 rounded-full border transition-all cursor-pointer flex items-center gap-1 ${
-                  currentDoctor.isAvailable
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${currentDoctor.isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                <span>{currentDoctor.isAvailable ? '● Available' : '○ Not Available'}</span>
-              </button>
-            </div>
-            <p className="text-xs font-black text-slate-800 truncate font-heading">{currentDoctor.roomNumber || 'Cabin 102 - 1st Floor'}</p>
-            {!currentDoctor.isAvailable && (
-              <p className="text-[10px] text-rose-700 font-medium truncate italic">
-                Reason: {currentDoctor.availabilityReason || 'Away'} ({currentDoctor.unavailableUntil || 'Short Break'})
-              </p>
-            )}
-          </div>
-
           {/* ── Grouped Navigation ── */}
           <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto no-scrollbar">
             {navSections.map((section, sIdx) => (
@@ -497,11 +449,10 @@ export const DoctorLayout: React.FC = () => {
                           setActiveTab(item.id);
                           setIsMobileSidebarOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                          isActive
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${isActive
                             ? 'bg-[#0B5A54] text-white shadow-sm shadow-teal-900/20'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-teal-200' : 'text-slate-400'}`} />
@@ -510,11 +461,10 @@ export const DoctorLayout: React.FC = () => {
 
                         {item.badge && (
                           <span
-                            className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${
-                              isActive
+                            className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${isActive
                                 ? 'bg-white/20 text-white border-white/20'
                                 : item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}
+                              }`}
                           >
                             {item.badge}
                           </span>
@@ -544,7 +494,7 @@ export const DoctorLayout: React.FC = () => {
           MAIN CONTENT AREA & TOP BAR
       ══════════════════════════════════════════════════════════════════ */}
       <div className="flex-1 lg:pl-64 flex flex-col min-h-screen min-w-0 max-w-full overflow-x-hidden">
-        
+
         {/* ── Executive Top Bar ── */}
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -564,6 +514,19 @@ export const DoctorLayout: React.FC = () => {
               <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading tracking-tight leading-tight">
                 {headerContext.title}
               </h2>
+              {/* Doctor Name & Details Displayed Down the Hospital Name */}
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                <span className="text-xs font-bold text-[#0B5A54] flex items-center gap-1">
+                  <Stethoscope className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
+                  <span>{currentDoctor.name || currentStaff?.name || 'Dr. Olivia Wilson'}</span>
+                </span>
+                {(currentDoctor.specialty || currentDoctor.department) && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                    <span className="text-slate-300">•</span>
+                    <span>{currentDoctor.specialty || currentDoctor.department}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -573,11 +536,10 @@ export const DoctorLayout: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSetAvailable}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
-                  currentDoctor.isAvailable
+                className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${currentDoctor.isAvailable
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
+                  }`}
                 title="Mark doctor Available & Active in cabin"
               >
                 <span className={`w-2 h-2 rounded-full ${currentDoctor.isAvailable ? 'bg-white animate-pulse' : 'bg-emerald-500'}`} />
@@ -587,11 +549,10 @@ export const DoctorLayout: React.FC = () => {
               <button
                 type="button"
                 onClick={handleOpenUnavailableModal}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
-                  !currentDoctor.isAvailable
+                className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${!currentDoctor.isAvailable
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
+                  }`}
                 title="Mark doctor Not Available & Enter absence reason"
               >
                 <span className={`w-2 h-2 rounded-full ${!currentDoctor.isAvailable ? 'bg-white' : 'bg-rose-500'}`} />
@@ -661,11 +622,10 @@ export const DoctorLayout: React.FC = () => {
                         {currentDoctor.roomNumber || 'Cabin 102'}
                       </span>
                       <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
-                          currentDoctor.isAvailable
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${currentDoctor.isAvailable
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}
+                          }`}
                       >
                         {currentDoctor.isAvailable ? '● Available' : '○ Not Available'}
                       </span>
@@ -752,6 +712,7 @@ export const DoctorLayout: React.FC = () => {
               activePatient={activePatient}
               onSelectPatient={handleSelectPatient}
               onNavigateTab={setActiveTab}
+              onShowToast={showToast}
             />
           )}
 
@@ -790,128 +751,14 @@ export const DoctorLayout: React.FC = () => {
       </div>
 
       {/* ── DOCTOR AVAILABILITY & REASON ENTRY MODAL ── */}
-      {isAvailabilityModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-                    <Coffee className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-lg font-black text-slate-900 font-heading">
-                    Set Cabin Availability Status
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Notify Reception, OPD Triage & waiting patients of your cabin status and return time.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAvailabilityModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quick Reason Presets */}
-            <div className="space-y-2">
-              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                Select Quick Reason Preset
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {REASON_PRESETS.map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => {
-                      setAbsenceReason(preset.label);
-                      setReturnDuration(preset.duration);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
-                      absenceReason === preset.label
-                        ? 'bg-rose-50 border-rose-400 text-rose-900 ring-2 ring-rose-400/20'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <span>{preset.label}</span>
-                    <span className="text-[10px] text-slate-400 font-mono font-medium">{preset.duration}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Reason Input */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                Or Enter Specific Reason
-              </label>
-              <input
-                type="text"
-                value={absenceReason}
-                onChange={(e) => setAbsenceReason(e.target.value)}
-                placeholder="e.g. In Emergency Ward rounds, back shortly..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] focus:border-[#0B5A54] font-medium"
-              />
-            </div>
-
-            {/* Duration Selector */}
-            <div className="space-y-2">
-              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>Expected Absence Duration / Back in</span>
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {DURATION_PRESETS.map((dur) => (
-                  <button
-                    key={dur}
-                    type="button"
-                    onClick={() => setReturnDuration(dur)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      returnDuration === dur
-                        ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
-                  >
-                    {dur}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={handleSetAvailable}
-                className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4 text-emerald-600" />
-                <span>Set Available Instead</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAvailabilityModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSetUnavailable}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <span>Save & Mark Not Available</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DoctorAvailabilityModal
+        isOpen={isAvailabilityModalOpen}
+        onClose={() => setIsAvailabilityModalOpen(false)}
+        doctor={currentDoctor}
+        onSaveAvailability={async (isAvailable, reason, duration) => {
+          await toggleDoctorAvailability(currentDoctor.id, isAvailable, reason || '', duration || '');
+        }}
+      />
 
       {/* ── Logout Warning Confirmation Modal ── */}
       {showLogoutWarning && (

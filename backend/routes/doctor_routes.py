@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import database
 from database import read_json_db, write_json_db, get_pg_connection
 from routes.staff_auth import get_current_staff
-from schemas import ConsultationCreate, ConsultationResponse, AppointmentResponse
+from schemas import ConsultationCreate, ConsultationResponse, AppointmentResponse, DoctorAvailabilityUpdate
 
 logger = logging.getLogger("carepulse.doctor")
 
@@ -687,3 +687,40 @@ def get_doctor_live_queue(
     )
     return {"tokens": tokens, "total": len(tokens)}
 
+
+@router.patch("/availability")
+def toggle_my_doctor_availability(
+    payload: DoctorAvailabilityUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Doctor sets their own cabin availability status directly from the Doctor Portal session.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    doc_id = (
+        staff_ctx.get("doctor_id")
+        or staff_ctx.get("doctorId")
+        or staff_ctx.get("staff_id")
+        or staff_ctx.get("id")
+    )
+    if not doc_id:
+        raise HTTPException(status_code=400, detail="Doctor ID not found in staff session context")
+
+    from routes.receptionist_routes import toggle_doctor_availability
+    return toggle_doctor_availability(doctor_id=doc_id, payload=payload, authorization=authorization)
+
+
+@router.patch("/{doctor_id}/availability")
+def toggle_doctor_availability_by_id(
+    doctor_id: str,
+    payload: DoctorAvailabilityUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Doctor or Staff sets cabin availability status by doctor ID.
+    """
+    from routes.receptionist_routes import toggle_doctor_availability
+    return toggle_doctor_availability(doctor_id=doctor_id, payload=payload, authorization=authorization)

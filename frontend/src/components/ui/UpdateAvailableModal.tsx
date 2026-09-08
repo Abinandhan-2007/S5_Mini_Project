@@ -24,14 +24,14 @@ export const UpdateAvailableModal: React.FC<UpdateAvailableModalProps> = ({
   updateInfo,
   onDismiss,
 }) => {
+  const [status, setStatus] = useState<UpdateStatus>('idle');
+  const [progress, setProgress] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
   // Hard guard: Update modal is strictly for native mobile APK installations, NEVER web/browsers
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'web') {
     return null;
   }
-
-  const [status, setStatus] = useState<UpdateStatus>('idle');
-  const [progress, setProgress] = useState<number>(0);
-  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const handleStartUpdate = async () => {
     setStatus('downloading');

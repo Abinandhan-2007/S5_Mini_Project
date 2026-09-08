@@ -214,7 +214,13 @@ class DoctorCreateRequest(BaseModel):
     slotCapacities: Optional[List[SlotCapacitySchema]] = []
 
 class DoctorAvailabilityUpdate(BaseModel):
-    isAvailable: bool
+    isAvailable: Optional[bool] = None
+    is_available: Optional[bool] = None
+    reason: Optional[str] = None
+    availabilityReason: Optional[str] = None
+    availability_reason: Optional[str] = None
+    unavailableUntil: Optional[str] = None
+    unavailable_until: Optional[str] = None
 
 class SlotCapacityUpdate(BaseModel):
     timeSlot: str
@@ -223,6 +229,9 @@ class SlotCapacityUpdate(BaseModel):
 
 class TokenStatusUpdate(BaseModel):
     status: str
+    checkInTime: Optional[str] = None
+    check_in_time: Optional[str] = None
+    arrivalTime: Optional[str] = None
 
 class WalkInAppointmentCreate(BaseModel):
     patientName: str
@@ -230,14 +239,17 @@ class WalkInAppointmentCreate(BaseModel):
     patientEmail: Optional[str] = ""
     doctorId: str
     doctorName: str
-    doctorSpecialty: str
+    doctorSpecialty: Optional[str] = "General Physician"
     date: Optional[str] = None
-    timeSlot: str
-    age: Optional[int] = None
-    bloodGroup: Optional[str] = None
-    address: Optional[str] = None
-    healthIssue: Optional[str] = None
+    timeSlot: Optional[str] = "09:00 AM - 10:00 AM"
     type: Optional[str] = "Walk-In"
+    age: Optional[int] = 30
+    bloodGroup: Optional[str] = "O+"
+    address: Optional[str] = None
+    healthIssue: Optional[str] = "OPD General Consultation"
+    hospitalId: Optional[str] = None
+    hospital_id: Optional[str] = None
+    hospitalName: Optional[str] = None
 
 class HospitalResponse(BaseModel):
     id: str
@@ -249,15 +261,13 @@ class HospitalResponse(BaseModel):
     rating: float
     reviewsCount: int
     reviews_count: Optional[int] = None
-    is24x7: Optional[bool] = True
-    is_24x7: Optional[bool] = True
     emergencyAvailable: Optional[bool] = True
     emergency_available: Optional[bool] = True
     imageUrl: str
     image_url: Optional[str] = None
-    specialties: List[str]
-    facilityType: str
-    facility_type: Optional[str] = None
+    specialties: List[str] = []
+    facilityType: Optional[str] = "General"
+    facility_type: Optional[str] = "General"
     distanceMiles: Optional[float] = 1.0
     distance_miles: Optional[float] = 1.0
 
@@ -287,6 +297,10 @@ class DoctorResponse(BaseModel):
     room_number: Optional[str] = None
     isAvailable: bool
     is_available: Optional[bool] = None
+    availabilityReason: Optional[str] = ""
+    availability_reason: Optional[str] = None
+    unavailableUntil: Optional[str] = ""
+    unavailable_until: Optional[str] = None
     about: Optional[str] = ""
     availableDays: Optional[List[str]] = ["Mon", "Tue", "Wed", "Thu", "Fri"]
     slotCapacities: Optional[List[Any]] = []

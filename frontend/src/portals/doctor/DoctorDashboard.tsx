@@ -24,6 +24,7 @@ export interface DoctorDashboardProps {
   activePatient: TokenQueueItem | null;
   onSelectPatient: (patient: TokenQueueItem) => void;
   onNavigateTab: (tab: DoctorTab) => void;
+  onShowToast?: (msg: string) => void;
 }
 
 export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
@@ -31,6 +32,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   activePatient,
   onSelectPatient,
   onNavigateTab,
+  onShowToast,
 }) => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const doctors = useStaffStore((s) => s.doctors);
@@ -48,17 +50,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     specialty: currentStaff?.department || 'General Medicine',
     roomNumber: 'Cabin 101',
     isAvailable: true,
+    availabilityReason: '',
+    unavailableUntil: '',
   };
 
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(new Date().getDate());
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [queueFilter, setQueueFilter] = useState<'All' | 'Waiting' | 'Urgent' | 'Completed'>('All');
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
 
   // Derive counts & stats
   const totalToday = queue.length;
@@ -153,14 +151,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     speakDoctorAnnouncement(
       `Token ${patient.tokenNumber}, ${patientName}, please proceed to ${room}`
     );
-    showToast(`Calling: ${patient.tokenNumber} (${patientName})`);
+    onShowToast?.(`Calling: ${patient.tokenNumber} (${patientName})`);
   };
 
   // Accept & Open Active Consultation Workspace
   const handleAcceptPatient = async (patient: TokenQueueItem) => {
     try {
       await updateTokenStatus(patient.id, 'In Consultation');
-      showToast(`Accepted consultation for ${patient.patientName || (patient as any).name}`);
+      onShowToast?.(`Accepted consultation for ${patient.patientName || (patient as any).name}`);
       onSelectPatient(patient);
     } catch {
       onSelectPatient(patient);
@@ -171,9 +169,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const handleCancelPatient = async (patient: TokenQueueItem) => {
     try {
       await updateTokenStatus(patient.id, 'Cancelled');
-      showToast(`Patient visit cancelled (${patient.tokenNumber})`);
+      onShowToast?.(`Patient visit cancelled (${patient.tokenNumber})`);
     } catch {
-      showToast('Could not update status');
+      onShowToast?.('Could not update status');
     }
   };
 
@@ -199,14 +197,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   return (
     <div className="space-y-6 font-sans">
-      
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#0B5A54] text-white px-5 py-3 rounded-2xl shadow-2xl border border-teal-400/30 flex items-center gap-2 font-bold text-xs animate-in slide-in-from-top-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* ── TOP STATS ROW (4 STAT CARDS) ─────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -333,10 +323,36 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                 {/* Action Buttons: Cancel and Accept */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                  <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Ready for SOAP documentation and digital prescription.</span>
-                  </div>
+                  {/* Now Serving Pre-Consultation Vitals Status */}
+                  {(() => {
+                    const vitalsStatus = (nowServing as any).vitals_status || (nowServing as any).vitalsStatus || ((nowServing as any).vitals ? 'recorded' : 'pending');
+                    const abnormalFlags = (nowServing as any).abnormal_flags || (nowServing as any).abnormalFlags || [];
+                    const vitalsObj = (nowServing as any).vitals;
+                    const nurseName = vitalsObj?.recorded_by_name || 'Nurse';
+
+                    if (vitalsStatus === 'abnormal_flagged') {
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs text-rose-700 font-bold bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200">
+                          <Activity className="w-4 h-4 text-rose-600 animate-pulse shrink-0" />
+                          <span>Abnormal Vitals Screened by {nurseName}: {abnormalFlags.join(', ')}</span>
+                        </div>
+                      );
+                    }
+                    if (vitalsStatus === 'recorded') {
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                          <Activity className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Pre-consultation vitals recorded by {nurseName} (BP {vitalsObj?.bp_systolic || 120}/{vitalsObj?.bp_diastolic || 80}, HR {vitalsObj?.heart_rate || 72} bpm)</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Pre-consultation vitals pending nurse check-in.</span>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex items-center gap-2.5 w-full sm:w-auto">
                     {/* Cancel / Decline Button */}
@@ -447,6 +463,45 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             >
                               {priority}
                             </span>
+
+                            {/* Vitals Badge in Queue Stream */}
+                            {(() => {
+                              const vitalsStatus = (patient as any).vitals_status || (patient as any).vitalsStatus || ((patient as any).vitals ? 'recorded' : 'pending');
+                              const abnormalFlags = (patient as any).abnormal_flags || (patient as any).abnormalFlags || [];
+                              const vitalsObj = (patient as any).vitals;
+                              const nurseName = vitalsObj?.recorded_by_name || 'Nurse';
+
+                              if (vitalsStatus === 'abnormal_flagged') {
+                                return (
+                                  <span
+                                    className="text-[9px] font-extrabold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1"
+                                    title={`Abnormal: ${abnormalFlags.join(', ')}`}
+                                  >
+                                    <Activity className="w-2.5 h-2.5 text-rose-600 animate-pulse" />
+                                    <span>Vitals Alert</span>
+                                  </span>
+                                );
+                              }
+                              if (vitalsStatus === 'recorded') {
+                                return (
+                                  <span
+                                    className="text-[9px] font-extrabold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1"
+                                    title={`Vitals recorded by ${nurseName}`}
+                                  >
+                                    <Activity className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>Vitals</span>
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span
+                                  className="text-[9px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-400 border-slate-200"
+                                  title="Pre-check pending"
+                                >
+                                  Pending
+                                </span>
+                              );
+                            })()}
                           </div>
                           <p className="text-xs text-slate-500 truncate mt-0.5">
                             {patient.healthIssue || (patient as any).issue || 'General Consultation'}
@@ -590,10 +645,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               )}
             </div>
           </div>
-
         </div>
-
       </div>
+
+
 
     </div>
   );

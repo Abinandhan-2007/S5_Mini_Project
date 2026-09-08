@@ -162,20 +162,17 @@ export const DoctorNotificationView: React.FC<DoctorNotificationViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
       {/* ══════════════════════════════════════════════════════════
-          HERO BANNER & STATS CARDS
+          HERO BANNER & STATS CARDS (LIGHT CLINICAL THEME)
       ══════════════════════════════════════════════════════════ */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-[#0B5A54] to-slate-900 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-teal-400/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
-
+      <div className="p-6 rounded-3xl bg-white border border-slate-200/90 text-slate-900 shadow-sm relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-teal-200 shadow-inner shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-[#0B5A54] shadow-xs shrink-0">
               <BellRing className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black font-heading tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-black font-heading tracking-tight text-slate-900">
                   Clinical Notifications & Feed
                 </h1>
                 {unreadCount > 0 && (
@@ -184,7 +181,7 @@ export const DoctorNotificationView: React.FC<DoctorNotificationViewProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-teal-100/90 font-medium mt-0.5">
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Real-time synchronized alert stream for Doctor Cabin 102
               </p>
             </div>
@@ -196,21 +193,21 @@ export const DoctorNotificationView: React.FC<DoctorNotificationViewProps> = ({
               onClick={handleToggleSound}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 soundEnabled
-                  ? 'bg-teal-500/20 text-teal-100 border border-teal-400/40 hover:bg-teal-500/30'
-                  : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                  ? 'bg-teal-50 text-[#0B5A54] border border-teal-200 hover:bg-teal-100'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
               }`}
               title="Toggle Audio Notifications"
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-300" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
               <span>{soundEnabled ? 'Audio Alert Active' : 'Audio Muted'}</span>
             </button>
 
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-black shadow-2xs transition-all cursor-pointer"
               >
-                <CheckCheck className="w-4 h-4 text-teal-200" />
+                <CheckCheck className="w-4 h-4 text-teal-600" />
                 <span>Mark All Read</span>
               </button>
             )}
@@ -218,7 +215,7 @@ export const DoctorNotificationView: React.FC<DoctorNotificationViewProps> = ({
             {notifications.length > 0 && (
               <button
                 onClick={handleClearAll}
-                className="p-2 rounded-xl bg-white/10 hover:bg-rose-500/30 text-slate-300 hover:text-rose-200 transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 transition-all cursor-pointer"
                 title="Clear All Notifications"
               >
                 <Trash2 className="w-4 h-4" />
@@ -228,23 +225,23 @@ export const DoctorNotificationView: React.FC<DoctorNotificationViewProps> = ({
         </div>
 
         {/* 4 Metric Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-            <p className="text-[10px] uppercase font-bold text-teal-200/80 font-mono">Total Feed</p>
-            <p className="text-xl font-black font-heading mt-0.5">{notifications.length}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-100">
+          <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+            <p className="text-[10px] uppercase font-bold text-slate-500 font-mono">Total Feed</p>
+            <p className="text-2xl font-black font-heading mt-0.5 text-slate-900">{notifications.length}</p>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-            <p className="text-[10px] uppercase font-bold text-emerald-200/80 font-mono">OPD Queue Alerts</p>
-            <p className="text-xl font-black font-heading mt-0.5 text-emerald-300">{queueCount}</p>
+          <div className="p-3.5 rounded-2xl bg-teal-50/60 border border-teal-100">
+            <p className="text-[10px] uppercase font-bold text-teal-700 font-mono">OPD Queue Alerts</p>
+            <p className="text-2xl font-black font-heading mt-0.5 text-teal-900">{queueCount}</p>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-            <p className="text-[10px] uppercase font-bold text-rose-200/80 font-mono">Priority Triage</p>
-            <p className="text-xl font-black font-heading mt-0.5 text-rose-300">{urgentCount}</p>
+          <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-100">
+            <p className="text-[10px] uppercase font-bold text-rose-700 font-mono">Priority Triage</p>
+            <p className="text-2xl font-black font-heading mt-0.5 text-rose-900">{urgentCount}</p>
           </div>
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-            <p className="text-[10px] uppercase font-bold text-teal-200/80 font-mono">Stream Status</p>
-            <div className="flex items-center gap-1.5 mt-1 text-xs font-black text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+          <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+            <p className="text-[10px] uppercase font-bold text-emerald-700 font-mono">Stream Status</p>
+            <div className="flex items-center gap-1.5 mt-1 text-xs font-black text-emerald-900">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
               <span>Synchronized</span>
             </div>
           </div>

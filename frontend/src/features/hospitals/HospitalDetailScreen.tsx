@@ -89,8 +89,10 @@ export const HospitalDetailScreen: React.FC = () => {
   const handleSelectDoctor = (doctor: Doctor) => {
     const isOffDuty = doctor.isAvailable === false || doctor.is_available === false;
     if (isOffDuty) {
-      setToastMessage(`Dr. ${doctor.name} is currently off-duty / unavailable. Please choose an active specialist.`);
-      setTimeout(() => setToastMessage(null), 3500);
+      const reasonText = doctor.availabilityReason ? ` (${doctor.availabilityReason})` : '';
+      const timeText = doctor.unavailableUntil ? ` Expected back in ${doctor.unavailableUntil}.` : '';
+      setToastMessage(`Dr. ${doctor.name} is currently off-duty${reasonText}.${timeText} Please choose an active specialist.`);
+      setTimeout(() => setToastMessage(null), 4500);
       return;
     }
     setBookingDoctor(doctor);
@@ -358,8 +360,9 @@ export const HospitalDetailScreen: React.FC = () => {
                     {/* Live Availability Pill */}
                     <div className="flex items-center justify-between gap-1">
                       {isOffDuty ? (
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" /> Off-Duty
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center gap-1 max-w-[80%] truncate">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                          <span className="truncate">Off-Duty {doc.availabilityReason ? `(${doc.availabilityReason})` : ''}</span>
                         </span>
                       ) : (
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1">

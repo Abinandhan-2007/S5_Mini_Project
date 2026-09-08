@@ -33,7 +33,6 @@ import { NewAppointmentModal } from './NewAppointmentModal';
 import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
 import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import { usePolling } from '../../lib/usePolling';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 
 export type ReceptionistTab =
   | 'dashboard'
@@ -176,6 +175,9 @@ export const ReceptionistLayout: React.FC = () => {
 
   const staffDisplayName = currentStaff?.name || profile.name || 'Reception Desk';
 
+  const isWalkIn = (type?: string) => (type || '').toLowerCase().includes('walk-in');
+  const pendingOnlineCount = tokens.filter((t) => !isWalkIn(t.type) && t.status === 'Waiting').length;
+  const acceptedBookingsCount = tokens.filter((t) => isWalkIn(t.type) || t.status !== 'Waiting').length;
   const waitingCount = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In').length;
   const activeDoctorsCount = doctors.filter((d) => d.isAvailable).length;
   const allAppointmentsCount = bookings.length > 0 ? bookings.length : tokens.length;
@@ -193,8 +195,8 @@ export const ReceptionistLayout: React.FC = () => {
           id: 'queue',
           label: 'Live Token Queue',
           icon: Ticket,
-          badge: waitingCount > 0 ? `${waitingCount}` : undefined,
-          badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+          badge: pendingOnlineCount > 0 ? `${pendingOnlineCount} New` : (waitingCount > 0 ? `${waitingCount}` : undefined),
+          badgeColor: pendingOnlineCount > 0 ? 'bg-purple-100 text-purple-900 border-purple-300 font-black animate-pulse' : 'bg-amber-50 text-amber-800 border-amber-200',
         },
         {
           id: 'bookings',
@@ -453,14 +455,6 @@ export const ReceptionistLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Live Polling Sync Indicator */}
-            <LiveIndicator
-              lastUpdated={lastUpdated}
-              isPolling={isPolling}
-              onRefresh={refetch}
-              label="Live Sync"
-            />
-
             {/* Global Search Bar */}
             <div className="relative hidden md:block w-64 lg:w-72">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -610,6 +604,7 @@ export const ReceptionistLayout: React.FC = () => {
 
           {activeTab === 'queue' && (
             <TokenManagement
+              onNavigateTab={handleNavigateTab}
               onShowToast={showToast}
               onOpenNewAppointment={() => setIsNewAppointmentOpen(true)}
             />

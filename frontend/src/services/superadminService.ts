@@ -8,8 +8,15 @@ import type {
 } from '../types/staff';
 
 export const superadminService = {
-  login: async (credentials: { email: string; password: string }): Promise<{ token: string; staff: Staff }> => {
-    const res = await apiPost('/superadmin/login', credentials);
+  login: async (credentials: { email?: string; username?: string; identifier?: string; password: string }): Promise<{ token: string; staff: Staff }> => {
+    const cleanId = (credentials.identifier || credentials.username || credentials.email || '').trim();
+    const payload = {
+      email: cleanId,
+      username: cleanId,
+      identifier: cleanId,
+      password: credentials.password.trim(),
+    };
+    const res = await apiPost('/superadmin/login', payload);
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.detail || 'SuperAdmin login failed');

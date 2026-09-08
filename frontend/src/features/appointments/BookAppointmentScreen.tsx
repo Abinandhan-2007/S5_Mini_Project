@@ -304,12 +304,14 @@ export const BookAppointmentScreen: React.FC = () => {
               {/* Availability Badges */}
               <div className="flex items-center gap-2 flex-wrap">
                 {doctor.isAvailable === false || doctor.is_available === false ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-extrabold tracking-wide">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Off-Duty
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold tracking-wide">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    <span>Off-Duty / Temporarily Away</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-extrabold tracking-wide">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Available Today
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold tracking-wide">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Available Today · Cabin Active</span>
                   </span>
                 )}
               </div>
@@ -325,6 +327,22 @@ export const BookAppointmentScreen: React.FC = () => {
                   </span>
                 )}
               </div>
+
+              {/* Absence Alert Banner if Doctor is Not Available */}
+              {(doctor.isAvailable === false || doctor.is_available === false) && (
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs space-y-0.5">
+                  <p className="font-extrabold flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Physician Currently Stepped Out</span>
+                  </p>
+                  <p className="text-[11px] text-amber-800">
+                    Reason: <em>"{doctor.availabilityReason || (doctor as any).availability_reason || 'Attending Emergency Duty / Inpatient Rounds'}"</em>
+                    {(doctor.unavailableUntil || (doctor as any).unavailable_until) && (
+                      <span className="font-bold ml-1">· Expected back: {doctor.unavailableUntil || (doctor as any).unavailable_until}</span>
+                    )}
+                  </p>
+                </div>
+              )}
 
               {/* Specialty & Credentials */}
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 flex-wrap">
@@ -355,8 +373,10 @@ export const BookAppointmentScreen: React.FC = () => {
               </div>
 
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-xs px-2.5 py-0.5 rounded-full shadow-xs border border-slate-200/80 flex items-center gap-1 shrink-0">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9.5px] font-black text-slate-700 whitespace-nowrap">Online</span>
+                <span className={`w-2 h-2 rounded-full ${doctor.isAvailable === false || doctor.is_available === false ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse'}`} />
+                <span className="text-[9.5px] font-black text-slate-700 whitespace-nowrap">
+                  {doctor.isAvailable === false || doctor.is_available === false ? 'Off-Duty' : 'Online'}
+                </span>
               </div>
             </div>
           </div>
@@ -436,10 +456,10 @@ export const BookAppointmentScreen: React.FC = () => {
               <button
                 type="button"
                 disabled
-                className="w-full py-3.5 px-6 rounded-2xl bg-slate-200 text-slate-500 font-black text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-slate-300"
+                className="w-full py-3.5 px-6 rounded-2xl bg-rose-50 text-rose-700 font-black text-xs sm:text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-rose-200 shadow-2xs"
               >
-                <X className="w-4 h-4 text-slate-400" />
-                <span>Doctor is Currently Off-Duty</span>
+                <X className="w-4 h-4 text-rose-500 shrink-0" />
+                <span className="truncate">Doctor Unavailable {doctor.availabilityReason ? `(${doctor.availabilityReason})` : '(Off-Duty)'}</span>
               </button>
             ) : (!((doctor as any)?.slotCapacities?.length > 0 || (doctor as any)?.slot_capacities?.length > 0)) ? (
               <button

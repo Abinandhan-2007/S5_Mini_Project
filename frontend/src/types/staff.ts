@@ -70,6 +70,7 @@ export interface NurseRecord {
   staff_code?: string;
   staffCode?: string;
   name: string;
+  fullName?: string;
   email: string;
   username?: string;
   phone: string;
@@ -78,10 +79,12 @@ export interface NurseRecord {
   hospitalId?: string;
   hospital_id?: string;
   department: string;
+  shift?: 'Morning' | 'Evening' | 'Night' | 'Rotational' | string;
   role: 'nurse';
   isActive: boolean;
   avatarUrl?: string;
   photo?: string;
+  joinDate?: string;
   created_at?: string;
 }
 

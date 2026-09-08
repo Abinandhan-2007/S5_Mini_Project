@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   XCircle,
   QrCode,
+  Activity,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { TriagePriority } from '../../types/doctor';
@@ -265,6 +266,46 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                       </span>
                     );
                   })()}
+
+                  {/* Vitals Triage Status Badge */}
+                  {(() => {
+                    const vitalsStatus = (nextUpPatient as any).vitals_status || (nextUpPatient as any).vitalsStatus || ((nextUpPatient as any).vitals ? 'recorded' : 'pending');
+                    const abnormalFlags = (nextUpPatient as any).abnormal_flags || (nextUpPatient as any).abnormalFlags || [];
+                    const vitalsObj = (nextUpPatient as any).vitals;
+                    const nurseName = vitalsObj?.recorded_by_name || 'Nurse';
+
+                    if (vitalsStatus === 'abnormal_flagged') {
+                      return (
+                        <span
+                          className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1 shadow-2xs"
+                          title={`Abnormal Vitals Screened by ${nurseName}: ${abnormalFlags.join(', ')}`}
+                        >
+                          <Activity className="w-3 h-3 text-rose-600 animate-pulse" />
+                          <span>Vitals Alert ({abnormalFlags.length})</span>
+                        </span>
+                      );
+                    }
+                    if (vitalsStatus === 'recorded') {
+                      return (
+                        <span
+                          className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1 shadow-2xs"
+                          title={`Pre-consultation vitals recorded by ${nurseName}: BP ${vitalsObj?.bp_systolic || 120}/${vitalsObj?.bp_diastolic || 80}, HR ${vitalsObj?.heart_rate || 72} bpm, SpO2 ${vitalsObj?.spo2 || 98}%`}
+                        >
+                          <Activity className="w-3 h-3 text-emerald-600" />
+                          <span>Vitals Recorded · {nurseName}</span>
+                        </span>
+                      );
+                    }
+                    return (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-500 border-slate-200 flex items-center gap-1"
+                        title="Vitals pending nurse intake check"
+                      >
+                        <Activity className="w-3 h-3 text-slate-400" />
+                        <span>Vitals Pending</span>
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <p className="text-xs text-slate-600 font-medium flex items-center gap-2">
@@ -467,17 +508,58 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                           </span>
                         </div>
 
-                        <span
-                          className={`text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                            priority === 'Urgent'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-500/20'
-                              : priority === 'Senior-Child'
-                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                              : 'bg-teal-50 text-[#0B5A54] border-teal-200'
-                          }`}
-                        >
-                          {priority}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          <span
+                            className={`text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                              priority === 'Urgent'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-500/20'
+                                : priority === 'Senior-Child'
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : 'bg-teal-50 text-[#0B5A54] border-teal-200'
+                            }`}
+                          >
+                            {priority}
+                          </span>
+
+                          {/* Vitals Badge */}
+                          {(() => {
+                            const vitalsStatus = (patient as any).vitals_status || (patient as any).vitalsStatus || ((patient as any).vitals ? 'recorded' : 'pending');
+                            const abnormalFlags = (patient as any).abnormal_flags || (patient as any).abnormalFlags || [];
+                            const vitalsObj = (patient as any).vitals;
+                            const nurseName = vitalsObj?.recorded_by_name || 'Nurse';
+
+                            if (vitalsStatus === 'abnormal_flagged') {
+                              return (
+                                <span
+                                  className="text-[9px] font-extrabold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1 shadow-2xs"
+                                  title={`Abnormal vitals screened by ${nurseName}: ${abnormalFlags.join(', ')}`}
+                                >
+                                  <Activity className="w-2.5 h-2.5 text-rose-600 animate-pulse" />
+                                  <span>Alert</span>
+                                </span>
+                              );
+                            }
+                            if (vitalsStatus === 'recorded') {
+                              return (
+                                <span
+                                  className="text-[9px] font-extrabold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1 shadow-2xs"
+                                  title={`Vitals recorded by ${nurseName}: BP ${vitalsObj?.bp_systolic || 120}/${vitalsObj?.bp_diastolic || 80}, HR ${vitalsObj?.heart_rate || 72}`}
+                                >
+                                  <Activity className="w-2.5 h-2.5 text-emerald-600" />
+                                  <span>Vitals</span>
+                                </span>
+                              );
+                            }
+                            return (
+                              <span
+                                className="text-[9px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-400 border-slate-200 flex items-center gap-1"
+                                title="Vitals pending nurse pre-check"
+                              >
+                                <span>Pending</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
 
                       {/* Patient Name & Demographics */}
@@ -555,6 +637,7 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                   <th className="py-3.5 px-4">Token #</th>
                   <th className="py-3.5 px-4">Patient Demographics</th>
                   <th className="py-3.5 px-4">Triage Priority</th>
+                  <th className="py-3.5 px-4">Pre-Check Vitals</th>
                   <th className="py-3.5 px-4">Chief Complaint</th>
                   <th className="py-3.5 px-4">Slot Time</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
@@ -563,7 +646,7 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                 {waitingPatients.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       No waiting patients match your filter
                     </td>
                   </tr>
@@ -571,6 +654,10 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                 {waitingPatients.map((patient) => {
                   const priority = getPriority(patient);
                   const isCalling = callingTokenId === patient.id;
+                  const vitalsStatus = (patient as any).vitals_status || (patient as any).vitalsStatus || ((patient as any).vitals ? 'recorded' : 'pending');
+                  const abnormalFlags = (patient as any).abnormal_flags || (patient as any).abnormalFlags || [];
+                  const vitalsObj = (patient as any).vitals;
+                  const nurseName = vitalsObj?.recorded_by_name || 'Nurse';
                   return (
                     <tr
                       key={patient.id}
@@ -600,6 +687,30 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                         >
                           {priority}
                         </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {vitalsStatus === 'abnormal_flagged' ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200"
+                            title={`Abnormal flags: ${abnormalFlags.join(', ')}`}
+                          >
+                            <Activity className="w-3 h-3 text-rose-600 animate-pulse" />
+                            <span>Abnormal ({abnormalFlags.length})</span>
+                          </span>
+                        ) : vitalsStatus === 'recorded' ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title={`Nurse ${nurseName}: BP ${vitalsObj?.bp_systolic || 120}/${vitalsObj?.bp_diastolic || 80}, HR ${vitalsObj?.heart_rate || 72}`}
+                          >
+                            <Activity className="w-3 h-3 text-emerald-600" />
+                            <span>Recorded · {nurseName}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+                            <Activity className="w-3 h-3 text-slate-300" />
+                            <span>Pending</span>
+                          </span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate italic">
                         "{patient.healthIssue || (patient as any).issue || 'Routine Outpatient'}"

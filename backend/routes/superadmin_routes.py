@@ -22,7 +22,9 @@ router = APIRouter(prefix="/api/superadmin", tags=["SuperAdmin Operations"])
 # Request / Response Schemas
 # ---------------------------------------------------------
 class SuperAdminLoginRequest(BaseModel):
-    email: str
+    email: Optional[str] = None
+    username: Optional[str] = None
+    identifier: Optional[str] = None
     password: str
 
 
@@ -189,15 +191,19 @@ def superadmin_login(request: SuperAdminLoginRequest):
     """
     Dedicated SuperAdmin authentication endpoint.
     Verifies credentials and strictly confirms role == 'superadmin'.
+    Accepts login via Username (e.g. 'superadmin', 'sa', 'sa101') or Email ('superadmin@carepulse.com').
     """
-    raw_email = (request.email or "").strip().lower()
+    raw_identifier = (request.identifier or request.username or request.email or "").strip().lower()
     raw_password = (request.password or "").strip()
 
-    if not raw_email or not raw_password:
+    if not raw_identifier or not raw_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email and password are required."
+            detail="Username or email and password are required."
         )
+
+    raw_prefix = raw_identifier.split("@")[0] if "@" in raw_identifier else raw_identifier
+    carepulse_email = f"{raw_identifier}@carepulse.com" if "@" not in raw_identifier else raw_identifier
 
     found_staff = None
 
@@ -213,12 +219,15 @@ def superadmin_login(request: SuperAdminLoginRequest):
                         WHERE role = 'superadmin'
                           AND (
                               LOWER(TRIM(email)) = %s
+                              OR LOWER(TRIM(email)) = %s
+                              OR LOWER(TRIM(SPLIT_PART(email, '@', 1))) = %s
+                              OR LOWER(TRIM(SPLIT_PART(email, '@', 1))) = %s
                               OR LOWER(TRIM(COALESCE(staff_code, ''))) = %s
-                              OR LOWER(TRIM(email)) = %s || '@carepulse.com'
+                              OR %s IN ('superadmin', 'sa', 'sa101')
                           )
                         LIMIT 1
                         """,
-                        (raw_email, raw_email, raw_email)
+                        (raw_identifier, carepulse_email, raw_identifier, raw_prefix, raw_identifier, raw_identifier)
                     )
                     row = cur.fetchone()
                     if row:
@@ -234,9 +243,19 @@ def superadmin_login(request: SuperAdminLoginRequest):
                 s_email = (s.get("email") or "").strip().lower()
                 s_code = (s.get("staff_code") or s.get("staffCode") or "").strip().lower()
                 s_user = (s.get("username") or "").strip().lower()
-                if raw_email in [s_email, s_code, s_user, f"{raw_email}@carepulse.com"]:
+                s_email_user = s_email.split("@")[0] if "@" in s_email else ""
+                if (
+                    raw_identifier in [s_email, s_code, s_user, s_email_user, f"{raw_identifier}@carepulse.com"]
+                    or raw_prefix in [s_user, s_email_user, s_code]
+                    or raw_identifier in ["superadmin", "sa", "sa101"]
+                ):
                     found_staff = dict(s)
                     break
+
+    # 3. Default fallback SuperAdmin
+    if not found_staff and raw_identifier in ["superadmin@carepulse.com", "superadmin", "sa101", "sa"]:
+        from routes.staff_auth import DEFAULT_SUPERADMIN
+        found_staff = dict(DEFAULT_SUPERADMIN)
 
     if not found_staff:
         raise HTTPException(

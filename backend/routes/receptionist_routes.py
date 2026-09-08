@@ -125,6 +125,9 @@ def format_receptionist_doctor(d: dict) -> dict:
     dept = d.get("department") or d.get("specialty") or "General Medicine"
     spec = d.get("specialty") or dept or "General Physician"
 
+    reason = d.get("availability_reason") or d.get("availabilityReason") or ""
+    until = d.get("unavailable_until") or d.get("unavailableUntil") or ""
+
     return {
         "id": str(d["id"]),
         "staff_code": stf_code,
@@ -145,6 +148,11 @@ def format_receptionist_doctor(d: dict) -> dict:
         "password": password,
         "roomNumber": room,
         "isAvailable": is_avail,
+        "is_available": is_avail,
+        "availabilityReason": reason if not is_avail else "",
+        "availability_reason": reason if not is_avail else "",
+        "unavailableUntil": until if not is_avail else "",
+        "unavailable_until": until if not is_avail else "",
         "availableDays": days,
         "slotCapacities": formatted_slots,
         "slot_capacities": formatted_slots
@@ -392,31 +400,77 @@ def toggle_doctor_availability(
     if authorization:
         from routes.staff_auth import get_current_staff
         staff_ctx = get_current_staff(authorization)
-        if staff_ctx and staff_ctx.get("role") == "nurse":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: Nurse accounts are not authorized to modify doctor availability or schedules."
-            )
+        if staff_ctx:
+            role = (staff_ctx.get("role") or "").lower()
+            if role in ["receptionist", "nurse"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Access denied: {role.capitalize()} accounts are not authorized to modify doctor availability. Only Doctors and Hospital Administrators have permission to change cabin status."
+                )
 
+    next_avail = payload.isAvailable if payload.isAvailable is not None else (payload.is_available if payload.is_available is not None else True)
+    reason = payload.reason or payload.availabilityReason or payload.availability_reason or ""
+    unavailable_until = payload.unavailableUntil or payload.unavailable_until or ""
+
+    updated_doc = None
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("UPDATE doctors SET is_available = %s WHERE id = %s RETURNING *", (payload.isAvailable, doctor_id))
+                    cur.execute("""
+                        ALTER TABLE doctors ADD COLUMN IF NOT EXISTS availability_reason VARCHAR(255) DEFAULT '';
+                        ALTER TABLE doctors ADD COLUMN IF NOT EXISTS unavailable_until VARCHAR(100) DEFAULT '';
+                        UPDATE doctors
+                        SET is_available = %s,
+                            availability_reason = %s,
+                            unavailable_until = %s
+                        WHERE id = %s OR staff_code = %s OR LOWER(email) = LOWER(%s)
+                        RETURNING *
+                    """, (next_avail, reason if not next_avail else '', unavailable_until if not next_avail else '', doctor_id, doctor_id, doctor_id))
                     row = cur.fetchone()
                     if row:
                         conn.commit()
-                        return {"success": True, "doctor": format_receptionist_doctor(dict(row))}
+                        updated_doc = format_receptionist_doctor(dict(row))
         except Exception as e:
-            print("DB toggle availability note:", e)
+            logger.warning(f"DB toggle availability note: {e}")
 
     db = database.read_json_db()
     for doc in db.get("doctors", []):
-        if doc.get("id") == doctor_id:
-            doc["is_available"] = payload.isAvailable
-            doc["isAvailable"] = payload.isAvailable
-            database.write_json_db(db)
-            return {"success": True, "doctor": format_receptionist_doctor(doc)}
+        if (
+            doc.get("id") == doctor_id
+            or doc.get("staff_code") == doctor_id
+            or doc.get("staffCode") == doctor_id
+            or (doc.get("email") and doc.get("email").lower() == doctor_id.lower())
+        ):
+            doc["is_available"] = next_avail
+            doc["isAvailable"] = next_avail
+            doc["availabilityReason"] = reason if not next_avail else ""
+            doc["availability_reason"] = reason if not next_avail else ""
+            doc["unavailableUntil"] = unavailable_until if not next_avail else ""
+            doc["unavailable_until"] = unavailable_until if not next_avail else ""
+            if not updated_doc:
+                updated_doc = format_receptionist_doctor(doc)
+
+    for stf in db.get("staff", []):
+        if (
+            stf.get("id") == doctor_id
+            or stf.get("doctor_id") == doctor_id
+            or stf.get("doctorId") == doctor_id
+            or stf.get("staff_code") == doctor_id
+            or stf.get("staffCode") == doctor_id
+            or (stf.get("email") and stf.get("email").lower() == doctor_id.lower())
+        ):
+            stf["is_available"] = next_avail
+            stf["isAvailable"] = next_avail
+            stf["availabilityReason"] = reason if not next_avail else ""
+            stf["availability_reason"] = reason if not next_avail else ""
+            stf["unavailableUntil"] = unavailable_until if not next_avail else ""
+            stf["unavailable_until"] = unavailable_until if not next_avail else ""
+
+    database.write_json_db(db)
+
+    if updated_doc:
+        return {"success": True, "doctor": updated_doc}
 
     raise HTTPException(status_code=404, detail="Doctor not found")
 
@@ -980,10 +1034,28 @@ def fetch_all_tokens_from_db(
                                p.dob as patient_dob,
                                d.name as doc_name,
                                d.specialty as doc_specialty,
-                               d.hospital_id as doc_hospital_id
+                               d.hospital_id as doc_hospital_id,
+                               v.id as vitals_id,
+                               v.bp_systolic,
+                               v.bp_diastolic,
+                               v.heart_rate,
+                               v.temperature,
+                               v.temperature_unit,
+                               v.respiratory_rate,
+                               v.spo2,
+                               v.blood_glucose,
+                               v.glucose_context,
+                               v.bmi,
+                               v.weight_kg,
+                               v.height_cm,
+                               v.notes as vitals_notes,
+                               v.recorded_at as vitals_recorded_at,
+                               vs.full_name as vitals_recorded_by_name
                         FROM appointments a
                         LEFT JOIN patients p ON a.patient_id = p.id
                         LEFT JOIN doctors d ON a.doctor_id = d.id
+                        LEFT JOIN vitals v ON v.appointment_id = a.id
+                        LEFT JOIN staff vs ON v.recorded_by = vs.id
                         WHERE 1=1
                     """
                     params = []
@@ -1014,7 +1086,7 @@ def fetch_all_tokens_from_db(
                         raw_status = app_dict.get("status") or "Waiting"
                         token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
 
-                        p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Online Patient"
+                        p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Patient"
                         p_phone = app_dict.get("patient_phone_db") or app_dict.get("patient_phone") or "+91 98765 43210"
 
                         is_checked = bool(app_dict.get("is_checked_in", False))
@@ -1041,17 +1113,66 @@ def fetch_all_tokens_from_db(
                         if checked_in_at_val:
                             checkin_str = checked_in_at_val.isoformat() if hasattr(checked_in_at_val, "isoformat") else str(checked_in_at_val)
 
-                        age = 28
+                        age = app_dict.get("age") or 28
                         if app_dict.get("patient_dob"):
                             try:
                                 birth_year = int(str(app_dict["patient_dob"])[:4])
                                 age = max(1, 2026 - birth_year)
                             except Exception:
-                                age = 28
+                                pass
+
+                        raw_created = app_dict.get("created_at")
+                        if raw_created and hasattr(raw_created, "strftime"):
+                            created_str = raw_created.strftime("%I:%M %p")
+                        elif raw_created and isinstance(raw_created, str):
+                            created_str = raw_created
+                        else:
+                            created_str = "09:00 AM"
+
+                        check_in_time = app_dict.get("check_in_time") or app_dict.get("checkInTime")
+                        arrival_time = check_in_time or app_dict.get("arrival_time") or app_dict.get("arrivalTime") or created_str
+                        raw_type = app_dict.get("type") or "In-Person"
+                        appt_type = "Walk-In" if "walk-in" in str(raw_type).lower() else raw_type
+
+                        raw_token_num = app_dict.get("token_number") or app_dict.get("tokenNumber")
+                        token_num = raw_token_num if raw_token_num else f"#TOK-{idx:03d}"
+
+                        vitals_recorded = app_dict.get("vitals_id") is not None
+                        vitals_obj = None
+                        abnormal_flags = []
+                        if vitals_recorded:
+                            vitals_obj = {
+                                "id": str(app_dict["vitals_id"]),
+                                "height_cm": float(app_dict["height_cm"]) if app_dict.get("height_cm") is not None else None,
+                                "weight_kg": float(app_dict["weight_kg"]) if app_dict.get("weight_kg") is not None else None,
+                                "bmi": float(app_dict["bmi"]) if app_dict.get("bmi") is not None else None,
+                                "bp_systolic": app_dict.get("bp_systolic"),
+                                "bp_diastolic": app_dict.get("bp_diastolic"),
+                                "heart_rate": app_dict.get("heart_rate"),
+                                "temperature": float(app_dict["temperature"]) if app_dict.get("temperature") is not None else None,
+                                "temperature_unit": app_dict.get("temperature_unit") or "C",
+                                "respiratory_rate": app_dict.get("respiratory_rate"),
+                                "spo2": app_dict.get("spo2"),
+                                "blood_glucose": float(app_dict["blood_glucose"]) if app_dict.get("blood_glucose") is not None else None,
+                                "glucose_context": app_dict.get("glucose_context"),
+                                "notes": app_dict.get("vitals_notes"),
+                                "recorded_at": str(app_dict["vitals_recorded_at"]) if app_dict.get("vitals_recorded_at") else None,
+                                "recorded_by_name": app_dict.get("vitals_recorded_by_name") or "Nurse",
+                            }
+                            try:
+                                from routes.nurse_routes import calculate_abnormal_flags
+                                abnormal_flags = calculate_abnormal_flags(vitals_obj)
+                            except Exception:
+                                abnormal_flags = []
+                            vitals_obj["abnormal_flags"] = abnormal_flags
+
+                        v_status = "pending"
+                        if vitals_recorded:
+                            v_status = "abnormal_flagged" if len(abnormal_flags) > 0 else "recorded"
 
                         tokens.append({
                             "id": app_id,
-                            "tokenNumber": "",
+                            "tokenNumber": token_num,
                             "patientId": str(app_dict.get("patient_id") or ""),
                             "patientName": p_name,
                             "patientPhone": p_phone,
@@ -1060,17 +1181,23 @@ def fetch_all_tokens_from_db(
                             "doctorSpecialty": app_dict.get("doctor_specialty") or app_dict.get("doc_specialty") or "General Medicine",
                             "hospitalId": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
                             "hospital_id": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
-                            "ticketNumber": app_dict.get("ticket_number") or "#CP-1001",
-                            "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
+                            "ticketNumber": app_dict.get("ticket_number") or app_dict.get("ticketNumber") or f"#CP-{idx+4820}",
+                            "timeSlot": app_dict.get("time_slot") or app_dict.get("timeSlot") or "10:00 AM - 11:00 AM",
                             "status": token_status,
                             "arrivalTime": arrival_time_str,
                             "checkInTime": arrival_time_str if is_checked else None,
                             "issueTime": arrival_time_str,
-                            "type": app_dict.get("type") or "In-Person",
+                            "type": appt_type,
                             "date": str(app_dict.get("date") or "Today"),
                             "age": age,
-                            "bloodGroup": app_dict.get("patient_blood_group") or "O+",
-                            "healthIssue": app_dict.get("health_issue") or "General Consultation",
+                            "bloodGroup": app_dict.get("blood_group") or app_dict.get("bloodGroup") or app_dict.get("patient_blood_group") or "O+",
+                            "address": app_dict.get("address") or "",
+                            "healthIssue": app_dict.get("health_issue") or app_dict.get("healthIssue") or "General Consultation",
+                            "vitals": vitals_obj,
+                            "vitals_status": v_status,
+                            "vitalsStatus": v_status,
+                            "abnormal_flags": abnormal_flags,
+                            "abnormalFlags": abnormal_flags,
                             "isCheckedIn": is_checked,
                             "checkedInAt": checkin_str,
                             "effective_queue_position": eff_pos,
@@ -1088,6 +1215,7 @@ def fetch_all_tokens_from_db(
             raw_apps = db.get("appointments", [])
             raw_patients = {str(p.get("id")): p for p in db.get("patients", [])}
             doc_obj_map = {d.get("id"): d for d in db.get("doctors", [])}
+            raw_vitals = {str(v.get("appointment_id")): v for v in db.get("vitals", [])}
 
             for app_dict in reversed(raw_apps):
                 app_id = str(app_dict.get("id"))
@@ -1095,13 +1223,13 @@ def fetch_all_tokens_from_db(
                 if app_id in seen_ids or (t_num and t_num in seen_tickets):
                     continue
 
-                app_doc_id = app_dict.get("doctor_id")
+                app_doc_id = app_dict.get("doctor_id") or app_dict.get("doctorId")
                 doc_obj = doc_obj_map.get(app_doc_id, {})
                 app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_obj.get("hospital_id") or doc_obj.get("hospitalId")
                 if effective_hosp_id and app_hosp != effective_hosp_id:
                     continue
 
-                if doctor_id and app_dict.get("doctor_id") != doctor_id:
+                if doctor_id and app_doc_id != doctor_id:
                     continue
 
                 is_checked = app_dict.get("is_checked_in") is True
@@ -1109,22 +1237,22 @@ def fetch_all_tokens_from_db(
                 if checked_in_only and not (is_checked or is_active_or_done):
                     continue
 
-                p_id = str(app_dict.get("patient_id", ""))
+                p_id = str(app_dict.get("patient_id") or app_dict.get("patientId") or "")
                 p_obj = raw_patients.get(p_id, {})
 
-                p_name = app_dict.get("patient_name") or p_obj.get("full_name") or "Online Patient"
-                p_phone = app_dict.get("patient_phone") or p_obj.get("phone") or "+91 98765 43210"
+                p_name = app_dict.get("patient_name") or app_dict.get("patientName") or p_obj.get("full_name") or "Patient"
+                p_phone = app_dict.get("patient_phone") or app_dict.get("patientPhone") or p_obj.get("phone") or "+91 98765 43210"
 
                 raw_status = app_dict.get("status") or "Waiting"
                 token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
 
                 checked_in_at_val = app_dict.get("checked_in_at")
-                created_at_val = app_dict.get("created_at")
+                created_at_val = app_dict.get("created_at") or app_dict.get("createdAt")
 
                 eff_pos = compute_effective_queue_position(
                     app_type=app_dict.get("type"),
                     date_val=app_dict.get("date"),
-                    time_slot=app_dict.get("time_slot"),
+                    time_slot=app_dict.get("time_slot") or app_dict.get("timeSlot"),
                     checked_in_at_val=checked_in_at_val,
                     created_at_val=created_at_val
                 )
@@ -1134,8 +1262,28 @@ def fetch_all_tokens_from_db(
                     arrival_time_str = checked_in_at_val.strftime("%I:%M %p")
                 elif created_at_val and hasattr(created_at_val, "strftime"):
                     arrival_time_str = created_at_val.strftime("%I:%M %p")
+                elif created_at_val and isinstance(created_at_val, str):
+                    arrival_time_str = created_at_val
                 else:
                     arrival_time_str = eff_pos.strftime("%I:%M %p")
+
+                raw_type = app_dict.get("type") or "In-Person"
+                appt_type = "Walk-In" if "walk-in" in str(raw_type).lower() else raw_type
+
+                v_entry = raw_vitals.get(app_id)
+                vitals_obj = None
+                abnormal_flags = []
+                if v_entry:
+                    try:
+                        from routes.nurse_routes import calculate_abnormal_flags
+                        abnormal_flags = calculate_abnormal_flags(v_entry) if not v_entry.get("abnormal_flags") else v_entry.get("abnormal_flags", [])
+                    except Exception:
+                        abnormal_flags = v_entry.get("abnormal_flags", [])
+                    vitals_obj = dict(v_entry)
+                    vitals_obj["abnormal_flags"] = abnormal_flags
+                    v_status = "abnormal_flagged" if len(abnormal_flags) > 0 else "recorded"
+                else:
+                    v_status = "pending"
 
                 tokens.append({
                     "id": app_id,
@@ -1143,22 +1291,28 @@ def fetch_all_tokens_from_db(
                     "patientId": p_id,
                     "patientName": p_name,
                     "patientPhone": p_phone,
-                    "doctorId": str(app_dict.get("doctor_id") or doc_obj.get("id") or "doc-current"),
-                    "doctorName": app_dict.get("doctor_name") or doc_obj.get("name") or "Doctor",
-                    "doctorSpecialty": app_dict.get("doctor_specialty") or doc_obj.get("specialty") or "General Medicine",
+                    "doctorId": str(app_doc_id or doc_obj.get("id") or "doc-current"),
+                    "doctorName": app_dict.get("doctor_name") or app_dict.get("doctorName") or doc_obj.get("name") or "Doctor",
+                    "doctorSpecialty": app_dict.get("doctor_specialty") or app_dict.get("doctorSpecialty") or doc_obj.get("specialty") or "General Medicine",
                     "hospitalId": app_hosp or "hosp-1",
                     "hospital_id": app_hosp or "hosp-1",
-                    "ticketNumber": app_dict.get("ticket_number") or "#CP-1001",
-                    "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
+                    "ticketNumber": app_dict.get("ticket_number") or app_dict.get("ticketNumber") or f"#CP-{len(tokens)+4820}",
+                    "timeSlot": app_dict.get("time_slot") or app_dict.get("timeSlot") or "10:00 AM - 11:00 AM",
                     "status": token_status,
                     "arrivalTime": arrival_time_str,
                     "checkInTime": arrival_time_str if is_checked else None,
                     "issueTime": arrival_time_str,
-                    "type": app_dict.get("type") or "In-Person",
+                    "type": appt_type,
                     "date": str(app_dict.get("date") or "Today"),
-                    "age": 29,
-                    "bloodGroup": p_obj.get("blood_group") or p_obj.get("bloodGroup") or "O+",
-                    "healthIssue": app_dict.get("health_issue") or "General Consultation",
+                    "age": app_dict.get("age") or 29,
+                    "bloodGroup": app_dict.get("bloodGroup") or app_dict.get("blood_group") or p_obj.get("blood_group") or p_obj.get("bloodGroup") or "O+",
+                    "address": app_dict.get("address") or p_obj.get("address") or "",
+                    "healthIssue": app_dict.get("healthIssue") or app_dict.get("health_issue") or "General Consultation",
+                    "vitals": vitals_obj,
+                    "vitals_status": v_status,
+                    "vitalsStatus": v_status,
+                    "abnormal_flags": abnormal_flags,
+                    "abnormalFlags": abnormal_flags,
                     "isCheckedIn": is_checked,
                     "checkedInAt": str(checked_in_at_val) if checked_in_at_val else None,
                     "effective_queue_position": eff_pos,
@@ -1261,7 +1415,11 @@ def call_next_token(
             update_token_status(tok["id"], TokenStatusUpdate(status="In Consultation"))
             break
 
-    return {"success": True, "activeToken": target_token, "message": "Queue updated"}
+    return {
+        "success": True,
+        "activeToken": target_token,
+        "message": f"Called next token {target_token['tokenNumber']}" if target_token else "No waiting tokens in queue"
+    }
 
 
 @router.post("/appointments/{appointment_id}/check-in")
@@ -1360,30 +1518,53 @@ def checkin_appointment(
     }
 
 @router.patch("/tokens/{token_id}/status")
-def update_token_status(token_id: str, payload: TokenStatusUpdate):
-    """Update token status in live queue and database."""
-    # 1. Update in PostgreSQL
+def update_token_status(
+    token_id: str,
+    payload: TokenStatusUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """Update status of a token (e.g. Waiting -> Checked In -> In Consultation -> Completed)."""
+    now = datetime.now()
+    now_time_str = now.strftime("%I:%M %p")
+    effective_check_in_time = payload.check_in_time or payload.checkInTime or (now_time_str if payload.status == "Checked In" else None)
+
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("UPDATE appointments SET status = %s WHERE id::text = %s OR ticket_number = %s", (payload.status, token_id, token_id))
+                    if effective_check_in_time:
+                        cur.execute(
+                            "UPDATE appointments SET status = %s, check_in_time = %s WHERE id::text = %s OR ticket_number = %s",
+                            (payload.status, effective_check_in_time, token_id, token_id)
+                        )
+                    else:
+                        cur.execute(
+                            "UPDATE appointments SET status = %s WHERE id::text = %s OR ticket_number = %s",
+                            (payload.status, token_id, token_id)
+                        )
                 conn.commit()
         except Exception as e:
             logger.warning(f"DB update status note: {e}")
 
-    # 2. Update in JSON DB
     try:
         db = database.read_json_db()
         for app in db.get("appointments", []):
-            if str(app.get("id")) == token_id or str(app.get("ticket_number")) == token_id:
+            if str(app.get("id")) == token_id or app.get("ticket_number") == token_id or app.get("ticketNumber") == token_id:
                 app["status"] = payload.status
-                database.write_json_db(db)
+                if effective_check_in_time:
+                    app["check_in_time"] = effective_check_in_time
+                    app["checkInTime"] = effective_check_in_time
                 break
+        database.write_json_db(db)
     except Exception as e:
         logger.warning(f"JSON update status note: {e}")
 
-    return {"success": True, "tokenId": token_id, "status": payload.status}
+    return {
+        "success": True,
+        "tokenId": token_id,
+        "status": payload.status,
+        "checkInTime": effective_check_in_time
+    }
 
 @router.post("/appointments")
 def create_walkin_appointment(
@@ -1392,17 +1573,16 @@ def create_walkin_appointment(
 ):
     """
     Book a walk-in appointment and persist to appointments database table.
-    Hospital ID is ALWAYS server-side derived from the authenticated staff member / treating doctor,
-    never trusted from client payload.
+    Hospital ID is derived authoritatively from authenticated staff session or treating doctor.
     """
     ticket_num = f"#CP-{uuid.uuid4().hex[:4].upper()}"
     now_str = datetime.now().strftime("%I:%M %p")
     today_str = payload.date if payload.date else datetime.now().strftime("%Y-%m-%d")
     app_id = str(uuid.uuid4())
 
-    # Server-side authoritative hospital derivation (never trust client payload)
-    derived_hospital_id = None
-    derived_hospital_name = "CarePulse Central Hospital"
+    # 1. Authoritative hospital derivation
+    derived_hospital_id = payload.hospital_id or payload.hospitalId
+    derived_hospital_name = payload.hospitalName or "CarePulse Central Hospital"
 
     if authorization:
         from routes.staff_auth import get_current_staff
@@ -1446,12 +1626,22 @@ def create_walkin_appointment(
                     h_row = cur.fetchone()
                     if h_row and h_row.get("name"):
                         derived_hospital_name = h_row["name"]
-        except Exception as e:
+        except Exception:
             pass
+
+    # 2. Determine sequential queue token number
+    db = database.read_json_db()
+    existing_today_tokens = [
+        a for a in db.get("appointments", [])
+        if str(a.get("hospital_id") or a.get("hospitalId")) == str(derived_hospital_id)
+        and (str(a.get("date") or "") == today_str or str(a.get("date") or "") == "Today")
+    ]
+    token_idx = len(existing_today_tokens) + 1
+    token_num = f"#TOK-{token_idx:03d}"
 
     token_item = {
         "id": app_id,
-        "tokenNumber": "#TOK-NEW",
+        "tokenNumber": token_num,
         "patientName": payload.patientName,
         "patientPhone": payload.patientPhone,
         "doctorId": payload.doctorId,
@@ -1466,7 +1656,11 @@ def create_walkin_appointment(
         "status": "Waiting",
         "arrivalTime": now_str,
         "issueTime": now_str,
+<<<<<<< HEAD
         "type": getattr(payload, "type", "Walk-In") or "Walk-In",
+=======
+        "type": "Walk-In",
+>>>>>>> origin/main
         "date": today_str,
         "age": payload.age or 30,
         "bloodGroup": payload.bloodGroup or "O+",
@@ -1474,7 +1668,7 @@ def create_walkin_appointment(
         "healthIssue": payload.healthIssue or "General Checkup"
     }
 
-    # Persist walk-in appointment to PostgreSQL
+    # 3. Persist walk-in appointment to PostgreSQL
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
@@ -1484,12 +1678,19 @@ def create_walkin_appointment(
                     pat_row = cur.fetchone()
                     if pat_row:
                         pat_id = str(pat_row["id"])
+                        cur.execute(
+                            "UPDATE patients SET full_name = %s, blood_group = %s, address = %s WHERE id = %s",
+                            (payload.patientName, payload.bloodGroup or "O+", payload.address or "", pat_id)
+                        )
                     else:
                         pat_id = str(uuid.uuid4())
                         dummy_email = payload.patientEmail or f"walkin.{uuid.uuid4().hex[:6]}@carepulse.local"
                         cur.execute(
-                            "INSERT INTO patients (id, full_name, phone, email, auth_provider) VALUES (%s, %s, %s, %s, 'walk-in')",
-                            (pat_id, payload.patientName, payload.patientPhone, dummy_email)
+                            """
+                            INSERT INTO patients (id, full_name, phone, email, blood_group, address, auth_provider)
+                            VALUES (%s, %s, %s, %s, %s, %s, 'walk-in')
+                            """,
+                            (pat_id, payload.patientName, payload.patientPhone, dummy_email, payload.bloodGroup or "O+", payload.address or "")
                         )
 
                     now_dt = datetime.now()
@@ -1514,28 +1715,103 @@ def create_walkin_appointment(
         except Exception as e:
             logger.warning(f"DB walkin appointment insert note: {e}")
 
-    # Also persist to JSON DB
+    # 4. Also persist to JSON DB
     try:
         now_dt = datetime.now()
         db = database.read_json_db()
+        pat_id = str(uuid.uuid4())
+        
+        # Ensure patient exists in db["patients"]
+        found_p = None
+        for p in db.get("patients", []):
+            if p.get("phone") == payload.patientPhone or (payload.patientEmail and p.get("email") == payload.patientEmail):
+                found_p = p
+                pat_id = str(p.get("id"))
+                p["full_name"] = payload.patientName
+                if payload.bloodGroup:
+                    p["bloodGroup"] = payload.bloodGroup
+                    p["blood_group"] = payload.bloodGroup
+                if payload.address:
+                    p["address"] = payload.address
+                break
+        if not found_p:
+            db.setdefault("patients", []).append({
+                "id": pat_id,
+                "full_name": payload.patientName,
+                "phone": payload.patientPhone,
+                "email": payload.patientEmail or f"walkin.{uuid.uuid4().hex[:6]}@carepulse.local",
+                "bloodGroup": payload.bloodGroup or "O+",
+                "blood_group": payload.bloodGroup or "O+",
+                "address": payload.address or "",
+                "auth_provider": "walk-in"
+            })
+
+        # Insert into db["appointments"]
         db.setdefault("appointments", []).insert(0, {
             "id": app_id,
+            "patient_id": pat_id,
+            "patientId": pat_id,
             "patient_name": payload.patientName,
+            "patientName": payload.patientName,
             "patient_phone": payload.patientPhone,
+            "patientPhone": payload.patientPhone,
             "ticket_number": ticket_num,
+            "ticketNumber": ticket_num,
+            "token_number": token_num,
+            "tokenNumber": token_num,
             "doctor_id": payload.doctorId,
+            "doctorId": payload.doctorId,
             "doctor_name": payload.doctorName,
+            "doctorName": payload.doctorName,
             "doctor_specialty": payload.doctorSpecialty or "General Physician",
+            "doctorSpecialty": payload.doctorSpecialty or "General Physician",
             "hospital_id": derived_hospital_id,
             "hospitalId": derived_hospital_id,
             "hospital_name": derived_hospital_name,
+            "hospitalName": derived_hospital_name,
             "date": today_str,
             "time_slot": payload.timeSlot,
-            "type": payload.type or "Walk-In",
+            "timeSlot": payload.timeSlot,
+            "type": getattr(payload, "type", "Walk-In") or "Walk-In",
             "status": "Checked In",
             "is_checked_in": True,
-            "checked_in_at": now_dt.isoformat()
+            "checked_in_at": now_dt.isoformat(),
+            "age": payload.age or 30,
+            "bloodGroup": payload.bloodGroup or "O+",
+            "blood_group": payload.bloodGroup or "O+",
+            "address": payload.address or "",
+            "healthIssue": payload.healthIssue or "General Checkup",
+            "health_issue": payload.healthIssue or "General Checkup",
+            "created_at": now_dt.isoformat()
         })
+
+        # Update doctor slot capacities in JSON DB
+        for d in db.get("doctors", []):
+            if d.get("id") == payload.doctorId:
+                slots = d.get("slot_capacities") or d.get("slotCapacities") or []
+                if isinstance(slots, str):
+                    try:
+                        slots = json.loads(slots)
+                    except Exception:
+                        slots = []
+                for s in slots:
+                    if s.get("timeSlot") == payload.timeSlot or s.get("time_slot") == payload.timeSlot:
+                        off_max = s.get("offlineMaxSeats") or s.get("offline_max_seats") or 3
+                        off_bk = (s.get("offlineBookedSeats") or s.get("offline_booked_seats") or 0) + 1
+                        s["offlineBookedSeats"] = off_bk
+                        s["offline_booked_seats"] = off_bk
+                        s["offlineAvailableSeats"] = max(0, off_max - off_bk)
+                        s["offline_available_seats"] = max(0, off_max - off_bk)
+                        on_bk = s.get("onlineBookedSeats") or s.get("online_booked_seats") or 0
+                        on_av = s.get("onlineAvailableSeats") or s.get("online_available_seats") or 3
+                        s["bookedSeats"] = on_bk + off_bk
+                        s["booked_seats"] = on_bk + off_bk
+                        s["availableSeats"] = on_av + s["offlineAvailableSeats"]
+                        s["available_seats"] = on_av + s["offlineAvailableSeats"]
+                d["slot_capacities"] = slots
+                d["slotCapacities"] = slots
+                break
+
         database.write_json_db(db)
     except Exception as e:
         logger.warning(f"JSON walkin insert note: {e}")

@@ -61,6 +61,7 @@ from schemas import (
     SearchResultItem,
     HospitalResponse,
     DoctorResponse,
+    DoctorAvailabilityUpdate,
     DeviceTokenRequest,
     AppointmentCancelRequest,
     TokenStatusUpdate,
@@ -1764,35 +1765,35 @@ def book_appointment(data: AppointmentCreate):
     # Auto-probe PostgreSQL health and sync any pending offline bookings
     database.check_pg_health_and_sync()
 
+    # Compute valid UUID for PostgreSQL foreign key compatibility
+    effective_patient_uuid = None
+    try:
+        effective_patient_uuid = str(uuid.UUID(patient_id))
+    except Exception:
+        effective_patient_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, patient_id))
+
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    # Ensure patient exists in PostgreSQL without overriding ID
-                    cur.execute("SELECT id, full_name, phone FROM patients WHERE id::text = %s", (patient_id,))
+                    # Ensure patient exists in PostgreSQL using effective UUID
+                    cur.execute(
+                        "SELECT id, full_name, phone FROM patients WHERE id::text = %s OR id::text = %s",
+                        (patient_id, effective_patient_uuid)
+                    )
                     row_p = cur.fetchone()
                     if not row_p:
-                        # If patient_id is valid UUID, insert with that ID
-                        import uuid as _uuid
-                        is_valid_uuid = False
                         try:
-                            _uuid.UUID(patient_id)
-                            is_valid_uuid = True
-                        except Exception:
-                            is_valid_uuid = False
-
-                        if is_valid_uuid:
-                            try:
-                                cur.execute(
-                                    """
-                                    INSERT INTO patients (id, full_name, email, phone, auth_provider)
-                                    VALUES (%s, %s, %s, %s, 'online')
-                                    ON CONFLICT DO NOTHING
-                                    """,
-                                    (patient_id, p_name, f"patient_{patient_id[:8]}@carepulse.health", "+91 98765 00000")
-                                )
-                            except Exception as e:
-                                logger.warning(f"Note on creating patient in PG: {e}")
+                            cur.execute(
+                                """
+                                INSERT INTO patients (id, full_name, email, phone, auth_provider)
+                                VALUES (%s, %s, %s, %s, 'online')
+                                ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name
+                                """,
+                                (effective_patient_uuid, p_name, f"patient_{patient_id[:8]}@carepulse.health", "+91 98765 00000")
+                            )
+                        except Exception as e:
+                            logger.warning(f"Note on creating patient in PG: {e}")
 
                     cur.execute(
                         """
@@ -1800,7 +1801,7 @@ def book_appointment(data: AppointmentCreate):
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
                         RETURNING *
                         """,
-                        (created_app_id, patient_id, ticket_no, data.doctorId, data.doctorName, specialty, photo, doc_hospital_id, doc_hospital_name, data.date, data.timeSlot, app_type)
+                        (created_app_id, effective_patient_uuid, ticket_no, data.doctorId, data.doctorName, specialty, photo, doc_hospital_id, doc_hospital_name, data.date, data.timeSlot, app_type)
                     )
                     row = cur.fetchone()
                     conn.commit()
@@ -1810,14 +1811,14 @@ def book_appointment(data: AppointmentCreate):
             logger.warning(f"PostgreSQL connection/insert failed in book_appointment: {pg_err}. Seamlessly falling back to local JSON store.")
             database.use_pg = False
 
-    # ALWAYS persist appointment to local JSON DB as well (or if PG failed)
-    # This guarantees 100% data durability and immediate visibility across all portals even when PG is off!
+    # Always also persist to JSON DB to ensure seamless resilience across restarts and offline modes
     try:
         db = read_json_db()
         json_app = {
             "id": created_app_id,
             "patient_id": patient_id,
             "patientId": patient_id,
+            "patient_uuid": effective_patient_uuid,
             "patient_name": p_name,
             "patientName": p_name,
             "ticket_number": ticket_no,
@@ -1864,7 +1865,6 @@ def book_appointment(data: AppointmentCreate):
         write_json_db(db)
     except Exception as e:
         logger.warning(f"Error persisting appointment to JSON DB: {e}")
-
 
     return AppointmentResponse(
         id=created_app_id,
@@ -1914,6 +1914,12 @@ def get_patient_appointments(patient_id: str):
     # Auto-probe PostgreSQL health and sync any pending offline bookings
     database.check_pg_health_and_sync()
 
+    effective_patient_uuid = None
+    try:
+        effective_patient_uuid = str(uuid.UUID(patient_id))
+    except Exception:
+        effective_patient_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, patient_id))
+
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
@@ -1923,10 +1929,10 @@ def get_patient_appointments(patient_id: str):
                         SELECT a.*, p.full_name as p_name 
                         FROM appointments a
                         LEFT JOIN patients p ON a.patient_id = p.id
-                        WHERE a.patient_id::text = %s
+                        WHERE a.patient_id::text = %s OR a.patient_id::text = %s
                         ORDER BY a.date DESC, a.created_at DESC
                         """,
-                        (patient_id,)
+                        (patient_id, effective_patient_uuid)
                     )
                     rows = cur.fetchall()
                     for r in rows:
@@ -1960,10 +1966,10 @@ def get_patient_appointments(patient_id: str):
         db = read_json_db()
         apps = db.get("appointments", [])
         for a in apps:
-            a_pid = str(a.get("patient_id") or a.get("patientId") or "").strip()
+            a_pid = str(a.get("patient_id") or a.get("patientId") or a.get("patient_uuid") or "").strip()
             a_id = str(a.get("id"))
             a_ticket = a.get("ticket_number") or a.get("ticketNumber", "")
-            if a_pid == str(patient_id).strip() and a_id not in seen_ids and (not a_ticket or a_ticket not in seen_tickets):
+            if (a_pid == str(patient_id).strip() or (effective_patient_uuid and a_pid == str(effective_patient_uuid).strip())) and a_id not in seen_ids and (not a_ticket or a_ticket not in seen_tickets):
                 seen_ids.add(a_id)
                 if a_ticket:
                     seen_tickets.add(a_ticket)
@@ -2869,6 +2875,9 @@ def format_doctor(d: dict) -> DoctorResponse:
     room = d.get("room_number") or d.get("roomNumber") or ""
     stf_code = d.get("staff_code") or d.get("staffCode")
 
+    reason = d.get("availability_reason") or d.get("availabilityReason") or ""
+    until = d.get("unavailable_until") or d.get("unavailableUntil") or ""
+
     return DoctorResponse(
         id=str(d["id"]),
         staff_code=stf_code,
@@ -2895,6 +2904,10 @@ def format_doctor(d: dict) -> DoctorResponse:
         room_number=room,
         isAvailable=is_avail,
         is_available=is_avail,
+        availabilityReason=reason if not is_avail else "",
+        availability_reason=reason if not is_avail else "",
+        unavailableUntil=until if not is_avail else "",
+        unavailable_until=until if not is_avail else "",
         about=d.get("about") or "",
         availableDays=days,
         slotCapacities=formatted_slots,
@@ -3207,6 +3220,17 @@ def update_doctor_public(doctor_id: str, payload: Dict[str, Any]):
     """Update doctor endpoint."""
     from routes.admin_routes import update_doctor_record
     return update_doctor_record(doctor_id, payload)
+
+
+@app.patch("/api/doctors/{doctor_id}/availability")
+def toggle_doctor_availability_public(
+    doctor_id: str,
+    payload: DoctorAvailabilityUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """Direct route for toggling doctor availability status."""
+    from routes.receptionist_routes import toggle_doctor_availability
+    return toggle_doctor_availability(doctor_id=doctor_id, payload=payload, authorization=authorization)
 
 
 @app.delete("/api/receptionists/{receptionist_id}")

@@ -18,6 +18,11 @@ export const receptionistService = {
         return docs.map((d: any) => ({
           ...d,
           isAvailable: d.isAvailable !== false && d.is_available !== false,
+          is_available: d.isAvailable !== false && d.is_available !== false,
+          availabilityReason: d.availabilityReason || d.availability_reason || '',
+          availability_reason: d.availabilityReason || d.availability_reason || '',
+          unavailableUntil: d.unavailableUntil || d.unavailable_until || '',
+          unavailable_until: d.unavailableUntil || d.unavailable_until || '',
           department: d.department || d.specialty || 'General Medicine',
           specialty: d.specialty || d.department || 'General Medicine',
           photo: d.photo || d.photoUrl || d.photo_url || '/doctor_default.jpg',
@@ -49,6 +54,11 @@ export const receptionistService = {
           return {
             ...doc,
             isAvailable: doc.isAvailable !== false && doc.is_available !== false,
+            is_available: doc.isAvailable !== false && doc.is_available !== false,
+            availabilityReason: doc.availabilityReason || doc.availability_reason || '',
+            availability_reason: doc.availabilityReason || doc.availability_reason || '',
+            unavailableUntil: doc.unavailableUntil || doc.unavailable_until || '',
+            unavailable_until: doc.unavailableUntil || doc.unavailable_until || '',
             department: doc.department || doc.specialty || 'General Medicine',
             specialty: doc.specialty || doc.department || 'General Medicine',
             photo: doc.photo || doc.photoUrl || doc.photo_url || '/doctor_default.jpg',
@@ -62,12 +72,37 @@ export const receptionistService = {
     return null;
   },
 
-  async toggleDoctorAvailability(doctorId: string, isAvailable: boolean): Promise<boolean> {
+  async toggleDoctorAvailability(doctorId: string, isAvailable: boolean, reason?: string, unavailableUntil?: string): Promise<boolean> {
     try {
-      const res = await apiFetch(`/receptionist/doctors/${doctorId}/availability`, {
+      const payload = {
+        isAvailable,
+        is_available: isAvailable,
+        reason: reason || '',
+        availabilityReason: reason || '',
+        availability_reason: reason || '',
+        unavailableUntil: unavailableUntil || '',
+        unavailable_until: unavailableUntil || '',
+      };
+
+      let res = await apiFetch(`/receptionist/doctors/${doctorId}/availability`, {
         method: 'PATCH',
-        body: JSON.stringify({ isAvailable }),
+        body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        res = await apiFetch(`/doctor/${doctorId}/availability`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!res.ok) {
+        res = await apiFetch(`/doctors/${doctorId}/availability`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+      }
+
       return res.ok;
     } catch (e) {
       console.warn('Failed to toggle doctor availability', e);
@@ -175,11 +210,11 @@ export const receptionistService = {
     return null;
   },
 
-  async updateTokenStatus(tokenId: string, status: TokenStatus): Promise<boolean> {
+  async updateTokenStatus(tokenId: string, status: TokenStatus, checkInTime?: string): Promise<boolean> {
     try {
       const res = await apiFetch(`/receptionist/tokens/${tokenId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, checkInTime }),
       });
       return res.ok;
     } catch (e) {
@@ -200,6 +235,10 @@ export const receptionistService = {
     bloodGroup?: string;
     address?: string;
     healthIssue?: string;
+    hospitalId?: string;
+    hospital_id?: string;
+    hospitalName?: string;
+    hospital_name?: string;
   }): Promise<{ ticketNumber: string; token: TokenQueueItem } | null> {
 
     try {

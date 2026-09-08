@@ -34,7 +34,12 @@ export const NurseLogin: React.FC = () => {
     const cleanPassword = password.trim();
 
     try {
-      const res = await apiPost('/staff/login', { email: cleanId, password: cleanPassword });
+      const res = await apiPost('/staff/login', {
+        email: cleanId,
+        username: cleanId,
+        identifier: cleanId,
+        password: cleanPassword,
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.staff) {
@@ -162,7 +167,7 @@ export const NurseLogin: React.FC = () => {
           <div className="p-3 rounded-2xl bg-teal-50/70 border border-teal-100 flex items-center justify-between text-xs">
             <div>
               <div className="font-bold text-teal-900">Demo Nurse Account</div>
-              <div className="text-[11px] text-teal-700 font-mono">nurse@carepulse.com / Nurse@123</div>
+              <div className="text-[11px] text-teal-700 font-mono">nurse or nurse@carepulse.com / Nurse@123</div>
             </div>
             <button
               type="button"
@@ -175,7 +180,7 @@ export const NurseLogin: React.FC = () => {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Work Email or Staff Code</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Username, Work Email or Staff Code</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -183,7 +188,7 @@ export const NurseLogin: React.FC = () => {
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="e.g. nurse@carepulse.com or N007101"
+                  placeholder="e.g. nurse, nurse@carepulse.com or N007101"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                 />
               </div>

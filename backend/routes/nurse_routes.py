@@ -359,7 +359,7 @@ def record_vitals(
         staff_ctx = get_current_staff(authorization)
         if staff_ctx:
             staff_id = staff_ctx.get("staff_id")
-            staff_name = staff_ctx.get("email", "Nurse")
+            staff_name = staff_ctx.get("name") or staff_ctx.get("full_name") or staff_ctx.get("email", "Nurse")
 
     # Compute BMI client-side as fallback for JSON DB or immediate response
     computed_bmi = None

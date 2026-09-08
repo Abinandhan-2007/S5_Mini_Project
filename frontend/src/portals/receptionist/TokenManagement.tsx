@@ -26,6 +26,7 @@ import { speakText } from '../../lib/speechUtils';
 interface TokenManagementProps {
   onShowToast?: (msg: string) => void;
   onOpenNewAppointment?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 // Play pleasant hospital announcement chime using Web Audio API
@@ -138,6 +139,7 @@ const formatDisplayDate = (isoOrFormatted?: string): string => {
 export const TokenManagement: React.FC<TokenManagementProps> = ({
   onShowToast,
   onOpenNewAppointment,
+  onNavigateTab,
 }) => {
   const tokens = useStaffStore((s) => s.tokens);
   const bookings = useStaffStore((s) => s.bookings);
@@ -164,7 +166,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Waiting' | 'Checked In' | 'In Consultation' | 'Completed'>('ALL');
-  const [selectedDateFilter, setSelectedDateFilter] = useState<string>(getTodayISODate(0));
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<TokenSortOption>('TIME_ASC');
   const [activeDivision, setActiveDivision] = useState<'ONLINE' | 'OFFLINE' | 'ALL'>('ONLINE');
@@ -398,6 +400,56 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     }
   };
 
+  // Handler for accepting an online patient appointment and moving to Patient Bookings
+  const handleAcceptOnlinePatient = async (token: TokenQueueItem) => {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const checkInTime = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+
+    await updateTokenStatus(token.id, 'Checked In', { checkInTime });
+    playHospitalChime();
+    const speechText = `Appointment accepted for ${token.patientName}. Token ${token.tokenNumber.replace('#', '')}.`;
+    speakAnnouncement(speechText);
+    onShowToast?.(`✅ Accepted appointment for ${token.patientName} (${token.tokenNumber})! Moved to Patient Bookings.`);
+
+    if (onNavigateTab) {
+      onNavigateTab('bookings');
+    }
+  };
+
+  // Handler for accepting all pending online patients in current view
+  const handleAcceptAllOnlinePatients = async () => {
+    const pending = onlineBookedPatients.filter((t) => t.status !== 'Checked In' && t.status !== 'In Consultation' && t.status !== 'Completed');
+    if (pending.length === 0) {
+      onShowToast?.('No pending online appointments to accept.');
+      return;
+    }
+
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const checkInTime = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+
+    for (const t of pending) {
+      await updateTokenStatus(t.id, 'Checked In', { checkInTime });
+    }
+
+    playHospitalChime();
+    speakAnnouncement(`Accepted ${pending.length} online patient appointments.`);
+    onShowToast?.(`✅ Accepted all ${pending.length} pending online patient(s)! Moved to Patient Bookings.`);
+
+    if (onNavigateTab) {
+      onNavigateTab('bookings');
+    }
+  };
+
   // Render a Single Patient Card
   const renderPatientCard = (token: TokenQueueItem, isOnline: boolean) => {
     const isCheckedIn = token.status === 'Checked In';
@@ -576,9 +628,9 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           </div>
         </div>
 
-        {/* Card Actions - Check-in exclusively for Online App Bookings (Walk-ins are already in hospital) */}
+        {/* Card Actions - Accept Patient exclusively for Online App Bookings */}
         {isOnline ? (
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2">
             {!isCheckedIn && !isConsulting && !isCompleted ? (
               <button
                 onClick={async () => {
@@ -600,14 +652,25 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 className="w-full sm:w-auto px-4 py-2 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 title="Check In Patient"
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Check-in</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-200 stroke-[2.5]" />
+                <span>Accept Patient</span>
               </button>
             ) : isCheckedIn ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#0B5A54] bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 shadow-2xs">
-                <Check className="w-3.5 h-3.5 text-[#0B5A54]" />
-                <span>Checked In</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#0B5A54] bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 shadow-2xs">
+                  <Check className="w-3.5 h-3.5 text-[#0B5A54]" />
+                  <span>Accepted & In Bookings</span>
+                </span>
+                {onNavigateTab && (
+                  <button
+                    onClick={() => onNavigateTab('bookings')}
+                    className="text-[11px] font-extrabold text-[#0B5A54] hover:text-[#084540] hover:underline underline-offset-2 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>View in Bookings</span>
+                    <span>→</span>
+                  </button>
+                )}
+              </div>
             ) : isConsulting ? (
               <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
                 In Session
@@ -1212,9 +1275,21 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 </div>
               </div>
 
-              <span className="px-3 py-1 bg-white text-purple-950 font-mono font-black text-xs rounded-xl border border-purple-200 shadow-2xs shrink-0">
-                {onlineBookedPatients.length} Active
-              </span>
+              <div className="flex items-center gap-2">
+                {onlineBookedPatients.filter((t) => t.status !== 'Checked In' && t.status !== 'In Consultation' && t.status !== 'Completed').length > 0 && (
+                  <button
+                    onClick={handleAcceptAllOnlinePatients}
+                    className="px-3 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95"
+                    title="Accept all pending online appointments and move to Patient Bookings"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-200" />
+                    <span>Accept All Pending</span>
+                  </button>
+                )}
+                <span className="px-3 py-1 bg-white text-purple-950 font-mono font-black text-xs rounded-xl border border-purple-200 shadow-2xs shrink-0">
+                  {onlineBookedPatients.length} Active
+                </span>
+              </div>
             </div>
 
             {/* List of Online Patients */}

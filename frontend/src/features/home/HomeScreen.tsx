@@ -23,7 +23,6 @@ import {
 import { TopBar } from '../../components/ui/TopBar';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Avatar } from '../../components/ui/Avatar';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { requestNativeLocation } from '../../lib/locationService';
 import { usePolling } from '../../lib/usePolling';
 
@@ -50,18 +49,25 @@ export const HomeScreen: React.FC = () => {
   // Active appointments list (fallback to activeAppointment or empty if none)
   const activeAppointments = useMemo(() => {
     if (appointments && appointments.length > 0) {
-      const activeList = appointments.filter(
-        (a) => a.status === 'Scheduled' || a.status === 'Confirmed' || a.status === 'In-Progress' || a.status === 'Upcoming'
-      );
+      const activeList = appointments.filter((a) => {
+        const s = (a.status || '').trim().toLowerCase();
+        return s !== 'completed' && s !== 'cancelled' && s !== 'rejected' && s !== 'archived';
+      });
       if (activeList.length > 0) return activeList;
     }
-    return activeAppointment ? [activeAppointment] : [];
+    if (activeAppointment) {
+      const s = (activeAppointment.status || '').trim().toLowerCase();
+      if (s !== 'completed' && s !== 'cancelled' && s !== 'rejected' && s !== 'archived') {
+        return [activeAppointment];
+      }
+    }
+    return [];
   }, [appointments, activeAppointment]);
 
   const [selectedModalAppointment, setSelectedModalAppointment] = useState<Appointment | null>(null);
 
-  // Automatic background polling for Patient appointments & queue updates
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  // Automatic background polling for Patient appointments & queue updates (3500ms)
+  usePolling(
     async () => {
       if (user?.id) {
         await Promise.all([
@@ -71,10 +77,25 @@ export const HomeScreen: React.FC = () => {
       }
     },
     {
-      interval: 8000,
+      interval: 3500,
       enabled: !!user?.id,
     }
   );
+
+  // Immediate sync on tab focus or visibility change
+  useEffect(() => {
+    if (!user?.id) return;
+    const handleSync = () => {
+      syncAppointments(user.id);
+      syncPrescriptions(user.id);
+    };
+    window.addEventListener('focus', handleSync);
+    document.addEventListener('visibilitychange', handleSync);
+    return () => {
+      window.removeEventListener('focus', handleSync);
+      document.removeEventListener('visibilitychange', handleSync);
+    };
+  }, [user?.id, syncAppointments, syncPrescriptions]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
@@ -227,11 +248,11 @@ export const HomeScreen: React.FC = () => {
                 {t('home.nextDoctorVisit', 'NEXT DOCTOR VISIT')}
               </h3>
               <span className="text-[10px] font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full border border-[#14B8A6]/20 shadow-2xs">
-                {activeAppointment ? t('home.scheduledBadge', 'SCHEDULED') : t('home.routineCareBadge', 'ROUTINE CARE')}
+                {activeAppointments[0] ? t('home.scheduledBadge', 'SCHEDULED') : t('home.routineCareBadge', 'ROUTINE CARE')}
               </span>
             </div>
 
-            {activeAppointment ? (
+            {activeAppointments[0] ? (
               <div
                 onClick={() => navigate('/history')}
                 className="bg-gradient-to-br from-white via-white to-[#E3F3F1]/40 rounded-3xl p-4 sm:p-5 border border-[#14B8A6]/30 shadow-2xs hover:shadow-lg transition-all duration-300 cursor-pointer group space-y-3.5 relative overflow-hidden"
@@ -239,19 +260,19 @@ export const HomeScreen: React.FC = () => {
                 <div className="flex items-start justify-between gap-3 relative z-10">
                   <div className="flex items-center gap-3.5 min-w-0">
                     <Avatar
-                      src={activeAppointment.doctorPhoto}
-                      alt={activeAppointment.doctorName}
+                      src={activeAppointments[0].doctorPhoto}
+                      alt={activeAppointments[0].doctorName}
                       size="lg"
                       className="ring-4 ring-[#E3F3F1] shadow-md group-hover:scale-105 transition-transform"
                     />
                     <div className="min-w-0 space-y-0.5">
                       <h4 className="text-sm sm:text-base font-black text-[#111827] group-hover:text-[#0B5A54] transition-colors truncate tracking-tight">
-                        {activeAppointment.doctorName}
+                        {activeAppointments[0].doctorName}
                       </h4>
-                      <p className="text-xs text-[#0B5A54] font-extrabold">{activeAppointment.doctorSpecialty}</p>
+                      <p className="text-xs text-[#0B5A54] font-extrabold">{activeAppointments[0].doctorSpecialty}</p>
                       <p className="text-[10.5px] text-slate-500 font-semibold truncate flex items-center gap-1">
                         <Building2 className="w-3 h-3 text-[#14B8A6] shrink-0" />
-                        <span>{activeAppointment.hospitalName}</span>
+                        <span>{activeAppointments[0].hospitalName}</span>
                       </p>
                     </div>
                   </div>
@@ -264,7 +285,7 @@ export const HomeScreen: React.FC = () => {
                 <div className="pt-3 border-t border-slate-100/90 flex items-center justify-between gap-2 relative z-10">
                   <span className="bg-white text-[#111827] border border-slate-200/90 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-2xs">
                     <CalendarIcon className="w-3.5 h-3.5 text-[#0B5A54]" />
-                    <span>{activeAppointment.date} • {activeAppointment.timeSlot}</span>
+                    <span>{activeAppointments[0].date} • {activeAppointments[0].timeSlot}</span>
                   </span>
 
                   <span className="bg-[#E3F3F1] text-[#0B5A54] text-[10.5px] font-extrabold px-3 py-1.5 rounded-xl border border-[#14B8A6]/20 flex items-center gap-1 shadow-2xs group-hover:bg-[#0B5A54] group-hover:text-white transition-colors">
@@ -374,13 +395,6 @@ export const HomeScreen: React.FC = () => {
                   <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                     OPD LIVE CONSULTATION TIMELINE
                   </span>
-                  <LiveIndicator
-                    lastUpdated={lastUpdated}
-                    isPolling={isPolling}
-                    variant="badge"
-                    label="Live Sync"
-                    onRefresh={refetch}
-                  />
                 </div>
 
                 <div className="relative pl-1 space-y-2.5">

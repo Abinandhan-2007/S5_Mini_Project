@@ -48,6 +48,10 @@ export interface Doctor {
   about?: string;
   isAvailable?: boolean;
   is_available?: boolean;
+  availabilityReason?: string;
+  availability_reason?: string;
+  unavailableUntil?: string;
+  unavailable_until?: string;
   availableDays?: string[];
   available_days?: string[];
   slotCapacities?: any[];

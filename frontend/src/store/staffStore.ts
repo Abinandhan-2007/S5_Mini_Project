@@ -4,6 +4,7 @@ import type {
   Staff,
   AdminProfile,
   ReceptionistRecord,
+  NurseRecord,
   HospitalSettings,
   HospitalBranch,
   DepartmentRecord,
@@ -179,6 +180,7 @@ export interface StaffState {
   adminProfile: AdminProfile;
   hospitalSettings: HospitalSettings;
   receptionists: ReceptionistRecord[];
+  nurses: NurseRecord[];
   hospitals: HospitalBranch[];
   departments: DepartmentRecord[];
   announcements: AnnouncementRecord[];
@@ -210,12 +212,19 @@ export interface StaffState {
   fetchReceptionistProfile: () => Promise<void>;
   updateReceptionistProfile: (profile: Partial<ReceptionistProfile>) => Promise<void>;
 
-  // Admin Actions
+  // Admin Receptionist Actions
   fetchReceptionists: () => Promise<void>;
   createReceptionist: (recData: Partial<ReceptionistRecord>) => Promise<void>;
   updateReceptionist: (id: string, updates: Partial<ReceptionistRecord>) => Promise<void>;
   deleteReceptionist: (id: string) => Promise<void>;
   toggleReceptionistStatus: (id: string) => Promise<void>;
+
+  // Admin Nurse Actions
+  fetchNurses: () => Promise<void>;
+  createNurse: (nurseData: Partial<NurseRecord>) => Promise<NurseRecord | null>;
+  updateNurse: (id: string, updates: Partial<NurseRecord>) => Promise<void>;
+  deleteNurse: (id: string) => Promise<void>;
+  toggleNurseStatus: (id: string) => Promise<void>;
   updateHospitalSettings: (settings: Partial<HospitalSettings>) => Promise<void>;
   updateAdminProfile: (profile: Partial<AdminProfile>) => Promise<void>;
   globalSlotOverride: (doctorId: string, slotId: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
@@ -258,7 +267,9 @@ export interface StaffState {
     bloodGroup?: string;
     address?: string;
     healthIssue?: string;
-  }) => Promise<void>;
+    hospitalId?: string;
+    hospitalName?: string;
+  }) => Promise<TokenQueueItem | null>;
 }
 
 export const useStaffStore = create<StaffState>((set, get) => ({
@@ -267,6 +278,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   adminProfile: getInitialAdminProfile(),
   hospitalSettings: getInitialHospitalSettings(),
   receptionists: DEFAULT_RECEPTIONISTS,
+  nurses: [],
   hospitals: DEFAULT_HOSPITALS,
   departments: DEFAULT_DEPARTMENTS,
   announcements: DEFAULT_ANNOUNCEMENTS,
@@ -384,23 +396,28 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   toggleDoctorAvailability: async (doctorId: string, isAvailable?: boolean, reason?: string, unavailableUntil?: string) => {
+    const currentDoc = get().doctors.find(d => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId);
+    const nextAvail = typeof isAvailable === 'boolean' ? isAvailable : (currentDoc ? !currentDoc.isAvailable : true);
+    const finalReason = nextAvail ? '' : (reason !== undefined ? reason : (currentDoc?.availabilityReason || 'Temporarily Away'));
+    const finalUntil = nextAvail ? '' : (unavailableUntil !== undefined ? unavailableUntil : (currentDoc?.unavailableUntil || ''));
+
     set(state => ({
       doctors: state.doctors.map(doc => {
-        if (doc.id !== doctorId) return doc;
-        const nextAvail = typeof isAvailable === 'boolean' ? isAvailable : !doc.isAvailable;
+        if (doc.id !== doctorId && doc.staffCode !== doctorId && doc.staff_code !== doctorId) return doc;
         return {
           ...doc,
           isAvailable: nextAvail,
-          availabilityReason: nextAvail ? '' : (reason !== undefined ? reason : (doc.availabilityReason || 'Temporarily Away')),
-          unavailableUntil: nextAvail ? '' : (unavailableUntil !== undefined ? unavailableUntil : (doc.unavailableUntil || '')),
+          is_available: nextAvail,
+          availabilityReason: finalReason,
+          availability_reason: finalReason,
+          unavailableUntil: finalUntil,
+          unavailable_until: finalUntil,
         };
       })
     }));
 
-    const doc = get().doctors.find(d => d.id === doctorId);
-    if (doc) {
-      await receptionistService.toggleDoctorAvailability(doctorId, doc.isAvailable);
-    }
+    await receptionistService.toggleDoctorAvailability(doctorId, nextAvail, finalReason, finalUntil);
+    await get().fetchDoctors(true);
   },
 
   updateDoctorSlotCapacity: async (doctorId: string, timeSlot: string, availableSeats: number) => {
@@ -515,7 +532,16 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     try {
       const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
       const fetchedTokens = await receptionistService.getTokenQueue(doctorId, hospId);
-      set({ tokens: fetchedTokens || [], isLoading: false });
+      if (fetchedTokens) {
+        // Merge fetched tokens with any pending local walk-ins to avoid wiping optimistic records
+        const fetchedIds = new Set(fetchedTokens.map((t) => t.id));
+        const localWalkIns = get().tokens.filter(
+          (t) => t.id.startsWith('tok-') && !fetchedIds.has(t.id) && (t.type || '').toLowerCase().includes('walk-in')
+        );
+        set({ tokens: [...localWalkIns, ...fetchedTokens], isLoading: false });
+      } else {
+        if (!silent) set({ isLoading: false });
+      }
     } catch {
       if (!silent) set({ isLoading: false });
     }
@@ -626,15 +652,20 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       ),
     }));
 
-    await receptionistService.updateTokenStatus(tokenId, status);
+    const effectiveCheckInTime = consultationData?.checkInTime || (status === 'Checked In' ? nowTimeStr : undefined);
+    await receptionistService.updateTokenStatus(tokenId, status, effectiveCheckInTime);
   },
 
   bookWalkInAppointment: async (payload) => {
+    const todayIso = new Date().toISOString().split('T')[0];
+    const targetDate = payload.date || todayIso;
     const ticketNumber = `#CP-${Math.floor(1000 + Math.random() * 9000)}`;
-    const tokenNumber = `#TOK-00${get().tokens.length + 1}`;
+    const tokenNumber = `#TOK-${String(get().tokens.length + 1).padStart(3, '0')}`;
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const currentHospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id || 'hosp-1';
+    const currentHospName = get().hospitalSettings?.name || 'CarePulse Medical Center';
 
-    const newToken: TokenQueueItem = {
+    const tempToken: TokenQueueItem = {
       id: `tok-${Date.now()}`,
       tokenNumber,
       patientName: payload.patientName,
@@ -648,25 +679,28 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       arrivalTime: nowStr,
       issueTime: nowStr,
       type: 'Walk-In',
-      date: payload.date || '13 Aug 2026',
-      age: payload.age,
-      bloodGroup: payload.bloodGroup,
-      address: payload.address,
-      healthIssue: payload.healthIssue,
+      date: targetDate,
+      age: payload.age || 30,
+      bloodGroup: payload.bloodGroup || 'O+',
+      address: payload.address || '',
+      healthIssue: payload.healthIssue || 'General Consultation',
+      hospitalId: payload.hospitalId || currentHospId,
+      hospital_id: payload.hospitalId || currentHospId,
     };
 
-    set(state => ({
-      tokens: [newToken, ...state.tokens],
-      doctors: state.doctors.map(doc => {
+    set((state) => ({
+      tokens: [tempToken, ...state.tokens],
+      doctors: state.doctors.map((doc) => {
         if (doc.id !== payload.doctorId) return doc;
         return {
           ...doc,
-          slotCapacities: doc.slotCapacities.map(slot => {
+          slotCapacities: (doc.slotCapacities || []).map((slot) => {
             if (slot.timeSlot !== payload.timeSlot) return slot;
-            const offlineBooked = slot.offlineBookedSeats + 1;
-            const offlineAvail = Math.max(0, slot.offlineMaxSeats - offlineBooked);
-            const totalBooked = slot.onlineBookedSeats + offlineBooked;
-            const totalAvail = slot.onlineAvailableSeats + offlineAvail;
+            const offlineBooked = (slot.offlineBookedSeats || 0) + 1;
+            const offlineMax = slot.offlineMaxSeats || 3;
+            const offlineAvail = Math.max(0, offlineMax - offlineBooked);
+            const totalBooked = (slot.onlineBookedSeats || 0) + offlineBooked;
+            const totalAvail = (slot.onlineAvailableSeats || 0) + offlineAvail;
 
             return {
               ...slot,
@@ -675,12 +709,41 @@ export const useStaffStore = create<StaffState>((set, get) => ({
               bookedSeats: totalBooked,
               availableSeats: totalAvail,
             };
-          })
+          }),
         };
-      })
+      }),
     }));
 
-    await receptionistService.bookWalkInAppointment(payload);
+    try {
+      const serverRes = await receptionistService.bookWalkInAppointment({
+        ...payload,
+        date: targetDate,
+        hospitalId: payload.hospitalId || currentHospId,
+        hospitalName: payload.hospitalName || currentHospName,
+      });
+
+      if (serverRes?.token) {
+        const finalToken: TokenQueueItem = {
+          ...tempToken,
+          ...serverRes.token,
+          id: serverRes.token.id || tempToken.id,
+          tokenNumber: serverRes.token.tokenNumber || tempToken.tokenNumber,
+          ticketNumber: serverRes.token.ticketNumber || serverRes.ticketNumber || tempToken.ticketNumber,
+          type: 'Walk-In',
+          status: 'Waiting',
+        };
+
+        set((state) => ({
+          tokens: state.tokens.map((t) => (t.id === tempToken.id ? finalToken : t)),
+        }));
+
+        return finalToken;
+      }
+    } catch (e) {
+      console.warn('Backend sync failed, using optimistic walk-in token', e);
+    }
+
+    return tempToken;
   },
 
   // Admin Actions Implementation
@@ -765,6 +828,90 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     if (!rec) return;
     const nextStatus = !rec.isActive;
     get().updateReceptionist(id, { isActive: nextStatus });
+  },
+
+  // Admin Nurse Actions Implementation
+  fetchNurses: async () => {
+    try {
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
+      const q = hospId ? `?hospital_id=${encodeURIComponent(hospId)}` : '';
+      const res = await apiGet(`/admin/nurses${q}`);
+      if (res.ok) {
+        const data = await res.json();
+        set({ nurses: Array.isArray(data) ? data : [] });
+      } else {
+        set({ nurses: [] });
+      }
+    } catch {
+      set({ nurses: [] });
+    }
+  },
+
+  createNurse: async (nurseData: Partial<NurseRecord>) => {
+    const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
+    try {
+      const res = await apiPost('/admin/nurses', {
+        name: nurseData.name || 'New Nurse',
+        email: nurseData.email || 'nurse@carepulse.com',
+        username: nurseData.username || undefined,
+        password: nurseData.password || undefined,
+        phone: nurseData.phone || '+91 98765 00000',
+        department: nurseData.department || 'Triage & Vitals',
+        shift: nurseData.shift || 'Morning',
+        avatarUrl: nurseData.avatarUrl || '',
+        hospital_id: hospId,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const created = data.nurse;
+        if (created) {
+          set((state) => ({
+            nurses: [created, ...state.nurses.filter((n) => n.id !== created.id)],
+          }));
+          return created;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend nurse create note:', e);
+    }
+    get().fetchNurses();
+    return null;
+  },
+
+  updateNurse: async (id: string, updates: Partial<NurseRecord>) => {
+    set((state) => ({
+      nurses: state.nurses.map((n) =>
+        n.id === id ? { ...n, ...updates } : n
+      ),
+    }));
+    try {
+      await apiFetch(`/admin/nurses/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    } catch (e) {
+      console.warn('Backend nurse update note:', e);
+    }
+  },
+
+  deleteNurse: async (id: string) => {
+    set((state) => ({
+      nurses: state.nurses.filter((n) => n.id !== id),
+    }));
+    try {
+      await apiFetch(`/admin/nurses/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Backend nurse delete note:', e);
+    }
+  },
+
+  toggleNurseStatus: async (id: string) => {
+    const nurse = get().nurses.find((n) => n.id === id);
+    if (!nurse) return;
+    const nextStatus = !nurse.isActive;
+    get().updateNurse(id, { isActive: nextStatus });
   },
 
   updateHospitalSettings: async (settings: Partial<HospitalSettings>) => {

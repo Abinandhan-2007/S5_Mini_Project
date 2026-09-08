@@ -407,10 +407,13 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
   appointments: [],
   activeAppointment: null,
   addAppointment: (appointment) => {
-    set((state) => ({
-      appointments: [appointment, ...state.appointments],
-      activeAppointment: appointment,
-    }));
+    set((state) => {
+      const filtered = state.appointments.filter((a) => a.id !== appointment.id);
+      return {
+        appointments: [appointment, ...filtered],
+        activeAppointment: appointment,
+      };
+    });
   },
   updateAppointment: (id, fields) => {
     set((state) => {
@@ -466,10 +469,18 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       if (res && res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const upcoming = data.find((a: any) => a.status === 'Upcoming');
+          const currentAppointments = get().appointments || [];
+          const fetchedIds = new Set(data.map((a: any) => String(a.id)));
+          const localOnly = currentAppointments.filter((a) => !fetchedIds.has(String(a.id)));
+          const combined = [...data, ...localOnly];
+
+          const active = combined.find((a: any) => {
+            const s = (a.status || '').toLowerCase();
+            return s !== 'completed' && s !== 'cancelled' && s !== 'rejected' && s !== 'archived';
+          });
           set({
-            appointments: data,
-            activeAppointment: upcoming || data[0] || null,
+            appointments: combined,
+            activeAppointment: active || null,
           });
         }
       }

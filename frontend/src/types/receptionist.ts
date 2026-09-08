@@ -36,8 +36,11 @@ export interface DoctorRecord {
   roomNumber: string;
   about?: string;
   isAvailable: boolean; // Available or Not Available toggle
+  is_available?: boolean;
   availabilityReason?: string; // Reason when doctor is unavailable / on break
+  availability_reason?: string;
   unavailableUntil?: string; // Estimated return time / duration
+  unavailable_until?: string;
   availableDays: string[];
   slotCapacities: TimeSlotCapacity[];
 }
@@ -76,6 +79,10 @@ export interface TokenQueueItem {
   checkedInAt?: string;
   effectiveQueuePosition?: string;
   effectiveQueueTime?: string;
+  hospitalId?: string;
+  hospital_id?: string;
+  hospitalName?: string;
+  hospital_name?: string;
 }
 
 
