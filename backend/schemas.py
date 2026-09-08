@@ -154,6 +154,10 @@ class ConsultationCreate(BaseModel):
     date: Optional[str] = None
     soapData: Dict[str, Any]
     soapEmbedding: Optional[List[float]] = None
+    # Exact appointment primary key being closed — REQUIRED for appointment isolation.
+    # Without this, completion logic falls back to patient_id+doctor_id match which
+    # incorrectly marks ALL appointments for the same patient+doctor pair as Completed.
+    appointmentId: Optional[str] = None
 
 class ConsultationResponse(BaseModel):
     id: str
@@ -195,6 +199,11 @@ class SlotAddRequest(BaseModel):
     timeSlot: str
     maxSeats: Optional[int] = 6
     isAvailable: Optional[bool] = True
+
+class StandardSlotsRequest(BaseModel):
+    maxSeats: Optional[int] = 6
+    clearExisting: Optional[bool] = False
+    slots: Optional[List[str]] = None
 
 class DoctorCreateRequest(BaseModel):
     name: str

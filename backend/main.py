@@ -1645,7 +1645,8 @@ def create_consultation(data: ConsultationCreate, authorization: Optional[str] =
                     doctor_name=data.doctorName,
                     hospital_id=doc_hospital_id,
                     prescriptions=meds_list,
-                    pg_conn=conn
+                    pg_conn=conn,
+                    appointment_id=data.appointmentId  # primary-key isolation
                 )
                 conn.commit()
 
@@ -1679,7 +1680,8 @@ def create_consultation(data: ConsultationCreate, authorization: Optional[str] =
             doctor_name=data.doctorName,
             hospital_id=doc_hospital_id,
             prescriptions=meds_list,
-            pg_conn=None
+            pg_conn=None,
+            appointment_id=data.appointmentId  # primary-key isolation
         )
 
         return {

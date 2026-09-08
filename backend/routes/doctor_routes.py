@@ -261,11 +261,17 @@ def save_prescriptions_and_complete_appt(
     doctor_name: str,
     hospital_id: str,
     prescriptions: List[Any],
-    pg_conn=None
+    pg_conn=None,
+    appointment_id: Optional[str] = None  # REQUIRED for per-slot isolation
 ):
     """
     Persists structured prescriptions into PostgreSQL and database.json,
-    and updates matching appointments to 'Completed'.
+    and updates the SPECIFIC appointment to 'Completed'.
+
+    CRITICAL: When appointment_id is supplied (strongly preferred), the UPDATE
+    filters strictly by the primary key so that only the ONE visited appointment
+    slot is closed.  Falling back to patient_id+doctor_id would incorrectly
+    complete ALL future/past appointments for the same patient+doctor pair.
     """
     if not prescriptions:
         prescriptions = []
@@ -304,14 +310,33 @@ def save_prescriptions_and_complete_appt(
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Active', NOW())
                     """, (rx_id, patient_id, drug_name, dosage, freq, meal_timing, prescriber, icon_type))
 
-                # Mark appointment completed
-                cur.execute("""
-                    UPDATE appointments
-                    SET status = 'Completed'
-                    WHERE patient_id::text = %s
-                      AND (doctor_id = %s OR doctor_name ILIKE %s)
-                      AND status != 'Completed'
-                """, (patient_id, doctor_id, f"%{doctor_name}%"))
+                # Mark ONLY the specific appointment slot as Completed.
+                # When appointment_id is provided we filter by primary key exclusively.
+                # Fallback (no appointment_id) adds a date guard to limit blast radius.
+                if appointment_id:
+                    cur.execute("""
+                        UPDATE appointments
+                        SET status = 'Completed'
+                        WHERE id::text = %s
+                          AND status != 'Completed'
+                    """, (appointment_id,))
+                else:
+                    # Fallback: restrict to the CURRENT date to avoid completing
+                    # appointments on other days for the same patient+doctor pair.
+                    logger.warning(
+                        "save_prescriptions_and_complete_appt called WITHOUT appointment_id "
+                        "for patient=%s doctor=%s — falling back to date-bounded match. "
+                        "Pass appointmentId from the frontend to guarantee per-slot isolation.",
+                        patient_id, doctor_id
+                    )
+                    cur.execute("""
+                        UPDATE appointments
+                        SET status = 'Completed'
+                        WHERE patient_id::text = %s
+                          AND (doctor_id = %s OR doctor_name ILIKE %s)
+                          AND date = CURRENT_DATE
+                          AND status != 'Completed'
+                    """, (patient_id, doctor_id, f"%{doctor_name}%"))
 
         if pg_conn:
             _do_pg(pg_conn)
@@ -372,13 +397,24 @@ def save_prescriptions_and_complete_appt(
                 "created_at": now_iso
             })
 
-        # Update matching appointments in database.json
+        # Update ONLY the specific appointment slot in database.json.
+        today_str = datetime.now().strftime("%Y-%m-%d")
         for app in db.get("appointments", []):
+            a_id = str(app.get("id") or "")
             a_pid = str(app.get("patient_id") or app.get("patientId") or "")
             a_doc_id = str(app.get("doctor_id") or "")
             a_doc_name = str(app.get("doctor_name") or "")
-            if a_pid == patient_id and (a_doc_id == doctor_id or doctor_name.lower() in a_doc_name.lower()):
-                app["status"] = "Completed"
+            a_date = str(app.get("date") or "")
+            if appointment_id:
+                # Strict primary-key match: only this exact slot
+                if a_id == appointment_id:
+                    app["status"] = "Completed"
+            else:
+                # Fallback: restrict to today to reduce blast radius
+                if (a_pid == patient_id
+                        and (a_doc_id == doctor_id or doctor_name.lower() in a_doc_name.lower())
+                        and a_date == today_str):
+                    app["status"] = "Completed"
 
         write_json_db(db)
     except Exception as e:
@@ -489,7 +525,8 @@ def create_doctor_consultation(
                     doctor_name=data.doctorName,
                     hospital_id=derived_hospital_id,
                     prescriptions=meds_list,
-                    pg_conn=conn
+                    pg_conn=conn,
+                    appointment_id=data.appointmentId  # primary-key isolation
                 )
                 conn.commit()
 
@@ -523,7 +560,8 @@ def create_doctor_consultation(
             doctor_name=data.doctorName,
             hospital_id=derived_hospital_id,
             prescriptions=meds_list,
-            pg_conn=None
+            pg_conn=None,
+            appointment_id=data.appointmentId  # primary-key isolation
         )
 
         return {
