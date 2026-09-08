@@ -29,6 +29,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
 }) => {
   const doctors = useStaffStore((s) => s.doctors);
   const bookWalkInAppointment = useStaffStore((s) => s.bookWalkInAppointment);
+  const addStandardSlots = useStaffStore((s) => s.addStandardSlots);
 
   // Form State
   const [patientName, setPatientName] = useState('');
@@ -41,6 +42,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingQuickSlots, setIsAddingQuickSlots] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<{
     ticketNumber: string;
     tokenNumber: string;
@@ -61,6 +63,23 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
       setTimeSlot('');
     }
   }, [selectedDoctorId, selectedDoctor]);
+
+  const handleQuickAddStandardSlots = async () => {
+    if (!selectedDoctor) return;
+    setIsAddingQuickSlots(true);
+    try {
+      const res = await addStandardSlots(selectedDoctor.id, 6);
+      if (res?.doctor?.slotCapacities && res.doctor.slotCapacities.length > 0) {
+        setTimeSlot(res.doctor.slotCapacities[0].timeSlot);
+      } else {
+        setTimeSlot('09:00 AM - 10:00 AM');
+      }
+    } catch (e) {
+      console.warn('Failed to quick add standard slots', e);
+    } finally {
+      setIsAddingQuickSlots(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -402,6 +421,24 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                         )}
                       </select>
                     </div>
+
+                    {(!selectedDoctor?.slotCapacities || selectedDoctor.slotCapacities.length === 0) && (
+                      <div className="mt-2.5 p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl flex items-center justify-between gap-2 text-left animate-in fade-in">
+                        <div className="text-[11px] text-amber-900 leading-tight">
+                          <span className="font-bold block">No consultation hours set.</span>
+                          <span className="text-amber-700 text-[10px]">Unblock booking by loading standard shifts.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleQuickAddStandardSlots}
+                          disabled={isAddingQuickSlots}
+                          className="px-2.5 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-lg text-[10.5px] shrink-0 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span>{isAddingQuickSlots ? 'Adding...' : '+ Quick Add Slots'}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   Search,
   X,
+  Sparkles,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { DoctorRecord, TimeSlotCapacity } from '../../types/receptionist';
@@ -20,20 +23,52 @@ interface DoctorManagementProps {
   onShowToast?: (msg: string) => void;
 }
 
+const STANDARD_OPD_PRESETS = [
+  '09:00 AM - 10:00 AM',
+  '10:00 AM - 11:00 AM',
+  '11:00 AM - 12:00 PM',
+  '12:00 PM - 01:00 PM',
+  '02:00 PM - 03:00 PM',
+  '03:00 PM - 04:00 PM',
+  '04:00 PM - 05:00 PM',
+];
+
+const advanceSlotHour = (currentEnd: string) => {
+  const match = currentEnd.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return { nextStart: '10:00 AM', nextEnd: '11:00 AM' };
+  let hour = parseInt(match[1], 10);
+  const min = match[2];
+  let period = match[3].toUpperCase();
+
+  const nextStart = `${String(hour).padStart(2, '0')}:${min} ${period}`;
+  let nextHour = hour + 1;
+  let nextPeriod = period;
+  if (nextHour === 12) {
+    nextPeriod = period === 'AM' ? 'PM' : 'AM';
+  } else if (nextHour > 12) {
+    nextHour = 1;
+  }
+  const nextEnd = `${String(nextHour).padStart(2, '0')}:${min} ${nextPeriod}`;
+  return { nextStart, nextEnd };
+};
+
 export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast }) => {
   const doctors = useStaffStore((s) => s.doctors);
   const updateSlotCapacity = useStaffStore((s) => s.updateSlotCapacity);
   const addTimeSlot = useStaffStore((s) => s.addTimeSlot);
   const removeTimeSlot = useStaffStore((s) => s.removeTimeSlot);
+  const addStandardSlots = useStaffStore((s) => s.addStandardSlots);
 
   const [selectedDoctorForSlots, setSelectedDoctorForSlots] = useState<DoctorRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Add custom time slot state
-  const [startTime, setStartTime] = useState('08:00 AM');
-  const [endTime, setEndTime] = useState('09:00 AM');
+  const [startTime, setStartTime] = useState('09:00 AM');
+  const [endTime, setEndTime] = useState('10:00 AM');
   const [newSlotMaxSeats, setNewSlotMaxSeats] = useState<number>(6);
   const [isAddingNewSlot, setIsAddingNewSlot] = useState(false);
+  const [isSavingSlot, setIsSavingSlot] = useState(false);
+  const [isGeneratingStandard, setIsGeneratingStandard] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<{
     doctorId: string;
     doctorName: string;
@@ -42,28 +77,76 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
   } | null>(null);
 
   const activeDoctorInModal =
-    doctors.find((d) => d.id === selectedDoctorForSlots?.id) || selectedDoctorForSlots;
+    doctors.find((d) => d.id === selectedDoctorForSlots?.id || (selectedDoctorForSlots?.staffCode && (d.staffCode === selectedDoctorForSlots.staffCode || d.staff_code === selectedDoctorForSlots.staffCode))) || selectedDoctorForSlots;
 
   const handleOpenSlotModal = (doctor: DoctorRecord) => {
     setSelectedDoctorForSlots(doctor);
     setIsAddingNewSlot(false);
+    setStartTime('09:00 AM');
+    setEndTime('10:00 AM');
+    setNewSlotMaxSeats(6);
   };
 
   const handleUpdateSeatLimit = async (slot: TimeSlotCapacity, delta: number) => {
     if (!activeDoctorInModal) return;
-    const updatedSeats = Math.max(slot.bookedSeats, slot.maxSeats + delta);
-    await updateSlotCapacity(activeDoctorInModal.id, slot.timeSlot, updatedSeats, slot.isAvailable);
-    onShowToast?.(`Seat capacity for ${slot.timeSlot} updated to ${updatedSeats}.`);
+    const updatedSeats = Math.max(slot.bookedSeats || 0, slot.maxSeats + delta);
+    const res = await updateSlotCapacity(activeDoctorInModal.id, slot.timeSlot, updatedSeats, slot.isAvailable);
+    if (res?.error) {
+      onShowToast?.(`Error: ${res.error}`);
+    } else {
+      onShowToast?.(`Seat capacity for ${slot.timeSlot} updated to ${updatedSeats}.`);
+    }
   };
 
   const handleAddNewSlotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeDoctorInModal) return;
 
-    const formattedSlotString = `${startTime} - ${endTime}`;
-    await addTimeSlot(activeDoctorInModal.id, formattedSlotString, newSlotMaxSeats);
-    setIsAddingNewSlot(false);
-    onShowToast?.(`New time slot ${formattedSlotString} added for Dr. ${activeDoctorInModal.name}.`);
+    const formattedSlotString = `${startTime.trim()} - ${endTime.trim()}`;
+    const existingSlots = activeDoctorInModal.slotCapacities || [];
+    const alreadyExists = existingSlots.some(
+      (s) => s.timeSlot.trim().toLowerCase() === formattedSlotString.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      onShowToast?.(`⚠️ Slot "${formattedSlotString}" is already configured for this doctor.`);
+      return;
+    }
+
+    setIsSavingSlot(true);
+    try {
+      const res = await addTimeSlot(activeDoctorInModal.id, formattedSlotString, newSlotMaxSeats);
+      if (res?.error) {
+        onShowToast?.(`Error adding slot: ${res.error}`);
+      } else {
+        onShowToast?.(`✅ Time slot "${formattedSlotString}" added for Dr. ${activeDoctorInModal.name}.`);
+        const { nextStart, nextEnd } = advanceSlotHour(endTime);
+        setStartTime(nextStart);
+        setEndTime(nextEnd);
+        setIsAddingNewSlot(false);
+      }
+    } catch (err: any) {
+      onShowToast?.(err?.message || 'Failed to add slot');
+    } finally {
+      setIsSavingSlot(false);
+    }
+  };
+
+  const handleGenerateStandardRoster = async () => {
+    if (!activeDoctorInModal) return;
+    setIsGeneratingStandard(true);
+    try {
+      const res = await addStandardSlots(activeDoctorInModal.id, 6);
+      if (res?.error) {
+        onShowToast?.(`Error loading standard slots: ${res.error}`);
+      } else {
+        onShowToast?.(`✨ Standard 7-shift OPD roster loaded for Dr. ${activeDoctorInModal.name}.`);
+      }
+    } catch (err: any) {
+      onShowToast?.(err?.message || 'Failed loading standard roster');
+    } finally {
+      setIsGeneratingStandard(false);
+    }
   };
 
   const filteredDoctors = doctors.filter(
@@ -272,17 +355,47 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
               </button>
             </div>
 
+            {/* Quick Actions & Header summary */}
+            <div className="flex items-center justify-between gap-2 pt-1 pb-1">
+              <span className="text-xs font-bold text-slate-600">
+                Consultation Shifts ({activeDoctorInModal.slotCapacities?.length || 0})
+              </span>
+              <button
+                type="button"
+                onClick={handleGenerateStandardRoster}
+                disabled={isGeneratingStandard}
+                className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200/80 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                title="Automatically populate standard OPD hours (9 AM to 5 PM)"
+              >
+                {isGeneratingStandard ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                <span>{isGeneratingStandard ? 'Configuring...' : 'Auto-Fill Standard Roster'}</span>
+              </button>
+            </div>
+
             {/* Simple Slots List */}
-            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1 no-scrollbar">
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
               {(!activeDoctorInModal.slotCapacities || activeDoctorInModal.slotCapacities.length === 0) ? (
-                <div className="py-8 px-4 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                <div className="py-7 px-4 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-3">
                   <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center mx-auto shadow-2xs">
                     <Clock className="w-5 h-5 text-[#0B5A54]" />
                   </div>
-                  <p className="text-xs font-black text-slate-800 font-heading">No Time Slots Configured</p>
-                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                    This doctor currently has no configured time slots. Click <strong className="text-slate-700 font-bold">"+ Add Time Slot"</strong> below to create custom consultation slots.
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-black text-slate-800 font-heading">No Time Slots Configured</p>
+                    <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                      Dr. {activeDoctorInModal.name} does not have consultation hours set. Auto-fill standard shifts or add custom slots.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleGenerateStandardRoster}
+                      disabled={isGeneratingStandard}
+                      className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{isGeneratingStandard ? 'Loading...' : 'Populate 7 Standard Shifts'}</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 activeDoctorInModal.slotCapacities.map((slot) => {
@@ -312,6 +425,7 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                           onClick={() => handleUpdateSeatLimit(slot, -1)}
                           disabled={maxSeats <= (slot.bookedSeats || 0)}
                           className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs disabled:opacity-30 cursor-pointer"
+                          title="Decrease seats"
                         >
                           -
                         </button>
@@ -319,6 +433,7 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                         <button
                           onClick={() => handleUpdateSeatLimit(slot, 1)}
                           className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center font-bold text-xs cursor-pointer"
+                          title="Increase seats"
                         >
                           +
                         </button>
@@ -353,8 +468,45 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
             {isAddingNewSlot ? (
               <form
                 onSubmit={handleAddNewSlotSubmit}
-                className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs animate-in slide-in-from-top-1"
+                className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs animate-in slide-in-from-top-1"
               >
+                {/* Preset Chips */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    Quick Select Preset Shift:
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {STANDARD_OPD_PRESETS.map((preset) => {
+                      const [pStart, pEnd] = preset.split(' - ');
+                      const isSelected = startTime === pStart && endTime === pEnd;
+                      const alreadyInRoster = (activeDoctorInModal.slotCapacities || []).some(
+                        (s) => s.timeSlot.trim().toLowerCase() === preset.toLowerCase()
+                      );
+
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => {
+                            setStartTime(pStart);
+                            setEndTime(pEnd);
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-[#0B5A54] text-white shadow-2xs'
+                              : alreadyInRoster
+                              ? 'bg-slate-200/80 text-slate-400 cursor-not-allowed opacity-60'
+                              : 'bg-white hover:bg-teal-50 text-slate-700 border border-slate-200 hover:border-teal-300'
+                          }`}
+                        >
+                          {alreadyInRoster && <Check className="w-2.5 h-2.5" />}
+                          <span>{preset}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Start Time</label>
@@ -362,8 +514,8 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                       type="text"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      placeholder="08:00 AM"
-                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900"
+                      placeholder="09:00 AM"
+                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#0B5A54]"
                     />
                   </div>
                   <div>
@@ -372,8 +524,8 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                       type="text"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      placeholder="09:00 AM"
-                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900"
+                      placeholder="10:00 AM"
+                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#0B5A54]"
                     />
                   </div>
                   <div>
@@ -384,10 +536,14 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                       max={30}
                       value={newSlotMaxSeats}
                       onChange={(e) => setNewSlotMaxSeats(Number(e.target.value))}
-                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900"
+                      className="w-full p-1.5 bg-white border border-slate-200 rounded-lg font-mono text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#0B5A54]"
                     />
                   </div>
                 </div>
+
+                <p className="text-[10px] text-slate-500 font-medium">
+                  50/50 Allocation: <strong className="text-slate-700">{Math.ceil(newSlotMaxSeats / 2)} App</strong> seats + <strong className="text-slate-700">{Math.floor(newSlotMaxSeats / 2)} Walk-In</strong> seats.
+                </p>
 
                 <div className="flex items-center justify-end gap-2 pt-0.5">
                   <button
@@ -399,9 +555,11 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                   </button>
                   <button
                     type="submit"
-                    className="px-3.5 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-lg text-xs cursor-pointer"
+                    disabled={isSavingSlot}
+                    className="px-3.5 py-1 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-lg text-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                   >
-                    Save Slot
+                    {isSavingSlot ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    <span>{isSavingSlot ? 'Saving...' : 'Save Slot'}</span>
                   </button>
                 </div>
               </form>

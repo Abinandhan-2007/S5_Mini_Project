@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Building2, User, Phone, Mail, MapPin, Upload, CheckCircle2, FileText, ChevronDown, ShieldCheck, Eye, EyeOff } from 'lucide-react';
-import { useStaffStore } from '../../store/staffStore';
+import { X, Building2, User, Phone, Mail, MapPin, Upload, CheckCircle2, FileText, ChevronDown, ShieldCheck, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { useStaffStore, createSplitSlot } from '../../store/staffStore';
 
 interface CreateDoctorProps {
   isOpen: boolean;
@@ -22,6 +22,20 @@ const DEFAULT_DEPARTMENTS = [
   'Urology',
   'Emergency Care',
 ];
+
+const STANDARD_SHIFTS = [
+  '09:00 AM - 10:00 AM',
+  '10:00 AM - 11:00 AM',
+  '11:00 AM - 12:00 PM',
+  '12:00 PM - 01:00 PM',
+  '02:00 PM - 03:00 PM',
+  '03:00 PM - 04:00 PM',
+  '04:00 PM - 05:00 PM',
+];
+
+const STANDARD_INITIAL_SLOTS = STANDARD_SHIFTS.map((shift, idx) =>
+  createSplitSlot(`slot-init-${idx + 1}`, shift, 6, 0, 0, true)
+);
 
 export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onSuccess }) => {
   const createDoctor = useStaffStore((s) => s.createDoctor);
@@ -45,6 +59,7 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
   const [about, setAbout] = useState('');
   const [photo, setPhoto] = useState('');
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [initStandardSlots, setInitStandardSlots] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -87,7 +102,7 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
       photo: photo || '/doctor_default.jpg',
       isAvailable: true,
       availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      slotCapacities: [],
+      slotCapacities: initStandardSlots ? STANDARD_INITIAL_SLOTS : [],
     });
 
     // Reset form fields
@@ -321,6 +336,26 @@ export const CreateDoctor: React.FC<CreateDoctorProps> = ({ isOpen, onClose, onS
             )}
           </div>
 
+
+          {/* Initialize Standard Slots Toggle Card */}
+          <div className="p-3.5 bg-teal-50/70 border border-teal-200/80 rounded-2xl flex items-start gap-3 text-left">
+            <input
+              type="checkbox"
+              id="initSlots"
+              checked={initStandardSlots}
+              onChange={(e) => setInitStandardSlots(e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-[#0B5A54] rounded border-slate-300 focus:ring-[#0B5A54] cursor-pointer shrink-0"
+            />
+            <label htmlFor="initSlots" className="text-xs text-slate-700 cursor-pointer select-none">
+              <span className="font-black text-slate-900 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>Initialize Standard OPD Roster (7 Slots)</span>
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium leading-relaxed block mt-0.5">
+                Configures standard consultation shifts (09:00 AM to 05:00 PM, 6 seats each) so this doctor is immediately active for walk-in and online bookings.
+              </span>
+            </label>
+          </div>
 
           <button
             type="submit"
