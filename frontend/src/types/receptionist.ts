@@ -72,6 +72,10 @@ export interface TokenQueueItem {
   clinicalNotes?: string;
   prescriptions?: string[];
   prescriptionDetails?: string;
+  isCheckedIn?: boolean;
+  checkedInAt?: string;
+  effectiveQueuePosition?: string;
+  effectiveQueueTime?: string;
 }
 
 

@@ -27,19 +27,28 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
 }) => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const tokens = useStaffStore((s) => s.tokens);
+  const bookings = useStaffStore((s) => s.bookings);
+  const fetchBookings = useStaffStore((s) => s.fetchBookings);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
+  const checkInAppointment = useStaffStore((s) => s.checkInAppointment);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenQueueItem | null>(null);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+
+  React.useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  const allAvailableAppointments = bookings.length > 0 ? bookings : tokens;
 
   const handlePatientQrScanned = (patientData: any) => {
     setIsQrScannerOpen(false);
     const pat = patientData.patient;
     if (!pat) return;
 
-    // 1. Try matching with active token in queue
-    const matched = tokens.find(
+    // 1. Try matching with active token in queue or scheduled appointments
+    const matched = allAvailableAppointments.find(
       (t) =>
         t.patientName.toLowerCase() === pat.fullName.toLowerCase() ||
         (pat.phone && t.patientPhone && t.patientPhone.includes(pat.phone)) ||
@@ -81,7 +90,7 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
   >([]);
 
   // Find matching scheduled tokens that are waiting
-  const matchingTokens = tokens.filter((t) => {
+  const matchingTokens = allAvailableAppointments.filter((t) => {
     if (!searchQuery.trim()) return false;
     const q = searchQuery.toLowerCase();
     return (
@@ -104,7 +113,7 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     setWeight('65');
   };
 
-  const handleCompleteCheckIn = (e: React.FormEvent) => {
+  const handleCompleteCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedToken) return;
 
@@ -123,7 +132,11 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     };
 
     setCheckedInList([newCheckedInRecord, ...checkedInList]);
-    updateTokenStatus(selectedToken.id, 'Checked In');
+    try {
+      await checkInAppointment(selectedToken.id);
+    } catch {
+      await updateTokenStatus(selectedToken.id, 'Checked In');
+    }
     onShowToast?.(
       `Patient ${selectedToken.patientName} checked in successfully! Vitals logged for ${selectedToken.doctorName}.`
     );

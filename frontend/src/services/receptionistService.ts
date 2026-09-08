@@ -130,6 +130,37 @@ export const receptionistService = {
     return [];
   },
 
+  async getBookings(hospitalId?: string, doctorId?: string): Promise<TokenQueueItem[]> {
+    try {
+      const params = new URLSearchParams();
+      if (doctorId) params.append('doctor_id', doctorId);
+      if (hospitalId) params.append('hospital_id', hospitalId);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const res = await apiFetch(`/receptionist/bookings${query}`, { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        return data.tokens || [];
+      }
+    } catch (e) {
+      console.warn('Backend server offline, returning bookings fallback', e);
+    }
+    return [];
+  },
+
+  async checkInPatient(appointmentId: string): Promise<any> {
+    try {
+      const res = await apiFetch(`/receptionist/appointments/${encodeURIComponent(appointmentId)}/check-in`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to check in patient via backend API', e);
+    }
+    return null;
+  },
+
   async callNextToken(doctorId?: string): Promise<TokenQueueItem | null> {
     try {
       const path = doctorId ? `/receptionist/tokens/call-next?doctor_id=${doctorId}` : '/receptionist/tokens/call-next';

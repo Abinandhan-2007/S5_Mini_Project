@@ -161,11 +161,14 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS hospital_id VARCHAR(100) REFER
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS hospital_name VARCHAR(255) DEFAULT 'CarePulse Central Hospital';
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_specialty VARCHAR(255) DEFAULT 'General Medicine';
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_photo TEXT DEFAULT '';
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS is_checked_in BOOLEAN DEFAULT FALSE;
 
 -- Indexes for appointments
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments (patient_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (date);
 CREATE INDEX IF NOT EXISTS idx_appointments_hospital_id ON appointments (hospital_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_is_checked_in ON appointments (is_checked_in);
 
 -- Consultations Table with JSONB
 CREATE TABLE IF NOT EXISTS consultations (

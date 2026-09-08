@@ -1,4 +1,5 @@
 # backend/routes/staff_auth.py
+import os
 import logging
 from typing import Optional, Dict, Any, Union
 from fastapi import APIRouter, HTTPException, Header, status
@@ -163,9 +164,22 @@ def staff_login(request: StaffLoginRequest):
             detail="Both email and password are required for staff login."
         )
 
-    # 1. Check PostgreSQL staff table if available
+    # 1. Staff Authentication REQUIRES live PostgreSQL in production to prevent silent mock bypass
     found_staff = None
     staff_table_is_empty = False
+    allow_staff_mock = os.environ.get("ALLOW_STAFF_MOCK_LOGIN", "false").strip().lower() in ("true", "1", "yes")
+
+    # If PostgreSQL connection is currently down, attempt reconnection probe
+    if not database.use_pg:
+        database.check_pg_health_and_sync()
+
+    if not database.use_pg and not allow_staff_mock:
+        logger.error(f"PostgreSQL is offline during staff authentication for {raw_email}. Rejecting to prevent silent credential bypass.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable: PostgreSQL database is offline. Staff login requires a live, secure database connection."
+        )
+
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
@@ -202,8 +216,9 @@ def staff_login(request: StaffLoginRequest):
                 detail="Authentication service temporarily unavailable due to a database error. Please retry shortly."
             )
 
-    # 2. Check JSON database staff collection only when ALLOW_JSON_FALLBACK is enabled or not use_pg
-    if not found_staff and (not database.use_pg or getattr(database, "ALLOW_JSON_FALLBACK", False)):
+    # 2. Mock JSON fallback is ONLY allowed if ALLOW_STAFF_MOCK_LOGIN is explicitly enabled for offline testing
+    # ALLOW_JSON_FALLBACK (scoped to patient booking resilience) NEVER bypasses staff security.
+    if not found_staff and allow_staff_mock:
         db = read_json_db()
         staff_list = db.get("staff", [])
         if not database.use_pg:

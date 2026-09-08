@@ -215,6 +215,7 @@ export const DoctorLayout: React.FC = () => {
     if (filtered.length === 0) return [];
 
     return filtered.map((t, idx) => ({
+      ...t,
       id: t.id || `tok-${idx}`,
       tokenNumber: t.tokenNumber || `#TOK-00${idx + 1}`,
       ticketNumber: t.ticketNumber || `#CP-482${idx + 1}`,
@@ -237,6 +238,10 @@ export const DoctorLayout: React.FC = () => {
       clinicalNotes: t.clinicalNotes || '',
       prescriptions: t.prescriptions || [],
       prescriptionDetails: t.prescriptionDetails || '',
+      isCheckedIn: t.isCheckedIn !== undefined ? t.isCheckedIn : true,
+      checkedInAt: t.checkedInAt,
+      effectiveQueuePosition: t.effectiveQueuePosition,
+      effectiveQueueTime: t.effectiveQueueTime,
     }));
   }, [rawTokens, activeDoctorId, currentStaff?.id, currentStaff?.name, currentDoctor.name, currentDoctor.specialty]);
 

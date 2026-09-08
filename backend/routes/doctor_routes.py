@@ -49,6 +49,13 @@ def get_doctor_appointments(
     if not is_superadmin and not effective_hosp_id:
         return []
 
+    result: List[AppointmentResponse] = []
+    seen_ids = set()
+    seen_tickets = set()
+
+    # Auto-probe PostgreSQL health and sync pending offline bookings
+    database.check_pg_health_and_sync()
+
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
@@ -73,11 +80,14 @@ def get_doctor_appointments(
 
                     cur.execute(query, tuple(params))
                     rows = cur.fetchall()
-                    result = []
                     for r in rows:
+                        r_id = str(r["id"])
+                        r_ticket = r.get("ticket_number") or "#CP-1001"
+                        seen_ids.add(r_id)
+                        seen_tickets.add(r_ticket)
                         result.append(AppointmentResponse(
-                            id=str(r["id"]),
-                            ticketNumber=r.get("ticket_number") or "#CP-1001",
+                            id=r_id,
+                            ticketNumber=r_ticket,
                             patientId=str(r.get("patient_id") or ""),
                             patientName=r.get("p_name") or "",
                             doctorId=r["doctor_id"],
@@ -92,40 +102,54 @@ def get_doctor_appointments(
                             type=r.get("type") or "In-Person",
                             status=r.get("status") or "Upcoming"
                         ))
-                    return result
         except Exception as e:
             logger.warning(f"DB doctor appointments query note: {e}")
+            database.use_pg = False
 
-    db = read_json_db()
-    apps = db.get("appointments", [])
-    doc_hosp_map = {d.get("id"): (d.get("hospital_id") or d.get("hospitalId")) for d in db.get("doctors", [])}
+    # Also inspect JSON DB and seamlessly merge offline or fallback appointments
+    try:
+        db = read_json_db()
+        apps = db.get("appointments", [])
+        doc_hosp_map = {d.get("id"): (d.get("hospital_id") or d.get("hospitalId")) for d in db.get("doctors", [])}
 
-    result = []
-    for a in apps:
-        app_hosp = a.get("hospital_id") or a.get("hospitalId") or doc_hosp_map.get(a.get("doctor_id"))
-        if effective_hosp_id and app_hosp != effective_hosp_id:
-            continue
-        if not is_superadmin and not app_hosp:
-            continue
-        if target_doc_id and a.get("doctor_id") != target_doc_id:
-            continue
-        result.append(AppointmentResponse(
-            id=a["id"],
-            ticketNumber=a.get("ticket_number", "#CP-1001"),
-            patientId=a.get("patient_id", ""),
-            patientName=a.get("patient_name", ""),
-            doctorId=a["doctor_id"],
-            doctorName=a["doctor_name"],
-            doctorSpecialty=a.get("doctor_specialty", "General Medicine"),
-            doctorPhoto=a.get("doctor_photo", ""),
-            hospitalId=app_hosp or "hosp-1",
-            hospital_id=app_hosp or "hosp-1",
-            hospitalName=a.get("hospital_name", "CarePulse Central Hospital"),
-            date=str(a["date"]),
-            timeSlot=a["time_slot"],
-            type=a.get("type", "In-Person"),
-            status=a.get("status", "Upcoming")
-        ))
+        for a in apps:
+            a_id = str(a.get("id"))
+            a_ticket = a.get("ticket_number") or a.get("ticketNumber", "")
+            if a_id in seen_ids or (a_ticket and a_ticket in seen_tickets):
+                continue
+
+            app_hosp = a.get("hospital_id") or a.get("hospitalId") or doc_hosp_map.get(a.get("doctor_id"))
+            if effective_hosp_id and app_hosp != effective_hosp_id:
+                continue
+            if not is_superadmin and not app_hosp:
+                continue
+            if target_doc_id and a.get("doctor_id") != target_doc_id:
+                continue
+
+            seen_ids.add(a_id)
+            if a_ticket:
+                seen_tickets.add(a_ticket)
+
+            result.append(AppointmentResponse(
+                id=a_id,
+                ticketNumber=a_ticket or "#CP-1001",
+                patientId=a.get("patient_id", ""),
+                patientName=a.get("patient_name", ""),
+                doctorId=a["doctor_id"],
+                doctorName=a["doctor_name"],
+                doctorSpecialty=a.get("doctor_specialty", "General Medicine"),
+                doctorPhoto=a.get("doctor_photo", ""),
+                hospitalId=app_hosp or "hosp-1",
+                hospital_id=app_hosp or "hosp-1",
+                hospitalName=a.get("hospital_name", "CarePulse Central Hospital"),
+                date=str(a["date"]),
+                timeSlot=a["time_slot"],
+                type=a.get("type", "In-Person"),
+                status=a.get("status", "Upcoming")
+            ))
+    except Exception as e:
+        logger.warning(f"Error reading doctor appointments from JSON DB: {e}")
+
     return result
 
 
@@ -231,6 +255,136 @@ def get_doctor_consultations(
     return result
 
 
+def save_prescriptions_and_complete_appt(
+    patient_id: str,
+    doctor_id: str,
+    doctor_name: str,
+    hospital_id: str,
+    prescriptions: List[Any],
+    pg_conn=None
+):
+    """
+    Persists structured prescriptions into PostgreSQL and database.json,
+    and updates matching appointments to 'Completed'.
+    """
+    if not prescriptions:
+        prescriptions = []
+
+    # 1. PostgreSQL persistence
+    if database.use_pg:
+        def _do_pg(conn):
+            with conn.cursor() as cur:
+                for med in prescriptions:
+                    if not isinstance(med, dict):
+                        continue
+                    drug_name = med.get("drugName") or med.get("name") or med.get("medicine") or ""
+                    if not drug_name:
+                        continue
+                    dosage = med.get("dosage") or med.get("dose") or "1 Tab"
+                    freq = med.get("frequency") or "Twice daily"
+                    dur = med.get("duration") or "5 Days"
+                    inst = med.get("instructions") or med.get("timing") or "Take after meals"
+                    meal_timing = med.get("mealTiming") or inst
+                    prescriber = doctor_name or "Treating Physician"
+
+                    d_lower = drug_name.lower()
+                    icon_type = "pill"
+                    if any(k in d_lower for k in ["syrup", "suspension", "liquid"]):
+                        icon_type = "syrup"
+                    elif any(k in d_lower for k in ["capsule", "cap"]):
+                        icon_type = "capsule"
+                    elif any(k in d_lower for k in ["inhaler", "resp"]):
+                        icon_type = "inhaler"
+                    elif any(k in d_lower for k in ["inj", "vial"]):
+                        icon_type = "syringe"
+
+                    rx_id = str(uuid.uuid4())
+                    cur.execute("""
+                        INSERT INTO prescriptions (id, patient_id, drug_name, dosage, frequency, meal_timing, prescriber, icon_type, status, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Active', NOW())
+                    """, (rx_id, patient_id, drug_name, dosage, freq, meal_timing, prescriber, icon_type))
+
+                # Mark appointment completed
+                cur.execute("""
+                    UPDATE appointments
+                    SET status = 'Completed'
+                    WHERE patient_id::text = %s
+                      AND (doctor_id = %s OR doctor_name ILIKE %s)
+                      AND status != 'Completed'
+                """, (patient_id, doctor_id, f"%{doctor_name}%"))
+
+        if pg_conn:
+            _do_pg(pg_conn)
+        else:
+            try:
+                with get_pg_connection() as conn:
+                    _do_pg(conn)
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Error persisting prescriptions in PG: {e}")
+
+    # 2. Dual persistence to database.json
+    try:
+        db = read_json_db()
+        json_rx = db.setdefault("prescriptions", [])
+        now_iso = datetime.now().isoformat()
+        for med in prescriptions:
+            if not isinstance(med, dict):
+                continue
+            drug_name = med.get("drugName") or med.get("name") or med.get("medicine") or ""
+            if not drug_name:
+                continue
+            dosage = med.get("dosage") or med.get("dose") or "1 Tab"
+            freq = med.get("frequency") or "Twice daily"
+            dur = med.get("duration") or "5 Days"
+            inst = med.get("instructions") or med.get("timing") or "Take after meals"
+            meal_timing = med.get("mealTiming") or inst
+            prescriber = doctor_name or "Treating Physician"
+
+            d_lower = drug_name.lower()
+            icon_type = "pill"
+            if any(k in d_lower for k in ["syrup", "suspension", "liquid"]):
+                icon_type = "syrup"
+            elif any(k in d_lower for k in ["capsule", "cap"]):
+                icon_type = "capsule"
+            elif any(k in d_lower for k in ["inhaler", "resp"]):
+                icon_type = "inhaler"
+            elif any(k in d_lower for k in ["inj", "vial"]):
+                icon_type = "syringe"
+
+            rx_id = str(uuid.uuid4())
+            json_rx.append({
+                "id": rx_id,
+                "patient_id": patient_id,
+                "patientId": patient_id,
+                "drug_name": drug_name,
+                "drugName": drug_name,
+                "dosage": dosage,
+                "frequency": freq,
+                "duration": dur,
+                "meal_timing": meal_timing,
+                "mealTiming": meal_timing,
+                "instructions": inst,
+                "prescriber": prescriber,
+                "icon_type": icon_type,
+                "iconType": icon_type,
+                "status": "Active",
+                "created_at": now_iso
+            })
+
+        # Update matching appointments in database.json
+        for app in db.get("appointments", []):
+            a_pid = str(app.get("patient_id") or app.get("patientId") or "")
+            a_doc_id = str(app.get("doctor_id") or "")
+            a_doc_name = str(app.get("doctor_name") or "")
+            if a_pid == patient_id and (a_doc_id == doctor_id or doctor_name.lower() in a_doc_name.lower()):
+                app["status"] = "Completed"
+
+        write_json_db(db)
+    except Exception as e:
+        logger.warning(f"Error dual-persisting prescriptions to JSON DB: {e}")
+
+
 @router.post("/consultations", status_code=status.HTTP_201_CREATED)
 def create_doctor_consultation(
     data: ConsultationCreate,
@@ -240,6 +394,8 @@ def create_doctor_consultation(
     Create a consultation SOAP record from the Doctor portal.
     Server-side derives hospital_id from the authenticated doctor's authoritative hospital record,
     ignoring any client-supplied hospital_id in the request payload.
+    Persists structured prescriptions into prescriptions table and database.json,
+    and updates appointment to 'Completed'.
     """
     patient_id = data.patientId or "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
     date_val = data.date or datetime.now().strftime("%Y-%m-%d")
@@ -247,7 +403,7 @@ def create_doctor_consultation(
     # Authoritative hospital derivation
     derived_hospital_id = None
 
-    if authorization:
+    if authorization and isinstance(authorization, str):
         staff_ctx = get_current_staff(authorization)
         if staff_ctx:
             if staff_ctx.get("role") == "nurse":
@@ -280,29 +436,63 @@ def create_doctor_consultation(
     if not derived_hospital_id:
         derived_hospital_id = "hosp-1"
 
+    meds_list = data.soapData.get("prescriptions", []) if isinstance(data.soapData, dict) else []
+
     if database.use_pg:
         new_id = str(uuid.uuid4())
         soap_json = json.dumps(data.soapData)
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
-                # Ensure patient exists or link to first patient
-                cur.execute("SELECT id FROM patients WHERE id::text = %s", (patient_id,))
+                # 1. Safely resolve patient_id
+                target_pid = str(patient_id).strip()
+                cur.execute("SELECT id FROM patients WHERE id::text = %s", (target_pid,))
                 row_p = cur.fetchone()
+
+                # If not found in patients, check if it's an appointment ID
                 if not row_p:
-                    cur.execute("SELECT id FROM patients LIMIT 1")
-                    first_p = cur.fetchone()
-                    if first_p:
-                        patient_id = str(first_p["id"])
-                    else:
-                        patient_id = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+                    cur.execute("SELECT patient_id FROM appointments WHERE id::text = %s", (target_pid,))
+                    app_row = cur.fetchone()
+                    if app_row and app_row.get("patient_id"):
+                        target_pid = str(app_row["patient_id"])
+                        cur.execute("SELECT id FROM patients WHERE id::text = %s", (target_pid,))
+                        row_p = cur.fetchone()
+
+                # If still not found, check JSON or create patient to satisfy FK
+                if not row_p:
+                    valid_pid = database.to_valid_uuid(target_pid)
+                    db = read_json_db()
+                    pat_obj = next((p for p in db.get("patients", []) if str(p.get("id")) == target_pid), None)
+                    p_name = pat_obj.get("full_name") or pat_obj.get("name") if pat_obj else "Patient"
+                    p_email = pat_obj.get("email") if pat_obj else f"pat_{valid_pid[:8]}@carepulse.local"
+                    p_phone = pat_obj.get("phone") if pat_obj else ""
+                    try:
+                        cur.execute("""
+                            INSERT INTO patients (id, full_name, email, phone, blood_group, auth_provider)
+                            VALUES (%s, %s, %s, %s, 'O+', 'local')
+                            ON CONFLICT DO NOTHING
+                        """, (valid_pid, p_name, p_email, p_phone))
+                        target_pid = valid_pid
+                    except Exception as e:
+                        logger.warning(f"Auto-create patient note: {e}")
 
                 cur.execute("""
                     INSERT INTO consultations (id, patient_id, doctor_id, doctor_name, hospital_id, date, soap_data)
                     VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
                     RETURNING *
-                """, (new_id, patient_id, data.doctorId, data.doctorName, derived_hospital_id, date_val, soap_json))
+                """, (new_id, target_pid, data.doctorId, data.doctorName, derived_hospital_id, date_val, soap_json))
                 row = cur.fetchone()
+
+                # Save prescriptions and complete appointment in the same transaction
+                save_prescriptions_and_complete_appt(
+                    patient_id=target_pid,
+                    doctor_id=data.doctorId,
+                    doctor_name=data.doctorName,
+                    hospital_id=derived_hospital_id,
+                    prescriptions=meds_list,
+                    pg_conn=conn
+                )
                 conn.commit()
+
                 return {
                     "id": str(row["id"]),
                     "doctor_name": row["doctor_name"],
@@ -326,6 +516,16 @@ def create_doctor_consultation(
         }
         db.setdefault("consultations", []).append(new_record)
         write_json_db(db)
+
+        save_prescriptions_and_complete_appt(
+            patient_id=patient_id,
+            doctor_id=data.doctorId,
+            doctor_name=data.doctorName,
+            hospital_id=derived_hospital_id,
+            prescriptions=meds_list,
+            pg_conn=None
+        )
+
         return {
             "id": new_record["id"],
             "doctor_name": new_record["doctor_name"],
@@ -458,3 +658,32 @@ def get_consultation_prep(
     lab_tests_list = db.get("lab_tests", [])
     result["lab_tests"] = [t for t in lab_tests_list if t.get("appointment_id") == appointment_id]
     return result
+
+
+@router.get("/queue")
+def get_doctor_live_queue(
+    doctor_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve live outpatient token queue for doctor, ordered by compute_effective_queue_position.
+    Ensures Doctor and Receptionist see the identical effective_queue_position ordering.
+    """
+    from routes.receptionist_routes import fetch_all_tokens_from_db
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    effective_hosp_id = None
+    target_doc_id = doctor_id
+    if staff_ctx:
+        role = staff_ctx.get("role")
+        if role != "superadmin":
+            effective_hosp_id = staff_ctx.get("hospital_id")
+        if role == "doctor" and staff_ctx.get("doctor_id"):
+            target_doc_id = staff_ctx["doctor_id"]
+
+    tokens = fetch_all_tokens_from_db(
+        hospital_id=effective_hosp_id,
+        doctor_id=target_doc_id,
+        checked_in_only=True
+    )
+    return {"tokens": tokens, "total": len(tokens)}
+

@@ -76,8 +76,10 @@ export const ReceptionistLayout: React.FC = () => {
   const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
   const doctors = useStaffStore((s) => s.doctors);
   const tokens = useStaffStore((s) => s.tokens);
+  const bookings = useStaffStore((s) => s.bookings);
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
+  const fetchBookings = useStaffStore((s) => s.fetchBookings);
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
@@ -104,11 +106,12 @@ export const ReceptionistLayout: React.FC = () => {
     setIsNewAppointmentOpen(true);
   };
 
-  // Automatic robust background polling for receptionist token queue & doctors
+  // Automatic robust background polling for receptionist token queue, bookings & doctors
   const { isPolling, lastUpdated, refetch } = usePolling(
     async () => {
       await Promise.all([
         fetchTokens(undefined, true),
+        fetchBookings(undefined, true),
         fetchDoctors(true),
       ]);
     },
@@ -117,6 +120,15 @@ export const ReceptionistLayout: React.FC = () => {
       enabled: !!currentStaff && currentStaff.role === 'receptionist',
     }
   );
+
+  // Initial fetch on mount to guarantee instantaneous data hydration
+  useEffect(() => {
+    if (currentStaff && currentStaff.role === 'receptionist') {
+      fetchTokens(undefined, true);
+      fetchBookings(undefined, true);
+      fetchDoctors(true);
+    }
+  }, [currentStaff, fetchTokens, fetchBookings, fetchDoctors]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -166,6 +178,10 @@ export const ReceptionistLayout: React.FC = () => {
 
   const waitingCount = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In').length;
   const activeDoctorsCount = doctors.filter((d) => d.isAvailable).length;
+  const allAppointmentsCount = bookings.length > 0 ? bookings.length : tokens.length;
+  const pendingArrivalsCount = (bookings.length > 0 ? bookings : tokens).filter(
+    (t) => t.type !== 'Walk-In' && !t.isCheckedIn && t.status !== 'Completed' && t.status !== 'Cancelled'
+  ).length;
 
   // Categorized Navigation Sections
   const navSections: NavSection[] = [
@@ -184,13 +200,15 @@ export const ReceptionistLayout: React.FC = () => {
           id: 'bookings',
           label: 'Patient Bookings',
           icon: CalendarCheck,
-          badge: tokens.length > 0 ? `${tokens.length}` : undefined,
+          badge: allAppointmentsCount > 0 ? `${allAppointmentsCount}` : undefined,
           badgeColor: 'bg-teal-50 text-[#0B5A54] border-teal-200',
         },
         {
           id: 'checkin',
           label: 'Express Check-In & Vitals',
           icon: UserCheck,
+          badge: pendingArrivalsCount > 0 ? `${pendingArrivalsCount}` : undefined,
+          badgeColor: 'bg-sky-50 text-sky-700 border-sky-200',
         },
       ],
     },

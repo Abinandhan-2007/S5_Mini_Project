@@ -93,6 +93,8 @@ export interface Prescription {
   dosage: string;
   frequency: string;
   mealTiming?: string | null;
+  instructions?: string;
+  duration?: string;
   prescriber: string;
   iconType?: 'pill' | 'syrup' | 'capsule' | 'inhaler' | 'bottle' | 'syringe';
   patientId?: string;
@@ -215,6 +217,8 @@ export interface MedicalHistoryItem {
   hospitalName: string;
   diagnosis: string;
   prescriptionDetails: string;
+  prescriptions?: any[];
+  soapData?: any;
   status: 'Completed' | 'Follow-up Required' | 'Upcoming' | 'Cancelled' | 'Scheduled' | 'Confirmed' | 'In-Progress';
   specialtyIcon?: 'heart' | 'stethoscope' | 'bandage' | 'bone' | 'eye' | 'calendar';
 }

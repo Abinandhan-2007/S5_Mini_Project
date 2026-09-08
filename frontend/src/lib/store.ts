@@ -550,6 +550,8 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             hospitalName: c.hospitalName || 'CarePulse Central Hospital',
             diagnosis: c.diagnosis || 'Clinical consultation recorded.',
             prescriptionDetails: c.prescriptionDetails || 'Prescription notes provided.',
+            prescriptions: c.prescriptions || c.soapData?.prescriptions || [],
+            soapData: c.soapData,
             status: 'Completed',
             specialtyIcon: 'stethoscope'
           }));

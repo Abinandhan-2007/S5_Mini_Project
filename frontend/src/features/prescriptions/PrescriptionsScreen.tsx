@@ -66,7 +66,55 @@ export const PrescriptionsScreen: React.FC = () => {
   const dynamicGroups: DoctorPrescriptionGroup[] = React.useMemo(() => {
     const groups: DoctorPrescriptionGroup[] = [];
 
-    // 1. Group direct prescriptions by prescriber/doctor
+    // 1. From clinical consultations with structured prescription details
+    if (history && history.length > 0) {
+      history.forEach((h, idx) => {
+        const meds: PrescribedMedicine[] = [];
+        const rawMeds = h.prescriptions || (h as any).soapData?.prescriptions || [];
+
+        if (Array.isArray(rawMeds) && rawMeds.length > 0) {
+          rawMeds.forEach((m: any, mIdx: number) => {
+            const medName = m.drugName || m.name || m.medicine;
+            if (medName) {
+              meds.push({
+                id: m.id || `med-${h.id || idx}-${mIdx}`,
+                name: medName,
+                dosage: m.dosage || '1 Tab',
+                instructions: m.instructions || m.frequency || 'Follow doctor advice',
+                duration: m.duration ? (String(m.duration).includes('Day') ? m.duration : `${m.duration} Days Course`) : 'Standard Course',
+                mealTiming: m.mealTiming || m.instructions || undefined,
+              });
+            }
+          });
+        } else if (h.prescriptionDetails && h.prescriptionDetails.length > 3 && !h.prescriptionDetails.toLowerCase().includes('continue prescribed')) {
+          const parts = h.prescriptionDetails.split(' • ');
+          parts.forEach((p, pIdx) => {
+            meds.push({
+              id: `med-${h.id || idx}-${pIdx}`,
+              name: p.trim(),
+              dosage: 'As prescribed',
+              instructions: 'Follow clinical instructions',
+              duration: 'Course completion',
+            });
+          });
+        }
+
+        if (meds.length > 0) {
+          groups.push({
+            id: `hist-grp-${h.id || idx}`,
+            doctorName: h.doctorName || 'Specialist Doctor',
+            doctorSpecialty: h.specialty || 'General Medicine',
+            doctorPhoto: h.doctorPhoto || '/doctor_default.jpg',
+            hospitalName: h.hospitalName || 'CarePulse Central Hospital',
+            datePrescribed: h.date || 'Recent',
+            status: 'Active',
+            medicines: meds,
+          });
+        }
+      });
+    }
+
+    // 2. Add or merge direct prescriptions from storePrescriptions
     if (effectivePrescriptions && effectivePrescriptions.length > 0) {
       const byDoctor: Record<string, PrescribedMedicine[]> = {};
       effectivePrescriptions.forEach((rx) => {
@@ -76,47 +124,37 @@ export const PrescriptionsScreen: React.FC = () => {
           id: rx.id,
           name: rx.drugName,
           dosage: rx.dosage || 'As directed',
-          instructions: rx.frequency || 'Follow doctor advice',
-          duration: rx.totalDays ? `${rx.totalDays} Days Course` : 'Standard Course',
+          instructions: rx.frequency || rx.instructions || 'Follow doctor advice',
+          duration: rx.duration || (rx.totalDays ? `${rx.totalDays} Days Course` : 'Standard Course'),
           mealTiming: rx.mealTiming || undefined,
         });
       });
 
       Object.entries(byDoctor).forEach(([doctorName, meds], idx) => {
-        groups.push({
-          id: `rx-grp-${idx}`,
-          doctorName,
-          doctorSpecialty: 'Specialist Physician',
-          doctorPhoto: '/doctor_default.jpg',
-          hospitalName: 'CarePulse Central Hospital',
-          datePrescribed: 'Recent',
-          status: 'Active',
-          medicines: meds,
-        });
-      });
-    }
+        const matchingGroup = groups.find(
+          (g) => g.doctorName.toLowerCase().trim() === doctorName.toLowerCase().trim()
+        );
 
-    // 2. From clinical consultations with prescription details
-    if (history && history.length > 0) {
-      history.forEach((h, idx) => {
-        if (h.prescriptionDetails && h.prescriptionDetails.length > 3) {
+        if (!matchingGroup) {
           groups.push({
-            id: `hist-grp-${h.id || idx}`,
-            doctorName: h.doctorName,
-            doctorSpecialty: h.specialty,
-            doctorPhoto: h.doctorPhoto || '/doctor_default.jpg',
-            hospitalName: h.hospitalName,
-            datePrescribed: h.date,
+            id: `rx-grp-${idx}`,
+            doctorName,
+            doctorSpecialty: 'Specialist Physician',
+            doctorPhoto: '/doctor_default.jpg',
+            hospitalName: 'CarePulse Central Hospital',
+            datePrescribed: 'Recent',
             status: 'Active',
-            medicines: [
-              {
-                id: `med-${h.id || idx}`,
-                name: h.prescriptionDetails,
-                dosage: 'As prescribed',
-                instructions: 'Follow clinical instructions',
-                duration: 'Course completion',
-              },
-            ],
+            medicines: meds,
+          });
+        } else {
+          // Merge medicines without duplicate names
+          meds.forEach((m) => {
+            const alreadyExists = matchingGroup.medicines.some(
+              (em) => em.name.toLowerCase().trim() === m.name.toLowerCase().trim()
+            );
+            if (!alreadyExists) {
+              matchingGroup.medicines.push(m);
+            }
           });
         }
       });

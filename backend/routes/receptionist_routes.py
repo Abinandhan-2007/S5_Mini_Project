@@ -1,8 +1,9 @@
 # backend/routes/receptionist_routes.py
+import re
 import uuid
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, date, time, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Header, status
 import math
@@ -818,16 +819,117 @@ def create_nurse(payload: NurseCreateRequest, authorization: Optional[str] = Hea
 
     return {"success": True, "nurse": format_receptionist_nurse(nurse_entry)}
 
+def parse_time_slot_start(time_slot: Optional[str]) -> Optional[time]:
+    """Extract start time from a slot string e.g. '10:00 AM - 11:00 AM' -> time(10, 0)."""
+    if not time_slot:
+        return None
+    m = re.search(r"(\d{1,2}):(\d{2})(?:\s*([APap][Mm]))?", str(time_slot).strip())
+    if not m:
+        return None
+    hour = int(m.group(1))
+    minute = int(m.group(2))
+    meridiem = m.group(3)
+    if meridiem:
+        if meridiem.upper() == "PM" and hour < 12:
+            hour += 12
+        elif meridiem.upper() == "AM" and hour == 12:
+            hour = 0
+    try:
+        return time(hour, minute)
+    except Exception:
+        return None
+
+
+def parse_appointment_scheduled_datetime(date_val, time_slot: Optional[str]) -> datetime:
+    """Combine appointment date and time_slot into a datetime object."""
+    slot_time = parse_time_slot_start(time_slot) or time(9, 0)
+    parsed_date = None
+    if isinstance(date_val, datetime):
+        parsed_date = date_val.date()
+    elif isinstance(date_val, date):
+        parsed_date = date_val
+    elif isinstance(date_val, str) and date_val:
+        d_str = date_val.strip()
+        if d_str.lower() == "today":
+            parsed_date = datetime.now().date()
+        elif d_str.lower() == "tomorrow":
+            parsed_date = datetime.now().date() + timedelta(days=1)
+        elif d_str.lower() == "yesterday":
+            parsed_date = datetime.now().date() - timedelta(days=1)
+        else:
+            try:
+                parsed_date = datetime.strptime(d_str[:10], "%Y-%m-%d").date()
+            except Exception:
+                try:
+                    parsed_date = datetime.fromisoformat(d_str).date()
+                except Exception:
+                    parsed_date = datetime.now().date()
+    if not parsed_date:
+        parsed_date = datetime.now().date()
+
+    return datetime.combine(parsed_date, slot_time)
+
+
+def compute_effective_queue_position(
+    app_type: Optional[str],
+    date_val,
+    time_slot: Optional[str],
+    checked_in_at_val = None,
+    created_at_val = None
+) -> datetime:
+    """
+    Scheduled-priority hybrid ordering algorithm:
+    - Walk-in: actual check-in time (checked_in_at or created_at)
+    - Online-booked: MAX(scheduled_appointment_time, actual_checkin_time)
+      On-time/early: keeps scheduled slot
+      Late arrival: falls back to real arrival time
+    """
+    is_walkin = bool(app_type and "walk" in str(app_type).lower())
+
+    parsed_checkin = None
+    if isinstance(checked_in_at_val, datetime):
+        parsed_checkin = checked_in_at_val.replace(tzinfo=None) if checked_in_at_val.tzinfo else checked_in_at_val
+    elif isinstance(checked_in_at_val, str) and checked_in_at_val:
+        try:
+            dt = datetime.fromisoformat(checked_in_at_val.replace("Z", "+00:00"))
+            parsed_checkin = dt.replace(tzinfo=None)
+        except Exception:
+            pass
+
+    parsed_created = None
+    if isinstance(created_at_val, datetime):
+        parsed_created = created_at_val.replace(tzinfo=None) if created_at_val.tzinfo else created_at_val
+    elif isinstance(created_at_val, str) and created_at_val:
+        try:
+            dt = datetime.fromisoformat(created_at_val.replace("Z", "+00:00"))
+            parsed_created = dt.replace(tzinfo=None)
+        except Exception:
+            pass
+
+    actual_arrival = parsed_checkin or parsed_created or datetime.now()
+
+    if is_walkin:
+        return actual_arrival
+
+    scheduled_dt = parse_appointment_scheduled_datetime(date_val, time_slot)
+    return max(scheduled_dt, actual_arrival)
+
+
 def fetch_all_tokens_from_db(
     doctor_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
-    staff_ctx: Optional[dict] = None
+    staff_ctx: Optional[dict] = None,
+    checked_in_only: bool = True
 ) -> List[dict]:
     """
-    Fetch live appointments from PostgreSQL or JSON DB and format them as TokenQueueItem records.
+    Fetch appointments from PostgreSQL or JSON DB and format them as TokenQueueItem records.
     Strictly filters results to the receptionist's/doctor's/admin's own hospital.
-    Fails safely returning [] if non-superadmin staff has hospital_id=NULL or no hospital is provided.
-    SuperAdmin accounts (hospital_id=NULL) retain global visibility across all hospitals.
+    
+    Unified Queue Ordering (Scheduled-Priority Hybrid):
+    - When checked_in_only=True: Only includes checked-in appointments (plus In Consultation/Completed today).
+    - Computes effective_queue_position = GREATEST(scheduled time, checked_in_at) for online, or checked_in_at for walk-ins.
+    - Sorts queue by effective_queue_position ascending.
+    - Sequentially indexes tokens (#TOK-001, #TOK-002...).
     """
     effective_hosp_id = hospital_id
     is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
@@ -835,7 +937,7 @@ def fetch_all_tokens_from_db(
     if staff_ctx:
         role = staff_ctx.get("role")
         if role == "superadmin":
-            effective_hosp_id = hospital_id  # optional filter if provided
+            effective_hosp_id = hospital_id
         elif role in ["receptionist", "doctor", "nurse"]:
             staff_hosp = staff_ctx.get("hospital_id")
             if not staff_hosp:
@@ -855,13 +957,16 @@ def fetch_all_tokens_from_db(
                 return []
             effective_hosp_id = staff_hosp
 
-    # If caller is not SuperAdmin and no effective hospital_id is resolved, fail-closed to prevent cross-hospital data leakage
     if not is_superadmin and not effective_hosp_id:
         logger.warning("Unscoped token query rejected: no valid hospital context provided.")
         return []
 
     tokens = []
     seen_ids = set()
+    seen_tickets = set()
+
+    # Auto-probe PostgreSQL health and sync pending offline bookings
+    database.check_pg_health_and_sync()
 
     if database.use_pg:
         try:
@@ -890,23 +995,52 @@ def fetch_all_tokens_from_db(
                     if doctor_id:
                         query += " AND a.doctor_id = %s"
                         params.append(doctor_id)
+
+                    if checked_in_only:
+                        query += " AND (a.is_checked_in = TRUE OR a.status IN ('Checked In', 'In Consultation', 'Completed'))"
+
                     query += " ORDER BY a.created_at ASC"
 
                     cur.execute(query, tuple(params))
                     rows = cur.fetchall()
 
-                    for idx, row in enumerate(rows, start=1):
+                    for row in rows:
                         app_dict = dict(row)
                         app_id = str(app_dict["id"])
                         seen_ids.add(app_id)
+                        if app_dict.get("ticket_number"):
+                            seen_tickets.add(app_dict["ticket_number"])
 
                         raw_status = app_dict.get("status") or "Waiting"
                         token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
 
                         p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Online Patient"
-                        p_phone = app_dict.get("patient_phone_db") or "+91 98765 43210"
+                        p_phone = app_dict.get("patient_phone_db") or app_dict.get("patient_phone") or "+91 98765 43210"
 
-                        # Calculate age if dob available
+                        is_checked = bool(app_dict.get("is_checked_in", False))
+                        checked_in_at_val = app_dict.get("checked_in_at")
+                        created_at_val = app_dict.get("created_at")
+
+                        eff_pos = compute_effective_queue_position(
+                            app_type=app_dict.get("type"),
+                            date_val=app_dict.get("date"),
+                            time_slot=app_dict.get("time_slot"),
+                            checked_in_at_val=checked_in_at_val,
+                            created_at_val=created_at_val
+                        )
+
+                        arrival_time_str = "09:45 AM"
+                        if checked_in_at_val and hasattr(checked_in_at_val, "strftime"):
+                            arrival_time_str = checked_in_at_val.strftime("%I:%M %p")
+                        elif created_at_val and hasattr(created_at_val, "strftime"):
+                            arrival_time_str = created_at_val.strftime("%I:%M %p")
+                        else:
+                            arrival_time_str = eff_pos.strftime("%I:%M %p")
+
+                        checkin_str = None
+                        if checked_in_at_val:
+                            checkin_str = checked_in_at_val.isoformat() if hasattr(checked_in_at_val, "isoformat") else str(checked_in_at_val)
+
                         age = 28
                         if app_dict.get("patient_dob"):
                             try:
@@ -917,7 +1051,7 @@ def fetch_all_tokens_from_db(
 
                         tokens.append({
                             "id": app_id,
-                            "tokenNumber": f"#TOK-{idx:03d}",
+                            "tokenNumber": "",
                             "patientId": str(app_dict.get("patient_id") or ""),
                             "patientName": p_name,
                             "patientPhone": p_phone,
@@ -926,91 +1060,182 @@ def fetch_all_tokens_from_db(
                             "doctorSpecialty": app_dict.get("doctor_specialty") or app_dict.get("doc_specialty") or "General Medicine",
                             "hospitalId": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
                             "hospital_id": app_dict.get("hospital_id") or app_dict.get("doc_hospital_id") or effective_hosp_id or "hosp-1",
-                            "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
+                            "ticketNumber": app_dict.get("ticket_number") or "#CP-1001",
                             "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
                             "status": token_status,
-                            "arrivalTime": app_dict.get("created_at").strftime("%I:%M %p") if app_dict.get("created_at") and hasattr(app_dict.get("created_at"), "strftime") else "09:45 AM",
-                            "issueTime": "09:45 AM",
+                            "arrivalTime": arrival_time_str,
+                            "checkInTime": arrival_time_str if is_checked else None,
+                            "issueTime": arrival_time_str,
                             "type": app_dict.get("type") or "In-Person",
                             "date": str(app_dict.get("date") or "Today"),
                             "age": age,
                             "bloodGroup": app_dict.get("patient_blood_group") or "O+",
-                            "healthIssue": "General Consultation"
+                            "healthIssue": app_dict.get("health_issue") or "General Consultation",
+                            "isCheckedIn": is_checked,
+                            "checkedInAt": checkin_str,
+                            "effective_queue_position": eff_pos,
+                            "effectiveQueuePosition": eff_pos.isoformat(),
+                            "effectiveQueueTime": eff_pos.strftime("%I:%M %p")
                         })
         except Exception as e:
             logger.warning(f"DB fetch tokens note: {e}")
+            database.use_pg = False
 
-    if not tokens and (is_superadmin or effective_hosp_id):
-        # Read from JSON DB
-        db = database.read_json_db()
-        raw_apps = db.get("appointments", [])
-        raw_patients = {str(p.get("id")): p for p in db.get("patients", [])}
-        doc_obj_map = {d.get("id"): d for d in db.get("doctors", [])}
+    # Always inspect JSON DB and seamlessly merge any offline or newly booked appointments not yet in PG
+    if is_superadmin or effective_hosp_id:
+        try:
+            db = database.read_json_db()
+            raw_apps = db.get("appointments", [])
+            raw_patients = {str(p.get("id")): p for p in db.get("patients", [])}
+            doc_obj_map = {d.get("id"): d for d in db.get("doctors", [])}
 
-        idx = 1
-        for app_dict in reversed(raw_apps): # chronological order
-            app_id = str(app_dict.get("id"))
-            if app_id in seen_ids:
-                continue
+            for app_dict in reversed(raw_apps):
+                app_id = str(app_dict.get("id"))
+                t_num = app_dict.get("ticket_number") or app_dict.get("ticketNumber")
+                if app_id in seen_ids or (t_num and t_num in seen_tickets):
+                    continue
 
-            app_doc_id = app_dict.get("doctor_id")
-            doc_obj = doc_obj_map.get(app_doc_id, {})
-            app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_obj.get("hospital_id") or doc_obj.get("hospitalId")
-            if effective_hosp_id and app_hosp != effective_hosp_id:
-                continue
+                app_doc_id = app_dict.get("doctor_id")
+                doc_obj = doc_obj_map.get(app_doc_id, {})
+                app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_obj.get("hospital_id") or doc_obj.get("hospitalId")
+                if effective_hosp_id and app_hosp != effective_hosp_id:
+                    continue
 
-            if doctor_id and app_dict.get("doctor_id") != doctor_id:
-                continue
+                if doctor_id and app_dict.get("doctor_id") != doctor_id:
+                    continue
 
-            p_id = str(app_dict.get("patient_id", ""))
-            p_obj = raw_patients.get(p_id, {})
+                is_checked = app_dict.get("is_checked_in") is True
+                is_active_or_done = app_dict.get("status") in ["Checked In", "In Consultation", "Completed"]
+                if checked_in_only and not (is_checked or is_active_or_done):
+                    continue
 
-            p_name = app_dict.get("patient_name") or p_obj.get("full_name") or "Online Patient"
-            p_phone = app_dict.get("patient_phone") or p_obj.get("phone") or "+91 98765 43210"
+                p_id = str(app_dict.get("patient_id", ""))
+                p_obj = raw_patients.get(p_id, {})
 
-            raw_status = app_dict.get("status") or "Waiting"
-            token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
+                p_name = app_dict.get("patient_name") or p_obj.get("full_name") or "Online Patient"
+                p_phone = app_dict.get("patient_phone") or p_obj.get("phone") or "+91 98765 43210"
 
-            tokens.append({
-                "id": app_id,
-                "tokenNumber": f"#TOK-{idx:03d}",
-                "patientId": p_id,
-                "patientName": p_name,
-                "patientPhone": p_phone,
-                "doctorId": str(app_dict.get("doctor_id") or doc_obj.get("id") or "doc-current"),
-                "doctorName": app_dict.get("doctor_name") or doc_obj.get("name") or "Doctor",
-                "doctorSpecialty": app_dict.get("doctor_specialty") or doc_obj.get("specialty") or "General Medicine",
-                "hospitalId": app_hosp or "hosp-1",
-                "hospital_id": app_hosp or "hosp-1",
-                "ticketNumber": app_dict.get("ticket_number") or f"#CP-{idx+4820}",
-                "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
-                "status": token_status,
-                "arrivalTime": "09:45 AM",
-                "issueTime": "09:45 AM",
-                "type": app_dict.get("type") or "In-Person",
-                "date": str(app_dict.get("date") or "Today"),
-                "age": 29,
-                "bloodGroup": p_obj.get("blood_group") or p_obj.get("bloodGroup") or "O+",
-                "healthIssue": "General Consultation"
-            })
-            idx += 1
+                raw_status = app_dict.get("status") or "Waiting"
+                token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
+
+                checked_in_at_val = app_dict.get("checked_in_at")
+                created_at_val = app_dict.get("created_at")
+
+                eff_pos = compute_effective_queue_position(
+                    app_type=app_dict.get("type"),
+                    date_val=app_dict.get("date"),
+                    time_slot=app_dict.get("time_slot"),
+                    checked_in_at_val=checked_in_at_val,
+                    created_at_val=created_at_val
+                )
+
+                arrival_time_str = "09:45 AM"
+                if checked_in_at_val and hasattr(checked_in_at_val, "strftime"):
+                    arrival_time_str = checked_in_at_val.strftime("%I:%M %p")
+                elif created_at_val and hasattr(created_at_val, "strftime"):
+                    arrival_time_str = created_at_val.strftime("%I:%M %p")
+                else:
+                    arrival_time_str = eff_pos.strftime("%I:%M %p")
+
+                tokens.append({
+                    "id": app_id,
+                    "tokenNumber": "",
+                    "patientId": p_id,
+                    "patientName": p_name,
+                    "patientPhone": p_phone,
+                    "doctorId": str(app_dict.get("doctor_id") or doc_obj.get("id") or "doc-current"),
+                    "doctorName": app_dict.get("doctor_name") or doc_obj.get("name") or "Doctor",
+                    "doctorSpecialty": app_dict.get("doctor_specialty") or doc_obj.get("specialty") or "General Medicine",
+                    "hospitalId": app_hosp or "hosp-1",
+                    "hospital_id": app_hosp or "hosp-1",
+                    "ticketNumber": app_dict.get("ticket_number") or "#CP-1001",
+                    "timeSlot": app_dict.get("time_slot") or "10:00 AM - 11:00 AM",
+                    "status": token_status,
+                    "arrivalTime": arrival_time_str,
+                    "checkInTime": arrival_time_str if is_checked else None,
+                    "issueTime": arrival_time_str,
+                    "type": app_dict.get("type") or "In-Person",
+                    "date": str(app_dict.get("date") or "Today"),
+                    "age": 29,
+                    "bloodGroup": p_obj.get("blood_group") or p_obj.get("bloodGroup") or "O+",
+                    "healthIssue": app_dict.get("health_issue") or "General Consultation",
+                    "isCheckedIn": is_checked,
+                    "checkedInAt": str(checked_in_at_val) if checked_in_at_val else None,
+                    "effective_queue_position": eff_pos,
+                    "effectiveQueuePosition": eff_pos.isoformat(),
+                    "effectiveQueueTime": eff_pos.strftime("%I:%M %p")
+                })
+        except Exception as e:
+            logger.warning(f"Error reading appointments from JSON DB in fetch_all_tokens_from_db: {e}")
+
+    # Sort queue by Scheduled-Priority Hybrid ordering:
+    # 1. Active 'In Consultation' stays on top
+    # 2. Checked-in patients waiting sorted by effective_queue_position ascending
+    # 3. Unchecked-in scheduled patients (if returned in full roster) sorted by effective_queue_position
+    # 4. Completed / Cancelled at bottom
+    def queue_sort_key(t):
+        st = t.get("status")
+        checked = t.get("isCheckedIn", False)
+        if st == "In Consultation":
+            prio = 0
+        elif (st in ["Waiting", "Checked In"]) and checked:
+            prio = 1
+        elif not checked:
+            prio = 2
+        else:
+            prio = 3
+        return (prio, t["effective_queue_position"])
+
+    tokens.sort(key=queue_sort_key)
+
+    for idx, t in enumerate(tokens, start=1):
+        t["tokenNumber"] = f"#TOK-{idx:03d}"
 
     return tokens
+
 
 @router.get("/tokens")
 def get_token_queue(
     doctor_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
+    include_all: Optional[bool] = False,
     authorization: Optional[str] = Header(None)
 ):
     """
     Get active live queue tokens from database scoped to the requesting staff member's hospital.
-    Fails safely returning [] if staff has hospital_id=NULL.
+    By default (include_all=False), only returns checked-in patients sorted by effective_queue_position.
     """
     from routes.staff_auth import get_current_staff
     staff_ctx = get_current_staff(authorization) if authorization else None
-    tokens = fetch_all_tokens_from_db(doctor_id=doctor_id, hospital_id=hospital_id, staff_ctx=staff_ctx)
+    tokens = fetch_all_tokens_from_db(
+        doctor_id=doctor_id, 
+        hospital_id=hospital_id, 
+        staff_ctx=staff_ctx,
+        checked_in_only=not include_all
+    )
     return {"success": True, "tokens": tokens}
+
+
+@router.get("/bookings")
+def get_all_bookings(
+    doctor_id: Optional[str] = None,
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Get all patient appointments (both checked-in and scheduled not-yet-checked-in)
+    scoped to the requesting staff member's hospital for the front-desk bookings roster.
+    """
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    tokens = fetch_all_tokens_from_db(
+        doctor_id=doctor_id, 
+        hospital_id=hospital_id, 
+        staff_ctx=staff_ctx, 
+        checked_in_only=False
+    )
+    return {"success": True, "bookings": tokens, "tokens": tokens, "total": len(tokens)}
+
 
 @router.post("/tokens/call-next")
 def call_next_token(
@@ -1018,10 +1243,10 @@ def call_next_token(
     hospital_id: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):
-    """Advance queue token state from Waiting -> In Consultation within the staff member's hospital."""
+    """Advance queue token state from Waiting/Checked In -> In Consultation within the staff member's hospital."""
     from routes.staff_auth import get_current_staff
     staff_ctx = get_current_staff(authorization) if authorization else None
-    tokens = fetch_all_tokens_from_db(doctor_id=doctor_id, hospital_id=hospital_id, staff_ctx=staff_ctx)
+    tokens = fetch_all_tokens_from_db(doctor_id=doctor_id, hospital_id=hospital_id, staff_ctx=staff_ctx, checked_in_only=True)
     target_token = None
 
     for tok in tokens:
@@ -1030,13 +1255,109 @@ def call_next_token(
             break
 
     for tok in tokens:
-        if tok.get("status") == "Waiting":
+        if tok.get("status") in ["Waiting", "Checked In"]:
             target_token = tok
             target_token["status"] = "In Consultation"
             update_token_status(tok["id"], TokenStatusUpdate(status="In Consultation"))
             break
 
     return {"success": True, "activeToken": target_token, "message": "Queue updated"}
+
+
+@router.post("/appointments/{appointment_id}/check-in")
+def checkin_appointment(
+    appointment_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Check in an online-booked patient upon arrival at the front desk.
+    RBAC: Restricted strictly to staff roles (receptionist, admin, superadmin, doctor, nurse).
+    Patient-role or unauthenticated requests are rejected.
+    Sets is_checked_in = TRUE, checked_in_at = NOW(), status = 'Checked In'.
+    Computes effective_queue_position = MAX(scheduled_time, checked_in_at).
+    """
+    from routes.staff_auth import get_current_staff
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: Staff Authorization header missing."
+        )
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx or not staff_ctx.get("is_authenticated"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid staff session token. Patients cannot perform staff check-in."
+        )
+    allowed_roles = {"receptionist", "admin", "superadmin", "doctor", "nurse"}
+    user_role = staff_ctx.get("role")
+    if user_role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied: Role '{user_role}' is not authorized to check in patients."
+        )
+
+    now_dt = datetime.now()
+    updated_record = None
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE appointments
+                        SET is_checked_in = TRUE,
+                            checked_in_at = %s,
+                            status = 'Checked In'
+                        WHERE id::text = %s OR ticket_number = %s
+                        RETURNING *
+                    """, (now_dt, appointment_id, appointment_id))
+                    row = cur.fetchone()
+                    conn.commit()
+                    if row:
+                        updated_record = dict(row)
+        except Exception as e:
+            logger.warning(f"Error checking in appointment in PG: {e}")
+
+    try:
+        db = database.read_json_db()
+        for app in db.get("appointments", []):
+            if str(app.get("id")) == appointment_id or str(app.get("ticket_number")) == appointment_id or str(app.get("ticketNumber")) == appointment_id:
+                app["is_checked_in"] = True
+                app["checked_in_at"] = now_dt.isoformat()
+                app["status"] = "Checked In"
+                if not updated_record:
+                    updated_record = dict(app)
+                database.write_json_db(db)
+                break
+    except Exception as e:
+        logger.warning(f"Error checking in appointment in JSON DB: {e}")
+
+    if not updated_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Appointment '{appointment_id}' not found."
+        )
+
+    effective_pos = compute_effective_queue_position(
+        app_type=updated_record.get("type"),
+        date_val=updated_record.get("date"),
+        time_slot=updated_record.get("time_slot") or updated_record.get("timeSlot"),
+        checked_in_at_val=now_dt,
+        created_at_val=updated_record.get("created_at")
+    )
+
+    return {
+        "success": True,
+        "appointmentId": str(updated_record.get("id")),
+        "ticketNumber": updated_record.get("ticket_number") or updated_record.get("ticketNumber"),
+        "patientName": updated_record.get("patient_name") or updated_record.get("patient_full_name") or "Patient",
+        "isCheckedIn": True,
+        "checkedInAt": now_dt.isoformat(),
+        "status": "Checked In",
+        "effectiveQueuePosition": effective_pos.isoformat(),
+        "effectiveQueueTime": effective_pos.strftime("%I:%M %p"),
+        "message": "Patient successfully checked in and joined the live queue."
+    }
 
 @router.patch("/tokens/{token_id}/status")
 def update_token_status(token_id: str, payload: TokenStatusUpdate):
@@ -1145,7 +1466,7 @@ def create_walkin_appointment(
         "status": "Waiting",
         "arrivalTime": now_str,
         "issueTime": now_str,
-        "type": payload.type or "Walk-In",
+        "type": getattr(payload, "type", "Walk-In") or "Walk-In",
         "date": today_str,
         "age": payload.age or 30,
         "bloodGroup": payload.bloodGroup or "O+",
@@ -1171,9 +1492,10 @@ def create_walkin_appointment(
                             (pat_id, payload.patientName, payload.patientPhone, dummy_email)
                         )
 
+                    now_dt = datetime.now()
                     cur.execute("""
-                        INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, hospital_id, hospital_name, date, time_slot, type, status)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
+                        INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, hospital_id, hospital_name, date, time_slot, type, status, is_checked_in, checked_in_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Checked In', TRUE, %s)
                     """, (
                         app_id,
                         pat_id,
@@ -1185,7 +1507,8 @@ def create_walkin_appointment(
                         derived_hospital_name,
                         today_str,
                         payload.timeSlot,
-                        payload.type or "Walk-In"
+                        getattr(payload, "type", "Walk-In") or "Walk-In",
+                        now_dt
                     ))
                 conn.commit()
         except Exception as e:
@@ -1193,6 +1516,7 @@ def create_walkin_appointment(
 
     # Also persist to JSON DB
     try:
+        now_dt = datetime.now()
         db = database.read_json_db()
         db.setdefault("appointments", []).insert(0, {
             "id": app_id,
@@ -1208,7 +1532,9 @@ def create_walkin_appointment(
             "date": today_str,
             "time_slot": payload.timeSlot,
             "type": payload.type or "Walk-In",
-            "status": "Upcoming"
+            "status": "Checked In",
+            "is_checked_in": True,
+            "checked_in_at": now_dt.isoformat()
         })
         database.write_json_db(db)
     except Exception as e:

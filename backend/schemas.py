@@ -237,6 +237,7 @@ class WalkInAppointmentCreate(BaseModel):
     bloodGroup: Optional[str] = None
     address: Optional[str] = None
     healthIssue: Optional[str] = None
+    type: Optional[str] = "Walk-In"
 
 class HospitalResponse(BaseModel):
     id: str

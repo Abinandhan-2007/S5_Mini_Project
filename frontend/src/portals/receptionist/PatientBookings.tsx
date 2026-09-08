@@ -97,14 +97,18 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
 }) => {
   const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
   const tokens = useStaffStore((s) => s.tokens);
+  const bookings = useStaffStore((s) => s.bookings);
   const doctors = useStaffStore((s) => s.doctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
+  const fetchBookings = useStaffStore((s) => s.fetchBookings);
+  const checkInAppointment = useStaffStore((s) => s.checkInAppointment);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'ONLINE' | 'OFFLINE' | 'CHECKED_IN' | 'COMPLETED' | 'ALL'>('ALL');
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('ALL');
   const [selectedSlotFilter, setSelectedSlotFilter] = useState('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
 
   // Date Filter & Sort by Date State (Default to 'ALL' to show all patient bookings)
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
@@ -115,28 +119,48 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   const [tokenToPrint, setTokenToPrint] = useState<TokenQueueItem | null>(null);
 
   useEffect(() => {
+    fetchBookings();
     fetchTokens();
-  }, [fetchTokens]);
+  }, [fetchBookings, fetchTokens]);
+
+  const rawBookings = bookings.length > 0 ? bookings : tokens;
+
+  const handleCheckIn = async (item: TokenQueueItem) => {
+    setCheckingInId(item.id);
+    try {
+      const success = await checkInAppointment(item.id);
+      if (success) {
+        onShowToast?.(`Patient ${item.patientName} checked in successfully and added to live queue!`);
+      } else {
+        onShowToast?.(`Check-in completed for ${item.patientName}`);
+      }
+    } catch (err) {
+      onShowToast?.(`Failed to check in ${item.patientName}`);
+    } finally {
+      setCheckingInId(null);
+    }
+  };
 
   const availableSlots = useMemo(() => {
     const slotsSet = new Set<string>();
-    tokens.forEach((t) => slotsSet.add(t.timeSlot));
+    rawBookings.forEach((t) => slotsSet.add(t.timeSlot));
     return Array.from(slotsSet).sort();
-  }, [tokens]);
+  }, [rawBookings]);
 
   const todayIso = getTodayISODate(0);
   const tomorrowIso = getTodayISODate(1);
 
   // Filter & sort logic
   const filteredBookings = useMemo(() => {
-    return tokens
+    return rawBookings
       .filter((item) => {
         const isOnline = item.type !== 'Walk-In';
+        const isCheckedIn = !!item.isCheckedIn || item.status === 'Checked In';
         const matchesTab =
           activeTab === 'ALL' ||
           (activeTab === 'ONLINE' && isOnline) ||
           (activeTab === 'OFFLINE' && !isOnline) ||
-          (activeTab === 'CHECKED_IN' && item.status === 'Checked In') ||
+          (activeTab === 'CHECKED_IN' && isCheckedIn) ||
           (activeTab === 'COMPLETED' && item.status === 'Completed');
 
         const matchesDoctor = selectedDoctorFilter === 'ALL' || item.doctorId === selectedDoctorFilter;
@@ -184,7 +208,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
         return a.timeSlot.localeCompare(b.timeSlot);
       });
   }, [
-    tokens,
+    rawBookings,
     activeTab,
     selectedDoctorFilter,
     selectedSlotFilter,
@@ -195,25 +219,25 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   ]);
 
   // Tab counts scoped to the active date filter
-  const onlineTokensCount = tokens.filter((t) => {
+  const onlineTokensCount = rawBookings.filter((t) => {
     const isOnline = t.type !== 'Walk-In';
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
     return isOnline && matchesDate;
   }).length;
 
-  const offlineTokensCount = tokens.filter((t) => {
+  const offlineTokensCount = rawBookings.filter((t) => {
     const isOffline = t.type === 'Walk-In';
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
     return isOffline && matchesDate;
   }).length;
 
-  const checkedInCount = tokens.filter((t) => {
-    const isChecked = t.status === 'Checked In';
+  const checkedInCount = rawBookings.filter((t) => {
+    const isChecked = !!t.isCheckedIn || t.status === 'Checked In';
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
     return isChecked && matchesDate;
   }).length;
 
-  const completedCount = tokens.filter((t) => {
+  const completedCount = rawBookings.filter((t) => {
     const isCompleted = t.status === 'Completed';
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
     return isCompleted && matchesDate;
@@ -706,6 +730,24 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                     <Printer className="w-3.5 h-3.5" />
                     <span>Slip</span>
                   </button>
+
+                  {!item.isCheckedIn && item.status !== 'Completed' && item.status !== 'Cancelled' ? (
+                    <button
+                      type="button"
+                      disabled={checkingInId === item.id}
+                      onClick={() => handleCheckIn(item)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="Check In Patient & Join Live Queue"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-100" />
+                      <span>{checkingInId === item.id ? 'Checking In...' : 'Check In'}</span>
+                    </button>
+                  ) : (
+                    <span className="text-[10.5px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Checked In</span>
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -809,6 +851,24 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                             <Printer className="w-3.5 h-3.5" />
                             <span>Slip</span>
                           </button>
+
+                          {!item.isCheckedIn && item.status !== 'Completed' && item.status !== 'Cancelled' ? (
+                            <button
+                              type="button"
+                              disabled={checkingInId === item.id}
+                              onClick={() => handleCheckIn(item)}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer flex items-center gap-1 shadow-2xs transition-all active:scale-95 disabled:opacity-50"
+                              title="Check In Patient & Join Live Queue"
+                            >
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-100" />
+                              <span>{checkingInId === item.id ? 'Checking In...' : 'Check In'}</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Checked In</span>
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>

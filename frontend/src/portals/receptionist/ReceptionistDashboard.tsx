@@ -22,9 +22,11 @@ import {
   SlidersHorizontal,
   CalendarCheck,
   ArrowUpRight,
+  Phone,
+  Loader2,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import type { DoctorRecord } from '../../types/receptionist';
+import type { DoctorRecord, TokenQueueItem } from '../../types/receptionist';
 
 interface ReceptionistDashboardProps {
   onNavigateTab?: (tab: string) => void;
@@ -102,6 +104,8 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 }) => {
   const doctors = useStaffStore((s) => s.doctors);
   const tokens = useStaffStore((s) => s.tokens);
+  const bookings = useStaffStore((s) => s.bookings);
+  const checkInAppointment = useStaffStore((s) => s.checkInAppointment);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
@@ -109,18 +113,74 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   const currentStaff = useStaffStore((s) => s.currentStaff);
 
   const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [onlineArrivalFilter, setOnlineArrivalFilter] = useState<'all' | 'awaiting' | 'checked_in'>('all');
 
   // Physician Cabin Status Filter States
   const [cabinStatusFilter, setCabinStatusFilter] = useState<'all' | 'active' | 'offline'>('all');
   const [cabinFloorFilter, setCabinFloorFilter] = useState<string>('all');
   const [cabinSearchQuery, setCabinSearchQuery] = useState<string>('');
 
+  // Master appointment set (merges live tokens and all bookings)
+  const allAppointments = useMemo(() => {
+    if (!bookings || bookings.length === 0) return tokens;
+    const result = [...tokens];
+    const seen = new Set(tokens.map((t) => t.id));
+    bookings.forEach((b) => {
+      if (!seen.has(b.id)) {
+        seen.add(b.id);
+        result.push(b);
+      }
+    });
+    return result;
+  }, [bookings, tokens]);
+
   // Token categories
   const waitingTokens = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In');
   const inConsultationTokens = tokens.filter((t) => t.status === 'In Consultation');
-  const completedTokens = tokens.filter((t) => t.status === 'Completed');
-  const onlineTokens = tokens.filter((t) => t.type !== 'Walk-In');
-  const walkInTokens = tokens.filter((t) => t.type === 'Walk-In');
+  const completedTokens = allAppointments.filter((t) => t.status === 'Completed');
+  const onlineTokens = useMemo(() => allAppointments.filter((t) => t.type !== 'Walk-In'), [allAppointments]);
+  const pendingOnlineArrivals = useMemo(
+    () =>
+      onlineTokens.filter(
+        (t) =>
+          !t.isCheckedIn &&
+          t.status !== 'In Consultation' &&
+          t.status !== 'Completed' &&
+          t.status !== 'Cancelled'
+      ),
+    [onlineTokens]
+  );
+  const walkInTokens = useMemo(() => allAppointments.filter((t) => t.type === 'Walk-In'), [allAppointments]);
+
+  // Filtered list for the Expected Online Arrivals card section
+  const filteredOnlineArrivals = useMemo(() => {
+    return onlineTokens.filter((item) => {
+      if (onlineArrivalFilter === 'awaiting') {
+        return !item.isCheckedIn && item.status !== 'In Consultation' && item.status !== 'Completed';
+      }
+      if (onlineArrivalFilter === 'checked_in') {
+        return item.isCheckedIn || item.status === 'Checked In' || item.status === 'In Consultation';
+      }
+      return true;
+    });
+  }, [onlineTokens, onlineArrivalFilter]);
+
+  const handleCheckInPatient = async (item: TokenQueueItem) => {
+    setCheckingInId(item.id);
+    try {
+      const ok = await checkInAppointment(item.id);
+      if (ok) {
+        onShowToast?.(`Patient ${item.patientName} (${item.ticketNumber}) checked in and added to Live Queue!`);
+      } else {
+        onShowToast?.(`Patient ${item.patientName} check-in recorded.`);
+      }
+    } catch {
+      onShowToast?.(`Failed to check in ${item.patientName}.`);
+    } finally {
+      setCheckingInId(null);
+    }
+  };
 
   // Doctor categorizations
   const activeDoctors = doctors.filter((d) => d.isAvailable);
@@ -309,7 +369,9 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
             <div className="text-xl sm:text-2xl lg:text-3xl font-black text-purple-700 font-mono">
               {onlineTokens.length}
             </div>
-            <p className="text-[10px] sm:text-[10.5px] text-purple-700 font-bold mt-0.5">Pre-Booked</p>
+            <p className="text-[10px] sm:text-[10.5px] text-purple-700 font-bold mt-0.5">
+              {pendingOnlineArrivals.length > 0 ? `${pendingOnlineArrivals.length} Awaiting Check-In` : 'Pre-Booked'}
+            </p>
           </div>
         </div>
 
@@ -580,7 +642,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                     <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
                   </div>
                   <span className="px-2.5 py-0.5 rounded-xl bg-sky-100/90 text-sky-900 border border-sky-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
-                    {onlineTokens.length} Online
+                    {pendingOnlineArrivals.length > 0 ? `${pendingOnlineArrivals.length} Pending` : `${onlineTokens.length} Online`}
                   </span>
                 </div>
 
@@ -590,7 +652,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                       Express Arrival
                     </h4>
                     <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                      Verify app booking
+                      {pendingOnlineArrivals.length > 0 ? `Verify ${pendingOnlineArrivals.length} online arrivals` : 'Verify app booking'}
                     </p>
                   </div>
                   <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-sky-200 group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
@@ -676,6 +738,233 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          3.5 PRE-BOOKED ONLINE APPOINTMENTS & EXPECTED ARRIVALS
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="w-full bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="space-y-1">
+            <h2 className="text-base sm:text-xl font-black text-slate-900 font-heading flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-purple-600" />
+              Pre-Booked Online Appointments
+              <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                {onlineTokens.length} Scheduled Today
+              </span>
+              {pendingOnlineArrivals.length > 0 && (
+                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  {pendingOnlineArrivals.length} Awaiting Check-In
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-slate-400 font-medium">
+              Appointments booked via the patient app for this hospital. When patients arrive at the reception desk, click &ldquo;Check In Patient&rdquo; to add them to the live consultation queue.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            {/* Filter Pills */}
+            <div className="inline-flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+              <button
+                onClick={() => setOnlineArrivalFilter('all')}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  onlineArrivalFilter === 'all'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                All ({onlineTokens.length})
+              </button>
+              <button
+                onClick={() => setOnlineArrivalFilter('awaiting')}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  onlineArrivalFilter === 'awaiting'
+                    ? 'bg-white text-amber-800 shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Awaiting ({pendingOnlineArrivals.length})
+              </button>
+              <button
+                onClick={() => setOnlineArrivalFilter('checked_in')}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  onlineArrivalFilter === 'checked_in'
+                    ? 'bg-white text-emerald-800 shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Checked-In ({onlineTokens.length - pendingOnlineArrivals.length})
+              </button>
+            </div>
+
+            <button
+              onClick={() => onNavigateTab?.('bookings')}
+              className="text-xs font-extrabold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer shrink-0 bg-teal-50/60 hover:bg-teal-50 px-3.5 py-2 rounded-xl border border-teal-200/80 transition-all"
+            >
+              <span>Full Bookings Roster</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {filteredOnlineArrivals.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <Smartphone className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="text-sm font-bold text-slate-700">
+              {onlineTokens.length === 0
+                ? 'No online appointments booked for today yet.'
+                : 'No appointments match the selected filter.'}
+            </p>
+            <p className="text-xs text-slate-400">
+              When patients book consultations in the CarePulse app, their slots will appear here automatically.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredOnlineArrivals.map((item) => {
+              const isCheckedIn = !!item.isCheckedIn || item.status === 'Checked In';
+              const isInConsultation = item.status === 'In Consultation';
+              const isDone = item.status === 'Completed';
+              const isPending = !isCheckedIn && !isInConsultation && !isDone;
+              const isCheckingIn = checkingInId === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-2xl bg-white border transition-all flex flex-col justify-between gap-3.5 group relative overflow-hidden ${
+                    isPending
+                      ? 'border-purple-200/90 hover:border-purple-400 hover:shadow-md'
+                      : isCheckedIn
+                      ? 'border-emerald-200/90 hover:border-emerald-400 hover:shadow-md'
+                      : 'border-slate-200/90'
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    {/* Header: Ticket & Status Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-black px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
+                          {item.ticketNumber}
+                        </span>
+                        {item.tokenNumber && isCheckedIn && (
+                          <span className="font-mono text-xs font-black px-2 py-0.5 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-200">
+                            {item.tokenNumber}
+                          </span>
+                        )}
+                      </div>
+
+                      {isPending ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Awaiting Check-In
+                        </span>
+                      ) : isCheckedIn ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          Checked In
+                        </span>
+                      ) : isInConsultation ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 text-[#0B5A54] border border-teal-200 text-[11px] font-bold">
+                          In Cabin
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
+                          Completed
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Patient Details */}
+                    <div>
+                      <h3 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-purple-900 transition-colors truncate">
+                        {item.patientName}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                        {item.patientPhone && (
+                          <span className="flex items-center gap-1 font-mono">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {item.patientPhone}
+                          </span>
+                        )}
+                        {item.age && (
+                          <span className="text-[10.5px] bg-slate-100 px-1.5 py-0.2 rounded font-medium">
+                            {item.age}y
+                          </span>
+                        )}
+                        {item.bloodGroup && (
+                          <span className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 px-1.5 rounded font-bold">
+                            {item.bloodGroup}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Doctor & Slot Info */}
+                    <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-100 space-y-1 text-xs">
+                      <div className="flex items-center justify-between text-slate-700 font-medium">
+                        <span className="flex items-center gap-1.5 truncate">
+                          <Stethoscope className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
+                          <strong className="text-slate-900">{item.doctorName}</strong>
+                        </span>
+                        <span className="text-[10.5px] text-slate-400 shrink-0">
+                          {item.doctorSpecialty}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono pt-1 border-t border-slate-200/60">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {item.timeSlot}
+                        </span>
+                        <span className="text-slate-400">
+                          {item.date}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                    {isPending ? (
+                      <button
+                        disabled={isCheckingIn}
+                        onClick={() => handleCheckInPatient(item)}
+                        className="w-full py-2 px-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isCheckingIn ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Checking in...</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>Check In Patient</span>
+                          </>
+                        )}
+                      </button>
+                    ) : isCheckedIn ? (
+                      <div className="w-full flex items-center justify-between text-xs text-[#0B5A54] bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200">
+                        <span className="flex items-center gap-1 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#0B5A54]" />
+                          In Live Queue
+                        </span>
+                        <span className="font-mono text-[11px] text-teal-700">
+                          {item.effectiveQueueTime ? `Slot: ${item.effectiveQueueTime}` : 'Checked In'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="w-full text-center text-xs text-slate-500 py-1 font-medium">
+                        Consultation {item.status}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════

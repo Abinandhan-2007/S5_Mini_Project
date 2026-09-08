@@ -140,9 +140,25 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
   onOpenNewAppointment,
 }) => {
   const tokens = useStaffStore((s) => s.tokens);
+  const bookings = useStaffStore((s) => s.bookings);
   const doctors = useStaffStore((s) => s.doctors);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const updateSlotCapacity = useStaffStore((s) => s.updateSlotCapacity);
+  const checkInAppointment = useStaffStore((s) => s.checkInAppointment);
+
+  // Merge live queue tokens with all bookings for full visibility in Live Queue
+  const allQueueItems = useMemo(() => {
+    if (!bookings || bookings.length === 0) return tokens;
+    const result = [...tokens];
+    const seen = new Set(tokens.map((t) => t.id));
+    bookings.forEach((b) => {
+      if (!seen.has(b.id)) {
+        seen.add(b.id);
+        result.push(b);
+      }
+    });
+    return result;
+  }, [tokens, bookings]);
 
   // Filter & Sort States
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
@@ -181,7 +197,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           if (s.timeSlot) slotSet.add(s.timeSlot);
         });
       });
-      tokens.forEach((t) => {
+      allQueueItems.forEach((t) => {
         if (t.timeSlot) slotSet.add(t.timeSlot);
       });
     } else {
@@ -191,7 +207,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           if (s.timeSlot) slotSet.add(s.timeSlot);
         });
       }
-      tokens
+      allQueueItems
         .filter((t) => t.doctorId === selectedDoctorId)
         .forEach((t) => {
           if (t.timeSlot) slotSet.add(t.timeSlot);
@@ -199,7 +215,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     }
 
     return Array.from(slotSet);
-  }, [selectedDoctorId, doctors, tokens]);
+  }, [selectedDoctorId, doctors, allQueueItems]);
 
   // Resilient slot matching helper
   const isSlotMatching = (tokenSlot: string | undefined, targetSlot: string) => {
@@ -228,7 +244,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     >();
 
     availableTimeSlots.forEach((slotTime) => {
-      const relevantTokens = tokens.filter((t) => {
+      const relevantTokens = allQueueItems.filter((t) => {
         if (t.status === 'Cancelled') return false;
         const matchesDoc = selectedDoctorId === 'ALL' || t.doctorId === selectedDoctorId;
         const matchesSlot = isSlotMatching(t.timeSlot, slotTime);
@@ -259,11 +275,11 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     });
 
     return map;
-  }, [availableTimeSlots, tokens, selectedDoctorId, selectedDateFilter, activeDoctor]);
+  }, [availableTimeSlots, allQueueItems, selectedDoctorId, selectedDateFilter, activeDoctor]);
 
   // Filtered & Sorted Tokens
   const filteredTokens = useMemo(() => {
-    return tokens
+    return allQueueItems
       .filter((t) => {
         if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
         if (statusFilter === 'ALL' && t.status === 'Cancelled') return false;
@@ -308,7 +324,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           return b.timeSlot.localeCompare(a.timeSlot);
         }
         if (sortBy === 'TOKEN_ASC') {
-          return a.tokenNumber.localeCompare(b.tokenNumber);
+          return (a.tokenNumber || a.ticketNumber).localeCompare(b.tokenNumber || b.ticketNumber);
         }
         if (sortBy === 'NAME_ASC') {
           return a.patientName.localeCompare(b.patientName);
@@ -316,7 +332,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         // Default TIME_ASC
         return a.timeSlot.localeCompare(b.timeSlot);
       });
-  }, [tokens, selectedDoctorId, selectedTimeSlot, statusFilter, selectedDateFilter, sortBy, searchQuery]);
+  }, [allQueueItems, selectedDoctorId, selectedTimeSlot, statusFilter, selectedDateFilter, sortBy, searchQuery]);
 
   // Split into Online & Offline Queues
   const onlineBookedPatients = useMemo(() => filteredTokens.filter(isOnlineToken), [filteredTokens]);
@@ -412,7 +428,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   : 'bg-amber-100/90 text-amber-950 border border-amber-300/80'
                 }`}
             >
-              {token.tokenNumber}
+              {token.tokenNumber || token.ticketNumber}
             </span>
 
             <span
@@ -565,7 +581,7 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
             {!isCheckedIn && !isConsulting && !isCompleted ? (
               <button
-                onClick={() => {
+                onClick={async () => {
                   const now = new Date();
                   let hours = now.getHours();
                   const minutes = now.getMinutes().toString().padStart(2, '0');
@@ -574,11 +590,12 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   hours = hours ? hours : 12;
                   const checkInTime = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
 
-                  updateTokenStatus(token.id, 'Checked In', { checkInTime });
+                  await checkInAppointment(token.id);
                   playHospitalChime();
-                  const speechText = `Token ${token.tokenNumber.replace('#', '')}. ${token.patientName} checked in at ${checkInTime}.`;
+                  const tokId = token.tokenNumber || token.ticketNumber;
+                  const speechText = `Appointment ${tokId.replace('#', '')}. ${token.patientName} checked in at ${checkInTime}.`;
                   speakAnnouncement(speechText);
-                  onShowToast?.(`Patient ${token.patientName} (${token.tokenNumber}) checked in at ${checkInTime}!`);
+                  onShowToast?.(`Patient ${token.patientName} (${tokId}) checked in at ${checkInTime}!`);
                 }}
                 className="w-full sm:w-auto px-4 py-2 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold rounded-xl text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 title="Check In Patient"

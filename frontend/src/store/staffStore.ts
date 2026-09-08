@@ -184,6 +184,7 @@ export interface StaffState {
   announcements: AnnouncementRecord[];
   doctors: DoctorRecord[];
   tokens: TokenQueueItem[];
+  bookings: TokenQueueItem[];
   isLoading: boolean;
   error: string | null;
 
@@ -230,6 +231,8 @@ export interface StaffState {
   removeTimeSlot: (doctorId: string, slotId: string) => Promise<void>;
   createDoctor: (doctorData: Partial<DoctorRecord>) => Promise<void>;
   fetchTokens: (doctorId?: string, silent?: boolean) => Promise<void>;
+  fetchBookings: (doctorId?: string, silent?: boolean) => Promise<void>;
+  checkInAppointment: (appointmentId: string) => Promise<boolean>;
   callNextToken: (doctorId?: string) => Promise<void>;
   updateTokenStatus: (
     tokenId: string,
@@ -269,6 +272,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   announcements: DEFAULT_ANNOUNCEMENTS,
   doctors: INITIAL_DOCTORS,
   tokens: INITIAL_TOKENS,
+  bookings: [],
   isLoading: false,
   error: null,
 
@@ -514,6 +518,60 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       set({ tokens: fetchedTokens || [], isLoading: false });
     } catch {
       if (!silent) set({ isLoading: false });
+    }
+  },
+
+  fetchBookings: async (doctorId?: string, silent?: boolean) => {
+    if (!silent) set({ isLoading: true });
+    try {
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
+      const fetchedBookings = await receptionistService.getBookings(hospId, doctorId);
+      set({ bookings: fetchedBookings || [], isLoading: false });
+    } catch {
+      if (!silent) set({ isLoading: false });
+    }
+  },
+
+  checkInAppointment: async (appointmentId: string) => {
+    try {
+      const res = await receptionistService.checkInPatient(appointmentId);
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const nowTimeStr = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+
+      // Optimistically update bookings and tokens
+      set((state) => ({
+        bookings: state.bookings.map((b) =>
+          b.id === appointmentId || b.ticketNumber === appointmentId
+            ? {
+                ...b,
+                isCheckedIn: true,
+                status: 'Checked In',
+                checkedInAt: res?.checkedInAt || now.toISOString(),
+                checkInTime: nowTimeStr,
+                effectiveQueuePosition: res?.effectiveQueuePosition,
+                effectiveQueueTime: res?.effectiveQueueTime || nowTimeStr,
+              }
+            : b
+        ),
+      }));
+
+      // Refresh live queue and bookings roster in background
+      const hospId = get().currentStaff?.hospitalId || get().currentStaff?.hospital_id;
+      const [newTokens, newBookings] = await Promise.all([
+        receptionistService.getTokenQueue(undefined, hospId),
+        receptionistService.getBookings(hospId, undefined),
+      ]);
+      if (newTokens) set({ tokens: newTokens });
+      if (newBookings) set({ bookings: newBookings });
+      return true;
+    } catch (e) {
+      console.warn('Failed to check in appointment', e);
+      return false;
     }
   },
 
