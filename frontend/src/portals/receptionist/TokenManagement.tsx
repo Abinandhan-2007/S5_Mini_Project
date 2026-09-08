@@ -400,27 +400,6 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
     }
   };
 
-  // Handler for accepting an online patient appointment and moving to Patient Bookings
-  const handleAcceptOnlinePatient = async (token: TokenQueueItem) => {
-    const now = new Date();
-    let hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const checkInTime = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
-
-    await updateTokenStatus(token.id, 'Checked In', { checkInTime });
-    playHospitalChime();
-    const speechText = `Appointment accepted for ${token.patientName}. Token ${token.tokenNumber.replace('#', '')}.`;
-    speakAnnouncement(speechText);
-    onShowToast?.(`✅ Accepted appointment for ${token.patientName} (${token.tokenNumber})! Moved to Patient Bookings.`);
-
-    if (onNavigateTab) {
-      onNavigateTab('bookings');
-    }
-  };
-
   // Handler for accepting all pending online patients in current view
   const handleAcceptAllOnlinePatients = async () => {
     const pending = onlineBookedPatients.filter((t) => t.status !== 'Checked In' && t.status !== 'In Consultation' && t.status !== 'Completed');

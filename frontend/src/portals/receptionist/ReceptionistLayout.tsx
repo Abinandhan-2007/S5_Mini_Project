@@ -106,7 +106,7 @@ export const ReceptionistLayout: React.FC = () => {
   };
 
   // Automatic robust background polling for receptionist token queue, bookings & doctors
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  usePolling(
     async () => {
       await Promise.all([
         fetchTokens(undefined, true),
@@ -177,7 +177,6 @@ export const ReceptionistLayout: React.FC = () => {
 
   const isWalkIn = (type?: string) => (type || '').toLowerCase().includes('walk-in');
   const pendingOnlineCount = tokens.filter((t) => !isWalkIn(t.type) && t.status === 'Waiting').length;
-  const acceptedBookingsCount = tokens.filter((t) => isWalkIn(t.type) || t.status !== 'Waiting').length;
   const waitingCount = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In').length;
   const activeDoctorsCount = doctors.filter((d) => d.isAvailable).length;
   const allAppointmentsCount = bookings.length > 0 ? bookings.length : tokens.length;

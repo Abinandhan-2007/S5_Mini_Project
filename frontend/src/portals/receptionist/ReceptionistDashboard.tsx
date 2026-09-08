@@ -25,7 +25,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import type { DoctorRecord, TokenQueueItem } from '../../types/receptionist';
+import type { TokenQueueItem } from '../../types/receptionist';
 
 interface ReceptionistDashboardProps {
   onNavigateTab?: (tab: string) => void;
@@ -105,13 +105,11 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   const tokens = useStaffStore((s) => s.tokens);
   const bookings = useStaffStore((s) => s.bookings);
   const checkInAppointment = useStaffStore((s) => s.checkInAppointment);
-  const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const receptionistProfile = useStaffStore((s) => s.receptionistProfile);
   const currentStaff = useStaffStore((s) => s.currentStaff);
 
-  const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [onlineArrivalFilter, setOnlineArrivalFilter] = useState<'all' | 'awaiting' | 'checked_in'>('all');
   // Physician Cabin Status Filter States

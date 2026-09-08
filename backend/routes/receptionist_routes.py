@@ -240,8 +240,8 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
         except Exception as e:
             logger.warning(f"Error fetching hospital name in create_doctor: {e}")
 
+    db = database.read_json_db()
     if not hosp_name:
-        db = database.read_json_db()
         hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
         hosp_name = hosp_match.get("name") if hosp_match else "CarePulse Hospital"
 
@@ -328,6 +328,17 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # 0. Ensure hospital exists in PG so FK constraints succeed
+                    if hosp_id:
+                        try:
+                            cur.execute("""
+                                INSERT INTO hospitals (id, name, address)
+                                VALUES (%s, %s, 'Hospital Campus')
+                                ON CONFLICT (id) DO NOTHING
+                            """, (hosp_id, hosp_name or "CarePulse Hospital"))
+                        except Exception as h_err:
+                            logger.warning(f"Note ensuring hospital in PG: {h_err}")
+
                     # 1. Insert into doctors table FIRST so staff foreign key constraint succeeds
                     cur.execute("""
                         INSERT INTO doctors (id, name, specialty, department, hospital_id, hospital_name, experience_years, consultation_fee, photo, phone, email, room_number, is_available, available_days, slot_capacities)
@@ -1076,15 +1087,24 @@ def fetch_all_tokens_from_db(
                     cur.execute(query, tuple(params))
                     rows = cur.fetchall()
 
-                    for row in rows:
+                    json_apps_map = {}
+                    try:
+                        _db = database.read_json_db()
+                        json_apps_map = {str(a.get("id")): a for a in _db.get("appointments", []) if "id" in a}
+                    except Exception:
+                        pass
+
+                    for idx, row in enumerate(rows, start=1):
                         app_dict = dict(row)
                         app_id = str(app_dict["id"])
                         seen_ids.add(app_id)
                         if app_dict.get("ticket_number"):
                             seen_tickets.add(app_dict["ticket_number"])
 
+                        j_app = json_apps_map.get(app_id, {})
+
                         raw_status = app_dict.get("status") or "Waiting"
-                        token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
+                        token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed", "Checked In"] else raw_status
 
                         p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Patient"
                         p_phone = app_dict.get("patient_phone_db") or app_dict.get("patient_phone") or "+91 98765 43210"
@@ -1113,13 +1133,17 @@ def fetch_all_tokens_from_db(
                         if checked_in_at_val:
                             checkin_str = checked_in_at_val.isoformat() if hasattr(checked_in_at_val, "isoformat") else str(checked_in_at_val)
 
-                        age = app_dict.get("age") or 28
-                        if app_dict.get("patient_dob"):
+                        age = app_dict.get("age") or j_app.get("age")
+                        if not age and app_dict.get("patient_dob"):
                             try:
                                 birth_year = int(str(app_dict["patient_dob"])[:4])
-                                age = max(1, 2026 - birth_year)
+                                calc_age = 2026 - birth_year
+                                if calc_age > 1:
+                                    age = calc_age
                             except Exception:
                                 pass
+                        if not age:
+                            age = 28
 
                         raw_created = app_dict.get("created_at")
                         if raw_created and hasattr(raw_created, "strftime"):
@@ -1191,8 +1215,8 @@ def fetch_all_tokens_from_db(
                             "date": str(app_dict.get("date") or "Today"),
                             "age": age,
                             "bloodGroup": app_dict.get("blood_group") or app_dict.get("bloodGroup") or app_dict.get("patient_blood_group") or "O+",
-                            "address": app_dict.get("address") or "",
-                            "healthIssue": app_dict.get("health_issue") or app_dict.get("healthIssue") or "General Consultation",
+                            "address": app_dict.get("address") or j_app.get("address") or "",
+                            "healthIssue": app_dict.get("health_issue") or app_dict.get("healthIssue") or j_app.get("healthIssue") or j_app.get("health_issue") or "General Consultation",
                             "vitals": vitals_obj,
                             "vitals_status": v_status,
                             "vitalsStatus": v_status,
@@ -1244,7 +1268,7 @@ def fetch_all_tokens_from_db(
                 p_phone = app_dict.get("patient_phone") or app_dict.get("patientPhone") or p_obj.get("phone") or "+91 98765 43210"
 
                 raw_status = app_dict.get("status") or "Waiting"
-                token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed"] else raw_status
+                token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed", "Checked In"] else raw_status
 
                 checked_in_at_val = app_dict.get("checked_in_at")
                 created_at_val = app_dict.get("created_at") or app_dict.get("createdAt")
@@ -1656,11 +1680,7 @@ def create_walkin_appointment(
         "status": "Waiting",
         "arrivalTime": now_str,
         "issueTime": now_str,
-<<<<<<< HEAD
         "type": getattr(payload, "type", "Walk-In") or "Walk-In",
-=======
-        "type": "Walk-In",
->>>>>>> origin/main
         "date": today_str,
         "age": payload.age or 30,
         "bloodGroup": payload.bloodGroup or "O+",
