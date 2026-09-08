@@ -72,7 +72,7 @@ export const receptionistService = {
     return null;
   },
 
-  async toggleDoctorAvailability(doctorId: string, isAvailable: boolean, reason?: string, unavailableUntil?: string): Promise<boolean> {
+  async toggleDoctorAvailability(doctorId: string, isAvailable: boolean, reason?: string, unavailableUntil?: string): Promise<{ success: boolean; doctor?: any }> {
     try {
       const payload = {
         isAvailable,
@@ -84,67 +84,108 @@ export const receptionistService = {
         unavailable_until: unavailableUntil || '',
       };
 
-      let res = await apiFetch(`/receptionist/doctors/${doctorId}/availability`, {
+      const encodedId = encodeURIComponent(doctorId);
+      let res = await apiFetch(`/receptionist/doctors/${encodedId}/availability`, {
         method: 'PATCH',
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        res = await apiFetch(`/doctor/${doctorId}/availability`, {
+        res = await apiFetch(`/doctor/${encodedId}/availability`, {
           method: 'PATCH',
           body: JSON.stringify(payload),
         });
       }
 
       if (!res.ok) {
-        res = await apiFetch(`/doctors/${doctorId}/availability`, {
+        res = await apiFetch(`/doctor/availability`, {
           method: 'PATCH',
           body: JSON.stringify(payload),
         });
       }
 
-      return res.ok;
+      if (!res.ok) {
+        res = await apiFetch(`/doctors/${encodedId}/availability`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        return { success: true, doctor: data?.doctor };
+      }
+      return { success: false };
     } catch (e) {
       console.warn('Failed to toggle doctor availability', e);
-      return false;
+      return { success: false };
     }
   },
 
-  async updateSlotCapacity(doctorId: string, timeSlot: string, maxSeats: number, isAvailable: boolean = true): Promise<boolean> {
+  async updateSlotCapacity(doctorId: string, timeSlot: string, maxSeats: number, isAvailable: boolean = true): Promise<{ success: boolean; doctor?: any; slot?: any; error?: string }> {
     try {
-      const res = await apiFetch(`/receptionist/doctors/${doctorId}/slots`, {
+      const res = await apiFetch(`/receptionist/doctors/${encodeURIComponent(doctorId)}/slots`, {
         method: 'PUT',
         body: JSON.stringify({ timeSlot, maxSeats, isAvailable }),
       });
-      return res.ok;
-    } catch (e) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, doctor: data.doctor, slot: data.slot };
+      }
+      return { success: false, error: data.detail || 'Failed to update slot capacity' };
+    } catch (e: any) {
       console.warn('Failed to update slot capacity', e);
-      return false;
+      return { success: false, error: e?.message || 'Network error' };
     }
   },
 
-  async addSlot(doctorId: string, timeSlot: string, maxSeats: number = 6, isAvailable: boolean = true): Promise<boolean> {
+  async addSlot(doctorId: string, timeSlot: string, maxSeats: number = 6, isAvailable: boolean = true): Promise<{ success: boolean; doctor?: any; slot?: any; error?: string }> {
     try {
-      const res = await apiFetch(`/receptionist/doctors/${doctorId}/slots`, {
+      const res = await apiFetch(`/receptionist/doctors/${encodeURIComponent(doctorId)}/slots`, {
         method: 'POST',
         body: JSON.stringify({ timeSlot, maxSeats, isAvailable }),
       });
-      return res.ok;
-    } catch (e) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, doctor: data.doctor, slot: data.slot };
+      }
+      return { success: false, error: data.detail || 'Failed to add slot' };
+    } catch (e: any) {
       console.warn('Failed to add slot', e);
-      return false;
+      return { success: false, error: e?.message || 'Network error' };
     }
   },
 
-  async deleteSlot(doctorId: string, slotId: string): Promise<boolean> {
+  async deleteSlot(doctorId: string, slotId: string): Promise<{ success: boolean; doctor?: any; slotId?: string; error?: string }> {
     try {
-      const res = await apiFetch(`/receptionist/doctors/${doctorId}/slots/${encodeURIComponent(slotId)}`, {
+      const res = await apiFetch(`/receptionist/doctors/${encodeURIComponent(doctorId)}/slots/${encodeURIComponent(slotId)}`, {
         method: 'DELETE',
       });
-      return res.ok;
-    } catch (e) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, doctor: data.doctor, slotId: data.slotId };
+      }
+      return { success: false, error: data.detail || 'Failed to delete slot' };
+    } catch (e: any) {
       console.warn('Failed to delete slot', e);
-      return false;
+      return { success: false, error: e?.message || 'Network error' };
+    }
+  },
+
+  async addStandardSlots(doctorId: string, maxSeats: number = 6, clearExisting: boolean = false): Promise<{ success: boolean; doctor?: any; slots?: any[]; error?: string }> {
+    try {
+      const res = await apiFetch(`/receptionist/doctors/${encodeURIComponent(doctorId)}/standard-slots`, {
+        method: 'POST',
+        body: JSON.stringify({ maxSeats, clearExisting }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, doctor: data.doctor, slots: data.slots };
+      }
+      return { success: false, error: data.detail || 'Failed to add standard slots' };
+    } catch (e: any) {
+      console.warn('Failed to add standard slots', e);
+      return { success: false, error: e?.message || 'Network error' };
     }
   },
 

@@ -235,9 +235,10 @@ export interface StaffState {
   fetchDoctors: (silent?: boolean) => Promise<void>;
   toggleDoctorAvailability: (doctorId: string, isAvailable?: boolean, reason?: string, unavailableUntil?: string) => Promise<void>;
   updateDoctorSlotCapacity: (doctorId: string, timeSlot: string, availableSeats: number) => Promise<void>;
-  updateSlotCapacity: (doctorId: string, timeSlot: string, maxSeats: number, isAvailable?: boolean) => Promise<void>;
-  addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => Promise<void>;
-  removeTimeSlot: (doctorId: string, slotId: string) => Promise<void>;
+  updateSlotCapacity: (doctorId: string, timeSlot: string, maxSeats: number, isAvailable?: boolean) => Promise<{ success: boolean; error?: string }>;
+  addTimeSlot: (doctorId: string, timeSlot: string, maxSeats: number) => Promise<{ success: boolean; error?: string }>;
+  removeTimeSlot: (doctorId: string, slotId: string) => Promise<{ success: boolean; error?: string }>;
+  addStandardSlots: (doctorId: string, maxSeats?: number, clearExisting?: boolean) => Promise<{ success: boolean; doctor?: any; error?: string }>;
   createDoctor: (doctorData: Partial<DoctorRecord>) => Promise<void>;
   fetchTokens: (doctorId?: string, silent?: boolean) => Promise<void>;
   fetchBookings: (doctorId?: string, silent?: boolean) => Promise<void>;
@@ -396,14 +397,30 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   toggleDoctorAvailability: async (doctorId: string, isAvailable?: boolean, reason?: string, unavailableUntil?: string) => {
-    const currentDoc = get().doctors.find(d => d.id === doctorId || d.staffCode === doctorId || d.staff_code === doctorId);
+    const currentStaff = get().currentStaff;
+    const currentDoc = get().doctors.find(d => 
+      d.id === doctorId || 
+      d.staffCode === doctorId || 
+      d.staff_code === doctorId ||
+      (d.email && doctorId && d.email.toLowerCase() === doctorId.toLowerCase()) ||
+      (currentStaff?.staff_code && (d.staffCode === currentStaff.staff_code || d.staff_code === currentStaff.staff_code)) ||
+      (currentStaff?.doctorId && d.id === currentStaff.doctorId)
+    );
     const nextAvail = typeof isAvailable === 'boolean' ? isAvailable : (currentDoc ? !currentDoc.isAvailable : true);
     const finalReason = nextAvail ? '' : (reason !== undefined ? reason : (currentDoc?.availabilityReason || 'Temporarily Away'));
     const finalUntil = nextAvail ? '' : (unavailableUntil !== undefined ? unavailableUntil : (currentDoc?.unavailableUntil || ''));
 
+    // Optimistically update matching doctor(s)
     set(state => ({
       doctors: state.doctors.map(doc => {
-        if (doc.id !== doctorId && doc.staffCode !== doctorId && doc.staff_code !== doctorId) return doc;
+        const matches = (
+          doc.id === doctorId ||
+          doc.staffCode === doctorId ||
+          doc.staff_code === doctorId ||
+          (currentDoc && doc.id === currentDoc.id) ||
+          (doc.email && doctorId && doc.email.toLowerCase() === doctorId.toLowerCase())
+        );
+        if (!matches) return doc;
         return {
           ...doc,
           isAvailable: nextAvail,
@@ -416,7 +433,17 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       })
     }));
 
-    await receptionistService.toggleDoctorAvailability(doctorId, nextAvail, finalReason, finalUntil);
+    const res = await receptionistService.toggleDoctorAvailability(doctorId, nextAvail, finalReason, finalUntil);
+    if (res && res.doctor) {
+      set(state => ({
+        doctors: state.doctors.map(doc => {
+          if (doc.id === res.doctor.id || (doc.staffCode && doc.staffCode === res.doctor.staffCode)) {
+            return { ...doc, ...res.doctor };
+          }
+          return doc;
+        })
+      }));
+    }
     await get().fetchDoctors(true);
   },
 
@@ -442,16 +469,17 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   updateSlotCapacity: async (doctorId: string, timeSlot: string, maxSeats: number, isAvailable = true) => {
+    const isMatch = (doc: DoctorRecord) => doc.id === doctorId || doc.staffCode === doctorId || doc.staff_code === doctorId;
     set(state => ({
       doctors: state.doctors.map(doc => {
-        if (doc.id !== doctorId) return doc;
+        if (!isMatch(doc)) return doc;
         const currentSlots = doc.slotCapacities || [];
         const updatedSlots = currentSlots.map(slot => {
-          if (slot.timeSlot !== timeSlot) return slot;
+          if (slot.timeSlot !== timeSlot && slot.id !== timeSlot) return slot;
           const onlineMax = Math.ceil(maxSeats / 2);
           const offlineMax = Math.floor(maxSeats / 2);
-          const onlineAvail = Math.max(0, onlineMax - slot.onlineBookedSeats);
-          const offlineAvail = Math.max(0, offlineMax - slot.offlineBookedSeats);
+          const onlineAvail = Math.max(0, onlineMax - (slot.onlineBookedSeats || 0));
+          const offlineAvail = Math.max(0, offlineMax - (slot.offlineBookedSeats || 0));
           return {
             ...slot,
             maxSeats,
@@ -467,13 +495,23 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       })
     }));
 
-    await receptionistService.updateSlotCapacity(doctorId, timeSlot, maxSeats, isAvailable);
+    const res = await receptionistService.updateSlotCapacity(doctorId, timeSlot, maxSeats, isAvailable);
+    if (res?.doctor) {
+      set(state => ({
+        doctors: state.doctors.map(d =>
+          (d.id === res.doctor.id || isMatch(d)) ? { ...d, ...res.doctor } : d
+        )
+      }));
+    }
+    await get().fetchDoctors(true);
+    return { success: !!res?.success, error: res?.error };
   },
 
   addTimeSlot: async (doctorId: string, timeSlot: string, maxSeats: number) => {
+    const isMatch = (doc: DoctorRecord) => doc.id === doctorId || doc.staffCode === doctorId || doc.staff_code === doctorId;
     set(state => ({
       doctors: state.doctors.map(doc => {
-        if (doc.id !== doctorId) return doc;
+        if (!isMatch(doc)) return doc;
         const currentSlots = doc.slotCapacities || [];
         const exists = currentSlots.some(s => s.timeSlot === timeSlot);
         if (exists) return doc;
@@ -482,13 +520,23 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       })
     }));
 
-    await receptionistService.addSlot(doctorId, timeSlot, maxSeats, true);
+    const res = await receptionistService.addSlot(doctorId, timeSlot, maxSeats, true);
+    if (res?.doctor) {
+      set(state => ({
+        doctors: state.doctors.map(d =>
+          (d.id === res.doctor.id || isMatch(d)) ? { ...d, ...res.doctor } : d
+        )
+      }));
+    }
+    await get().fetchDoctors(true);
+    return { success: !!res?.success, error: res?.error };
   },
 
   removeTimeSlot: async (doctorId: string, slotId: string) => {
+    const isMatch = (doc: DoctorRecord) => doc.id === doctorId || doc.staffCode === doctorId || doc.staff_code === doctorId;
     set(state => ({
       doctors: state.doctors.map(doc => {
-        if (doc.id !== doctorId) return doc;
+        if (!isMatch(doc)) return doc;
         const currentSlots = doc.slotCapacities || [];
         return {
           ...doc,
@@ -497,7 +545,30 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       })
     }));
 
-    await receptionistService.deleteSlot(doctorId, slotId);
+    const res = await receptionistService.deleteSlot(doctorId, slotId);
+    if (res?.doctor) {
+      set(state => ({
+        doctors: state.doctors.map(d =>
+          (d.id === res.doctor.id || isMatch(d)) ? { ...d, ...res.doctor } : d
+        )
+      }));
+    }
+    await get().fetchDoctors(true);
+    return { success: !!res?.success, error: res?.error };
+  },
+
+  addStandardSlots: async (doctorId: string, maxSeats: number = 6, clearExisting: boolean = false) => {
+    const isMatch = (doc: DoctorRecord) => doc.id === doctorId || doc.staffCode === doctorId || doc.staff_code === doctorId;
+    const res = await receptionistService.addStandardSlots(doctorId, maxSeats, clearExisting);
+    if (res?.doctor) {
+      set(state => ({
+        doctors: state.doctors.map(d =>
+          (d.id === res.doctor.id || isMatch(d)) ? { ...d, ...res.doctor } : d
+        )
+      }));
+    }
+    await get().fetchDoctors(true);
+    return { success: !!res?.success, doctor: res?.doctor, error: res?.error };
   },
 
   createDoctor: async (doctorData: Partial<DoctorRecord>) => {
@@ -956,7 +1027,9 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   updateDoctor: async (id: string, updates: Partial<DoctorRecord>) => {
     set((state) => ({
       doctors: state.doctors.map((doc) =>
-        doc.id === id ? { ...doc, ...updates } : doc
+        (doc.id === id || (doc.staffCode && doc.staffCode === id) || (doc.staff_code && doc.staff_code === id))
+          ? { ...doc, ...updates }
+          : doc
       ),
     }));
     try {

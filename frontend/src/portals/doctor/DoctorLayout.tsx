@@ -150,11 +150,16 @@ export const DoctorLayout: React.FC = () => {
   };
 
   const currentDoctor: DoctorRecord = doctors.find((d) =>
-    (activeDoctorId && d.id === activeDoctorId) ||
+    (activeDoctorId && (d.id === activeDoctorId || d.staffCode === activeDoctorId || d.staff_code === activeDoctorId)) ||
+    (currentStaff?.staff_code && (d.staffCode === currentStaff.staff_code || d.staff_code === currentStaff.staff_code)) ||
+    (currentStaff?.staffCode && (d.staffCode === currentStaff.staffCode || d.staff_code === currentStaff.staffCode)) ||
+    (currentStaff?.doctorId && (d.id === currentStaff.doctorId || d.staffCode === currentStaff.doctorId)) ||
+    (currentStaff?.doctor_id && (d.id === currentStaff.doctor_id || d.staffCode === currentStaff.doctor_id)) ||
+    (currentStaff?.id && (d.id === currentStaff.id || d.staffCode === currentStaff.id)) ||
     (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
     (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
   ) || {
-    id: activeDoctorId || 'doc-current',
+    id: currentStaff?.doctorId || currentStaff?.doctor_id || activeDoctorId || currentStaff?.staff_code || currentStaff?.id || 'doc-current',
     name: currentStaff?.name || 'Doctor',
     specialty: currentStaff?.department || 'General Medicine',
     department: currentStaff?.department || 'General Medicine',
@@ -164,8 +169,8 @@ export const DoctorLayout: React.FC = () => {
     hospital_name: currentStaff?.hospital_name || currentStaff?.hospitalName,
     experienceYears: 5,
     consultationFee: 500,
-    photo: '/doctor_default.jpg',
-    phone: '+91 98765 00000',
+    photo: currentStaff?.avatarUrl || '/doctor_default.jpg',
+    phone: currentStaff?.phone || '+91 98765 00000',
     email: currentStaff?.email || 'doctor@carepulse.com',
     roomNumber: 'Cabin 101',
     isAvailable: true,
@@ -175,12 +180,17 @@ export const DoctorLayout: React.FC = () => {
     slotCapacities: [],
   };
 
+  const resolvedDoctorId = (currentDoctor.id && currentDoctor.id !== 'doc-current')
+    ? currentDoctor.id
+    : (currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.staff_code || currentStaff?.staffCode || activeDoctorId || currentStaff?.id || '');
+
   const handleOpenUnavailableModal = () => {
     setIsAvailabilityModalOpen(true);
   };
 
   const handleSetAvailable = async () => {
-    await toggleDoctorAvailability(currentDoctor.id, true, '', '');
+    await toggleDoctorAvailability(resolvedDoctorId, true, '', '');
+    showToast('Cabin status updated to: Available');
   };
 
   // Map live tokens or fallback
@@ -756,7 +766,8 @@ export const DoctorLayout: React.FC = () => {
         onClose={() => setIsAvailabilityModalOpen(false)}
         doctor={currentDoctor}
         onSaveAvailability={async (isAvailable, reason, duration) => {
-          await toggleDoctorAvailability(currentDoctor.id, isAvailable, reason || '', duration || '');
+          await toggleDoctorAvailability(resolvedDoctorId, isAvailable, reason || '', duration || '');
+          showToast(isAvailable ? 'Cabin status updated to: Available' : `Cabin status: Not Available (${reason || 'Break'})`);
         }}
       />
 

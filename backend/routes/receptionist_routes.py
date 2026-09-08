@@ -13,6 +13,7 @@ from schemas import (
     DoctorAvailabilityUpdate,
     SlotCapacityUpdate,
     SlotAddRequest,
+    StandardSlotsRequest,
     SlotCapacitySchema,
     TokenStatusUpdate,
     WalkInAppointmentCreate,
@@ -189,9 +190,30 @@ def get_doctors(
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
                     if effective_hosp_id:
-                        cur.execute("SELECT * FROM doctors WHERE hospital_id = %s ORDER BY id", (effective_hosp_id,))
+                        cur.execute("""
+                            SELECT d.*, s.staff_code 
+                            FROM doctors d 
+                            LEFT JOIN (
+                                SELECT DISTINCT ON (doctor_id) doctor_id, staff_code, email 
+                                FROM staff 
+                                WHERE doctor_id IS NOT NULL 
+                                ORDER BY doctor_id
+                            ) s ON (s.doctor_id = d.id OR (d.email IS NOT NULL AND LOWER(s.email) = LOWER(d.email)))
+                            WHERE d.hospital_id = %s 
+                            ORDER BY d.id
+                        """, (effective_hosp_id,))
                     else:
-                        cur.execute("SELECT * FROM doctors ORDER BY id")
+                        cur.execute("""
+                            SELECT d.*, s.staff_code 
+                            FROM doctors d 
+                            LEFT JOIN (
+                                SELECT DISTINCT ON (doctor_id) doctor_id, staff_code, email 
+                                FROM staff 
+                                WHERE doctor_id IS NOT NULL 
+                                ORDER BY doctor_id
+                            ) s ON (s.doctor_id = d.id OR (d.email IS NOT NULL AND LOWER(s.email) = LOWER(d.email)))
+                            ORDER BY d.id
+                        """)
                     rows = cur.fetchall()
                     if rows is not None:
                         return {"success": True, "doctors": [format_receptionist_doctor(dict(r)) for r in rows]}
@@ -200,10 +222,25 @@ def get_doctors(
 
     db = database.read_json_db()
     doctors = db.get("doctors", [])
+    staff_list = db.get("staff", [])
     if effective_hosp_id:
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
 
-    return {"success": True, "doctors": [format_receptionist_doctor(d) for d in doctors]}
+    formatted_docs = []
+    for d in doctors:
+        doc_dict = dict(d)
+        if not doc_dict.get("staff_code") and not doc_dict.get("staffCode"):
+            doc_id = str(doc_dict.get("id", "")).lower()
+            doc_email = str(doc_dict.get("email", "")).lower()
+            matching_stf = next((s for s in staff_list if str(s.get("doctor_id", "")).lower() == doc_id or (doc_email and str(s.get("email", "")).lower() == doc_email)), None)
+            if matching_stf:
+                sc = matching_stf.get("staff_code") or matching_stf.get("staffCode")
+                if sc:
+                    doc_dict["staff_code"] = sc
+                    doc_dict["staffCode"] = sc
+        formatted_docs.append(format_receptionist_doctor(doc_dict))
+
+    return {"success": True, "doctors": formatted_docs}
 
 @router.post("/doctors")
 def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = Header(None)):
@@ -213,7 +250,15 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
 
     new_id = f"doc-{uuid.uuid4().hex[:6]}"
     slots = payload.slotCapacities if payload.slotCapacities else []
-    slots_json = [s if isinstance(s, dict) else s.dict() for s in slots]
+    slots_json = []
+    for s in slots:
+        sd = s if isinstance(s, dict) else s.dict()
+        s_id = sd.get("id") or f"slot-{uuid.uuid4().hex[:6]}"
+        s_time = sd.get("timeSlot") or sd.get("time_slot") or "09:00 AM - 10:00 AM"
+        s_max = int(sd.get("maxSeats") or 6)
+        s_booked = int(sd.get("bookedSeats") or 0)
+        s_avail = bool(sd.get("isAvailable") if sd.get("isAvailable") is not None else True)
+        slots_json.append(make_split_slot(s_id, s_time, s_max, s_booked, s_avail))
 
     # Derive hospital_id from payload or staff context
     hosp_id = payload.hospital_id or "hosp-bag"
@@ -401,6 +446,80 @@ def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = H
 
     return {"success": True, "doctor": doctor_obj, "staff": new_staff_entry}
 
+DEFAULT_OPD_SHIFTS = [
+    "09:00 AM - 10:00 AM",
+    "10:00 AM - 11:00 AM",
+    "11:00 AM - 12:00 PM",
+    "12:00 PM - 01:00 PM",
+    "02:00 PM - 03:00 PM",
+    "03:00 PM - 04:00 PM",
+    "04:00 PM - 05:00 PM"
+]
+
+def find_doctor_records_for_schedule(db, doctor_id: str):
+    """
+    Resolve doctor across PostgreSQL and JSON DB by id, staff_code, staff UUID, or email.
+    Returns: (pg_row, json_doc, canonical_id)
+    """
+    ident = str(doctor_id).strip()
+    canonical_id = None
+    pg_row = None
+    json_doc = None
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                if conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            SELECT * FROM doctors 
+                            WHERE id = %s 
+                               OR LOWER(email) = LOWER(%s)
+                               OR id IN (
+                                   SELECT doctor_id FROM staff 
+                                   WHERE (LOWER(staff_code) = LOWER(%s) OR id::text = %s OR LOWER(email) = LOWER(%s)) 
+                                     AND doctor_id IS NOT NULL
+                               )
+                            LIMIT 1
+                        """, (ident, ident, ident, ident, ident))
+                        row = cur.fetchone()
+                        if row:
+                            pg_row = dict(row)
+                            canonical_id = str(pg_row["id"])
+        except Exception as e:
+            logger.warning(f"Error querying doctor in PG for schedule: {e}")
+
+    # Check JSON DB staff if canonical_id is still unknown
+    if not canonical_id:
+        for stf in db.get("staff", []):
+            if (
+                str(stf.get("id", "")).strip().lower() == ident.lower()
+                or str(stf.get("staff_code", "")).strip().lower() == ident.lower()
+                or str(stf.get("staffCode", "")).strip().lower() == ident.lower()
+                or (stf.get("email") and stf.get("email").strip().lower() == ident.lower())
+            ):
+                doc_id = stf.get("doctor_id") or stf.get("doctorId")
+                if doc_id:
+                    canonical_id = str(doc_id)
+                    break
+
+    target_id = canonical_id or ident
+    for doc in db.get("doctors", []):
+        if (
+            str(doc.get("id", "")).strip().lower() == target_id.lower()
+            or str(doc.get("id", "")).strip().lower() == ident.lower()
+            or str(doc.get("staff_code", "")).strip().lower() == ident.lower()
+            or str(doc.get("staffCode", "")).strip().lower() == ident.lower()
+            or (doc.get("email") and str(doc.get("email")).strip().lower() == ident.lower())
+        ):
+            json_doc = doc
+            if not canonical_id:
+                canonical_id = str(doc.get("id"))
+            break
+
+    return pg_row, json_doc, canonical_id
+
+
 @router.patch("/doctors/{doctor_id}/availability")
 def toggle_doctor_availability(
     doctor_id: str,
@@ -408,6 +527,7 @@ def toggle_doctor_availability(
     authorization: Optional[str] = Header(None)
 ):
     """Toggle Doctor Available or Not Available status in database."""
+    staff_ctx = None
     if authorization:
         from routes.staff_auth import get_current_staff
         staff_ctx = get_current_staff(authorization)
@@ -419,39 +539,88 @@ def toggle_doctor_availability(
                     detail=f"Access denied: {role.capitalize()} accounts are not authorized to modify doctor availability. Only Doctors and Hospital Administrators have permission to change cabin status."
                 )
 
+    effective_id = (doctor_id or "").strip()
+    if (not effective_id or effective_id.lower() in ["doc-current", "current", "me", "undefined", "null"]) and staff_ctx:
+        effective_id = staff_ctx.get("doctor_id") or staff_ctx.get("staff_id") or staff_ctx.get("email") or effective_id
+
     next_avail = payload.isAvailable if payload.isAvailable is not None else (payload.is_available if payload.is_available is not None else True)
-    reason = payload.reason or payload.availabilityReason or payload.availability_reason or ""
-    unavailable_until = payload.unavailableUntil or payload.unavailable_until or ""
+    reason = (payload.reason or payload.availabilityReason or payload.availability_reason or "").strip()
+    unavailable_until = (payload.unavailableUntil or payload.unavailable_until or "").strip()
+
+    db = database.read_json_db()
+    pg_row, json_doc, canonical_id = find_doctor_records_for_schedule(db, effective_id)
+    target_id = canonical_id or effective_id
 
     updated_doc = None
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    cur.execute("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS availability_reason VARCHAR(255) DEFAULT '';")
+                    cur.execute("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS unavailable_until VARCHAR(100) DEFAULT '';")
                     cur.execute("""
-                        ALTER TABLE doctors ADD COLUMN IF NOT EXISTS availability_reason VARCHAR(255) DEFAULT '';
-                        ALTER TABLE doctors ADD COLUMN IF NOT EXISTS unavailable_until VARCHAR(100) DEFAULT '';
                         UPDATE doctors
                         SET is_available = %s,
                             availability_reason = %s,
                             unavailable_until = %s
-                        WHERE id = %s OR staff_code = %s OR LOWER(email) = LOWER(%s)
+                        WHERE id = %s OR id = %s
+                           OR LOWER(email) = LOWER(%s) OR LOWER(email) = LOWER(%s)
+                           OR id IN (
+                               SELECT doctor_id FROM staff 
+                               WHERE (
+                                   LOWER(staff_code) = LOWER(%s) OR LOWER(staff_code) = LOWER(%s)
+                                   OR id::text = %s OR id::text = %s
+                                   OR LOWER(email) = LOWER(%s) OR LOWER(email) = LOWER(%s)
+                               )
+                               AND doctor_id IS NOT NULL
+                           )
                         RETURNING *
-                    """, (next_avail, reason if not next_avail else '', unavailable_until if not next_avail else '', doctor_id, doctor_id, doctor_id))
+                    """, (
+                        next_avail,
+                        reason if not next_avail else '',
+                        unavailable_until if not next_avail else '',
+                        target_id,
+                        effective_id,
+                        target_id,
+                        effective_id,
+                        target_id,
+                        effective_id,
+                        target_id,
+                        effective_id,
+                        target_id,
+                        effective_id
+                    ))
                     row = cur.fetchone()
                     if row:
                         conn.commit()
-                        updated_doc = format_receptionist_doctor(dict(row))
+                        row_dict = dict(row)
+                        try:
+                            cur.execute("""
+                                SELECT staff_code FROM staff 
+                                WHERE doctor_id = %s OR LOWER(email) = LOWER(%s) 
+                                LIMIT 1
+                            """, (str(row_dict["id"]), row_dict.get("email") or ""))
+                            stf_row = cur.fetchone()
+                            if stf_row and stf_row.get("staff_code"):
+                                row_dict["staff_code"] = stf_row["staff_code"]
+                                row_dict["staffCode"] = stf_row["staff_code"]
+                        except Exception:
+                            pass
+                        updated_doc = format_receptionist_doctor(row_dict)
         except Exception as e:
             logger.warning(f"DB toggle availability note: {e}")
 
-    db = database.read_json_db()
+    # Dual-write to database.json
+    ident_lower = target_id.lower()
+    alt_ident_lower = effective_id.lower()
     for doc in db.get("doctors", []):
+        doc_id = str(doc.get("id", "")).lower()
+        doc_code = str(doc.get("staff_code") or doc.get("staffCode") or "").lower()
+        doc_email = str(doc.get("email") or "").lower()
         if (
-            doc.get("id") == doctor_id
-            or doc.get("staff_code") == doctor_id
-            or doc.get("staffCode") == doctor_id
-            or (doc.get("email") and doc.get("email").lower() == doctor_id.lower())
+            doc_id in [ident_lower, alt_ident_lower]
+            or (doc_code and doc_code in [ident_lower, alt_ident_lower])
+            or (doc_email and doc_email in [ident_lower, alt_ident_lower])
         ):
             doc["is_available"] = next_avail
             doc["isAvailable"] = next_avail
@@ -463,13 +632,15 @@ def toggle_doctor_availability(
                 updated_doc = format_receptionist_doctor(doc)
 
     for stf in db.get("staff", []):
+        stf_id = str(stf.get("id", "")).lower()
+        stf_doc_id = str(stf.get("doctor_id") or stf.get("doctorId") or "").lower()
+        stf_code = str(stf.get("staff_code") or stf.get("staffCode") or "").lower()
+        stf_email = str(stf.get("email") or "").lower()
         if (
-            stf.get("id") == doctor_id
-            or stf.get("doctor_id") == doctor_id
-            or stf.get("doctorId") == doctor_id
-            or stf.get("staff_code") == doctor_id
-            or stf.get("staffCode") == doctor_id
-            or (stf.get("email") and stf.get("email").lower() == doctor_id.lower())
+            stf_id in [ident_lower, alt_ident_lower]
+            or (stf_doc_id and stf_doc_id in [ident_lower, alt_ident_lower])
+            or (stf_code and stf_code in [ident_lower, alt_ident_lower])
+            or (stf_email and stf_email in [ident_lower, alt_ident_lower])
         ):
             stf["is_available"] = next_avail
             stf["isAvailable"] = next_avail
@@ -483,7 +654,57 @@ def toggle_doctor_availability(
     if updated_doc:
         return {"success": True, "doctor": updated_doc}
 
+    if json_doc:
+        json_doc["is_available"] = next_avail
+        json_doc["isAvailable"] = next_avail
+        json_doc["availabilityReason"] = reason if not next_avail else ""
+        json_doc["availability_reason"] = reason if not next_avail else ""
+        json_doc["unavailableUntil"] = unavailable_until if not next_avail else ""
+        json_doc["unavailable_until"] = unavailable_until if not next_avail else ""
+        return {"success": True, "doctor": format_receptionist_doctor(json_doc)}
+
     raise HTTPException(status_code=404, detail="Doctor not found")
+
+
+def save_doctor_schedule_slots(canonical_id: str, slots: list, db: dict, json_doc: Optional[dict] = None):
+    """
+    Commit slot capacities to PostgreSQL (if active) and dual-write to JSON database.
+    """
+    if database.use_pg and canonical_id:
+        try:
+            with database.get_pg_connection() as conn:
+                if conn:
+                    with conn.cursor() as cur:
+                        cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), canonical_id))
+                        conn.commit()
+        except Exception as e:
+            logger.error(f"Failed updating doctor slots in PG: {e}")
+
+    if db is not None:
+        for doc in db.get("doctors", []):
+            if (
+                str(doc.get("id", "")).strip().lower() == str(canonical_id).strip().lower()
+                or (json_doc and str(doc.get("id", "")) == str(json_doc.get("id", "")))
+            ):
+                doc["slotCapacities"] = slots
+                doc["slot_capacities"] = slots
+
+        for stf in db.get("staff", []):
+            if (
+                str(stf.get("doctor_id", "")).strip().lower() == str(canonical_id).strip().lower()
+                or str(stf.get("doctorId", "")).strip().lower() == str(canonical_id).strip().lower()
+                or str(stf.get("id", "")).strip().lower() == str(canonical_id).strip().lower()
+            ):
+                stf["slotCapacities"] = slots
+                stf["slot_capacities"] = slots
+
+        database.write_json_db(db)
+
+    target = json_doc or {"id": canonical_id, "slotCapacities": slots}
+    target["slotCapacities"] = slots
+    target["slot_capacities"] = slots
+    return format_receptionist_doctor(target)
+
 
 @router.put("/doctors/{doctor_id}/slots")
 def update_slot_capacity(
@@ -504,97 +725,52 @@ def update_slot_capacity(
     online_max = math.ceil(payload.maxSeats / 2)
     offline_max = math.floor(payload.maxSeats / 2)
 
-    if database.use_pg:
-        try:
-            with database.get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
-                    row = cur.fetchone()
-                    if row:
-                        doc = dict(row)
-                        slots = doc.get("slot_capacities") or []
-                        if isinstance(slots, str):
-                            try:
-                                slots = json.loads(slots)
-                            except Exception:
-                                slots = []
-                        if not slots:
-                            slots = []
-
-                        target_slot = None
-                        for s in slots:
-                            if s.get("timeSlot") == payload.timeSlot or s.get("id") == payload.timeSlot:
-                                s["maxSeats"] = payload.maxSeats
-                                s["onlineMaxSeats"] = online_max
-                                s["offlineMaxSeats"] = offline_max
-                                if payload.isAvailable is not None:
-                                    s["isAvailable"] = payload.isAvailable
-                                booked = s.get("bookedSeats", 0)
-                                online_booked = s.get("onlineBookedSeats", min(online_max, booked))
-                                offline_booked = s.get("offlineBookedSeats", max(0, booked - online_booked))
-                                s["onlineBookedSeats"] = online_booked
-                                s["offlineBookedSeats"] = offline_booked
-                                s["onlineAvailableSeats"] = max(0, online_max - online_booked)
-                                s["offlineAvailableSeats"] = max(0, offline_max - offline_booked)
-                                s["availableSeats"] = s["onlineAvailableSeats"] + s["offlineAvailableSeats"]
-                                target_slot = s
-                                break
-
-                        if not target_slot:
-                            target_slot = make_split_slot(
-                                f"slot-{uuid.uuid4().hex[:6]}",
-                                payload.timeSlot,
-                                payload.maxSeats,
-                                0,
-                                payload.isAvailable if payload.isAvailable is not None else True
-                            )
-                            slots.append(target_slot)
-
-                        cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), doctor_id))
-                        conn.commit()
-                        doc["slotCapacities"] = slots
-                        doc["slot_capacities"] = slots
-                        return {"success": True, "slot": target_slot, "doctor": format_receptionist_doctor(doc)}
-        except Exception as e:
-            logger.warning(f"DB update slot note: {e}")
-
     db = database.read_json_db()
-    for doc in db.get("doctors", []):
-        if doc.get("id") == doctor_id:
-            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or []
-            target_slot = None
-            for slot in slots:
-                if slot.get("timeSlot") == payload.timeSlot or slot.get("id") == payload.timeSlot:
-                    slot["maxSeats"] = payload.maxSeats
-                    slot["onlineMaxSeats"] = online_max
-                    slot["offlineMaxSeats"] = offline_max
-                    if payload.isAvailable is not None:
-                        slot["isAvailable"] = payload.isAvailable
-                    booked = slot.get("bookedSeats", 0)
-                    online_booked = slot.get("onlineBookedSeats", min(online_max, booked))
-                    offline_booked = slot.get("offlineBookedSeats", max(0, booked - online_booked))
-                    slot["onlineBookedSeats"] = online_booked
-                    slot["offlineBookedSeats"] = offline_booked
-                    slot["onlineAvailableSeats"] = max(0, online_max - online_booked)
-                    slot["offlineAvailableSeats"] = max(0, offline_max - offline_booked)
-                    slot["availableSeats"] = slot["onlineAvailableSeats"] + slot["offlineAvailableSeats"]
-                    target_slot = slot
-                    break
-            if not target_slot:
-                target_slot = make_split_slot(
-                    f"slot-{uuid.uuid4().hex[:6]}",
-                    payload.timeSlot,
-                    payload.maxSeats,
-                    0,
-                    payload.isAvailable if payload.isAvailable is not None else True
-                )
-                slots.append(target_slot)
-            doc["slotCapacities"] = slots
-            doc["slot_capacities"] = slots
-            database.write_json_db(db)
-            return {"success": True, "slot": target_slot, "doctor": format_receptionist_doctor(doc)}
+    pg_row, json_doc, canonical_id = find_doctor_records_for_schedule(db, doctor_id)
 
-    raise HTTPException(status_code=404, detail="Doctor not found")
+    if not canonical_id and not json_doc and not pg_row:
+        raise HTTPException(status_code=404, detail=f"Doctor '{doctor_id}' not found")
+
+    target_source = pg_row or json_doc or {}
+    raw_slots = target_source.get("slot_capacities") or target_source.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
+        try:
+            raw_slots = json.loads(raw_slots)
+        except Exception:
+            raw_slots = []
+    slots = list(raw_slots)
+
+    target_slot = None
+    for s in slots:
+        if s.get("timeSlot") == payload.timeSlot or s.get("id") == payload.timeSlot or (payload.id and s.get("id") == payload.id):
+            s["maxSeats"] = payload.maxSeats
+            s["onlineMaxSeats"] = online_max
+            s["offlineMaxSeats"] = offline_max
+            if payload.isAvailable is not None:
+                s["isAvailable"] = payload.isAvailable
+            booked = s.get("bookedSeats", 0)
+            online_booked = s.get("onlineBookedSeats", min(online_max, booked))
+            offline_booked = s.get("offlineBookedSeats", max(0, booked - online_booked))
+            s["onlineBookedSeats"] = online_booked
+            s["offlineBookedSeats"] = offline_booked
+            s["onlineAvailableSeats"] = max(0, online_max - online_booked)
+            s["offlineAvailableSeats"] = max(0, offline_max - offline_booked)
+            s["availableSeats"] = s["onlineAvailableSeats"] + s["offlineAvailableSeats"]
+            target_slot = s
+            break
+
+    if not target_slot:
+        target_slot = make_split_slot(
+            f"slot-{uuid.uuid4().hex[:6]}",
+            payload.timeSlot,
+            payload.maxSeats,
+            0,
+            payload.isAvailable if payload.isAvailable is not None else True
+        )
+        slots.append(target_slot)
+
+    updated_doc = save_doctor_schedule_slots(canonical_id or doctor_id, slots, db, json_doc)
+    return {"success": True, "slot": target_slot, "doctor": updated_doc}
 
 
 @router.post("/doctors/{doctor_id}/slots")
@@ -621,53 +797,36 @@ def add_doctor_slot(
         payload.isAvailable if payload.isAvailable is not None else True
     )
 
-    if database.use_pg:
-        try:
-            with database.get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
-                    row = cur.fetchone()
-                    if row:
-                        doc = dict(row)
-                        slots = doc.get("slot_capacities") or []
-                        if isinstance(slots, str):
-                            try:
-                                slots = json.loads(slots)
-                            except Exception:
-                                slots = []
-                        if not slots:
-                            slots = []
-
-                        # Check if duplicate slot exists
-                        existing = [s for s in slots if s.get("timeSlot") == payload.timeSlot]
-                        if not existing:
-                            slots.append(new_slot)
-                        else:
-                            new_slot = existing[0]
-
-                        cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), doctor_id))
-                        conn.commit()
-                        doc["slotCapacities"] = slots
-                        doc["slot_capacities"] = slots
-                        return {"success": True, "slot": new_slot, "doctor": format_receptionist_doctor(doc)}
-        except Exception as e:
-            logger.warning(f"DB add slot note: {e}")
-
     db = database.read_json_db()
-    for doc in db.get("doctors", []):
-        if doc.get("id") == doctor_id:
-            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or []
-            existing = [s for s in slots if s.get("timeSlot") == payload.timeSlot]
-            if not existing:
-                slots.append(new_slot)
-            else:
-                new_slot = existing[0]
-            doc["slotCapacities"] = slots
-            doc["slot_capacities"] = slots
-            database.write_json_db(db)
-            return {"success": True, "slot": new_slot, "doctor": format_receptionist_doctor(doc)}
+    pg_row, json_doc, canonical_id = find_doctor_records_for_schedule(db, doctor_id)
 
-    raise HTTPException(status_code=404, detail="Doctor not found")
+    if not canonical_id and not json_doc and not pg_row:
+        raise HTTPException(status_code=404, detail=f"Doctor '{doctor_id}' not found")
+
+    target_source = pg_row or json_doc or {}
+    raw_slots = target_source.get("slot_capacities") or target_source.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
+        try:
+            raw_slots = json.loads(raw_slots)
+        except Exception:
+            raw_slots = []
+    slots = list(raw_slots)
+
+    # Check if duplicate slot exists
+    existing = [s for s in slots if s.get("timeSlot") == payload.timeSlot]
+    if not existing:
+        slots.append(new_slot)
+    else:
+        # Update existing slot with requested maxSeats and availability
+        existing[0]["maxSeats"] = payload.maxSeats or 6
+        existing[0]["onlineMaxSeats"] = math.ceil((payload.maxSeats or 6) / 2)
+        existing[0]["offlineMaxSeats"] = math.floor((payload.maxSeats or 6) / 2)
+        if payload.isAvailable is not None:
+            existing[0]["isAvailable"] = payload.isAvailable
+        new_slot = existing[0]
+
+    updated_doc = save_doctor_schedule_slots(canonical_id or doctor_id, slots, db, json_doc)
+    return {"success": True, "slot": new_slot, "doctor": updated_doc}
 
 
 @router.delete("/doctors/{doctor_id}/slots/{slot_id}")
@@ -686,44 +845,82 @@ def delete_doctor_slot(
                 detail="Access denied: Nurse accounts are not authorized to modify doctor schedules."
             )
 
-    if database.use_pg:
-        try:
-            with database.get_pg_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM doctors WHERE id = %s LIMIT 1", (doctor_id,))
-                    row = cur.fetchone()
-                    if row:
-                        doc = dict(row)
-                        slots = doc.get("slot_capacities") or []
-                        if isinstance(slots, str):
-                            try:
-                                slots = json.loads(slots)
-                            except Exception:
-                                slots = []
-                        if not slots:
-                            slots = []
+    db = database.read_json_db()
+    pg_row, json_doc, canonical_id = find_doctor_records_for_schedule(db, doctor_id)
 
-                        # Filter out slot by id or timeSlot
-                        slots = [s for s in slots if s.get("id") != slot_id and s.get("timeSlot") != slot_id]
-                        cur.execute("UPDATE doctors SET slot_capacities = %s WHERE id = %s", (json.dumps(slots), doctor_id))
-                        conn.commit()
-                        doc["slotCapacities"] = slots
-                        doc["slot_capacities"] = slots
-                        return {"success": True, "slotId": slot_id, "doctor": format_receptionist_doctor(doc)}
-        except Exception as e:
-            logger.warning(f"DB delete slot note: {e}")
+    if not canonical_id and not json_doc and not pg_row:
+        raise HTTPException(status_code=404, detail=f"Doctor '{doctor_id}' not found")
+
+    target_source = pg_row or json_doc or {}
+    raw_slots = target_source.get("slot_capacities") or target_source.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
+        try:
+            raw_slots = json.loads(raw_slots)
+        except Exception:
+            raw_slots = []
+    slots = [s for s in raw_slots if s.get("id") != slot_id and s.get("timeSlot") != slot_id]
+
+    updated_doc = save_doctor_schedule_slots(canonical_id or doctor_id, slots, db, json_doc)
+    return {"success": True, "slotId": slot_id, "doctor": updated_doc}
+
+
+@router.post("/doctors/{doctor_id}/standard-slots")
+def add_standard_doctor_slots(
+    doctor_id: str,
+    payload: Optional[StandardSlotsRequest] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """Initialize or append standard OPD roster shifts for a doctor."""
+    if authorization:
+        from routes.staff_auth import get_current_staff
+        staff_ctx = get_current_staff(authorization)
+        if staff_ctx and staff_ctx.get("role") == "nurse":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Nurse accounts are not authorized to modify doctor schedules."
+            )
+
+    shifts_to_add = (payload.slots if payload and payload.slots else None) or DEFAULT_OPD_SHIFTS
+    max_seats = (payload.maxSeats if payload and payload.maxSeats else None) or 6
+    clear_existing = payload.clearExisting if payload and payload.clearExisting is not None else False
 
     db = database.read_json_db()
-    for doc in db.get("doctors", []):
-        if doc.get("id") == doctor_id:
-            slots = doc.get("slotCapacities") or doc.get("slot_capacities") or []
-            slots = [s for s in slots if s.get("id") != slot_id and s.get("timeSlot") != slot_id]
-            doc["slotCapacities"] = slots
-            doc["slot_capacities"] = slots
-            database.write_json_db(db)
-            return {"success": True, "slotId": slot_id, "doctor": format_receptionist_doctor(doc)}
+    pg_row, json_doc, canonical_id = find_doctor_records_for_schedule(db, doctor_id)
 
-    raise HTTPException(status_code=404, detail="Doctor not found")
+    if not canonical_id and not json_doc and not pg_row:
+        raise HTTPException(status_code=404, detail=f"Doctor '{doctor_id}' not found")
+
+    target_source = pg_row or json_doc or {}
+    raw_slots = target_source.get("slot_capacities") or target_source.get("slotCapacities") or []
+    if isinstance(raw_slots, str):
+        try:
+            raw_slots = json.loads(raw_slots)
+        except Exception:
+            raw_slots = []
+
+    if clear_existing:
+        slots = []
+    else:
+        slots = list(raw_slots)
+
+    existing_time_slots = set(s.get("timeSlot") for s in slots)
+    added_slots = []
+
+    for shift in shifts_to_add:
+        if shift not in existing_time_slots:
+            new_s = make_split_slot(
+                f"slot-{uuid.uuid4().hex[:6]}",
+                shift,
+                max_seats,
+                0,
+                True
+            )
+            slots.append(new_s)
+            existing_time_slots.add(shift)
+            added_slots.append(new_s)
+
+    updated_doc = save_doctor_schedule_slots(canonical_id or doctor_id, slots, db, json_doc)
+    return {"success": True, "addedSlots": added_slots, "slots": slots, "doctor": updated_doc}
 
 
 def format_receptionist_nurse(s: dict) -> dict:

@@ -33,11 +33,16 @@ export const DoctorProfile: React.FC = () => {
   // Match doctor record in store
   const activeDocId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
   const currentDocRecord = doctors.find((d) => 
-    (activeDocId && d.id === activeDocId) ||
+    (activeDocId && (d.id === activeDocId || d.staffCode === activeDocId || d.staff_code === activeDocId)) ||
+    (currentStaff?.staff_code && (d.staffCode === currentStaff.staff_code || d.staff_code === currentStaff.staff_code)) ||
+    (currentStaff?.staffCode && (d.staffCode === currentStaff.staffCode || d.staff_code === currentStaff.staffCode)) ||
+    (currentStaff?.doctorId && (d.id === currentStaff.doctorId || d.staffCode === currentStaff.doctorId)) ||
+    (currentStaff?.doctor_id && (d.id === currentStaff.doctor_id || d.staffCode === currentStaff.doctor_id)) ||
+    (currentStaff?.id && (d.id === currentStaff.id || d.staffCode === currentStaff.id)) ||
     (currentStaff?.email && d.email?.toLowerCase() === currentStaff.email.toLowerCase()) ||
     (currentStaff?.name && d.name?.toLowerCase() === currentStaff.name.toLowerCase())
   ) || {
-    id: activeDocId || 'doc-current',
+    id: currentStaff?.doctorId || currentStaff?.doctor_id || activeDocId || currentStaff?.staff_code || currentStaff?.id || 'doc-current',
     name: currentStaff?.name || 'Doctor',
     specialty: currentStaff?.department || 'General Medicine',
     department: currentStaff?.department || 'General Medicine',
@@ -53,6 +58,10 @@ export const DoctorProfile: React.FC = () => {
     availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     about: 'Consultant physician offering clinical consultations and patient care.',
   };
+
+  const resolvedDocId = (currentDocRecord.id && currentDocRecord.id !== 'doc-current')
+    ? currentDocRecord.id
+    : (currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.staff_code || currentStaff?.staffCode || activeDocId || currentStaff?.id || '');
 
   const [formData, setFormData] = useState({
     name: currentDocRecord.name || '',
@@ -112,7 +121,7 @@ export const DoctorProfile: React.FC = () => {
     setIsSaving(true);
 
     try {
-      await updateDoctor(currentDocRecord.id, {
+      await updateDoctor(resolvedDocId, {
         name: formData.name,
         specialty: formData.specialty,
         department: formData.department,
@@ -129,7 +138,7 @@ export const DoctorProfile: React.FC = () => {
       });
 
       await toggleDoctorAvailability(
-        currentDocRecord.id,
+        resolvedDocId,
         formData.isAvailable,
         formData.isAvailable ? '' : formData.availabilityReason,
         formData.isAvailable ? '' : formData.unavailableUntil
@@ -145,14 +154,16 @@ export const DoctorProfile: React.FC = () => {
 
   const handleSetAvailable = async () => {
     setFormData((prev) => ({ ...prev, isAvailable: true, availabilityReason: '', unavailableUntil: '' }));
-    await toggleDoctorAvailability(currentDocRecord.id, true, '', '');
+    await toggleDoctorAvailability(resolvedDocId, true, '', '');
+    showToast('Cabin status updated to: Available');
   };
 
   const handleSetUnavailable = async () => {
     const reason = formData.availabilityReason || '☕ Lunch / Meal Break';
     const duration = formData.unavailableUntil || '30 mins';
     setFormData((prev) => ({ ...prev, isAvailable: false, availabilityReason: reason, unavailableUntil: duration }));
-    await toggleDoctorAvailability(currentDocRecord.id, false, reason, duration);
+    await toggleDoctorAvailability(resolvedDocId, false, reason, duration);
+    showToast(`Cabin status updated to: Not Available (${reason})`);
   };
 
   return (
