@@ -201,21 +201,17 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
           className="relative w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200/80 flex flex-col z-50 overflow-hidden"
         >
           {/* ══════════════════════════════════════════════════════════
-              HEADER BAR: Title, Controls, Sound Toggle & Mark All
+              HEADER BAR: Title, Controls, Sound Toggle & Mark All (LIGHT THEME)
           ══════════════════════════════════════════════════════════ */}
-          <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-900 via-[#0B5A54] to-slate-900 text-white shrink-0 relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div className="absolute -top-10 -right-10 w-36 h-36 bg-teal-400/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-emerald-400/15 rounded-full blur-2xl pointer-events-none" />
-
+          <div className="p-5 border-b border-slate-200/90 bg-slate-50/80 text-slate-900 shrink-0 relative overflow-hidden">
             <div className="relative z-10 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner text-teal-200">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center shadow-xs text-[#0B5A54]">
                   <BellRing className="w-5 h-5 animate-pulse" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-black tracking-tight font-heading">
+                    <h2 className="text-base font-black tracking-tight font-heading text-slate-900">
                       Clinical Alerts & Feed
                     </h2>
                     {unreadCount > 0 && (
@@ -224,8 +220,8 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-teal-200/90 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  <div className="flex items-center gap-1.5 text-[11px] text-teal-700 font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
                     <span>Live OPD Stream Active</span>
                   </div>
                 </div>
@@ -233,7 +229,7 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
 
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer"
                 title="Close Notification Center"
               >
                 <X className="w-4 h-4" />
@@ -241,17 +237,17 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
             </div>
 
             {/* Quick Action Bar inside Header */}
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <div className="mt-4 pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs">
               <button
                 onClick={handleToggleSound}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                   soundEnabled
-                    ? 'bg-teal-500/20 text-teal-100 hover:bg-teal-500/30 border border-teal-400/30'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                    ? 'bg-teal-50 text-[#0B5A54] border border-teal-200 hover:bg-teal-100'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                 }`}
                 title={soundEnabled ? 'Mute Chime Alerts' : 'Enable Audio Chime'}
               >
-                {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-300" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+                {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-600" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
                 <span>{soundEnabled ? 'Audio Chime ON' : 'Muted'}</span>
               </button>
 
@@ -259,16 +255,16 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-100 font-bold transition-all cursor-pointer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-200 transition-all cursor-pointer"
                   >
-                    <CheckCheck className="w-3.5 h-3.5 text-teal-200" />
+                    <CheckCheck className="w-3.5 h-3.5 text-teal-600" />
                     <span>Mark all read</span>
                   </button>
                 )}
                 {notifications.length > 0 && (
                   <button
                     onClick={handleClearAll}
-                    className="p-1 rounded-lg text-slate-300 hover:text-rose-300 hover:bg-white/10 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all cursor-pointer"
                     title="Clear All Notifications"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

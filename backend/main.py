@@ -61,6 +61,7 @@ from schemas import (
     SearchResultItem,
     HospitalResponse,
     DoctorResponse,
+    DoctorAvailabilityUpdate,
     DeviceTokenRequest,
     AppointmentCancelRequest,
     TokenStatusUpdate,
@@ -1716,90 +1717,94 @@ def book_appointment(data: AppointmentCreate):
     created_app_id = str(uuid.uuid4())
     p_name = data.patientName or "Online Patient"
 
-    if database.use_pg:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                # Ensure patient exists in PostgreSQL without overriding ID
-                cur.execute("SELECT id, full_name, phone FROM patients WHERE id::text = %s", (patient_id,))
-                row_p = cur.fetchone()
-                if not row_p:
-                    # If patient_id is valid UUID, insert with that ID
-                    import uuid as _uuid
-                    is_valid_uuid = False
-                    try:
-                        _uuid.UUID(patient_id)
-                        is_valid_uuid = True
-                    except Exception:
-                        is_valid_uuid = False
+    # Compute valid UUID for PostgreSQL foreign key compatibility
+    effective_patient_uuid = None
+    try:
+        effective_patient_uuid = str(uuid.UUID(patient_id))
+    except Exception:
+        effective_patient_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, patient_id))
 
-                    if is_valid_uuid:
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # Ensure patient exists in PostgreSQL using effective UUID
+                    cur.execute(
+                        "SELECT id, full_name, phone FROM patients WHERE id::text = %s OR id::text = %s",
+                        (patient_id, effective_patient_uuid)
+                    )
+                    row_p = cur.fetchone()
+                    if not row_p:
                         try:
                             cur.execute(
                                 """
                                 INSERT INTO patients (id, full_name, email, phone, auth_provider)
                                 VALUES (%s, %s, %s, %s, 'online')
-                                ON CONFLICT (id) DO NOTHING
+                                ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name
                                 """,
-                                (patient_id, p_name, f"patient_{patient_id[:8]}@carepulse.health", "+91 98765 00000")
+                                (effective_patient_uuid, p_name, f"patient_{patient_id[:8]}@carepulse.health", "+91 98765 00000")
                             )
                         except Exception as e:
                             logger.warning(f"Note on creating patient in PG: {e}")
 
-                cur.execute(
-                    """
-                    INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_id, hospital_name, date, time_slot, type, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
-                    RETURNING *
-                    """,
-                    (created_app_id, patient_id, ticket_no, data.doctorId, data.doctorName, specialty, photo, doc_hospital_id, doc_hospital_name, data.date, data.timeSlot, app_type)
-                )
-                row = cur.fetchone()
-                conn.commit()
-                if row:
-                    created_app_id = str(row["id"])
-    else:
-        # Fallback JSON DB store (only active when ALLOW_JSON_FALLBACK=true)
-        try:
-            db = read_json_db()
-            json_app = {
-                "id": created_app_id,
-                "patient_id": patient_id,
-                "patientId": patient_id,
-                "patient_name": p_name,
-                "patientName": p_name,
-                "ticket_number": ticket_no,
-                "ticketNumber": ticket_no,
-                "doctor_id": data.doctorId,
-                "doctorId": data.doctorId,
-                "doctor_name": data.doctorName,
-                "doctorName": data.doctorName,
-                "doctor_specialty": specialty,
-                "doctorSpecialty": specialty,
-                "doctor_photo": photo,
-                "doctorPhoto": photo,
-                "hospital_id": doc_hospital_id,
-                "hospitalId": doc_hospital_id,
-                "hospital_name": doc_hospital_name,
-                "hospitalName": doc_hospital_name,
-                "date": data.date,
-                "time_slot": data.timeSlot,
-                "timeSlot": data.timeSlot,
-                "type": app_type,
-                "status": "Upcoming"
-            }
-            db.setdefault("appointments", []).insert(0, json_app)
+                    cur.execute(
+                        """
+                        INSERT INTO appointments (id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty, doctor_photo, hospital_id, hospital_name, date, time_slot, type, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Upcoming')
+                        RETURNING *
+                        """,
+                        (created_app_id, effective_patient_uuid, ticket_no, data.doctorId, data.doctorName, specialty, photo, doc_hospital_id, doc_hospital_name, data.date, data.timeSlot, app_type)
+                    )
+                    row = cur.fetchone()
+                    conn.commit()
+                    if row:
+                        created_app_id = str(row["id"])
+        except Exception as pg_err:
+            logger.warning(f"PostgreSQL appointment insertion error, continuing to fallback: {pg_err}")
 
-            # Update doctor slot capacity bookedSeats in JSON DB
-            for doc in db.get("doctors", []):
-                if doc.get("id") == data.doctorId:
-                    for slot in doc.get("slotCapacities", []) or doc.get("slot_capacities", []):
-                        if slot.get("timeSlot") == data.timeSlot:
-                            slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
-                            slot["availableSeats"] = max(0, slot.get("maxSeats", 5) - slot["bookedSeats"])
+    # Always also persist to JSON DB to ensure seamless resilience across restarts and offline modes
+    try:
+        db = read_json_db()
+        json_app = {
+            "id": created_app_id,
+            "patient_id": patient_id,
+            "patientId": patient_id,
+            "patient_uuid": effective_patient_uuid,
+            "patient_name": p_name,
+            "patientName": p_name,
+            "ticket_number": ticket_no,
+            "ticketNumber": ticket_no,
+            "doctor_id": data.doctorId,
+            "doctorId": data.doctorId,
+            "doctor_name": data.doctorName,
+            "doctorName": data.doctorName,
+            "doctor_specialty": specialty,
+            "doctorSpecialty": specialty,
+            "doctor_photo": photo,
+            "doctorPhoto": photo,
+            "hospital_id": doc_hospital_id,
+            "hospitalId": doc_hospital_id,
+            "hospital_name": doc_hospital_name,
+            "hospitalName": doc_hospital_name,
+            "date": data.date,
+            "time_slot": data.timeSlot,
+            "timeSlot": data.timeSlot,
+            "type": app_type,
+            "status": "Upcoming"
+        }
+        db.setdefault("appointments", []).insert(0, json_app)
 
-            write_json_db(db)
-        except Exception as e:
-            logger.warning(f"Error persisting appointment to JSON DB: {e}")
+        # Update doctor slot capacity bookedSeats in JSON DB
+        for doc in db.get("doctors", []):
+            if doc.get("id") == data.doctorId:
+                for slot in doc.get("slotCapacities", []) or doc.get("slot_capacities", []):
+                    if slot.get("timeSlot") == data.timeSlot:
+                        slot["bookedSeats"] = slot.get("bookedSeats", 0) + 1
+                        slot["availableSeats"] = max(0, slot.get("maxSeats", 5) - slot["bookedSeats"])
+
+        write_json_db(db)
+    except Exception as e:
+        logger.warning(f"Error persisting appointment to JSON DB: {e}")
 
     return AppointmentResponse(
         id=created_app_id,
@@ -1831,66 +1836,78 @@ def get_patient_appointments(patient_id: str):
     result: List[AppointmentResponse] = []
     seen_ids = set()
 
+    effective_patient_uuid = None
+    try:
+        effective_patient_uuid = str(uuid.UUID(patient_id))
+    except Exception:
+        effective_patient_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, patient_id))
+
     if database.use_pg:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT a.*, p.full_name as p_name 
-                    FROM appointments a
-                    LEFT JOIN patients p ON a.patient_id = p.id
-                    WHERE a.patient_id::text = %s
-                    ORDER BY a.date DESC, a.created_at DESC
-                    """,
-                    (patient_id,)
-                )
-                rows = cur.fetchall()
-                for r in rows:
-                    r_id = str(r["id"])
-                    seen_ids.add(r_id)
-                    result.append(AppointmentResponse(
-                        id=r_id,
-                        ticketNumber=r.get("ticket_number") or f"#CP-{random_ticket()}",
-                        patientId=str(r.get("patient_id") or patient_id),
-                        patientName=r.get("p_name") or "",
-                        doctorId=r["doctor_id"],
-                        doctorName=r["doctor_name"],
-                        doctorSpecialty=r.get("doctor_specialty") or "General Medicine",
-                        doctorPhoto=r.get("doctor_photo") or "/doctor_default.jpg",
-                        hospitalId=r.get("hospital_id"),
-                        hospital_id=r.get("hospital_id"),
-                        hospitalName=r.get("hospital_name") or "CarePulse Central Hospital",
-                        date=str(r["date"]),
-                        timeSlot=r["time_slot"],
-                        type=r.get("type") or "In-Person",
-                        status=r.get("status") or "Upcoming"
-                    ))
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT a.*, p.full_name as p_name 
+                        FROM appointments a
+                        LEFT JOIN patients p ON a.patient_id = p.id
+                        WHERE a.patient_id::text = %s OR a.patient_id::text = %s
+                        ORDER BY a.date DESC, a.created_at DESC
+                        """,
+                        (patient_id, effective_patient_uuid)
+                    )
+                    rows = cur.fetchall()
+                    for r in rows:
+                        r_id = str(r["id"])
+                        seen_ids.add(r_id)
+                        result.append(AppointmentResponse(
+                            id=r_id,
+                            ticketNumber=r.get("ticket_number") or f"#CP-{random_ticket()}",
+                            patientId=patient_id,
+                            patientName=r.get("p_name") or "",
+                            doctorId=r["doctor_id"],
+                            doctorName=r["doctor_name"],
+                            doctorSpecialty=r.get("doctor_specialty") or "General Medicine",
+                            doctorPhoto=r.get("doctor_photo") or "/doctor_default.jpg",
+                            hospitalId=r.get("hospital_id"),
+                            hospital_id=r.get("hospital_id"),
+                            hospitalName=r.get("hospital_name") or "CarePulse Central Hospital",
+                            date=str(r["date"]),
+                            timeSlot=r["time_slot"],
+                            type=r.get("type") or "In-Person",
+                            status=r.get("status") or "Upcoming"
+                        ))
+        except Exception as e:
+            logger.warning(f"Error fetching patient appointments from PostgreSQL: {e}")
 
     # Also load from JSON DB if not already retrieved
-    db = read_json_db()
-    apps = db.get("appointments", [])
-    for a in apps:
-        a_pid = str(a.get("patient_id") or a.get("patientId") or "").strip()
-        a_id = str(a.get("id"))
-        if a_pid == str(patient_id).strip() and a_id not in seen_ids:
-            seen_ids.add(a_id)
-            result.append(AppointmentResponse(
-                id=a_id,
-                ticketNumber=a.get("ticket_number") or a.get("ticketNumber", "#CP-1001"),
-                patientId=a_pid,
-                patientName=a.get("patient_name") or a.get("patientName", ""),
-                doctorId=a.get("doctor_id") or a.get("doctorId", "doc-1"),
-                doctorName=a.get("doctor_name") or a.get("doctorName", "Specialist Doctor"),
-                doctorSpecialty=a.get("doctor_specialty") or a.get("doctorSpecialty", "General Medicine"),
-                doctorPhoto=a.get("doctor_photo") or a.get("doctorPhoto", ""),
-                hospitalId=a.get("hospital_id") or a.get("hospitalId"),
-                hospital_id=a.get("hospital_id") or a.get("hospitalId"),
-                hospitalName=a.get("hospital_name") or a.get("hospitalName", "CarePulse Central Hospital"),
-                date=str(a.get("date", "")),
-                timeSlot=a.get("time_slot") or a.get("timeSlot", ""),
-                type=a.get("type", "In-Person"),
-                status=a.get("status", "Upcoming")
-            ))
+    try:
+        db = read_json_db()
+        apps = db.get("appointments", [])
+        for a in apps:
+            a_pid = str(a.get("patient_id") or a.get("patientId") or a.get("patient_uuid") or "").strip()
+            a_id = str(a.get("id"))
+            if (a_pid == str(patient_id).strip() or a_pid == str(effective_patient_uuid).strip()) and a_id not in seen_ids:
+                seen_ids.add(a_id)
+                result.append(AppointmentResponse(
+                    id=a_id,
+                    ticketNumber=a.get("ticket_number") or a.get("ticketNumber", "#CP-1001"),
+                    patientId=patient_id,
+                    patientName=a.get("patient_name") or a.get("patientName", ""),
+                    doctorId=a.get("doctor_id") or a.get("doctorId", "doc-1"),
+                    doctorName=a.get("doctor_name") or a.get("doctorName", "Specialist Doctor"),
+                    doctorSpecialty=a.get("doctor_specialty") or a.get("doctorSpecialty", "General Medicine"),
+                    doctorPhoto=a.get("doctor_photo") or a.get("doctorPhoto", ""),
+                    hospitalId=a.get("hospital_id") or a.get("hospitalId"),
+                    hospital_id=a.get("hospital_id") or a.get("hospitalId"),
+                    hospitalName=a.get("hospital_name") or a.get("hospitalName", "CarePulse Central Hospital"),
+                    date=str(a.get("date", "")),
+                    timeSlot=a.get("time_slot") or a.get("timeSlot", ""),
+                    type=a.get("type", "In-Person"),
+                    status=a.get("status", "Upcoming")
+                ))
+    except Exception as e:
+        logger.warning(f"Error fetching patient appointments from JSON DB: {e}")
 
     return result
 
@@ -2632,6 +2649,9 @@ def format_doctor(d: dict) -> DoctorResponse:
     room = d.get("room_number") or d.get("roomNumber") or ""
     stf_code = d.get("staff_code") or d.get("staffCode")
 
+    reason = d.get("availability_reason") or d.get("availabilityReason") or ""
+    until = d.get("unavailable_until") or d.get("unavailableUntil") or ""
+
     return DoctorResponse(
         id=str(d["id"]),
         staff_code=stf_code,
@@ -2658,6 +2678,10 @@ def format_doctor(d: dict) -> DoctorResponse:
         room_number=room,
         isAvailable=is_avail,
         is_available=is_avail,
+        availabilityReason=reason if not is_avail else "",
+        availability_reason=reason if not is_avail else "",
+        unavailableUntil=until if not is_avail else "",
+        unavailable_until=until if not is_avail else "",
         about=d.get("about") or "",
         availableDays=days,
         slotCapacities=formatted_slots,
@@ -2970,6 +2994,17 @@ def update_doctor_public(doctor_id: str, payload: Dict[str, Any]):
     """Update doctor endpoint."""
     from routes.admin_routes import update_doctor_record
     return update_doctor_record(doctor_id, payload)
+
+
+@app.patch("/api/doctors/{doctor_id}/availability")
+def toggle_doctor_availability_public(
+    doctor_id: str,
+    payload: DoctorAvailabilityUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """Direct route for toggling doctor availability status."""
+    from routes.receptionist_routes import toggle_doctor_availability
+    return toggle_doctor_availability(doctor_id=doctor_id, payload=payload, authorization=authorization)
 
 
 @app.delete("/api/receptionists/{receptionist_id}")

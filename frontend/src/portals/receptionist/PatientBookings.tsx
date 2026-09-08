@@ -127,15 +127,25 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   const todayIso = getTodayISODate(0);
   const tomorrowIso = getTodayISODate(1);
 
+  const isWalkIn = (type?: string) => (type || '').toLowerCase().includes('walk-in');
+
   // Filter & sort logic
   const filteredBookings = useMemo(() => {
     return tokens
       .filter((item) => {
-        const isOnline = item.type !== 'Walk-In';
+        const isOffline = isWalkIn(item.type);
+        const isOnline = !isOffline;
+
+        // Online app appointments only show in Patient Bookings once ACCEPTED by receptionist
+        // Walk-in patients registered at the desk are ALREADY accepted and always show
+        if (isOnline && item.status === 'Waiting') {
+          return false;
+        }
+
         const matchesTab =
           activeTab === 'ALL' ||
           (activeTab === 'ONLINE' && isOnline) ||
-          (activeTab === 'OFFLINE' && !isOnline) ||
+          (activeTab === 'OFFLINE' && isOffline) ||
           (activeTab === 'CHECKED_IN' && item.status === 'Checked In') ||
           (activeTab === 'COMPLETED' && item.status === 'Completed');
 
@@ -194,15 +204,16 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
     searchQuery,
   ]);
 
-  // Tab counts scoped to the active date filter
+  // Tab counts scoped to the active date filter & accepted bookings
   const onlineTokensCount = tokens.filter((t) => {
-    const isOnline = t.type !== 'Walk-In';
+    const isOnline = !isWalkIn(t.type);
+    const isAccepted = t.status !== 'Waiting';
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
-    return isOnline && matchesDate;
+    return isOnline && isAccepted && matchesDate;
   }).length;
 
   const offlineTokensCount = tokens.filter((t) => {
-    const isOffline = t.type === 'Walk-In';
+    const isOffline = isWalkIn(t.type);
     const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
     return isOffline && matchesDate;
   }).length;
@@ -220,7 +231,10 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   }).length;
 
   const totalCurrentDateTokens = tokens.filter((t) => {
-    return selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
+    const isOffline = isWalkIn(t.type);
+    const isAccepted = isOffline || t.status !== 'Waiting';
+    const matchesDate = selectedDateFilter === 'ALL' || normalizeDateToISO(t.date) === selectedDateFilter;
+    return isAccepted && matchesDate;
   }).length;
 
   const handlePrintSlip = (token: TokenQueueItem) => {
@@ -489,7 +503,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
               <option value="ALL">All Physicians</option>
               {doctors.map((doc) => (
                 <option key={doc.id} value={doc.id}>
-                  {doc.name}
+                  {doc.name} {!doc.isAvailable ? `(Unavailable${doc.availabilityReason ? ` - ${doc.availabilityReason}` : ''})` : ''}
                 </option>
               ))}
             </select>
@@ -584,7 +598,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBookings.map((item) => {
             const doc = doctors.find((d) => d.id === item.doctorId);
-            const isOnline = item.type !== 'Walk-In';
+            const isOnline = !isWalkIn(item.type);
 
             return (
               <div
@@ -729,7 +743,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {filteredBookings.map((item) => {
                   const doc = doctors.find((d) => d.id === item.doctorId);
-                  const isOnline = item.type !== 'Walk-In';
+                  const isOnline = !isWalkIn(item.type);
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">

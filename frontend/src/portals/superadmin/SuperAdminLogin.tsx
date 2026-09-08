@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   ShieldCheck,
   Lock,
-  Mail,
+  User,
   ArrowRight,
   Eye,
   EyeOff,
@@ -117,18 +117,18 @@ export const SuperAdminLogin: React.FC = () => {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
-              Root Identifier / Email
+              Username or Work Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                <Mail className="w-4 h-4" />
+                <User className="w-4 h-4 text-[#00DC82]" />
               </div>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="superadmin@carepulse.com or SA101"
+                placeholder="superadmin or superadmin@carepulse.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
               />
             </div>

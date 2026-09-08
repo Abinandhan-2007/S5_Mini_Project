@@ -47,10 +47,10 @@ if not errorlevel 1 (
 )
 
 :: -------------------------------------------------------------------
-:: 3. Stop Backend Process (Port 5000)
+:: 3. Stop Backend Process (Port 5000) & Frontend Dev Server (Port 5173)
 :: -------------------------------------------------------------------
 echo.
-echo [3/4] Checking and stopping Backend on Port 5000...
+echo [3/4] Checking and stopping Backend (Port 5000) & Frontend (Port 5173)...
 set "FOUND_5000=0"
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5000 .*LISTENING"') do (
     set "PID_5000=%%a"
@@ -63,6 +63,15 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5000 .*LISTENING"') d
 )
 if "!FOUND_5000!"=="0" (
     echo       [--] No service was active on port 5000.
+)
+
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5173 .*LISTENING"') do (
+    set "PID_5173=%%a"
+    if not "!PID_5173!"=="0" (
+        echo       [OK] Terminating frontend Vite process PID: !PID_5173!...
+        taskkill /f /t /pid !PID_5173! >nul 2>&1
+        set /a STOPPED_COUNT+=1
+    )
 )
 
 :: -------------------------------------------------------------------

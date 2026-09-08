@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Stethoscope,
   UserCheck,
+  HeartPulse,
   CalendarCheck,
   BarChart3,
   Megaphone,
@@ -20,10 +21,10 @@ import {
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminDoctorManagement } from './AdminDoctorManagement';
 import { AdminReceptionistMgmt } from './AdminReceptionistMgmt';
+import { AdminNurseManagement } from './AdminNurseManagement';
 import { AdminDepartmentManagement } from './AdminDepartmentManagement';
 import { AdminAppointmentOverview } from './AdminAppointmentOverview';
 import { AdminReportsAnalytics } from './AdminReportsAnalytics';
@@ -34,6 +35,7 @@ export type AdminTab =
   | 'dashboard'
   | 'doctors'
   | 'receptionists'
+  | 'nurses'
   | 'departments'
   | 'appointments'
   | 'reports'
@@ -55,6 +57,7 @@ export const AdminLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [autoOpenDoctorAdd, setAutoOpenDoctorAdd] = useState(false);
   const [autoOpenReceptionistAdd, setAutoOpenReceptionistAdd] = useState(false);
+  const [autoOpenNurseAdd, setAutoOpenNurseAdd] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -68,22 +71,25 @@ export const AdminLayout: React.FC = () => {
   const hospitalSettings = useStaffStore((s) => s.hospitalSettings);
   const doctors = useStaffStore((s) => s.doctors);
   const receptionists = useStaffStore((s) => s.receptionists);
+  const nurses = useStaffStore((s) => s.nurses);
   const departments = useStaffStore((s) => s.departments);
   const tokens = useStaffStore((s) => s.tokens);
   const announcements = useStaffStore((s) => s.announcements);
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
   const fetchReceptionists = useStaffStore((s) => s.fetchReceptionists);
+  const fetchNurses = useStaffStore((s) => s.fetchNurses);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
   // Automatic robust background polling for Admin metrics and operations
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  usePolling(
     async () => {
       await Promise.all([
         fetchTokens(undefined, true),
         fetchDoctors(true),
         fetchReceptionists(),
+        fetchNurses(),
       ]);
     },
     {
@@ -113,6 +119,9 @@ export const AdminLayout: React.FC = () => {
     }
     if (tab === 'receptionists' && autoOpenModal) {
       setAutoOpenReceptionistAdd(true);
+    }
+    if (tab === 'nurses' && autoOpenModal) {
+      setAutoOpenNurseAdd(true);
     }
     setIsMobileSidebarOpen(false);
   };
@@ -156,6 +165,13 @@ export const AdminLayout: React.FC = () => {
           icon: UserCheck,
           badge: receptionists.length > 0 ? `${receptionists.length}` : undefined,
           badgeColor: 'bg-sky-50 text-sky-700 border-sky-200',
+        },
+        {
+          id: 'nurses',
+          label: 'Nursing Team',
+          icon: HeartPulse,
+          badge: nurses.length > 0 ? `${nurses.length}` : undefined,
+          badgeColor: 'bg-teal-50 text-[#0B5A54] border-teal-200',
         },
         {
           id: 'departments',
@@ -462,14 +478,6 @@ export const AdminLayout: React.FC = () => {
               </kbd>
             </div>
 
-            {/* Live Metrics Polling Indicator */}
-            <LiveIndicator
-              lastUpdated={lastUpdated}
-              isPolling={isPolling}
-              onRefresh={refetch}
-              label="Live Metrics"
-            />
-
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>
               <button
@@ -574,6 +582,13 @@ export const AdminLayout: React.FC = () => {
             <AdminReceptionistMgmt
               onShowToast={showToast}
               autoOpenAdd={autoOpenReceptionistAdd}
+            />
+          )}
+
+          {activeTab === 'nurses' && (
+            <AdminNurseManagement
+              onShowToast={showToast}
+              autoOpenAdd={autoOpenNurseAdd}
             />
           )}
 

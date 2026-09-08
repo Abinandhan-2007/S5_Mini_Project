@@ -12,7 +12,6 @@ import {
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
-import { LiveIndicator } from '../../components/ui/LiveIndicator';
 import { usePolling } from '../../lib/usePolling';
 import { useCarePulseStore } from '../../lib/store';
 
@@ -23,7 +22,7 @@ export const AppointmentScheduleScreen: React.FC = () => {
   const appointments = useCarePulseStore((s) => s.appointments);
 
   // Automatic background polling for Patient schedule
-  const { isPolling, lastUpdated, refetch } = usePolling(
+  usePolling(
     async () => {
       if (user?.id) {
         await syncAppointments(user.id);
@@ -61,12 +60,6 @@ export const AppointmentScheduleScreen: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <LiveIndicator
-              lastUpdated={lastUpdated}
-              isPolling={isPolling}
-              onRefresh={refetch}
-              label="Live"
-            />
             <button
               onClick={() => navigate('/notifications')}
               className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"

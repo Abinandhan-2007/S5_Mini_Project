@@ -146,7 +146,6 @@ export const DoctorProfile: React.FC = () => {
   const handleSetAvailable = async () => {
     setFormData((prev) => ({ ...prev, isAvailable: true, availabilityReason: '', unavailableUntil: '' }));
     await toggleDoctorAvailability(currentDocRecord.id, true, '', '');
-    showToast('Cabin status set to Active & Available');
   };
 
   const handleSetUnavailable = async () => {
@@ -154,7 +153,6 @@ export const DoctorProfile: React.FC = () => {
     const duration = formData.unavailableUntil || '30 mins';
     setFormData((prev) => ({ ...prev, isAvailable: false, availabilityReason: reason, unavailableUntil: duration }));
     await toggleDoctorAvailability(currentDocRecord.id, false, reason, duration);
-    showToast(`Cabin status set to Not Available (${reason})`);
   };
 
   return (

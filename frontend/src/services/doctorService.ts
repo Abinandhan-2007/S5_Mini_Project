@@ -24,6 +24,12 @@ export const doctorService = {
         if (Array.isArray(data)) {
           return data.map((doc: any) => ({
             ...doc,
+            isAvailable: doc.isAvailable !== false && doc.is_available !== false,
+            is_available: doc.isAvailable !== false && doc.is_available !== false,
+            availabilityReason: doc.availabilityReason || doc.availability_reason || '',
+            availability_reason: doc.availabilityReason || doc.availability_reason || '',
+            unavailableUntil: doc.unavailableUntil || doc.unavailable_until || '',
+            unavailable_until: doc.unavailableUntil || doc.unavailable_until || '',
             photoUrl: doc.photo || doc.photoUrl || doc.photo_url || '/doctor_default.jpg',
           }));
         }
@@ -51,8 +57,12 @@ export const doctorService = {
       phone: s.phone,
       email: s.email,
       roomNumber: s.roomNumber,
-      isAvailable: s.isAvailable,
-      is_available: s.isAvailable,
+      isAvailable: s.isAvailable !== false && (s as any).is_available !== false,
+      is_available: s.isAvailable !== false && (s as any).is_available !== false,
+      availabilityReason: s.availabilityReason || (s as any).availability_reason || '',
+      availability_reason: s.availabilityReason || (s as any).availability_reason || '',
+      unavailableUntil: s.unavailableUntil || (s as any).unavailable_until || '',
+      unavailable_until: s.unavailableUntil || (s as any).unavailable_until || '',
       availableDays: s.availableDays,
       slotCapacities: s.slotCapacities,
       slot_capacities: s.slotCapacities,
@@ -93,6 +103,12 @@ export const doctorService = {
         if (data && data.id) {
           return {
             ...data,
+            isAvailable: data.isAvailable !== false && data.is_available !== false,
+            is_available: data.isAvailable !== false && data.is_available !== false,
+            availabilityReason: data.availabilityReason || data.availability_reason || '',
+            availability_reason: data.availabilityReason || data.availability_reason || '',
+            unavailableUntil: data.unavailableUntil || data.unavailable_until || '',
+            unavailable_until: data.unavailableUntil || data.unavailable_until || '',
             photoUrl: data.photo || data.photoUrl || data.photo_url || '/doctor_default.jpg',
           };
         }
@@ -119,8 +135,12 @@ export const doctorService = {
         phone: staffDoc.phone,
         email: staffDoc.email,
         roomNumber: staffDoc.roomNumber,
-        isAvailable: staffDoc.isAvailable,
-        is_available: staffDoc.isAvailable,
+        isAvailable: staffDoc.isAvailable !== false && (staffDoc as any).is_available !== false,
+        is_available: staffDoc.isAvailable !== false && (staffDoc as any).is_available !== false,
+        availabilityReason: staffDoc.availabilityReason || (staffDoc as any).availability_reason || '',
+        availability_reason: staffDoc.availabilityReason || (staffDoc as any).availability_reason || '',
+        unavailableUntil: staffDoc.unavailableUntil || (staffDoc as any).unavailable_until || '',
+        unavailable_until: staffDoc.unavailableUntil || (staffDoc as any).unavailable_until || '',
         availableDays: staffDoc.availableDays,
         slotCapacities: staffDoc.slotCapacities,
         slot_capacities: staffDoc.slotCapacities,

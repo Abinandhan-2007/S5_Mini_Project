@@ -461,6 +461,11 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                           >
                             {doc.isAvailable ? 'Available (On Duty)' : 'Off Duty'}
                           </button>
+                          {!doc.isAvailable && (doc.availabilityReason || doc.availability_reason) && (
+                            <span className="block text-[9.5px] text-rose-600 font-semibold truncate max-w-[130px] mx-auto mt-0.5" title={doc.availabilityReason || doc.availability_reason}>
+                              {doc.availabilityReason || doc.availability_reason}
+                            </span>
+                          )}
                         </td>
 
                         {/* Weekly Load */}

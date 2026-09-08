@@ -9,7 +9,6 @@ import {
   Check,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Volume2,
   Sparkles,
   Smartphone,
@@ -24,7 +23,6 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import type { DoctorRecord } from '../../types/receptionist';
 
 interface ReceptionistDashboardProps {
   onNavigateTab?: (tab: string) => void;
@@ -102,13 +100,10 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 }) => {
   const doctors = useStaffStore((s) => s.doctors);
   const tokens = useStaffStore((s) => s.tokens);
-  const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const receptionistProfile = useStaffStore((s) => s.receptionistProfile);
   const currentStaff = useStaffStore((s) => s.currentStaff);
-
-  const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
 
   // Physician Cabin Status Filter States
   const [cabinStatusFilter, setCabinStatusFilter] = useState<'all' | 'active' | 'offline'>('all');
@@ -119,8 +114,9 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
   const waitingTokens = tokens.filter((t) => t.status === 'Waiting' || t.status === 'Checked In');
   const inConsultationTokens = tokens.filter((t) => t.status === 'In Consultation');
   const completedTokens = tokens.filter((t) => t.status === 'Completed');
-  const onlineTokens = tokens.filter((t) => t.type !== 'Walk-In');
-  const walkInTokens = tokens.filter((t) => t.type === 'Walk-In');
+  const isWalkIn = (type?: string) => (type || '').toLowerCase().includes('walk-in');
+  const onlineTokens = tokens.filter((t) => !isWalkIn(t.type));
+  const walkInTokens = tokens.filter((t) => isWalkIn(t.type));
 
   // Doctor categorizations
   const activeDoctors = doctors.filter((d) => d.isAvailable);
@@ -167,14 +163,6 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
     });
   }, [doctors, cabinStatusFilter, cabinFloorFilter, cabinSearchQuery]);
 
-  const handleConfirmToggleAvailability = async () => {
-    if (doctorToToggle) {
-      await toggleDoctorAvailability(doctorToToggle.id);
-      const newState = !doctorToToggle.isAvailable ? 'Available' : 'Unavailable';
-      onShowToast?.(`Dr. ${doctorToToggle.name} marked as ${newState}.`);
-      setDoctorToToggle(null);
-    }
-  };
 
   const handleCallNext = async (doctorId?: string) => {
     const targetToken = doctorId
@@ -338,10 +326,10 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           3. ACTIVE CONSULTATIONS (LEFT) & COMPACT ACTIVITY HUB (RIGHT)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left 2 Columns: Active Doctor Cabin Consultations */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4 h-full flex flex-col justify-between">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading flex items-center gap-2">
@@ -520,9 +508,9 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
           </div>
         </div>
 
-        {/* Right 1 Column: Spacious Light Hospital Action Cards (Fills Container Space) */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4 h-full flex flex-col justify-between">
+        {/* Right 1 Column: Fixed Compact Hospital Action Cards */}
+        <div className="lg:col-span-1 self-start">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-[#0B5A54] border border-teal-200 text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5 text-[#0B5A54]" />
@@ -533,35 +521,35 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               </span>
             </div>
 
-            {/* Responsive Light Hospital-Themed Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-3.5 flex-1 my-1">
+            {/* Fixed 2-Column 2-Row Compact Hospital-Themed Cards Grid */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
               {/* 1. Walk-In Registration (Clinical Mint & Sage Teal) */}
               <button
                 onClick={onOpenNewAppointment}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-teal-50/90 via-emerald-50/50 to-teal-100/50 border border-teal-200/90 hover:border-teal-400 shadow-2xs hover:shadow-lg hover:shadow-teal-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
+                className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-50/90 via-emerald-50/50 to-teal-100/50 border border-teal-200/90 hover:border-teal-400 shadow-2xs hover:shadow-md hover:shadow-teal-900/10 transition-all duration-200 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-0.5 relative overflow-hidden h-[122px] shrink-0"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#0B5A54_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <Plus className="w-4 h-4 stroke-[3]" />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-xl bg-teal-100/90 text-teal-900 border border-teal-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
+                  <span className="px-2 py-0.5 rounded-lg bg-teal-100/90 text-teal-900 border border-teal-300/80 text-[10px] font-mono font-black">
                     + Intake
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
+                <div className="flex items-end justify-between w-full relative z-10 pt-1.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-[#0B5A54] transition-colors leading-snug">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 group-hover:text-[#0B5A54] transition-colors leading-snug truncate">
                       Walk-In Patient
                     </h4>
-                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
                       Issue instant token
                     </p>
                   </div>
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-teal-200 group-hover:bg-[#0B5A54] group-hover:text-white group-hover:border-[#0B5A54] flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 rounded-lg bg-white text-slate-700 border border-teal-200 group-hover:bg-[#0B5A54] group-hover:text-white group-hover:border-[#0B5A54] flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -570,30 +558,30 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               {/* 2. Express Arrival Check-In (Medical Cyan & Ocean Sky) */}
               <button
                 onClick={() => onNavigateTab?.('checkin')}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-sky-50/90 via-cyan-50/50 to-sky-100/50 border border-sky-200/90 hover:border-sky-400 shadow-2xs hover:shadow-lg hover:shadow-sky-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
+                className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-sky-50/90 via-cyan-50/50 to-sky-100/50 border border-sky-200/90 hover:border-sky-400 shadow-2xs hover:shadow-md hover:shadow-sky-900/10 transition-all duration-200 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-0.5 relative overflow-hidden h-[122px] shrink-0"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#0284c7_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <UserCheck className="w-4 h-4 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-xl bg-sky-100/90 text-sky-900 border border-sky-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
+                  <span className="px-2 py-0.5 rounded-lg bg-sky-100/90 text-sky-900 border border-sky-300/80 text-[10px] font-mono font-black">
                     {onlineTokens.length} Online
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
+                <div className="flex items-end justify-between w-full relative z-10 pt-1.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-sky-800 transition-colors leading-snug">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 group-hover:text-sky-800 transition-colors leading-snug truncate">
                       Express Arrival
                     </h4>
-                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
                       Verify app booking
                     </p>
                   </div>
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-sky-200 group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 rounded-lg bg-white text-slate-700 border border-sky-200 group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -602,30 +590,30 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               {/* 3. Today's History & Visit Logs (Clinical Lilac & Care Violet) */}
               <button
                 onClick={() => onNavigateTab?.('bookings')}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-purple-50/90 via-indigo-50/50 to-purple-100/50 border border-purple-200/90 hover:border-purple-400 shadow-2xs hover:shadow-lg hover:shadow-purple-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
+                className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-purple-50/90 via-indigo-50/50 to-purple-100/50 border border-purple-200/90 hover:border-purple-400 shadow-2xs hover:shadow-md hover:shadow-purple-900/10 transition-all duration-200 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-0.5 relative overflow-hidden h-[122px] shrink-0"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#7c3aed_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-purple-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <CalendarCheck className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-purple-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <CalendarCheck className="w-4 h-4 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-xl bg-purple-100/90 text-purple-900 border border-purple-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
+                  <span className="px-2 py-0.5 rounded-lg bg-purple-100/90 text-purple-900 border border-purple-300/80 text-[10px] font-mono font-black">
                     {completedTokens.length} Done
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
+                <div className="flex items-end justify-between w-full relative z-10 pt-1.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-purple-800 transition-colors leading-snug">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 group-hover:text-purple-800 transition-colors leading-snug truncate">
                       Today's History
                     </h4>
-                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
                       Bookings & visit log
                     </p>
                   </div>
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-purple-200 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 rounded-lg bg-white text-slate-700 border border-purple-200 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -634,30 +622,30 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               {/* 4. Print OPD Roster (Medical Amber & Warm Sand) */}
               <button
                 onClick={handlePrintRoster}
-                className="p-4 sm:p-4.5 rounded-3xl bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-amber-100/50 border border-amber-200/90 hover:border-amber-400 shadow-2xs hover:shadow-lg hover:shadow-amber-900/10 transition-all duration-300 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-1 relative overflow-hidden min-h-[125px] sm:min-h-[135px]"
+                className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-amber-100/50 border border-amber-200/90 hover:border-amber-400 shadow-2xs hover:shadow-md hover:shadow-amber-900/10 transition-all duration-200 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-0.5 relative overflow-hidden h-[122px] shrink-0"
               >
                 {/* Subtle Clinical Mesh Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(#d97706_0.75px,transparent_0.75px)] [background-size:14px_14px] opacity-10 pointer-events-none" />
 
                 <div className="flex items-center justify-between w-full relative z-10">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-900/20 group-hover:scale-105 transition-transform shrink-0">
-                    <Printer className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-900/20 group-hover:scale-105 transition-transform shrink-0">
+                    <Printer className="w-4 h-4 stroke-[2.5]" />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-xl bg-amber-100/90 text-amber-900 border border-amber-300/80 text-[10px] sm:text-[10.5px] font-mono font-black">
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-100/90 text-amber-900 border border-amber-300/80 text-[10px] font-mono font-black">
                     PDF / Print
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between w-full relative z-10 pt-2.5">
+                <div className="flex items-end justify-between w-full relative z-10 pt-1.5">
                   <div className="space-y-0.5 min-w-0 flex-1 pr-1.5">
-                    <h4 className="font-extrabold text-sm sm:text-[15px] text-slate-900 group-hover:text-amber-800 transition-colors leading-snug">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 group-hover:text-amber-800 transition-colors leading-snug truncate">
                       Print OPD Roster
                     </h4>
-                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
                       Token schedule
                     </p>
                   </div>
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white text-slate-700 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
+                  <div className="w-6 h-6 rounded-lg bg-white text-slate-700 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 flex items-center justify-center transition-all shadow-2xs shrink-0">
                     <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                 </div>
@@ -736,11 +724,11 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                       </span>
                     )}
                     <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                      item.type === 'Walk-In'
+                      isWalkIn(item.type)
                         ? 'bg-sky-50 text-sky-700 border border-sky-200'
                         : 'bg-purple-50 text-purple-700 border border-purple-200'
                     }`}>
-                      {item.type === 'Walk-In' ? 'Walk-In' : 'Online'}
+                      {isWalkIn(item.type) ? 'Walk-In' : 'Online'}
                     </span>
                   </div>
                 </div>
@@ -968,6 +956,13 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                           </span>
                         )}
                       </div>
+
+                      {!doctor.isAvailable && (
+                        <div className="mt-2 p-2 bg-rose-50/90 rounded-xl border border-rose-200/80 text-[11px] text-rose-900 leading-tight">
+                          <span className="font-extrabold block">Reason: "{doctor.availabilityReason || 'Temporarily Stepped Out'}"</span>
+                          {doctor.unavailableUntil && <span className="text-[10px] text-rose-700 font-semibold">Expected back: {doctor.unavailableUntil}</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1023,15 +1018,14 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                       </div>
                     )}
 
-                    {/* Duty Toggle Pill */}
-                    <button
-                      onClick={() => setDoctorToToggle(doctor)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs hover:scale-105 active:scale-95 ${
+                    {/* Read-Only Live Duty Presence Indicator */}
+                    <div
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-2xs select-none ${
                         doctor.isAvailable
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
-                      title={`Click to set ${doctor.isAvailable ? 'Off-Duty' : 'Available'}`}
+                      title={`Doctor Duty Status: ${doctor.isAvailable ? 'Active On-Duty' : 'Off-Duty (Set by Doctor/Admin)'}`}
                     >
                       {doctor.isAvailable ? (
                         <>
@@ -1044,7 +1038,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                           <span>Off-Duty</span>
                         </>
                       )}
-                    </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1052,62 +1046,6 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
           </div>
         )}
       </div>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          CONFIRMATION MODAL FOR DOCTOR AVAILABILITY TOGGLE
-      ══════════════════════════════════════════════════════════════════ */}
-      {doctorToToggle && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
-              <AlertTriangle className="w-7 h-7" />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xl font-black text-slate-900 font-heading">
-                Confirm Availability Change?
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                You are about to set <strong className="text-slate-900 font-extrabold">{doctorToToggle.name}</strong> to{' '}
-                <span className={`font-black ${doctorToToggle.isAvailable ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {doctorToToggle.isAvailable ? 'OFF-DUTY (UNAVAILABLE)' : 'ACTIVE (AVAILABLE)'}
-                </span>.
-              </p>
-            </div>
-
-            <div className="p-3.5 bg-amber-50/70 border border-amber-200/70 rounded-2xl text-left space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>Operational Impact</span>
-              </div>
-              <p className="text-[11px] text-amber-800 leading-normal font-medium">
-                {doctorToToggle.isAvailable
-                  ? 'Marking this physician as unavailable will pause token queue routing and alert triage handlers.'
-                  : 'Marking this physician as available will activate the consultation room and resume token calls.'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                onClick={() => setDoctorToToggle(null)}
-                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmToggleAvailability}
-                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${
-                  doctorToToggle.isAvailable
-                    ? 'bg-rose-600 hover:bg-rose-700'
-                    : 'bg-[#0B5A54] hover:bg-[#084540]'
-                }`}
-              >
-                Confirm {doctorToToggle.isAvailable ? 'Off-Duty' : 'Available'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

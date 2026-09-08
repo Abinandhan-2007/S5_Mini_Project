@@ -69,10 +69,10 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
     if (!patientName.trim() || !patientPhone.trim() || !selectedDoctor || !timeSlot) return;
 
     setIsSubmitting(true);
-    const generatedTicket = `#CP-${Math.floor(1000 + Math.random() * 9000)}`;
-    const generatedToken = `#TOK-00${Math.floor(1 + Math.random() * 9)}`;
+    const fallbackTicket = `#CP-${Math.floor(1000 + Math.random() * 9000)}`;
+    const fallbackToken = `#TOK-${Math.floor(100 + Math.random() * 900)}`;
 
-    await bookWalkInAppointment({
+    const created = await bookWalkInAppointment({
       patientName,
       patientPhone,
       doctorId: selectedDoctor.id,
@@ -84,12 +84,14 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
       bloodGroup,
       address,
       healthIssue,
+      hospitalId: selectedDoctor.hospitalId || selectedDoctor.hospital_id,
+      hospitalName: selectedDoctor.hospitalName || selectedDoctor.hospital_name,
     });
 
     setIsSubmitting(false);
     setCreatedTicket({
-      ticketNumber: generatedTicket,
-      tokenNumber: generatedToken,
+      ticketNumber: created?.ticketNumber || fallbackTicket,
+      tokenNumber: created?.tokenNumber || fallbackToken,
       patientName,
       doctorName: selectedDoctor.name,
       doctorSpecialty: selectedDoctor.specialty,

@@ -4,7 +4,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Plus,
   Phone,
   MapPin,
   Settings,
@@ -16,7 +15,6 @@ import {
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { DoctorRecord, TimeSlotCapacity } from '../../types/receptionist';
-import { CreateDoctor } from './CreateDoctor';
 
 interface DoctorManagementProps {
   onShowToast?: (msg: string) => void;
@@ -24,14 +22,11 @@ interface DoctorManagementProps {
 
 export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast }) => {
   const doctors = useStaffStore((s) => s.doctors);
-  const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const updateSlotCapacity = useStaffStore((s) => s.updateSlotCapacity);
   const addTimeSlot = useStaffStore((s) => s.addTimeSlot);
   const removeTimeSlot = useStaffStore((s) => s.removeTimeSlot);
 
   const [selectedDoctorForSlots, setSelectedDoctorForSlots] = useState<DoctorRecord | null>(null);
-  const [isAddDoctorOpen, setIsAddDoctorOpen] = useState(false);
-  const [doctorToToggle, setDoctorToToggle] = useState<DoctorRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Add custom time slot state
@@ -48,15 +43,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
 
   const activeDoctorInModal =
     doctors.find((d) => d.id === selectedDoctorForSlots?.id) || selectedDoctorForSlots;
-
-  const handleConfirmToggleAvailability = async () => {
-    if (doctorToToggle) {
-      await toggleDoctorAvailability(doctorToToggle.id);
-      const newState = !doctorToToggle.isAvailable ? 'Available' : 'Unavailable';
-      onShowToast?.(`Dr. ${doctorToToggle.name} is now marked as ${newState}.`);
-      setDoctorToToggle(null);
-    }
-  };
 
   const handleOpenSlotModal = (doctor: DoctorRecord) => {
     setSelectedDoctorForSlots(doctor);
@@ -107,16 +93,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                 Manage doctor presence, consultation cabins, and 50/50 Online vs Offline seat allocations.
               </p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsAddDoctorOpen(true)}
-              className="px-5 py-3 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Add Doctor</span>
-            </button>
           </div>
         </div>
 
@@ -178,12 +154,14 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setDoctorToToggle(doctor)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0 ${doctor.isAvailable
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}
+                  {/* Read-Only Status Badge (Controlled by Doctor / Admin) */}
+                  <div
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-2xs select-none shrink-0 ${
+                      doctor.isAvailable
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}
+                    title={`Duty Status: ${doctor.isAvailable ? 'Available On-Duty' : 'Off-Duty (Set by Doctor/Admin)'}`}
                   >
                     {doctor.isAvailable ? (
                       <>
@@ -193,11 +171,18 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                     ) : (
                       <>
                         <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                        <span>Unavailable</span>
+                        <span>Off-Duty</span>
                       </>
                     )}
-                  </button>
+                  </div>
                 </div>
+
+                {!doctor.isAvailable && (
+                  <div className="p-2.5 bg-rose-50/90 rounded-2xl border border-rose-200/80 text-[11px] text-rose-900 leading-tight">
+                    <span className="font-extrabold block">Absence Reason: "{doctor.availabilityReason || 'Temporarily Stepped Out'}"</span>
+                    {doctor.unavailableUntil && <span className="text-[10px] text-rose-700 font-semibold">Expected back: {doctor.unavailableUntil}</span>}
+                  </div>
+                )}
 
                 {doctor.about && (
                   <p className="text-[11px] text-slate-500 line-clamp-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-100 font-medium">
@@ -443,48 +428,7 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          4. SAFETY AVAILABILITY TOGGLE MODAL
-      ══════════════════════════════════════════════════════════════════ */}
-      {doctorToToggle && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 text-center animate-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
-              <AlertTriangle className="w-7 h-7" />
-            </div>
 
-            <div className="space-y-2">
-              <h3 className="text-xl font-black text-slate-900 font-heading">
-                Confirm Availability Change?
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                You are about to set <strong className="text-slate-900 font-extrabold">{doctorToToggle.name}</strong> to{' '}
-                <span className={`font-black ${doctorToToggle.isAvailable ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {doctorToToggle.isAvailable ? 'OFF-DUTY (UNAVAILABLE)' : 'ACTIVE (AVAILABLE)'}
-                </span>.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                onClick={() => setDoctorToToggle(null)}
-                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmToggleAvailability}
-                className={`flex-1 py-3 px-4 text-white font-black rounded-2xl text-xs shadow-md transition-all cursor-pointer ${doctorToToggle.isAvailable
-                  ? 'bg-rose-600 hover:bg-rose-700'
-                  : 'bg-[#0B5A54] hover:bg-[#084540]'
-                  }`}
-              >
-                Confirm {doctorToToggle.isAvailable ? 'Off-Duty' : 'Available'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           5. CONFIRM DELETE TIME SLOT WARNING MODAL
@@ -534,14 +478,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
         </div>
       )}
 
-      {/* Add New Doctor Modal */}
-      <CreateDoctor
-        isOpen={isAddDoctorOpen}
-        onClose={() => setIsAddDoctorOpen(false)}
-        onSuccess={() => {
-          onShowToast?.('New physician record created successfully!');
-        }}
-      />
     </div>
   );
 };

@@ -31,10 +31,35 @@ class ReceptionistCreate(BaseModel):
     hospital_id: Optional[str] = None
 
 
+class NurseCreate(BaseModel):
+    name: str
+    email: str
+    username: Optional[str] = None
+    password: Optional[str] = "Nurse@123"
+    phone: Optional[str] = "+91 98765 00000"
+    department: Optional[str] = "Triage & Vitals"
+    shift: Optional[str] = "Morning"
+    avatarUrl: Optional[str] = None
+    hospital_id: Optional[str] = None
+
+
+class NurseUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+    shift: Optional[str] = None
+    isActive: Optional[bool] = None
+    avatarUrl: Optional[str] = None
+    hospital_id: Optional[str] = None
+
+
 class StaffCreateRequest(BaseModel):
     full_name: str
     email: str
-    role: str  # 'admin', 'doctor', 'receptionist'
+    role: str  # 'admin', 'doctor', 'receptionist', 'nurse'
     password: Optional[str] = "password123"
     phone: Optional[str] = ""
     specialization: Optional[str] = "General"
@@ -113,6 +138,9 @@ def get_admin_overview(
                         cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'receptionist' AND hospital_id = %s", (effective_hosp_id,))
                         total_receptionists = cur.fetchone()["c"]
 
+                        cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'nurse' AND hospital_id = %s", (effective_hosp_id,))
+                        total_nurses = cur.fetchone()["c"]
+
                         cur.execute("SELECT COUNT(*) as c FROM appointments WHERE hospital_id = %s", (effective_hosp_id,))
                         today_appointments = cur.fetchone()["c"]
                     else:
@@ -121,6 +149,9 @@ def get_admin_overview(
 
                         cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'receptionist'")
                         total_receptionists = cur.fetchone()["c"]
+
+                        cur.execute("SELECT COUNT(*) as c FROM staff WHERE role = 'nurse'")
+                        total_nurses = cur.fetchone()["c"]
 
                         cur.execute("SELECT COUNT(*) as c FROM appointments")
                         today_appointments = cur.fetchone()["c"]
@@ -150,22 +181,23 @@ def get_admin_overview(
                             "label": r["label"],
                             "appointments": r["appointments"],
                             "patients": r["patients"],
-                            "heightPct": max(12, round((r["appointments"] / max_w) * 100)) if r["appointments"] > 0 else 0
+                            "heightPct": round((r["appointments"] / max_w) * 100)
                         }
                         for r in weekly_rows
                     ]
 
-                    # Real PostgreSQL aggregation for Monthly Trend (past 6 months)
+                    # Real PostgreSQL aggregation for Monthly Trend (Past 6 months up to current month)
                     cur.execute(
                         """
                         SELECT 
                             to_char(m, 'Mon') as label,
-                            m::date as month_date,
+                            date_part('year', m) as yr,
+                            date_part('month', m) as mo,
                             COUNT(a.id) as appointments,
                             COUNT(DISTINCT a.patient_id) as patients
                         FROM generate_series(date_trunc('month', CURRENT_DATE) - INTERVAL '5 months', date_trunc('month', CURRENT_DATE), '1 month'::interval) m
                         LEFT JOIN appointments a ON date_trunc('month', a.date) = m AND (%s::text IS NULL OR a.hospital_id = %s)
-                        GROUP BY m
+                        GROUP BY m, yr, mo
                         ORDER BY m;
                         """,
                         (effective_hosp_id, effective_hosp_id)
@@ -177,7 +209,7 @@ def get_admin_overview(
                             "label": r["label"],
                             "appointments": r["appointments"],
                             "patients": r["patients"],
-                            "heightPct": max(12, round((r["appointments"] / max_m) * 100)) if r["appointments"] > 0 else 0
+                            "heightPct": round((r["appointments"] / max_m) * 100)
                         }
                         for r in monthly_rows
                     ]
@@ -185,6 +217,7 @@ def get_admin_overview(
                     return {
                         "totalDoctors": total_doctors,
                         "totalReceptionists": total_receptionists,
+                        "totalNurses": total_nurses,
                         "totalPatients": total_patients,
                         "todayAppointments": today_appointments,
                         "activeTokens": today_appointments,
@@ -200,12 +233,14 @@ def get_admin_overview(
     doctors = db.get("doctors", [])
     patients = db.get("patients", [])
     receptionists = db.get("receptionists", [])
+    nurses = db.get("nurses", [])
     staff = db.get("staff", [])
     all_appointments = db.get("appointments", [])
 
     if effective_hosp_id:
         doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
         receptionists = [r for r in receptionists if r.get("hospital_id") == effective_hosp_id or r.get("hospitalId") == effective_hosp_id]
+        nurses = [n for n in nurses if n.get("hospital_id") == effective_hosp_id or n.get("hospitalId") == effective_hosp_id]
         staff = [s for s in staff if s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id]
         all_appointments = [a for a in all_appointments if a.get("hospital_id") == effective_hosp_id or a.get("hospitalId") == effective_hosp_id]
         hosp_match = next((h for h in db.get("hospitals", []) if h.get("id") == effective_hosp_id), None)
@@ -214,6 +249,7 @@ def get_admin_overview(
 
     total_doctors = len(doctors)
     total_receptionists = len(receptionists) if receptionists else len([s for s in staff if s.get("role") == "receptionist"])
+    total_nurses = len(nurses) if nurses else len([s for s in staff if s.get("role") == "nurse"])
     total_patients = len(patients)
 
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -230,6 +266,7 @@ def get_admin_overview(
     return {
         "totalDoctors": total_doctors,
         "totalReceptionists": total_receptionists,
+        "totalNurses": total_nurses,
         "totalPatients": total_patients,
         "todayAppointments": today_appointments,
         "activeTokens": active_tokens,
@@ -473,8 +510,8 @@ def create_staff_account(payload: StaffCreateRequest):
     Auto-generates hierarchical staff_code (<RoleLetter><HospitalNumber><Seq101+>).
     """
     role = (payload.role or "").strip().lower()
-    if role not in ["admin", "doctor", "receptionist"]:
-        raise HTTPException(status_code=400, detail=f"Invalid staff role '{payload.role}'. Must be admin, doctor, or receptionist.")
+    if role not in ["admin", "doctor", "receptionist", "nurse"]:
+        raise HTTPException(status_code=400, detail=f"Invalid staff role '{payload.role}'. Must be admin, doctor, receptionist, or nurse.")
 
     email_clean = payload.email.strip().lower()
     hosp_id = payload.hospital_id or "hosp-1"
@@ -560,7 +597,7 @@ def create_staff_account(payload: StaffCreateRequest):
 
     if not staff_code:
         # Fallback generator for JSON DB
-        role_prefix = {"admin": "A", "doctor": "D", "receptionist": "R"}.get(role, "S")
+        role_prefix = {"admin": "A", "doctor": "D", "receptionist": "R", "nurse": "N"}.get(role, "S")
         hosp_num = "001"
         db = read_json_db()
         if hosp_id:
@@ -811,6 +848,399 @@ def delete_receptionist(rec_id: str):
             database.logger.warning(f"Could not delete staff from Postgres: {e}")
 
     return {"success": True, "message": "Receptionist removed successfully"}
+
+
+# ==========================================
+# NURSE MANAGEMENT ENDPOINTS
+# ==========================================
+
+@router.get("/nurses")
+def list_nurses(
+    hospital_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """List nurse staff accounts scoped to the hospital."""
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
+    effective_hosp_id = hospital_id
+    if staff_ctx and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+
+    results = []
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if effective_hosp_id:
+                        cur.execute("""
+                            SELECT s.id, s.full_name, s.email, s.username, s.role, s.phone, s.avatar_url, s.specialization, s.hospital_id, s.staff_code, s.password_hash, s.is_active, s.created_at, h.name as hospital_name
+                            FROM staff s
+                            LEFT JOIN hospitals h ON s.hospital_id = h.id
+                            WHERE s.role = 'nurse' AND s.hospital_id = %s
+                            ORDER BY s.id
+                        """, (effective_hosp_id,))
+                    elif is_superadmin:
+                        cur.execute("""
+                            SELECT s.id, s.full_name, s.email, s.username, s.role, s.phone, s.avatar_url, s.specialization, s.hospital_id, s.staff_code, s.password_hash, s.is_active, s.created_at, h.name as hospital_name
+                            FROM staff s
+                            LEFT JOIN hospitals h ON s.hospital_id = h.id
+                            WHERE s.role = 'nurse'
+                            ORDER BY s.id
+                        """)
+                    rows = cur.fetchall()
+                    if rows:
+                        # Cross-check with JSON DB for handover plaintext password if available
+                        db_json = read_json_db()
+                        json_nurses = db_json.get("nurses", []) + [s for s in db_json.get("staff", []) if s.get("role") == "nurse"]
+                        pass_map = {}
+                        shift_map = {}
+                        for jn in json_nurses:
+                            jid = str(jn.get("id"))
+                            jemail = str(jn.get("email", "")).lower()
+                            jpass = jn.get("password")
+                            jshift = jn.get("shift")
+                            if jpass and not str(jpass).startswith("$2b$"):
+                                pass_map[jid] = jpass
+                                pass_map[jemail] = jpass
+                            if jshift:
+                                shift_map[jid] = jshift
+                                shift_map[jemail] = jshift
+
+                        for r in rows:
+                            raw_p = r.get("password_hash") or ""
+                            if raw_p.startswith("$2b$"):
+                                raw_p = pass_map.get(str(r["id"])) or pass_map.get(str(r["email"]).lower()) or ""
+                            shift_val = shift_map.get(str(r["id"])) or shift_map.get(str(r["email"]).lower()) or "Morning"
+                            results.append({
+                                "id": str(r["id"]),
+                                "staff_code": r.get("staff_code"),
+                                "staffCode": r.get("staff_code"),
+                                "name": r.get("full_name") or r.get("name") or "Nurse",
+                                "fullName": r.get("full_name") or r.get("name") or "Nurse",
+                                "email": r.get("email"),
+                                "username": r.get("username") or (r.get("email").split("@")[0] if r.get("email") else "nurse"),
+                                "password": raw_p,
+                                "phone": r.get("phone") or "+91 98765 00000",
+                                "department": r.get("specialization") or "Triage & Vitals",
+                                "shift": shift_val,
+                                "isActive": bool(r.get("is_active", True)),
+                                "avatarUrl": r.get("avatar_url") or "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=400&auto=format&fit=crop&q=80",
+                                "hospital_id": r.get("hospital_id"),
+                                "hospitalId": r.get("hospital_id"),
+                                "hospitalName": r.get("hospital_name") or "CarePulse Medical Center",
+                                "role": "nurse",
+                                "joinDate": str(r.get("created_at") or datetime.now().strftime("%Y-%m-%d"))[:10]
+                            })
+                        return results
+        except Exception as e:
+            database.logger.warning(f"Could not fetch nurses from PG: {e}")
+
+    # JSON DB fallback
+    db = read_json_db()
+    nurses = db.get("nurses", [])
+    staff_list = db.get("staff", [])
+
+    combined = []
+    seen_ids = set()
+    for n in nurses:
+        n_hosp = n.get("hospital_id") or n.get("hospitalId")
+        if not effective_hosp_id or n_hosp == effective_hosp_id:
+            s_match = next((s for s in staff_list if s.get("id") == n.get("id") or (s.get("email") and s.get("email").lower() == str(n.get("email")).lower())), None)
+            nurse_pass = n.get("password")
+            if not nurse_pass or str(nurse_pass).startswith("$2b$"):
+                if s_match and s_match.get("password") and not str(s_match.get("password")).startswith("$2b$"):
+                    nurse_pass = s_match.get("password")
+                else:
+                    nurse_pass = n.get("password") if n.get("password") and not str(n.get("password")).startswith("$2b$") else ""
+            n_entry = dict(n)
+            n_entry["password"] = nurse_pass or ""
+            n_entry["role"] = "nurse"
+            n_entry["name"] = n.get("name") or n.get("fullName") or "Nurse"
+            n_entry["fullName"] = n.get("name") or n.get("fullName") or "Nurse"
+            combined.append(n_entry)
+            seen_ids.add(str(n.get("id")))
+
+    for s in staff_list:
+        if s.get("role") == "nurse":
+            s_hosp = s.get("hospital_id") or s.get("hospitalId")
+            if (not effective_hosp_id or s_hosp == effective_hosp_id) and str(s.get("id")) not in seen_ids:
+                s_pass = s.get("password") if (s.get("password") and not str(s.get("password")).startswith("$2b$")) else ""
+                combined.append({
+                    "id": str(s.get("id")),
+                    "staff_code": s.get("staff_code") or s.get("staffCode"),
+                    "staffCode": s.get("staff_code") or s.get("staffCode"),
+                    "name": s.get("name") or s.get("full_name") or "Nurse",
+                    "fullName": s.get("name") or s.get("full_name") or "Nurse",
+                    "email": s.get("email"),
+                    "username": s.get("username") or (s.get("email").split("@")[0] if s.get("email") else "nurse"),
+                    "password": s_pass,
+                    "phone": s.get("phone") or "+91 98765 00000",
+                    "department": s.get("department") or s.get("specialization") or "Triage & Vitals",
+                    "shift": s.get("shift") or "Morning",
+                    "isActive": s.get("isActive", s.get("is_active", True)),
+                    "avatarUrl": s.get("avatar") or s.get("avatarUrl") or s.get("avatar_url") or "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=400&auto=format&fit=crop&q=80",
+                    "hospital_id": s_hosp,
+                    "hospitalId": s_hosp,
+                    "role": "nurse",
+                    "joinDate": s.get("joinDate") or datetime.now().strftime("%Y-%m-%d")
+                })
+                seen_ids.add(str(s.get("id")))
+
+    return combined
+
+
+@router.post("/nurses", status_code=status.HTTP_201_CREATED)
+def create_nurse(payload: NurseCreate, authorization: Optional[str] = Header(None)):
+    """Create a new nurse account linked to hospital with auto-generated staff code."""
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    
+    # Authoritative hospital scoping
+    if staff_ctx and staff_ctx.get("role") == "admin" and staff_ctx.get("hospital_id"):
+        effective_hosp_id = staff_ctx["hospital_id"]
+    elif staff_ctx and staff_ctx.get("role") == "superadmin":
+        effective_hosp_id = payload.hospital_id or "hosp-bag"
+    else:
+        effective_hosp_id = (staff_ctx.get("hospital_id") if staff_ctx else None) or payload.hospital_id or "hosp-bag"
+
+    db = read_json_db()
+    nurses = db.get("nurses", [])
+    staff = db.get("staff", [])
+
+    email_clean = payload.email.strip().lower()
+    username_clean = (payload.username or email_clean.split("@")[0]).strip().lower()
+
+    # Check if email already exists
+    if any(s.get("email", "").lower() == email_clean for s in staff):
+        raise HTTPException(status_code=400, detail="Staff member with this email already exists")
+
+    new_id = f"nurse-{uuid.uuid4().hex[:8]}"
+    raw_pass = payload.password or "Nurse@123"
+    if len(raw_pass.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Password cannot exceed 72 bytes.")
+    hashed_pass = hash_password(raw_pass)
+
+    staff_code = None
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO staff (full_name, email, username, password_hash, role, specialization, phone, avatar_url, hospital_id)
+                        VALUES (%s, %s, %s, %s, 'nurse', %s, %s, %s, %s)
+                        RETURNING id, staff_code
+                        """,
+                        (
+                            payload.name,
+                            email_clean,
+                            username_clean,
+                            hashed_pass,
+                            payload.department or "Triage & Vitals",
+                            payload.phone or "+91 98765 00000",
+                            payload.avatarUrl or "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=400&auto=format&fit=crop&q=80",
+                            effective_hosp_id
+                        )
+                    )
+                    inserted = cur.fetchone()
+                    if inserted:
+                        new_id = str(inserted["id"])
+                        staff_code = inserted.get("staff_code")
+                    conn.commit()
+        except Exception as e:
+            database.logger.warning(f"Could not insert nurse in Postgres: {e}")
+
+    if not staff_code:
+        hosp_num = "007"
+        if "bag" in str(effective_hosp_id).lower():
+            hosp_num = "007"
+        else:
+            m = re.search(r"\d+", str(effective_hosp_id))
+            hosp_num = f"{int(m.group(0)):03d}" if m else "001"
+        existing_nurses = [s for s in staff if s.get("role") == "nurse" and (s.get("hospital_id") == effective_hosp_id or s.get("hospitalId") == effective_hosp_id)]
+        seq = 101 + len(existing_nurses)
+        staff_code = f"N{hosp_num}{seq:03d}"
+
+    new_nurse = {
+        "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
+        "name": payload.name,
+        "fullName": payload.name,
+        "email": email_clean,
+        "username": username_clean,
+        "password": raw_pass,
+        "phone": payload.phone or "+91 98765 00000",
+        "department": payload.department or "Triage & Vitals",
+        "shift": payload.shift or "Morning",
+        "isActive": True,
+        "avatarUrl": payload.avatarUrl or "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=400&auto=format&fit=crop&q=80",
+        "hospital_id": effective_hosp_id,
+        "hospitalId": effective_hosp_id,
+        "role": "nurse",
+        "joinDate": datetime.now().strftime("%Y-%m-%d")
+    }
+
+    new_staff_entry = {
+        "id": new_id,
+        "staff_code": staff_code,
+        "staffCode": staff_code,
+        "name": payload.name,
+        "full_name": payload.name,
+        "email": email_clean,
+        "username": username_clean,
+        "password": raw_pass,
+        "password_hash": hashed_pass,
+        "role": "nurse",
+        "department": payload.department or "Triage & Vitals",
+        "specialization": payload.department or "Triage & Vitals",
+        "phone": payload.phone or "+91 98765 00000",
+        "shift": payload.shift or "Morning",
+        "avatar": new_nurse["avatarUrl"],
+        "avatar_url": new_nurse["avatarUrl"],
+        "avatarUrl": new_nurse["avatarUrl"],
+        "hospital_id": effective_hosp_id,
+        "hospitalId": effective_hosp_id,
+        "is_active": True,
+        "isActive": True
+    }
+
+    nurses.append(new_nurse)
+    staff.append(new_staff_entry)
+
+    db["nurses"] = nurses
+    db["staff"] = staff
+    write_json_db(db)
+
+    return {"message": "Nurse created successfully", "nurse": new_nurse}
+
+
+@router.put("/nurses/{nurse_id}")
+def update_nurse(nurse_id: str, payload: NurseUpdate):
+    """Update nurse information and credentials in staff and nurse records."""
+    db = read_json_db()
+    nurses = db.get("nurses", [])
+    staff = db.get("staff", [])
+
+    nurse_found = False
+    updates = payload.dict(exclude_unset=True)
+    raw_pass = updates.get("password")
+    hashed_pass = hash_password(raw_pass) if (raw_pass and raw_pass.strip()) else None
+
+    for n in nurses:
+        if str(n.get("id")) == str(nurse_id) or str(n.get("email", "")).lower() == str(nurse_id).lower() or str(n.get("staff_code", "")) == str(nurse_id) or str(n.get("username", "")).lower() == str(nurse_id).lower():
+            for k, v in updates.items():
+                n[k] = v
+            if raw_pass and raw_pass.strip():
+                n["password"] = raw_pass.strip()
+            nurse_found = True
+            break
+
+    for s in staff:
+        if str(s.get("id")) == str(nurse_id) or str(s.get("email", "")).lower() == str(nurse_id).lower() or str(s.get("staff_code", "")) == str(nurse_id) or str(s.get("username", "")).lower() == str(nurse_id).lower():
+            if "name" in updates and updates["name"]:
+                s["name"] = updates["name"]
+                s["full_name"] = updates["name"]
+            if "email" in updates and updates["email"]:
+                s["email"] = updates["email"].lower()
+            if "username" in updates and updates["username"]:
+                s["username"] = updates["username"].lower()
+            if "phone" in updates:
+                s["phone"] = updates["phone"]
+            if "department" in updates and updates["department"]:
+                s["department"] = updates["department"]
+                s["specialization"] = updates["department"]
+            if "shift" in updates and updates["shift"]:
+                s["shift"] = updates["shift"]
+            if "isActive" in updates and updates["isActive"] is not None:
+                s["isActive"] = updates["isActive"]
+                s["is_active"] = updates["isActive"]
+            if raw_pass and raw_pass.strip():
+                s["password"] = raw_pass.strip()
+                s["password_hash"] = hashed_pass
+            nurse_found = True
+            break
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    fields = []
+                    vals = []
+                    if "name" in updates and updates["name"]:
+                        fields.append("full_name = %s")
+                        vals.append(updates["name"])
+                    if "email" in updates and updates["email"]:
+                        fields.append("email = %s")
+                        vals.append(updates["email"].lower())
+                    if "username" in updates and updates["username"]:
+                        fields.append("username = %s")
+                        vals.append(updates["username"].lower())
+                    if "phone" in updates:
+                        fields.append("phone = %s")
+                        vals.append(updates["phone"])
+                    if "department" in updates and updates["department"]:
+                        fields.append("specialization = %s")
+                        vals.append(updates["department"])
+                    if "isActive" in updates and updates["isActive"] is not None:
+                        fields.append("is_active = %s")
+                        vals.append(bool(updates["isActive"]))
+                    if raw_pass and raw_pass.strip():
+                        fields.append("password_hash = %s")
+                        vals.append(hashed_pass)
+
+                    if fields:
+                        vals.extend([nurse_id, nurse_id, nurse_id.lower(), nurse_id.lower()])
+                        cur.execute(f"""
+                            UPDATE staff 
+                            SET {', '.join(fields)}
+                            WHERE (id::text = %s OR staff_code = %s OR LOWER(email) = %s OR LOWER(COALESCE(username, '')) = %s)
+                              AND role = 'nurse'
+                        """, tuple(vals))
+                conn.commit()
+        except Exception as e:
+            database.logger.warning(f"Could not update nurse in Postgres: {e}")
+
+    if not nurse_found:
+        raise HTTPException(status_code=404, detail="Nurse not found")
+
+    db["nurses"] = nurses
+    db["staff"] = staff
+    write_json_db(db)
+    return {"success": True, "message": "Nurse updated successfully"}
+
+
+@router.delete("/nurses/{nurse_id}")
+def delete_nurse(nurse_id: str):
+    """Remove a nurse account from database and staff."""
+    db = read_json_db()
+    nurses = db.get("nurses", [])
+    staff = db.get("staff", [])
+
+    db["nurses"] = [
+        n for n in nurses 
+        if str(n.get("id")) != str(nurse_id) and str(n.get("email", "")).lower() != str(nurse_id).lower() and str(n.get("staff_code", "")) != str(nurse_id) and str(n.get("username", "")).lower() != str(nurse_id).lower()
+    ]
+    db["staff"] = [
+        s for s in staff 
+        if str(s.get("id")) != str(nurse_id) and str(s.get("email", "")).lower() != str(nurse_id).lower() and str(s.get("staff_code", "")) != str(nurse_id) and str(s.get("username", "")).lower() != str(nurse_id).lower()
+    ]
+    write_json_db(db)
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        DELETE FROM staff 
+                        WHERE (id::text = %s OR staff_code = %s OR LOWER(email) = %s OR LOWER(COALESCE(username, '')) = %s)
+                          AND role = 'nurse'
+                    """, (nurse_id, nurse_id, nurse_id.lower(), nurse_id.lower()))
+                conn.commit()
+        except Exception as e:
+            database.logger.warning(f"Could not delete nurse from Postgres: {e}")
+
+    return {"success": True, "message": "Nurse removed successfully"}
 
 
 # ==========================================
