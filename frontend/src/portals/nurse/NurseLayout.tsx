@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut,
-  HeartPulse,
   Building2,
   CalendarCheck,
   QrCode,
