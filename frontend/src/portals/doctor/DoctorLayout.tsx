@@ -28,6 +28,7 @@ import { DoctorEMRSearch } from './DoctorEMRSearch';
 import { DoctorProfile } from './DoctorProfile';
 import { DoctorNotificationView } from './DoctorNotificationView';
 import { DoctorNotificationCenter } from './DoctorNotificationCenter';
+import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
 import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import type { DoctorTab } from '../../types/doctor';
@@ -418,20 +419,14 @@ export const DoctorLayout: React.FC = () => {
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-xs shrink-0 p-1">
-                <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base font-black text-slate-900 font-heading tracking-tight">CarePulse</span>
-                  <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-teal-50 text-[#0B5A54] border border-teal-200/80">
-                    MD
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400 font-bold truncate">Doctor Workspace</p>
-              </div>
-            </div>
+            <CarePulseLogo
+              variant="horizontal"
+              size="sm"
+              theme="auto"
+              badge="MD"
+              subtitle="Doctor Workspace"
+              onClick={() => setActiveTab('dashboard')}
+            />
 
             <button
               onClick={() => setIsMobileSidebarOpen(false)}

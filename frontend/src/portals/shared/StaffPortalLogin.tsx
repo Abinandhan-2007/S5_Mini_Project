@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { apiPost } from '../../lib/apiFetch';
+import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 interface StaffPortalLoginProps {
   defaultRole?: 'admin' | 'receptionist' | 'doctor';
@@ -305,19 +306,13 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
 
         {/* Top Header */}
         <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-white/40 flex items-center justify-center backdrop-blur-md shadow-md shrink-0 p-1">
-              <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <span className="text-white font-extrabold text-lg tracking-tight font-heading block leading-none">
-                CarePulse
-              </span>
-              <span className="text-[10px] text-teal-200/70 uppercase tracking-widest font-semibold">
-                Unified Staff Portal
-              </span>
-            </div>
-          </div>
+          <CarePulseLogo
+            variant="horizontal"
+            size="sm"
+            theme="dark"
+            badge="Staff"
+            subtitle="Unified Staff Portal"
+          />
 
           <span className="bg-white/10 text-teal-200 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-white/15 backdrop-blur-sm">
             Role-Based Access
@@ -416,13 +411,13 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         >
           {/* Logo on Mobile/Tablet */}
           <div className="lg:hidden flex flex-col items-center text-center space-y-2 mb-6">
-            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-md">
-              <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
-            </div>
-            <div className="space-y-0.5">
-              <h1 className="text-xl font-black font-heading text-[#0B5A54] tracking-tight">CarePulse Staff</h1>
-              <p className="text-xs font-semibold text-slate-400">Unified Hospital Portal Login</p>
-            </div>
+            <CarePulseLogo
+              variant="horizontal"
+              size="md"
+              theme="light"
+              badge="Staff"
+              subtitle="Unified Hospital Portal Login"
+            />
           </div>
 
           {/* Elevated Card */}

@@ -11,6 +11,7 @@ import {
 import { useStaffStore } from '../../store/staffStore';
 import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
 import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
+import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 interface NurseLayoutProps {
   children: ReactNode;
@@ -41,20 +42,14 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
       <header className="sticky top-0 z-30 bg-[#0B5A54] text-white shadow-md border-b border-teal-800/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Portal Branding */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20 shadow-inner">
-              <HeartPulse className="w-6 h-6 text-teal-200 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-heading font-black text-lg tracking-tight text-white">CarePulse</span>
-                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-teal-400/20 border border-teal-300/30 text-teal-200">
-                  Nurse Portal
-                </span>
-              </div>
-              <p className="text-[11px] text-teal-200/70 font-medium">Pre-Consultation Vitals & Diagnostics</p>
-            </div>
-          </div>
+          <CarePulseLogo
+            variant="horizontal"
+            size="md"
+            theme="dark"
+            badge="Nurse Portal"
+            subtitle="Pre-Consultation Vitals & Diagnostics"
+            onClick={() => navigate('/nurse')}
+          />
 
           {/* Center Actions: Scan Patient QR & Hospital Badge */}
           <div className="flex items-center gap-2.5">

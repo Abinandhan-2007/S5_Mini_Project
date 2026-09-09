@@ -1,4 +1,69 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" fill="#FFFFFF" rx="12" />
-  <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAQbElEQVR4nO1aB1QU1xq+U3YXd+m9LCBSIhYsWICIiqIxxBgrxiRqjD0BxQRLFINdUbG36Is1NsSCDXvEICKCDaRLhwV2WfrC7szc+87smJUg+FCX817OeR/ncGZnbvv/+/d7MYQQ+CcDB/9wkAggDGBaHxciCOHrvcVxDMfahVkYQhC8OwHwL8HDMAxr6RPe/HXL7xEAqPWh2gIMIviBO8BACAAgcJbBEEJc/ZCYnXHn+ZMiuQxhQGxkMrhbz/4urk0bNO31IcAgQu+x/HxpmaRSbqir52BmIeDxWF4ixEBIEkROmWThwT3VDYqPXbs7W4sBhmWXFMWlpQgFgo3fznGxFtMMQ+A4x24lReVJyyrrai0NjTqaW7YvAWxLDBRKy/3WLFGqaF+33iVV8vrGRhtj0wleA0f29QQA3E9LmbMnfMEXE77z9WvW/cidaxvPnd4zd8Ggrm4AgCuJ8WfiYkrkMh2BwNrQ5PaLJyTAo5dvsLewRAi9KYFaECFOWBXKxvjM1HWRJ4Z0771swtfFctnd5KeRsXdVDD3N99ONZ09smxno1bkbp8QYhiHA/uEYhuN4Qmb63L1bl4z/6vAf1wmA/AcM8ene08bEbF3k8ZvPEpeN/8bjoy4igQ7bi2XW61U1+9mMrxC1GTRDI4TuPH/SP3jOwkP7aIbRfIpOfGj0pd+h29EIISWlerMv9/J4zC09/xGXHsVp3jMMs/jIr/2D59x8lqSZou14BwIomh160/lT7gtmPM3NRohlMoSQomkGQnldjd+qxY0qFc0wrY1IMwxF0yNWLS6rkjMQqmiaGwEhlJKf4/7T7PVnT2gmaiPwNsoaxTAkQWw6fyoq/s+7a3f06OhIMwz2F3AMu5gQ19HcUsDjsdvduhCSBOFkYR2VEMcKFaY2nRhGM0xXO4d7a7dFJ8avjzxBEgTFMNr0xBRD8whib3TUubiYays363bowECWHs2yAADFFVJbMwt2O986FILIzsy8RC5TdwQcSIJgIBQKdK6t2HTx0f2dV8/zCIKiae0QoF49+fu9W/uvXby0fINIoMNASOCvVq8BhmEkSaYX5jeqlJB1js0BWTWg0gvySNbsNt8kAscZCDvw+ZeXrz94M/rIHzd4JEkx/5kG/C1uGAFWankEeeLe7Q1njl0IWWeqbwARauZ9OPvgaCUukcukddVXkx7iGK6iKY2LRQipaArHsGuPE8pqq4pk5Y5W1pqOGhA4DhEy0dW/FLJ284XTx2Ju8QiSsxPgLUAtKTFsYg22Xz7XY/53uWUlrKrl5tQq6hm12r1q+ZcWSqurvBYHlFdXjVi5OC4jtdlXhNDjl1kjQheWV1d9vDhAIq9o9hWp/WBdgyI5hzUPBdLyngtmhkedeWU/GLo1w8CyRzMZRdMUTWuMo0Kl/G5H2KCfA2sbFAihLRfP/HL0gIpiWdvUgGp+Bh/et/T337JKisynjt10/pSsppr7WllXuyUqwmLKmPSigtCTh+cf2NnaCBRNrTpxKPxSJEKovrHBJ2TB1B0b6hobNG24FTYl+zUBTVGtqD9w/XK/n+aEHj/I8qO8bGLYCseAqfLaGoRQROzd/PJSBjI0Tafm5zZdTZ8fZx+6fT1bUtwzaIbR5C+6B83osWCW6eTRboHTMooLT9y77R40g2vM/U/Jfam2wkyhtDzyfgw3tUvQd2PXLM0rlSCEVkUc7f3jzH3XLlbW1ba4VNbncX5OUik/dOcageMSubxQWio2MpnjN9pE32D3jUuX4mPz8vNjt+7rYttx+YmDCekvLv8SxiPJHdFRGGQCPhsLEEotKqBoysrYZOyG0F4OTsFjJpZVyjNKCiFELtZisanZtgsR8Rkvzi5dI6upBgDrZucAMLDn6gUaoPl+YyiG/mL1zz0dXdZNnplRlO8VPNfO0enTbr1+GDayXqXce/VCnqzM1tTcytiUgcw0nxE2Jqbcsl8TUCKXuQRM4RPk4K49BnR1I0nezacJecXF5uaWEMFd0wNMdfWDDmw/FXPzj7A9g7v2uJL0cMLG0Acb9/Sw70RD2H/x98GjJkzyHkpDZs3pY3dTnjpb23Y0twAYVigtS83P8+7aPXTSND5JRsbdW3P294Sw3XySl1yY13/R3Ijg0JHuHvdSnw1a8v34j4dumxFYq1LO3r9dqaivr1d0tLPz6dqDUaniMlLvpafUNiiydh+zNzWH6pCJJYALbgkcDzywI0NSJCLJ9PJSQ13dHrYOOAQkBr4a+kliZvrRuLuPUpPnjRy3fXrA4TvX5+wN7+PcOXbdDgjAxPDVcekpxQdOq4diCJxQKBsvJcbL62oxAIxEun7u/fU6CLlZAAB2sye5OzpHLlxJYNigkKD47LR9sxdM8xkRfGRfeOQJd7eeU70Gu3d0PvMgBhcI6hR1z/JzahT1ThaWFER2Jma/zvlRM9SrhIaLSdOLC2ftDQ+ZMLmgXJInk+ZJSiBCxiJRcmEeQqhGoejj2m3NxCkhJw7+kfKstrHhZuhGQ6Fo1u7Nf2amDndzF/L5v0yc6iq24+zbjJ0b/xW4CAAwc+fG/YGLOJOZJSleeeoI2/fFY8+OzgcCFtUpG4esDBZ1EA3t4rbqy29XnjuZlJ0ugAgneX06dympkOIQdbISd7Kw7GhmsTri6K6Z87vbO7BBhJoAkvMDOIYxELqK7cZ5DBwRMt/WRlxYWmJlaulqa0+QeB+nzjllElORnp2+wedrl5rqG+IEPqir2/WniRuiTleVlR5fsvqrgUP3XL3w/d6tTlY2n/X17O/imi+Tlsgr+CSZLysvkVc8fplx+VF8VlHBGK+BgSPHRty/O3F9SO8lPywe7e/TrVdSbnZ+hfTz9SFj+nmVifRoANycXPKlZdLKyuxySUTsbXtLm/zC/PUzAtw6dtKwn9uB126C2/3A/TtyK8qD/MZKa6uKKqSP83KuJD2glEobC0tbXX03Z9eYF88ySov1hCJpSaGekemhHxaO8/AGADRQqiKZ9G7yk9i05OJKeYG0PHbddh5Jeiz5wcbYTGxkMsC12+DuvezMLQQkDwPgQkLc1N1hNTKpmY24tqHBxdLat3vvxPSUwprqstpqAoDhbu6eTp2tjU3N9A22R5+3MjDeP/e18LRAgDpDhTiG/3zswKWkeGldTU1jA6ShmaGhh6OLj1svSVXV/puXKhUKCBCkKN9uvcK/netm3ynxZWbQoT2ppUUO+saj+nrO+8LfUCgauvzHfwUuFJC8r7etu7Nys0Kl2h4VEZX4IEsudbWw2frt3P7OnVMKcn86su/Gs0ScL8AxzFBHZ7rvZw6m5tefPnr4MlNWVYXjuJ5QaCzS9evZd/PUOZz3burCmyf1XP6BYdj5h3+GnT8pq63t5/iRr1tvBU3tuHI+KysV6OnrC3X7ObrM9h053msgAKC8uspz2fwcSRFA0MjQqJONXVFpSfSStWFRp5ZPmCzg8ZYd/y1k3GS/9UvNTEyLSiXSChngkfYWVvFrt1saGgMAzj649+utKw+zM2rqa4FC4ezoFOA31kAgvPE08UFWqqm+waLRX473HMjymk2+/haAkM0iC64BhHBMf+8x/b3vPH8ck/o85sWzArn0IxvbUX08XcV2ni5dutjac7YLw7BCWXmBrNxAV/+nkWNvpT5/9jLLmM+XyGU6JF/FJjFAQPIkFVIBA3Py87o5OAV8OnrrlXNFMmlBebm5gRFCaJznwHGeA9MK8+Oz0pILcjMlxefiY22NTB0sLb8d8smwHn0A9spOvhkKvVLiZsDVsSGB40Pceg9x691SBMXGS2zmimHOVjadzCwyC/MsjIxjQjflSIoRQo7W4iMxN2gG4jijUDYOd+93c81WCKGjtfhozK2qKrmDja2ztRhnc052cTiGudrau6r58iZaWz27VFZiWgLXgYGQzbDUwQf7DBku4cIwjKssQAj1haKVE6cCgvjht11hUac7Wdk4WosZCHkkj2JoJU2RJMlA6GBp7Wgt3nrl3KxftwAMW+0/1UhXl9vDV0Op4wsaqudTx2Y0wz6jt1ZfyLdnZH/r2VJazcbAEH45wKeRouYd3LVk/7azD+4t+sJ/vOcgS0OjakWdSKeDia4egeMXHsaGRUXEP0kQmZjtDlj09SBf+He+sjnaX0kSNx3efpW5Frf4RUHemrPHT8XcAhT1+ceDJ3n7jO434E7yk5WnjzrZiE/euAz4Av8BPssmfONm30lT4fpQvFNVomns3eyNJiC98/zJsNBgMLwfNs438MDOpznZo9YtA8P7DQ0N/iP5abPGHw4tlBab8IKNzjm+Xn704JdTh588S3L8qEuo/zeOZlZeXbpz/FJLi9YKvbgWC9OsJqrVWkVTLwpzQ/0nr5gZ+LK0ZMrm1ZEP/2xQKVmVBdouU6P3EqEWARFkIFRS1NiNK8CwvuS4YffTkhMy07oETgO+fUatC2lQsjS8KX4fAlwr5zNcPAIZ1pxvvxh57saVT72HzBrmdz8thUcQa7+aNtjD++Ldm1svRnJRI9Ae8A83QVx9gbXWBAEhingQg+vorJs806tzVx5BXnvyqKy6atfMebhAEBl/j6tgt+Z83gM4pqWxsFclWKCrowMZprK2RofHL6uuJEnCzMBQVlOFGEooELwq3GrvTAhn4yMtgfPQgX5jAEHM3hvOQDjew7ukUv7ni+c/Ht6LEDbPbwyu9rjgf1OJkbrUjBDaevEM8PMy/Obz6KSHlxMf4KN9gJ9X2LlTmgZaBPYWP/CWqvxbPnFe+UJ87Ky9W6SlJcumzHR3cKYY2t97CFRHPu9xFIa0dT7QFnA8zi8vvfE4wW/Vz2Bwj0Eh8wukZdp1wBpomQBu9UnZGSaTR4mnT4hJeRpy/DcwwsNsyuiEzDR1/VDLNOBaNAjcRstqayZtWVOtaOjr1HlP9IVpPp+smDpbWln51da1ZVWV2N+T2A9Hq/nAe4AL7k/G3MrMTA0YMWr37PkIw4MP7Zvu67dgtH92ZtrxmJtYOziy90HLXFTvZaakmCDIid5DcBxXqlQQsGZ/kvcQguRll0o0zf7LBGAt2gQ1UR4unRmaypeW6XcQqVTKRkqlL9QtkkkZStXP+SNNs/+tUIIDgeMIofFegz169l1yaJ9C2YgTOAWZBqVy0eG97j3dJw7wQQgRhDajUUy7KsVl+pLKiuFLg/R1RdtnB605eTS7pBDDsOjV4WITM6iuO2lxRuydDrrb4te4XLGusSFgT3itsvG7oX53nzxaPnmGvlDULI18m3tq89RaDiU4cA7ree5Lg4kj3IOmpxbktZMXQ9rKB97gFnj+MislN9vZxk5J00lZaY+z0rlwVduzAS3rAAeEUIOyUajTYeCyeQyE99fvqm9sEKovQfwzbmxhGCbU6QAh5BEkzioFFOl0AO0DXOs80Rz54Diuw+MLeDyuUNlayw+E9nWgqZzo8Pg8HtmWlu8Nsj1u/KnBckZHwCcYzm6if9itRaResJAvoGi23Nl+l1NJrYzSmqMR8vmqNhdAUZv92n8+H3hXtDaxkC8gibbyCHsvlSDVZZV2UgMg4PPxNl9d+m+KUGvQ0xHSWk1f3oQ2q9NNwW1rVX0dAMBQpNt+u4z9//Y6eNs+qNE+rH+FfwOme3bcjXg3ugAAAABJRU5ErkJggg==" x="2" y="2" width="60" height="60" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="cpCenterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#084C45" />
+      <stop offset="45%" stop-color="#0B5A54" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="cpWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A4D46" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="softGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#062E2A" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Pure white background squircle -->
+  <rect width="100" height="100" rx="24" fill="#FFFFFF" />
+
+  <g transform="translate(6, 11) scale(0.88)" filter="url(#softGlow)">
+    <!-- Left Wing (2 Windows) -->
+    <path
+      d="M12,40 C12,28 20,24 28,24 L28,78 C20,78 12,72 12,62 Z"
+      fill="url(#cpWingGrad)"
+    />
+    <rect x="16" y="38" width="8" height="9" rx="2.5" fill="#D1FAE5" />
+    <rect x="16" y="52" width="8" height="9" rx="2.5" fill="#D1FAE5" />
+
+    <!-- Right Wing (2 Windows) -->
+    <path
+      d="M72,24 C80,24 88,28 88,40 L88,62 C88,72 80,78 72,78 Z"
+      fill="url(#cpWingGrad)"
+    />
+    <rect x="76" y="38" width="8" height="9" rx="2.5" fill="#D1FAE5" />
+    <rect x="76" y="52" width="8" height="9" rx="2.5" fill="#D1FAE5" />
+
+    <!-- Center Main Building Pavilion -->
+    <path
+      d="M26,28 C26,15 36,11 50,11 C64,11 74,15 74,28 L74,80 C74,80 62,80 58,80 C58,66 56,58 50,58 C44,58 42,66 42,80 L26,80 Z"
+      fill="url(#cpCenterGrad)"
+    />
+
+    <!-- Top-Left Accent Dot -->
+    <circle cx="34.5" cy="22" r="3.2" fill="#A7F3D0" />
+
+    <!-- Luminous Medical Cross -->
+    <path
+      d="M46.5,18 L53.5,18 L53.5,23.5 L59,23.5 L59,28.5 L53.5,28.5 L53.5,34 L46.5,34 L46.5,28.5 L41,28.5 L41,23.5 L46.5,23.5 Z"
+      fill="#FFFFFF"
+    />
+
+    <!-- 4 Large Center Facade Windows (2x2 Grid) -->
+    <rect x="31" y="38" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
+    <rect x="58.5" y="38" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
+    <rect x="31" y="52" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
+    <rect x="58.5" y="52" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
+
+    <!-- Arched Entrance Portal Double-Door -->
+    <path
+      d="M42.5,80 C42.5,67 45.5,59.5 50,59.5 C54.5,59.5 57.5,67 57.5,80"
+      fill="none"
+      stroke="#10B981"
+      stroke-width="1.6"
+      opacity="0.9"
+    />
+    <!-- Double-door central divider line -->
+    <line x1="50" y1="60" x2="50" y2="80" stroke="#10B981" stroke-width="1.2" opacity="0.8" />
+  </g>
 </svg>

@@ -30,6 +30,7 @@ import { AdminAppointmentOverview } from './AdminAppointmentOverview';
 import { AdminReportsAnalytics } from './AdminReportsAnalytics';
 import { AdminAnnouncements } from './AdminAnnouncements';
 import { AdminSettingsProfile } from './AdminSettingsProfile';
+import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 export type AdminTab =
   | 'dashboard'
@@ -290,24 +291,14 @@ export const AdminLayout: React.FC = () => {
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-xs shrink-0 p-1">
-                <img src="/logo.png" alt="CarePulse Logo" className="w-full h-full object-contain" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-base font-black text-slate-900 font-heading tracking-tight">
-                    CarePulse
-                  </h1>
-                  <span className="bg-teal-50 text-[#0B5A54] text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-teal-200/80 shrink-0">
-                    Admin
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 font-semibold tracking-tight truncate max-w-[135px]">
-                  {currentStaff?.hospitalName || currentStaff?.hospital_name || adminProfile.hospitalName || hospitalSettings.name || 'Hospital Administration'}
-                </p>
-              </div>
-            </div>
+            <CarePulseLogo
+              variant="horizontal"
+              size="sm"
+              theme="auto"
+              badge="Admin"
+              subtitle={currentStaff?.hospitalName || currentStaff?.hospital_name || adminProfile.hospitalName || hospitalSettings.name || 'Hospital Administration'}
+              onClick={() => setActiveTab('dashboard')}
+            />
 
             <button
               onClick={() => setIsMobileSidebarOpen(false)}
