@@ -116,6 +116,7 @@ def fetch_and_seed_from_library():
 
     # Add common Indian popular brand aliases for local patient convenience
     indian_brands = [
+        {"id": "med-paracetamol-500", "name": "Paracetamol", "generic_name": "Paracetamol", "dosage_form": "Tablet", "strengths": ["500mg", "650mg"], "category": "Analgesic & Antipyretic", "brand_names": ["Dolo 650", "Crocin 650", "Calpol"], "purpose": "Relief from mild-to-moderate pain and fever reduction."},
         {"id": "brand-dolo-650", "name": "Dolo 650", "generic_name": "Paracetamol", "dosage_form": "Tablet", "strengths": ["650mg"], "category": "Analgesic & Antipyretic", "brand_names": ["Crocin", "Calpol"], "purpose": "Fast relief from fever and body pain."},
         {"id": "brand-crocin-650", "name": "Crocin 650", "generic_name": "Paracetamol", "dosage_form": "Tablet", "strengths": ["650mg"], "category": "Analgesic & Antipyretic", "brand_names": ["Dolo", "Calpol"], "purpose": "Antipyretic fever reducer and mild pain reliever."},
         {"id": "brand-augmentin-625", "name": "Augmentin 625 Duo", "generic_name": "Amoxicillin and Clavulanic Acid", "dosage_form": "Tablet", "strengths": ["625mg"], "category": "Broad-Spectrum Antibiotic", "brand_names": ["Clavam 625"], "purpose": "Bacterial respiratory and ENT infection treatment."},

@@ -281,7 +281,7 @@ def health_check():
         "status": "healthy" if is_healthy else "degraded",
         "service": "CarePulse FastAPI Backend",
         "storage_mode": "postgresql" if database.use_pg else "json_fallback",
-        "database": "PostgreSQL (pgvector)" if database.use_pg else "JSON File Fallback",
+        "database": f"PostgreSQL ({'pgvector' if getattr(database, 'has_pgvector', False) else 'standard relational'})" if database.use_pg else "JSON File Fallback",
         "db_connected": database.use_pg and db_status == "connected",
         "db_latency_ms": ping_latency_ms,
         "allow_json_fallback": database.ALLOW_JSON_FALLBACK

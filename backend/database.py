@@ -26,6 +26,7 @@ logging.basicConfig(level=logging.INFO)
 # Offline booking resilience is enabled via explicit opt-in in .env (ALLOW_JSON_FALLBACK=true).
 ALLOW_JSON_FALLBACK = os.environ.get("ALLOW_JSON_FALLBACK", "false").strip().lower() in ("true", "1", "yes")
 use_pg = False
+has_pgvector = False
 db_conn_info = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}"
 
 _last_pg_probe_time = 0.0
@@ -491,7 +492,7 @@ def init_db():
     Never crashes on startup if PostgreSQL is OFF; gracefully boots in resilient offline JSON mode
     and auto-reconnects as soon as PostgreSQL is turned ON.
     """
-    global use_pg
+    global use_pg, has_pgvector
     init_json_db()
     try:
         with get_pg_connection() as conn:
@@ -500,9 +501,20 @@ def init_db():
             run_db_migrations(conn)
             synced_count = sync_offline_json_to_pg(conn)
 
+            # Check if pgvector is genuinely active in PostgreSQL
+            vector_active = False
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector';")
+                    vector_active = cur.fetchone() is not None
+            except Exception:
+                vector_active = False
+
         use_pg = True
+        has_pgvector = vector_active
+        vector_tag = "pgvector enabled" if vector_active else "standard relational mode"
         logger.info("================================================================================")
-        logger.info("✅ [DATABASE] Connected to PostgreSQL successfully (pgvector enabled).")
+        logger.info(f"✅ [DATABASE] Connected to PostgreSQL successfully ({vector_tag}).")
         logger.info(f"   Target: postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}")
         if synced_count > 0:
             logger.info(f"   Synchronized {synced_count} offline appointments to PostgreSQL.")

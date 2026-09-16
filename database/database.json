@@ -38,6 +38,80 @@
   "consultations": [],
   "appointments": [
     {
+      "id": "3762c635-ee3e-4850-8893-34b74b4fb61c",
+      "patient_id": "e7d0c632-fdcb-4cbe-b429-5c8d98b80912",
+      "patientId": "e7d0c632-fdcb-4cbe-b429-5c8d98b80912",
+      "patient_name": "Ramesh Narayanan",
+      "patientName": "Ramesh Narayanan",
+      "patient_phone": "+91 94444 55555",
+      "patientPhone": "+91 94444 55555",
+      "ticket_number": "#CP-829C",
+      "ticketNumber": "#CP-829C",
+      "token_number": "#TOK-002",
+      "tokenNumber": "#TOK-002",
+      "doctor_id": "doc-c43a2b",
+      "doctorId": "doc-c43a2b",
+      "doctor_name": "Dr. SANMUGAM",
+      "doctorName": "Dr. SANMUGAM",
+      "doctor_specialty": "Dermatology",
+      "doctorSpecialty": "Dermatology",
+      "hospital_id": "hosp-kmch-8f5879",
+      "hospitalId": "hosp-kmch-8f5879",
+      "hospital_name": "KMCH",
+      "hospitalName": "KMCH",
+      "date": "2026-09-08",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "timeSlot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Checked In",
+      "is_checked_in": true,
+      "checked_in_at": "2026-09-16T19:51:17.067504",
+      "age": 42,
+      "bloodGroup": "A+",
+      "blood_group": "A+",
+      "address": "14 West Cross Road",
+      "healthIssue": "Chronic skin rash",
+      "health_issue": "Chronic skin rash",
+      "created_at": "2026-09-16T19:51:17.067504"
+    },
+    {
+      "id": "4fa7cc66-d7ab-49f1-a6da-7cdc4cdf988d",
+      "patient_id": "e7d0c632-fdcb-4cbe-b429-5c8d98b80912",
+      "patientId": "e7d0c632-fdcb-4cbe-b429-5c8d98b80912",
+      "patient_name": "Ramesh Narayanan",
+      "patientName": "Ramesh Narayanan",
+      "patient_phone": "+91 94444 55555",
+      "patientPhone": "+91 94444 55555",
+      "ticket_number": "#CP-FB04",
+      "ticketNumber": "#CP-FB04",
+      "token_number": "#TOK-001",
+      "tokenNumber": "#TOK-001",
+      "doctor_id": "doc-c43a2b",
+      "doctorId": "doc-c43a2b",
+      "doctor_name": "Dr. SANMUGAM",
+      "doctorName": "Dr. SANMUGAM",
+      "doctor_specialty": "Dermatology",
+      "doctorSpecialty": "Dermatology",
+      "hospital_id": "hosp-kmch-8f5879",
+      "hospitalId": "hosp-kmch-8f5879",
+      "hospital_name": "KMCH",
+      "hospitalName": "KMCH",
+      "date": "2026-09-08",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "timeSlot": "09:00 AM - 10:00 AM",
+      "type": "Walk-In",
+      "status": "Checked In",
+      "is_checked_in": true,
+      "checked_in_at": "2026-09-16T19:42:22.027008",
+      "age": 42,
+      "bloodGroup": "A+",
+      "blood_group": "A+",
+      "address": "14 West Cross Road",
+      "healthIssue": "Chronic skin rash",
+      "health_issue": "Chronic skin rash",
+      "created_at": "2026-09-16T19:42:22.027008"
+    },
+    {
       "id": "88452218-e473-4ee1-89e4-d5952ee388c2",
       "patient_id": "9f2da5ed-1110-42c1-a78c-2d8497fed3ec",
       "patientId": "9f2da5ed-1110-42c1-a78c-2d8497fed3ec",
@@ -1256,6 +1330,2531 @@
       "is_active": true,
       "last_login": "2026-09-16T05:42:18.267071+00:00",
       "created_at": "2026-09-16T05:42:18.159675+00:00"
+    }
+  ],
+  "medicines": [
+    {
+      "id": "med-paracetamol-500",
+      "name": "Paracetamol",
+      "generic_name": "Paracetamol",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg",
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "brand_names": [
+        "Dolo 650",
+        "Crocin 650",
+        "Calpol"
+      ],
+      "purpose": "Relief from mild-to-moderate pain and fever reduction."
+    },
+    {
+      "id": "nih-acetaminophen/hydrocodone",
+      "name": "Acetaminophen/Hydrocodone",
+      "generic_name": "Acetaminophen/Hydrocodone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "300-10",
+        "300-5",
+        "300-7.5",
+        "325-10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-acetaminophen/codeine",
+      "name": "Acetaminophen/Codeine",
+      "generic_name": "Acetaminophen/Codeine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "300-15",
+        "300-30",
+        "300-60"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-acetaminophen/tramadol",
+      "name": "Acetaminophen/Tramadol",
+      "generic_name": "Acetaminophen/Tramadol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "325-37.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-acetaminophen",
+      "name": "Acetaminophen",
+      "generic_name": "Acetaminophen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "325",
+        "325",
+        "500",
+        "500"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ibuprofen",
+      "name": "Ibuprofen",
+      "generic_name": "Ibuprofen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100",
+        "200",
+        "200",
+        "300"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrocodone/ibuprofen",
+      "name": "Hydrocodone/Ibuprofen",
+      "generic_name": "Hydrocodone/Ibuprofen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5-200",
+        "5-200",
+        "7.5-200",
+        "10-200"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-acetaminophen/ibuprofen",
+      "name": "Acetaminophen/Ibuprofen",
+      "generic_name": "Acetaminophen/Ibuprofen",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "10-3"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-naproxen",
+      "name": "Naproxen",
+      "generic_name": "Naproxen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "220",
+        "220",
+        "250",
+        "275"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-naproxen/sumatriptan",
+      "name": "Naproxen/Sumatriptan",
+      "generic_name": "Naproxen/Sumatriptan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500-85"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-naproxen-xr",
+      "name": "Naproxen Xr",
+      "generic_name": "Naproxen Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "375",
+        "500",
+        "750"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-diphenhydramine/naproxen",
+      "name": "Diphenhydramine/Naproxen",
+      "generic_name": "Diphenhydramine/Naproxen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25-220"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-acetaminophen/naproxen",
+      "name": "Acetaminophen/Naproxen",
+      "generic_name": "Acetaminophen/Naproxen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "325-110"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-diclofenac",
+      "name": "Diclofenac",
+      "generic_name": "Diclofenac",
+      "brand_names": [],
+      "dosage_form": "Topical",
+      "strengths": [
+        "1%",
+        "1.25%",
+        "1.3%",
+        "1.3%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-diclofenac-xr",
+      "name": "Diclofenac Xr",
+      "generic_name": "Diclofenac Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-diclofenac/lidocaine",
+      "name": "Diclofenac/Lidocaine",
+      "generic_name": "Diclofenac/Lidocaine",
+      "brand_names": [],
+      "dosage_form": "Topical",
+      "strengths": [
+        "1-4.5%",
+        "1-5%",
+        "1.25-4.5%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-celecoxib",
+      "name": "Celecoxib",
+      "generic_name": "Celecoxib",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "50",
+        "100",
+        "200",
+        "400"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/celecoxib",
+      "name": "Amlodipine/Celecoxib",
+      "generic_name": "Amlodipine/Celecoxib",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5-200",
+        "5-200",
+        "10-200"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-celecoxib/tramadol",
+      "name": "Celecoxib/Tramadol",
+      "generic_name": "Celecoxib/Tramadol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "56-44"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-meloxicam",
+      "name": "Meloxicam",
+      "generic_name": "Meloxicam",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5",
+        "7.5",
+        "10",
+        "15"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-bupivacaine/meloxicam",
+      "name": "Bupivacaine/Meloxicam",
+      "generic_name": "Bupivacaine/Meloxicam",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "29.3-0.88",
+        "29.3-0.88"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-meloxicam/rizatriptan",
+      "name": "Meloxicam/Rizatriptan",
+      "generic_name": "Meloxicam/Rizatriptan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20-10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-tramadol",
+      "name": "Tramadol",
+      "generic_name": "Tramadol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "50",
+        "75",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-tramadol-xr",
+      "name": "Tramadol Xr",
+      "generic_name": "Tramadol Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100",
+        "100",
+        "100",
+        "150"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-aspirin",
+      "name": "Aspirin",
+      "generic_name": "Aspirin",
+      "brand_names": [],
+      "dosage_form": "Chewable",
+      "strengths": [
+        "81"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-aspirin/oxycodone",
+      "name": "Aspirin/Oxycodone",
+      "generic_name": "Aspirin/Oxycodone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "325-4.5-0.38",
+        "325-4.84"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-aspirin/carisoprodol",
+      "name": "Aspirin/Carisoprodol",
+      "generic_name": "Aspirin/Carisoprodol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "325-200"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amoxicillin/clavulanate",
+      "name": "Amoxicillin/Clavulanate",
+      "generic_name": "Amoxicillin/Clavulanate",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "250-125",
+        "500-125",
+        "875-125"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amoxicillin/clavulanate-xr",
+      "name": "Amoxicillin/Clavulanate Xr",
+      "generic_name": "Amoxicillin/Clavulanate Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1,000-62.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-azithromycin",
+      "name": "Azithromycin",
+      "generic_name": "Azithromycin",
+      "brand_names": [],
+      "dosage_form": "Oral Liquid",
+      "strengths": [
+        "100",
+        "200"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ciprofloxacin",
+      "name": "Ciprofloxacin",
+      "generic_name": "Ciprofloxacin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100",
+        "250",
+        "500",
+        "750"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ciprofloxacin/dexamethasone",
+      "name": "Ciprofloxacin/Dexamethasone",
+      "generic_name": "Ciprofloxacin/Dexamethasone",
+      "brand_names": [],
+      "dosage_form": "Otic",
+      "strengths": [
+        "0.3-0.1%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ciprofloxacin/hydrocortisone",
+      "name": "Ciprofloxacin/Hydrocortisone",
+      "generic_name": "Ciprofloxacin/Hydrocortisone",
+      "brand_names": [],
+      "dosage_form": "Otic",
+      "strengths": [
+        "0.2-1%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ciprofloxacin-xr",
+      "name": "Ciprofloxacin Xr",
+      "generic_name": "Ciprofloxacin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500",
+        "1,000"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-levofloxacin",
+      "name": "Levofloxacin",
+      "generic_name": "Levofloxacin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "250",
+        "500",
+        "750"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-doxycycline",
+      "name": "Doxycycline",
+      "generic_name": "Doxycycline",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20",
+        "40",
+        "50",
+        "50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-doxycycline/salicylic-acid",
+      "name": "Doxycycline/Salicylic Acid",
+      "generic_name": "Doxycycline/Salicylic Acid",
+      "brand_names": [],
+      "dosage_form": "Pack",
+      "strengths": [
+        "mixed"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-cefixime",
+      "name": "Cefixime",
+      "generic_name": "Cefixime",
+      "brand_names": [],
+      "dosage_form": "Oral Liquid",
+      "strengths": [
+        "100",
+        "200",
+        "500"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-clindamycin",
+      "name": "Clindamycin",
+      "generic_name": "Clindamycin",
+      "brand_names": [],
+      "dosage_form": "Topical",
+      "strengths": [
+        "1%",
+        "1%",
+        "1%",
+        "1%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-benzoyl-peroxide/clindamycin",
+      "name": "Benzoyl Peroxide/Clindamycin",
+      "generic_name": "Benzoyl Peroxide/Clindamycin",
+      "brand_names": [],
+      "dosage_form": "Topical",
+      "strengths": [
+        "2.5-1.2%",
+        "3.75-1.2%",
+        "5-1%",
+        "5-1.2%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-clindamycin/tretinoin",
+      "name": "Clindamycin/Tretinoin",
+      "generic_name": "Clindamycin/Tretinoin",
+      "brand_names": [],
+      "dosage_form": "Topical",
+      "strengths": [
+        "1.2-0.025%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metronidazole",
+      "name": "Metronidazole",
+      "generic_name": "Metronidazole",
+      "brand_names": [],
+      "dosage_form": "Topical",
+      "strengths": [
+        "0.75%",
+        "0.75%",
+        "0.75%",
+        "1%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metronidazole-xr",
+      "name": "Metronidazole Xr",
+      "generic_name": "Metronidazole Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "750"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-nitrofurantoin",
+      "name": "Nitrofurantoin",
+      "generic_name": "Nitrofurantoin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "25-75",
+        "50",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fluconazole",
+      "name": "Fluconazole",
+      "generic_name": "Fluconazole",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "50",
+        "100",
+        "150",
+        "200"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-acyclovir",
+      "name": "Acyclovir",
+      "generic_name": "Acyclovir",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "200",
+        "400",
+        "800"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-oseltamivir",
+      "name": "Oseltamivir",
+      "generic_name": "Oseltamivir",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "30",
+        "45",
+        "75"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-atorvastatin",
+      "name": "Atorvastatin",
+      "generic_name": "Atorvastatin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "20",
+        "40",
+        "80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/atorvastatin",
+      "name": "Amlodipine/Atorvastatin",
+      "generic_name": "Amlodipine/Atorvastatin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5-10",
+        "2.5-20",
+        "2.5-40",
+        "5-10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-simvastatin",
+      "name": "Simvastatin",
+      "generic_name": "Simvastatin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5",
+        "10",
+        "20",
+        "40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ezetimibe/simvastatin",
+      "name": "Ezetimibe/Simvastatin",
+      "generic_name": "Ezetimibe/Simvastatin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10-10",
+        "10-20",
+        "10-40",
+        "10-80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-telmisartan",
+      "name": "Telmisartan",
+      "generic_name": "Telmisartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20",
+        "40",
+        "80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/telmisartan",
+      "name": "Hydrochlorothiazide/Telmisartan",
+      "generic_name": "Hydrochlorothiazide/Telmisartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5-40",
+        "12.5-80",
+        "25-80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/telmisartan",
+      "name": "Amlodipine/Telmisartan",
+      "generic_name": "Amlodipine/Telmisartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-40",
+        "5-80",
+        "10-40",
+        "10-80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/indapamide/telmisartan",
+      "name": "Amlodipine/Indapamide/Telmisartan",
+      "generic_name": "Amlodipine/Indapamide/Telmisartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1.25-0.625-10",
+        "2.5-1.25-20",
+        "5-2.5-40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-losartan",
+      "name": "Losartan",
+      "generic_name": "Losartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "50",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/losartan",
+      "name": "Hydrochlorothiazide/Losartan",
+      "generic_name": "Hydrochlorothiazide/Losartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5-100",
+        "12.5-50",
+        "25-100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-lisinopril",
+      "name": "Lisinopril",
+      "generic_name": "Lisinopril",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5",
+        "5",
+        "10",
+        "20"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/lisinopril",
+      "name": "Hydrochlorothiazide/Lisinopril",
+      "generic_name": "Hydrochlorothiazide/Lisinopril",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5-10",
+        "12.5-20",
+        "25-20"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ramipril",
+      "name": "Ramipril",
+      "generic_name": "Ramipril",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1.25",
+        "2.5",
+        "5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine",
+      "name": "Amlodipine",
+      "generic_name": "Amlodipine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5",
+        "5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/benazepril",
+      "name": "Amlodipine/Benazepril",
+      "generic_name": "Amlodipine/Benazepril",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5-10",
+        "5-10",
+        "5-20",
+        "5-40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/olmesartan",
+      "name": "Amlodipine/Olmesartan",
+      "generic_name": "Amlodipine/Olmesartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-20",
+        "5-40",
+        "10-20",
+        "10-40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/valsartan",
+      "name": "Amlodipine/Valsartan",
+      "generic_name": "Amlodipine/Valsartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-160",
+        "5-320",
+        "10-160",
+        "10-320"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amlodipine/hydrochlorothiazide/valsartan",
+      "name": "Amlodipine/Hydrochlorothiazide/Valsartan",
+      "generic_name": "Amlodipine/Hydrochlorothiazide/Valsartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-12.5-160",
+        "5-25-160",
+        "10-12.5-160",
+        "10-25-160"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metoprolol",
+      "name": "Metoprolol",
+      "generic_name": "Metoprolol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5",
+        "25",
+        "37.5",
+        "50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metoprolol-xr",
+      "name": "Metoprolol Xr",
+      "generic_name": "Metoprolol Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "25",
+        "50",
+        "50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/metoprolol",
+      "name": "Hydrochlorothiazide/Metoprolol",
+      "generic_name": "Hydrochlorothiazide/Metoprolol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25-100",
+        "25-50",
+        "50-100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-carvedilol",
+      "name": "Carvedilol",
+      "generic_name": "Carvedilol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "3.125",
+        "6.25",
+        "12.5",
+        "25"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-carvedilol-xr",
+      "name": "Carvedilol Xr",
+      "generic_name": "Carvedilol Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "20",
+        "40",
+        "80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-bisoprolol/hydrochlorothiazide",
+      "name": "Bisoprolol/Hydrochlorothiazide",
+      "generic_name": "Bisoprolol/Hydrochlorothiazide",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5-6.25",
+        "5-6.25",
+        "10-6.25"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-bisoprolol",
+      "name": "Bisoprolol",
+      "generic_name": "Bisoprolol",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5",
+        "5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-furosemide",
+      "name": "Furosemide",
+      "generic_name": "Furosemide",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20",
+        "40",
+        "80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide",
+      "name": "Hydrochlorothiazide",
+      "generic_name": "Hydrochlorothiazide",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5",
+        "12.5",
+        "25",
+        "50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/triamterene",
+      "name": "Hydrochlorothiazide/Triamterene",
+      "generic_name": "Hydrochlorothiazide/Triamterene",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25-37.5",
+        "25-37.5",
+        "50-75"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/valsartan",
+      "name": "Hydrochlorothiazide/Valsartan",
+      "generic_name": "Hydrochlorothiazide/Valsartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5-160",
+        "12.5-320",
+        "12.5-80",
+        "25-160"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydrochlorothiazide/olmesartan",
+      "name": "Hydrochlorothiazide/Olmesartan",
+      "generic_name": "Hydrochlorothiazide/Olmesartan",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "12.5-20",
+        "12.5-40",
+        "25-40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-clopidogrel",
+      "name": "Clopidogrel",
+      "generic_name": "Clopidogrel",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "75",
+        "300"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-apixaban",
+      "name": "Apixaban",
+      "generic_name": "Apixaban",
+      "brand_names": [],
+      "dosage_form": "Pack",
+      "strengths": [
+        "mixed"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-rivaroxaban",
+      "name": "Rivaroxaban",
+      "generic_name": "Rivaroxaban",
+      "brand_names": [],
+      "dosage_form": "Pack",
+      "strengths": [
+        "mixed"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-warfarin",
+      "name": "Warfarin",
+      "generic_name": "Warfarin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1",
+        "2",
+        "2.5",
+        "3"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metformin",
+      "name": "Metformin",
+      "generic_name": "Metformin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500",
+        "625",
+        "750",
+        "850"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metformin-xr",
+      "name": "Metformin Xr",
+      "generic_name": "Metformin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500",
+        "500",
+        "500",
+        "750"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-glyburide/metformin",
+      "name": "Glyburide/Metformin",
+      "generic_name": "Glyburide/Metformin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1.25-250",
+        "2.5-500",
+        "5-500"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metformin/sitagliptin",
+      "name": "Metformin/Sitagliptin",
+      "generic_name": "Metformin/Sitagliptin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500-50",
+        "1,000-50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metformin/pioglitazone",
+      "name": "Metformin/Pioglitazone",
+      "generic_name": "Metformin/Pioglitazone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500-15",
+        "850-15"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metformin/rosiglitazone",
+      "name": "Metformin/Rosiglitazone",
+      "generic_name": "Metformin/Rosiglitazone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1,000-2",
+        "1,000-4"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-glimepiride",
+      "name": "Glimepiride",
+      "generic_name": "Glimepiride",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-glimepiride/pioglitazone",
+      "name": "Glimepiride/Pioglitazone",
+      "generic_name": "Glimepiride/Pioglitazone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2-30",
+        "4-30"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-sitagliptin",
+      "name": "Sitagliptin",
+      "generic_name": "Sitagliptin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "50",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ertugliflozin/sitagliptin",
+      "name": "Ertugliflozin/Sitagliptin",
+      "generic_name": "Ertugliflozin/Sitagliptin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-100",
+        "15-100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-metformin/sitagliptin-xr",
+      "name": "Metformin/Sitagliptin Xr",
+      "generic_name": "Metformin/Sitagliptin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500-50",
+        "1,000-100",
+        "1,000-50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-dapagliflozin",
+      "name": "Dapagliflozin",
+      "generic_name": "Dapagliflozin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-dapagliflozin/saxagliptin",
+      "name": "Dapagliflozin/Saxagliptin",
+      "generic_name": "Dapagliflozin/Saxagliptin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-5",
+        "10-5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-dapagliflozin/metformin-xr",
+      "name": "Dapagliflozin/Metformin Xr",
+      "generic_name": "Dapagliflozin/Metformin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5-1,000",
+        "5-1,000",
+        "5-500",
+        "10-1,000"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-empagliflozin",
+      "name": "Empagliflozin",
+      "generic_name": "Empagliflozin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "25"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-empagliflozin/linagliptin",
+      "name": "Empagliflozin/Linagliptin",
+      "generic_name": "Empagliflozin/Linagliptin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10-5",
+        "25-5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-empagliflozin/metformin",
+      "name": "Empagliflozin/Metformin",
+      "generic_name": "Empagliflozin/Metformin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-1,000",
+        "5-500",
+        "12.5-1,000",
+        "12.5-500"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-empagliflozin/metformin-xr",
+      "name": "Empagliflozin/Metformin Xr",
+      "generic_name": "Empagliflozin/Metformin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-1,000",
+        "10-1,000",
+        "12.5-1,000",
+        "25-1,000"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-empagliflozin/linagliptin/metformin-xr",
+      "name": "Empagliflozin/Linagliptin/Metformin Xr",
+      "generic_name": "Empagliflozin/Linagliptin/Metformin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-2.5-1,000",
+        "10-5-1,000",
+        "12.5-2.5-1,000",
+        "25-5-1,000"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-semaglutide",
+      "name": "Semaglutide",
+      "generic_name": "Semaglutide",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "0.5",
+        "0.68",
+        "1",
+        "1.34"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-tirzepatide",
+      "name": "Tirzepatide",
+      "generic_name": "Tirzepatide",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "4.17",
+        "4.17",
+        "5",
+        "5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-insulin-analog,-glargine",
+      "name": "Insulin Analog, Glargine",
+      "generic_name": "Insulin Analog, Glargine",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "100",
+        "100",
+        "100",
+        "300"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-insulin-analog,-aspart",
+      "name": "Insulin Analog, Aspart",
+      "generic_name": "Insulin Analog, Aspart",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "100",
+        "100",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-insulin-analog,-detemir",
+      "name": "Insulin Analog, Detemir",
+      "generic_name": "Insulin Analog, Detemir",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "100",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-insulin-analog,-lispro",
+      "name": "Insulin Analog, Lispro",
+      "generic_name": "Insulin Analog, Lispro",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "100",
+        "100",
+        "100",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-insulin,-human-isophane",
+      "name": "Insulin, Human Isophane",
+      "generic_name": "Insulin, Human Isophane",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "100",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-insulin,-human-mixed",
+      "name": "Insulin, Human Mixed",
+      "generic_name": "Insulin, Human Mixed",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "70-30",
+        "70-30"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-levothyroxine",
+      "name": "Levothyroxine",
+      "generic_name": "Levothyroxine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.013",
+        "0.025",
+        "0.025",
+        "0.0375"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-levothyroxine/liothyronine",
+      "name": "Levothyroxine/Liothyronine",
+      "generic_name": "Levothyroxine/Liothyronine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.025-0.00625",
+        "0.1-0.025",
+        "0.15-0.0375"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-pantoprazole",
+      "name": "Pantoprazole",
+      "generic_name": "Pantoprazole",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20",
+        "40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-omeprazole",
+      "name": "Omeprazole",
+      "generic_name": "Omeprazole",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "20",
+        "20",
+        "40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-omeprazole/sodium-bicarbonate",
+      "name": "Omeprazole/Sodium Bicarbonate",
+      "generic_name": "Omeprazole/Sodium Bicarbonate",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20-1,100",
+        "40-1,100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-amoxicillin/clarithromycin/omeprazole",
+      "name": "Amoxicillin/Clarithromycin/Omeprazole",
+      "generic_name": "Amoxicillin/Clarithromycin/Omeprazole",
+      "brand_names": [],
+      "dosage_form": "Pack",
+      "strengths": [
+        "mixed"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-esomeprazole",
+      "name": "Esomeprazole",
+      "generic_name": "Esomeprazole",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20",
+        "20",
+        "24.65",
+        "40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-esomeprazole/naproxen",
+      "name": "Esomeprazole/Naproxen",
+      "generic_name": "Esomeprazole/Naproxen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20-375",
+        "20-500"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-famotidine",
+      "name": "Famotidine",
+      "generic_name": "Famotidine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "20",
+        "40"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-famotidine/ibuprofen",
+      "name": "Famotidine/Ibuprofen",
+      "generic_name": "Famotidine/Ibuprofen",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "26.6-800"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-calcium-carbonate/famotidine/magnesium-hydroxide",
+      "name": "Calcium Carbonate/Famotidine/Magnesium Hydroxide",
+      "generic_name": "Calcium Carbonate/Famotidine/Magnesium Hydroxide",
+      "brand_names": [],
+      "dosage_form": "Chewable",
+      "strengths": [
+        "800-10-165"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-ondansetron",
+      "name": "Ondansetron",
+      "generic_name": "Ondansetron",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "4",
+        "8",
+        "16",
+        "24"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-loperamide",
+      "name": "Loperamide",
+      "generic_name": "Loperamide",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2",
+        "2"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-loperamide/simethicone",
+      "name": "Loperamide/Simethicone",
+      "generic_name": "Loperamide/Simethicone",
+      "brand_names": [],
+      "dosage_form": "Chewable",
+      "strengths": [
+        "2-125"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-cetirizine",
+      "name": "Cetirizine",
+      "generic_name": "Cetirizine",
+      "brand_names": [],
+      "dosage_form": "Chewable",
+      "strengths": [
+        "2.5",
+        "5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fexofenadine",
+      "name": "Fexofenadine",
+      "generic_name": "Fexofenadine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "30",
+        "60",
+        "180"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fexofenadine/pseudoephedrine-xr",
+      "name": "Fexofenadine/Pseudoephedrine Xr",
+      "generic_name": "Fexofenadine/Pseudoephedrine Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "60-120",
+        "180-240"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-loratadine",
+      "name": "Loratadine",
+      "generic_name": "Loratadine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-loratadine/pseudoephedrine-xr",
+      "name": "Loratadine/Pseudoephedrine Xr",
+      "generic_name": "Loratadine/Pseudoephedrine Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5-120",
+        "10-240"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-levocetirizine",
+      "name": "Levocetirizine",
+      "generic_name": "Levocetirizine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-montelukast",
+      "name": "Montelukast",
+      "generic_name": "Montelukast",
+      "brand_names": [],
+      "dosage_form": "Chewable",
+      "strengths": [
+        "4",
+        "5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-albuterol",
+      "name": "Albuterol",
+      "generic_name": "Albuterol",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "0.21",
+        "0.417",
+        "0.83",
+        "5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-albuterol-xr",
+      "name": "Albuterol Xr",
+      "generic_name": "Albuterol Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "4",
+        "8"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-albuterol/ipratropium",
+      "name": "Albuterol/Ipratropium",
+      "generic_name": "Albuterol/Ipratropium",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "0.833-0.167",
+        "100-20"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-albuterol/budesonide",
+      "name": "Albuterol/Budesonide",
+      "generic_name": "Albuterol/Budesonide",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "90-80",
+        "90-80"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-budesonide",
+      "name": "Budesonide",
+      "generic_name": "Budesonide",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "0.125",
+        "0.25",
+        "0.5",
+        "90"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-budesonide/formoterol",
+      "name": "Budesonide/Formoterol",
+      "generic_name": "Budesonide/Formoterol",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "80-4.5",
+        "80-4.5",
+        "160-4.5",
+        "160-4.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fluticasone/salmeterol",
+      "name": "Fluticasone/Salmeterol",
+      "generic_name": "Fluticasone/Salmeterol",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "45-21",
+        "45-21",
+        "55-14",
+        "55-14"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fluticasone",
+      "name": "Fluticasone",
+      "generic_name": "Fluticasone",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "44",
+        "50",
+        "50",
+        "55"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fluticasone/vilanterol",
+      "name": "Fluticasone/Vilanterol",
+      "generic_name": "Fluticasone/Vilanterol",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "50-25",
+        "100-25",
+        "100-25",
+        "200-25"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-azelastine/fluticasone",
+      "name": "Azelastine/Fluticasone",
+      "generic_name": "Azelastine/Fluticasone",
+      "brand_names": [],
+      "dosage_form": "Nasal",
+      "strengths": [
+        "137-50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-tiotropium",
+      "name": "Tiotropium",
+      "generic_name": "Tiotropium",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "0.018",
+        "1.25",
+        "1.25",
+        "2.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-olodaterol/tiotropium",
+      "name": "Olodaterol/Tiotropium",
+      "generic_name": "Olodaterol/Tiotropium",
+      "brand_names": [],
+      "dosage_form": "Inhalant",
+      "strengths": [
+        "2.5-2.5",
+        "2.5-2.5",
+        "2.5-2.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-sertraline",
+      "name": "Sertraline",
+      "generic_name": "Sertraline",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "50",
+        "100",
+        "150"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-escitalopram",
+      "name": "Escitalopram",
+      "generic_name": "Escitalopram",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5",
+        "10",
+        "15",
+        "20"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fluoxetine",
+      "name": "Fluoxetine",
+      "generic_name": "Fluoxetine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "10",
+        "10",
+        "10",
+        "20"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-fluoxetine/olanzapine",
+      "name": "Fluoxetine/Olanzapine",
+      "generic_name": "Fluoxetine/Olanzapine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25-12",
+        "25-3",
+        "25-6",
+        "50-12"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-duloxetine",
+      "name": "Duloxetine",
+      "generic_name": "Duloxetine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "20",
+        "20",
+        "30",
+        "30"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-venlafaxine-xr",
+      "name": "Venlafaxine Xr",
+      "generic_name": "Venlafaxine Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "37.5",
+        "37.5",
+        "75",
+        "75"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-venlafaxine",
+      "name": "Venlafaxine",
+      "generic_name": "Venlafaxine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "37.5",
+        "50",
+        "75"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-alprazolam",
+      "name": "Alprazolam",
+      "generic_name": "Alprazolam",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.25",
+        "0.5",
+        "1",
+        "2"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-alprazolam-xr",
+      "name": "Alprazolam Xr",
+      "generic_name": "Alprazolam Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.5",
+        "1",
+        "2",
+        "3"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-clonazepam",
+      "name": "Clonazepam",
+      "generic_name": "Clonazepam",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.25",
+        "0.5",
+        "1",
+        "2"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-lorazepam",
+      "name": "Lorazepam",
+      "generic_name": "Lorazepam",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.5",
+        "1",
+        "2"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-lorazepam-xr",
+      "name": "Lorazepam Xr",
+      "generic_name": "Lorazepam Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1",
+        "1.5",
+        "2",
+        "3"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-zolpidem",
+      "name": "Zolpidem",
+      "generic_name": "Zolpidem",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "5",
+        "7.5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-zolpidem-xr",
+      "name": "Zolpidem Xr",
+      "generic_name": "Zolpidem Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "6.25",
+        "12.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-gabapentin",
+      "name": "Gabapentin",
+      "generic_name": "Gabapentin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100",
+        "100",
+        "200",
+        "300"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-gabapentin-xr",
+      "name": "Gabapentin Xr",
+      "generic_name": "Gabapentin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "300",
+        "600"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-pregabalin",
+      "name": "Pregabalin",
+      "generic_name": "Pregabalin",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "25",
+        "50",
+        "75",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-pregabalin-xr",
+      "name": "Pregabalin Xr",
+      "generic_name": "Pregabalin Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "82.5",
+        "165",
+        "330"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-levetiracetam",
+      "name": "Levetiracetam",
+      "generic_name": "Levetiracetam",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "250",
+        "500",
+        "750",
+        "1,000"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-levetiracetam-xr",
+      "name": "Levetiracetam Xr",
+      "generic_name": "Levetiracetam Xr",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "500",
+        "750",
+        "1,000",
+        "1,500"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-prednisone",
+      "name": "Prednisone",
+      "generic_name": "Prednisone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "1",
+        "1",
+        "2",
+        "2.5"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-methylprednisolone",
+      "name": "Methylprednisolone",
+      "generic_name": "Methylprednisolone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2",
+        "4",
+        "8",
+        "16"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-dexamethasone/tobramycin",
+      "name": "Dexamethasone/Tobramycin",
+      "generic_name": "Dexamethasone/Tobramycin",
+      "brand_names": [],
+      "dosage_form": "Ophthalmic",
+      "strengths": [
+        "0.05-0.3%",
+        "0.1-0.3%",
+        "0.1-0.3%"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-dexamethasone",
+      "name": "Dexamethasone",
+      "generic_name": "Dexamethasone",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "0.25",
+        "0.5",
+        "0.75",
+        "1"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-hydroxychloroquine",
+      "name": "Hydroxychloroquine",
+      "generic_name": "Hydroxychloroquine",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100",
+        "200",
+        "300",
+        "400"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-methotrexate",
+      "name": "Methotrexate",
+      "generic_name": "Methotrexate",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "2.5",
+        "5",
+        "7.5",
+        "10"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-adalimumab",
+      "name": "Adalimumab",
+      "generic_name": "Adalimumab",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "50",
+        "50",
+        "50",
+        "50"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-pembrolizumab",
+      "name": "Pembrolizumab",
+      "generic_name": "Pembrolizumab",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "25"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-berahyaluronidase-alfa/pembrolizumab",
+      "name": "Berahyaluronidase Alfa/Pembrolizumab",
+      "generic_name": "Berahyaluronidase Alfa/Pembrolizumab",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "2,000-165",
+        "2,000-165"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-dupilumab",
+      "name": "Dupilumab",
+      "generic_name": "Dupilumab",
+      "brand_names": [],
+      "dosage_form": "Injectable",
+      "strengths": [
+        "150",
+        "150",
+        "150",
+        "175"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-olaparib",
+      "name": "Olaparib",
+      "generic_name": "Olaparib",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "100",
+        "150"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "nih-palbociclib",
+      "name": "Palbociclib",
+      "generic_name": "Palbociclib",
+      "brand_names": [],
+      "dosage_form": "Oral Pill",
+      "strengths": [
+        "75",
+        "75",
+        "100",
+        "100"
+      ],
+      "category": "Official Formulary (NIH RxTerms)",
+      "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    },
+    {
+      "id": "brand-dolo-650",
+      "name": "Dolo 650",
+      "generic_name": "Paracetamol",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "brand_names": [
+        "Crocin",
+        "Calpol"
+      ],
+      "purpose": "Fast relief from fever and body pain."
+    },
+    {
+      "id": "brand-crocin-650",
+      "name": "Crocin 650",
+      "generic_name": "Paracetamol",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "650mg"
+      ],
+      "category": "Analgesic & Antipyretic",
+      "brand_names": [
+        "Dolo",
+        "Calpol"
+      ],
+      "purpose": "Antipyretic fever reducer and mild pain reliever."
+    },
+    {
+      "id": "brand-augmentin-625",
+      "name": "Augmentin 625 Duo",
+      "generic_name": "Amoxicillin and Clavulanic Acid",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "625mg"
+      ],
+      "category": "Broad-Spectrum Antibiotic",
+      "brand_names": [
+        "Clavam 625"
+      ],
+      "purpose": "Bacterial respiratory and ENT infection treatment."
+    },
+    {
+      "id": "brand-azithral-500",
+      "name": "Azithral 500",
+      "generic_name": "Azithromycin",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg"
+      ],
+      "category": "Macrolide Antibiotic",
+      "brand_names": [
+        "Azee 500"
+      ],
+      "purpose": "Chest infections, sinusitis, and throat infections."
+    },
+    {
+      "id": "brand-pan-40",
+      "name": "Pan 40",
+      "generic_name": "Pantoprazole",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "40mg"
+      ],
+      "category": "Proton Pump Inhibitor",
+      "brand_names": [
+        "Pantocid 40"
+      ],
+      "purpose": "Acid reflux, GERD, and stomach ulcer protection."
+    },
+    {
+      "id": "brand-glycomet-500",
+      "name": "Glycomet 500",
+      "generic_name": "Metformin",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "500mg"
+      ],
+      "category": "Biguanide Oral Antidiabetic",
+      "brand_names": [
+        "Glucophage"
+      ],
+      "purpose": "Blood sugar regulation in type 2 diabetes."
+    },
+    {
+      "id": "brand-telma-40",
+      "name": "Telma 40",
+      "generic_name": "Telmisartan",
+      "dosage_form": "Tablet",
+      "strengths": [
+        "40mg"
+      ],
+      "category": "Angiotensin Receptor Blocker",
+      "brand_names": [
+        "Micardis"
+      ],
+      "purpose": "Blood pressure reduction and cardiovascular protection."
     }
   ]
 }

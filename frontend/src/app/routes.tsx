@@ -187,6 +187,18 @@ export const AppRoutes: React.FC = () => {
             }
           />
           <Route
+            path="/book/:doctorId"
+            element={
+              <PageTransition>
+                <BookAppointmentScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/book"
+            element={<Navigate to="/hospitals" replace />}
+          />
+          <Route
             path="/appointment-detail"
             element={
               <PageTransition>
@@ -290,6 +302,14 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/staff/receptionist"
+          element={
+            <PageTransition>
+              <ReceptionistLayout />
+            </PageTransition>
+          }
+        />
+        <Route
           path="/receptionist/login"
           element={<Navigate to="/staff/login" replace />}
         />
@@ -297,6 +317,14 @@ export const AppRoutes: React.FC = () => {
         {/* Doctor Portal Routes */}
         <Route
           path="/doctor"
+          element={
+            <PageTransition>
+              <DoctorLayout />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff/doctor"
           element={
             <PageTransition>
               <DoctorLayout />
@@ -373,6 +401,16 @@ export const AppRoutes: React.FC = () => {
         />
         <Route
           path="/staff/nurse"
+          element={
+            <PageTransition>
+              <NurseLayout>
+                <NurseQueueDashboard />
+              </NurseLayout>
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff/nurse/login"
           element={
             <PageTransition>
               <NurseLogin />

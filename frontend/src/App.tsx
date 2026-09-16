@@ -124,9 +124,28 @@ const AppResumeUpdateChecker: React.FC = () => {
 };
 
 export const App: React.FC = () => {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        if (
+          sessionStorage.getItem('carepulse_skip_splash') === 'true' ||
+          localStorage.getItem('carepulse_skip_splash') === 'true' ||
+          window.navigator.webdriver
+        ) {
+          return false;
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [startupUpdateInfo, setStartupUpdateInfo] = useState<AppVersionInfo | null>(null);
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
+
+  useEffect(() => {
+    if (!showSplash) {
+      useCarePulseStore.setState({ isInitializing: false });
+    }
+  }, [showSplash]);
 
   // Restore session
   useEffect(() => {
