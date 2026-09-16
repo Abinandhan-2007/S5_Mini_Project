@@ -4,6 +4,7 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from pydantic import BaseModel, EmailStr, Field
@@ -1221,14 +1222,35 @@ def list_patient_devices(
     if clean_platform == "all":
         clean_platform = ""
 
+    # Read latest published app release version from app_version.json
+    version_file = Path(__file__).resolve().parent.parent / "app_version.json"
+    latest_app_ver = "1.0.0"
+    if version_file.exists():
+        try:
+            with open(version_file, "r", encoding="utf-8") as vf:
+                v_data = json.load(vf)
+                latest_app_ver = str(v_data.get("version") or "1.0.0").strip()
+        except Exception:
+            latest_app_ver = "1.0.0"
+
     device_list = []
     stats = {
         "total_devices": 0,
         "android_count": 0,
         "ios_count": 0,
         "web_count": 0,
-        "active_24h": 0
+        "active_24h": 0,
+        "latest_version": latest_app_ver,
+        "updated_devices_count": 0,
+        "outdated_devices_count": 0,
     }
+
+    def check_is_updated(dev_ver_str: str) -> bool:
+        if not dev_ver_str:
+            return False
+        clean_dev = dev_ver_str.strip().lstrip("v").lower()
+        clean_latest = latest_app_ver.strip().lstrip("v").lower()
+        return clean_dev == clean_latest
 
     if database.use_pg:
         try:
@@ -1286,6 +1308,9 @@ def list_patient_devices(
                     now_utc = datetime.now(timezone.utc)
                     for r in rows:
                         row_plat = (r.get("platform") or "android").lower()
+                        dev_ver = r.get("app_version") or "1.0.0"
+                        is_updated = check_is_updated(dev_ver)
+
                         # Stats aggregation
                         stats["total_devices"] += 1
                         if "android" in row_plat:
@@ -1294,6 +1319,11 @@ def list_patient_devices(
                             stats["ios_count"] += 1
                         else:
                             stats["web_count"] += 1
+
+                        if is_updated:
+                            stats["updated_devices_count"] += 1
+                        else:
+                            stats["outdated_devices_count"] += 1
 
                         last_log = r.get("last_login")
                         if last_log:
@@ -1315,7 +1345,7 @@ def list_patient_devices(
                         dev_ip = r.get("ip_address") or ""
 
                         if clean_search:
-                            search_target = f"{p_name} {p_phone} {p_email} {p_code} {dev_model} {dev_manuf} {dev_ip}".lower()
+                            search_target = f"{p_name} {p_phone} {p_email} {p_code} {dev_model} {dev_manuf} {dev_ip} {dev_ver}".lower()
                             if clean_search not in search_target:
                                 continue
 
@@ -1332,7 +1362,9 @@ def list_patient_devices(
                             "manufacturer": dev_manuf or "Unknown",
                             "platform": row_plat,
                             "os_version": r.get("os_version") or "",
-                            "app_version": r.get("app_version") or "1.0.0",
+                            "app_version": dev_ver,
+                            "latest_version": latest_app_ver,
+                            "is_up_to_date": is_updated,
                             "ip_address": dev_ip,
                             "has_fcm": bool(r.get("fcm_token")),
                             "is_active": bool(r.get("is_active", True)),
@@ -1357,6 +1389,9 @@ def list_patient_devices(
     now_utc = datetime.now(timezone.utc)
     for r in raw_devices:
         row_plat = (r.get("platform") or "android").lower()
+        dev_ver = r.get("app_version") or "1.0.0"
+        is_updated = check_is_updated(dev_ver)
+
         stats["total_devices"] += 1
         if "android" in row_plat:
             stats["android_count"] += 1
@@ -1364,6 +1399,11 @@ def list_patient_devices(
             stats["ios_count"] += 1
         else:
             stats["web_count"] += 1
+
+        if is_updated:
+            stats["updated_devices_count"] += 1
+        else:
+            stats["outdated_devices_count"] += 1
 
         last_log_str = r.get("last_login")
         if last_log_str:
@@ -1390,7 +1430,7 @@ def list_patient_devices(
         dev_ip = r.get("ip_address") or ""
 
         if clean_search:
-            search_target = f"{p_name} {p_phone} {p_email} {p_code} {dev_model} {dev_manuf} {dev_ip}".lower()
+            search_target = f"{p_name} {p_phone} {p_email} {p_code} {dev_model} {dev_manuf} {dev_ip} {dev_ver}".lower()
             if clean_search not in search_target:
                 continue
 
@@ -1407,7 +1447,9 @@ def list_patient_devices(
             "manufacturer": dev_manuf or "Unknown",
             "platform": row_plat,
             "os_version": r.get("os_version") or "",
-            "app_version": r.get("app_version") or "1.0.0",
+            "app_version": dev_ver,
+            "latest_version": latest_app_ver,
+            "is_up_to_date": is_updated,
             "ip_address": dev_ip,
             "has_fcm": bool(r.get("fcm_token")),
             "is_active": bool(r.get("is_active", True)),

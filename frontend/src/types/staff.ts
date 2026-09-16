@@ -250,6 +250,8 @@ export interface SuperAdminAppDevice {
   platform: 'android' | 'ios' | 'web';
   os_version: string;
   app_version: string;
+  latest_version?: string;
+  is_up_to_date?: boolean;
   ip_address: string;
   has_fcm: boolean;
   is_active: boolean;
@@ -263,5 +265,8 @@ export interface SuperAdminAppDeviceStats {
   ios_count: number;
   web_count: number;
   active_24h: number;
+  latest_version?: string;
+  updated_devices_count?: number;
+  outdated_devices_count?: number;
 }
 

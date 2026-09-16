@@ -295,7 +295,15 @@ def send_push_notification(
                 err_str = str(fcm_err).lower()
                 logger.warning(f"⚠️ FCM send error for token {token_str[:12]}...: {fcm_err}")
                 # Check for invalid / unregistered / expired token errors
-                if "unregistered" in err_str or "invalid" in err_str or "mismatch" in err_str or "not-found" in err_str:
+                is_unreg = (
+                    (messaging and isinstance(fcm_err, getattr(messaging, 'UnregisteredError', ()))) or
+                    "notregistered" in err_str or
+                    "unregistered" in err_str or
+                    "invalid" in err_str or
+                    "mismatch" in err_str or
+                    "not-found" in err_str
+                )
+                if is_unreg:
                     deactivate_device_token(token_id=token_id, fcm_token=token_str)
                 failed_count += 1
         else:
@@ -427,7 +435,14 @@ def broadcast_app_update_notification(
                 except Exception as err:
                     err_str = str(err).lower()
                     logger.warning(f"⚠️ FCM send error to token {token_str[:12]}...: {err}")
-                    if "unregistered" in err_str or "invalid" in err_str or "not-found" in err_str:
+                    is_unreg = (
+                        (messaging and isinstance(err, getattr(messaging, 'UnregisteredError', ()))) or
+                        "notregistered" in err_str or
+                        "unregistered" in err_str or
+                        "invalid" in err_str or
+                        "not-found" in err_str
+                    )
+                    if is_unreg:
                         deactivate_device_token(token_id=token_id, fcm_token=token_str)
                     failed_count += 1
             else:

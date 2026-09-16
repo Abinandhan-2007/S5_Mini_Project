@@ -16,7 +16,9 @@ import {
   X,
   Cpu,
   Radio,
-  Server
+  Server,
+  AlertTriangle,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { superadminService } from '../../services/superadminService';
 import type { SuperAdminAppDevice, SuperAdminAppDeviceStats } from '../../types/staff';
@@ -29,6 +31,9 @@ export const AppUserDevices: React.FC = () => {
     ios_count: 0,
     web_count: 0,
     active_24h: 0,
+    latest_version: '1.9.29',
+    updated_devices_count: 0,
+    outdated_devices_count: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,6 +42,7 @@ export const AppUserDevices: React.FC = () => {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState('ALL');
+  const [versionFilter, setVersionFilter] = useState<'ALL' | 'UPDATED' | 'OUTDATED'>('ALL');
 
   // Inspection Modal
   const [inspectingDevice, setInspectingDevice] = useState<SuperAdminAppDevice | null>(null);
@@ -98,8 +104,18 @@ export const AppUserDevices: React.FC = () => {
     }
   };
 
+  const filteredDevices = devices.filter((device) => {
+    if (versionFilter === 'UPDATED') {
+      return device.is_up_to_date === true;
+    }
+    if (versionFilter === 'OUTDATED') {
+      return device.is_up_to_date === false;
+    }
+    return true;
+  });
+
   const exportToJson = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(devices, null, 2));
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredDevices, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
     downloadAnchor.setAttribute('download', `carepulse_patient_devices_${Date.now()}.json`);
@@ -109,8 +125,8 @@ export const AppUserDevices: React.FC = () => {
   };
 
   const exportToCsv = () => {
-    const headers = ['Patient Code', 'Patient Name', 'Phone', 'Email', 'Device Model', 'Manufacturer', 'Platform', 'OS Version', 'App Version', 'IP Address', 'Last Login'];
-    const rows = devices.map(d => [
+    const headers = ['Patient Code', 'Patient Name', 'Phone', 'Email', 'Device Model', 'Manufacturer', 'Platform', 'OS Version', 'App Version', 'Update Status', 'IP Address', 'Last Login'];
+    const rows = filteredDevices.map(d => [
       `"${d.patient_code || ''}"`,
       `"${d.patient_name || ''}"`,
       `"${d.patient_phone || ''}"`,
@@ -120,6 +136,7 @@ export const AppUserDevices: React.FC = () => {
       `"${d.platform || ''}"`,
       `"${d.os_version || ''}"`,
       `"${d.app_version || ''}"`,
+      `"${d.is_up_to_date ? 'Updated (Latest)' : 'Outdated (Needs Update)'}"`,
       `"${d.ip_address || ''}"`,
       `"${d.last_login || ''}"`,
     ]);
@@ -212,7 +229,7 @@ export const AppUserDevices: React.FC = () => {
       </div>
 
       {/* Metric Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Devices */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
@@ -228,6 +245,30 @@ export const AppUserDevices: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">Logged-in patient hardware profiles</p>
+        </div>
+
+        {/* App Version Adoption */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Update Adoption</span>
+            <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
+              <ArrowUpCircle className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-heading text-slate-900">v{stats.latest_version || '1.9.29'}</span>
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-200">
+              Target
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-2 text-[11px] font-semibold">
+            <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              ✓ {stats.updated_devices_count ?? 0} Updated
+            </span>
+            <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+              ⚠️ {stats.outdated_devices_count ?? 0} Old
+            </span>
+          </div>
         </div>
 
         {/* Android Devices */}
@@ -283,15 +324,15 @@ export const AppUserDevices: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col xl:flex-row items-center justify-between gap-3">
         {/* Search */}
-        <div className="relative w-full md:w-96">
+        <div className="relative w-full xl:w-80">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by patient name, phone, code, device model, or IP..."
+            placeholder="Search patient, phone, device, IP..."
             className="w-full pl-10 pr-4 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#0B5A54] focus:border-transparent transition-all"
           />
           {searchQuery && (
@@ -304,26 +345,59 @@ export const AppUserDevices: React.FC = () => {
           )}
         </div>
 
-        {/* Platform Tabs */}
-        <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          {[
-            { id: 'ALL', label: 'All Platforms' },
-            { id: 'android', label: 'Android' },
-            { id: 'ios', label: 'iOS' },
-            { id: 'web', label: 'Web / Browser' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedPlatform(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                selectedPlatform === tab.id
-                  ? 'bg-[#0B5A54] text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Filters Group: Platform & Version */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
+          {/* Version Filter Tabs */}
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70">
+            {[
+              { id: 'ALL', label: 'All Versions' },
+              { id: 'UPDATED', label: `✓ v${stats.latest_version || '1.9.29'}`, count: stats.updated_devices_count },
+              { id: 'OUTDATED', label: '⚠️ Needs Update', count: stats.outdated_devices_count },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setVersionFilter(tab.id as any)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  versionFilter === tab.id
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200/70'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {typeof tab.count === 'number' && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    versionFilter === tab.id
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Platform Tabs */}
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70">
+            {[
+              { id: 'ALL', label: 'All OS' },
+              { id: 'android', label: 'Android' },
+              { id: 'ios', label: 'iOS' },
+              { id: 'web', label: 'Web' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedPlatform(tab.id)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  selectedPlatform === tab.id
+                    ? 'bg-[#0B5A54] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200/70'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -350,22 +424,23 @@ export const AppUserDevices: React.FC = () => {
               Try Again
             </button>
           </div>
-        ) : devices.length === 0 ? (
+        ) : filteredDevices.length === 0 ? (
           <div className="p-16 text-center">
             <div className="inline-flex p-4 bg-slate-50 rounded-3xl text-slate-400 mb-3 border border-slate-100">
               <Smartphone className="w-8 h-8" />
             </div>
             <h3 className="text-base font-bold text-slate-800 font-heading">No Device Sessions Found</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-              {searchQuery || selectedPlatform !== 'ALL'
+              {searchQuery || selectedPlatform !== 'ALL' || versionFilter !== 'ALL'
                 ? 'No registered devices match your active search and filter criteria.'
                 : 'No patients have logged into the mobile app yet. Once a user logs in, their phone model, OS version, and network details will appear here automatically.'}
             </p>
-            {(searchQuery || selectedPlatform !== 'ALL') && (
+            {(searchQuery || selectedPlatform !== 'ALL' || versionFilter !== 'ALL') && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedPlatform('ALL');
+                  setVersionFilter('ALL');
                 }}
                 className="mt-4 px-4 py-2 rounded-xl bg-teal-50 text-[#0B5A54] hover:bg-teal-100 border border-teal-200 text-xs font-semibold transition-colors cursor-pointer"
               >
@@ -381,14 +456,14 @@ export const AppUserDevices: React.FC = () => {
                   <th className="py-3.5 px-4 sm:px-6">Patient Details</th>
                   <th className="py-3.5 px-4">Phone / Device Model</th>
                   <th className="py-3.5 px-4">Operating System</th>
-                  <th className="py-3.5 px-4">Network & Build</th>
+                  <th className="py-3.5 px-4">Network & Version</th>
                   <th className="py-3.5 px-4">Push Notifications</th>
                   <th className="py-3.5 px-4">Last Login Time</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {devices.map((dev) => {
+                {filteredDevices.map((dev) => {
                   const isAndroid = dev.platform.toLowerCase().includes('android');
                   const isIos = dev.platform.toLowerCase().includes('ios');
 
@@ -467,14 +542,24 @@ export const AppUserDevices: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Network IP & Build */}
+                      {/* Network IP & Build / Version Status */}
                       <td className="py-3.5 px-4">
                         <div className="font-mono text-xs text-slate-700 flex items-center gap-1">
                           <Globe2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>{dev.ip_address || '127.0.0.1 (Local)'}</span>
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          App: <span className="font-mono text-slate-600">v{dev.app_version || '1.0.4'}</span>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          {dev.is_up_to_date ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              v{dev.app_version || stats.latest_version} (Latest)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              v{dev.app_version || 'Old'} (Update Required)
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -609,12 +694,28 @@ export const AppUserDevices: React.FC = () => {
                     <span className="font-semibold text-slate-800">{inspectingDevice.os_version || 'Universal'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">App Client Version</span>
-                    <span className="font-mono font-semibold text-slate-800">v{inspectingDevice.app_version}</span>
+                    <span className="text-slate-400 block">Installed Version</span>
+                    <span className="font-mono font-semibold text-slate-800">v{inspectingDevice.app_version || '1.0.0'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Target APK Release</span>
+                    <span className="font-mono font-semibold text-purple-700">v{inspectingDevice.latest_version || stats.latest_version || '1.9.29'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block">Network Client IP</span>
                     <span className="font-mono font-semibold text-slate-800">{inspectingDevice.ip_address || '127.0.0.1'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Update Status</span>
+                    {inspectingDevice.is_up_to_date ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-emerald-600 mt-0.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Up to date
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-600 mt-0.5">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Needs v{inspectingDevice.latest_version || stats.latest_version || '1.9.29'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
