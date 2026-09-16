@@ -5,6 +5,7 @@ import { INITIAL_CHAT_MESSAGES } from './mockApi';
 import { apiGet, apiFetch } from './apiFetch';
 import { signOutGoogle } from './googleAuth';
 import { registerPushNotifications } from './pushNotifications';
+import { trackUserDevice } from './deviceTracker';
 
 interface CarePulseState {
   // Auth state
@@ -185,6 +186,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       get().syncPrescriptions(user.id);
       get().syncHistory(user.id);
       registerPushNotifications(user.id).catch(() => {});
+      trackUserDevice(user.id).catch(() => {});
     }
   },
 
@@ -270,6 +272,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             get().syncPrescriptions(userData.id);
             get().syncHistory(userData.id);
             registerPushNotifications(userData.id).catch(() => {});
+            trackUserDevice(userData.id).catch(() => {});
             return true;
           } else if (res && (res.status === 401 || res.status === 403)) {
             // Token is invalid or expired — purge token only, preserve offline user session so user is never logged out on reload
@@ -297,6 +300,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         get().syncPrescriptions(cachedUser.id);
         get().syncHistory(cachedUser.id);
         registerPushNotifications(cachedUser.id).catch(() => {});
+        trackUserDevice(cachedUser.id).catch(() => {});
         return true;
       }
 

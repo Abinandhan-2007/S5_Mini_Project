@@ -235,3 +235,33 @@ export interface SuperAdminAuditEvent {
   after_state?: Record<string, any> | null;
   reason?: string | null;
 }
+
+export interface SuperAdminAppDevice {
+  id: string;
+  patient_id?: string;
+  patient_name: string;
+  patient_phone: string;
+  patient_email: string;
+  patient_code: string;
+  patient_avatar?: string;
+  device_id: string;
+  device_model: string;
+  manufacturer: string;
+  platform: 'android' | 'ios' | 'web';
+  os_version: string;
+  app_version: string;
+  ip_address: string;
+  has_fcm: boolean;
+  is_active: boolean;
+  last_login: string | null;
+  created_at: string | null;
+}
+
+export interface SuperAdminAppDeviceStats {
+  total_devices: number;
+  android_count: number;
+  ios_count: number;
+  web_count: number;
+  active_24h: number;
+}
+

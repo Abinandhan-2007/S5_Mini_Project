@@ -12,14 +12,16 @@ import {
   Globe2,
   ChevronRight,
   Server,
+  Smartphone,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { SuperAdminDashboard } from './SuperAdminDashboard';
 import { HospitalManagement } from './HospitalManagement';
 import { AdminManagement } from './AdminManagement';
 import { AuditLog } from './AuditLog';
+import { AppUserDevices } from './AppUserDevices';
 
-export type SuperAdminTab = 'dashboard' | 'hospitals' | 'admins' | 'audit';
+export type SuperAdminTab = 'dashboard' | 'hospitals' | 'admins' | 'audit' | 'devices';
 
 export const SuperAdminLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>('dashboard');
@@ -55,13 +57,14 @@ export const SuperAdminLayout: React.FC = () => {
 
   const navItems: { id: SuperAdminTab; label: string; icon: React.FC<{ className?: string }>; tag: string }[] = [
     { id: 'dashboard', label: 'Network Overview', icon: LayoutDashboard, tag: 'LIVE' },
+    { id: 'devices', label: 'Patient App Devices', icon: Smartphone, tag: 'NEW' },
     { id: 'hospitals', label: 'Hospital Facilities', icon: Building2, tag: 'H001+' },
     { id: 'admins', label: 'Hospital Administrators', icon: ShieldCheck, tag: 'A101+' },
     { id: 'audit', label: 'Platform Audit Log', icon: ClipboardList, tag: 'LOGS' },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F6F8F7] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white">
+    <div className="min-h-screen bg-[#EEF1F6] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white">
       {/* Mobile Drawer Backdrop */}
       {isMobileSidebarOpen && (
         <div
@@ -87,11 +90,11 @@ export const SuperAdminLayout: React.FC = () => {
                 <span className="font-extrabold text-slate-900 text-base tracking-tight font-heading">
                   CarePulse
                 </span>
-                <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold tracking-wider bg-teal-50 text-[#0B5A54] border border-teal-200 uppercase">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-teal-50 text-[#0B5A54] border border-teal-200 uppercase font-sans">
                   ROOT
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono mt-0.5">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-sans mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Scope: SA101 Platform</span>
               </div>
@@ -108,18 +111,18 @@ export const SuperAdminLayout: React.FC = () => {
 
         {/* Network Status Quick Telemetry */}
         <div className="px-5 py-3 bg-slate-50/80 border-b border-slate-100">
-          <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center justify-between text-xs font-sans">
             <span className="text-slate-500 font-medium flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-[#0B5A54]" />
               Network Protocol
             </span>
-            <span className="font-mono text-emerald-700 font-bold">ONLINE 99.9%</span>
+            <span className="font-bold text-emerald-700 font-sans">ONLINE 99.9%</span>
           </div>
         </div>
 
         {/* Navigation Items */}
-        <div className="flex-1 px-3 py-5 space-y-1.5 overflow-y-auto">
-          <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
+        <div className="flex-1 px-3 py-5 space-y-1.5 overflow-y-auto font-sans">
+          <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 font-heading">
             Platform Governance
           </div>
           {navItems.map((item) => {
@@ -148,9 +151,9 @@ export const SuperAdminLayout: React.FC = () => {
                   <span className="tracking-tight">{item.label}</span>
                 </div>
                 <span
-                  className={`font-mono text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-sans transition-colors ${
                     isActive
-                      ? 'bg-white/20 text-white font-bold'
+                      ? 'bg-white/20 text-white'
                       : 'bg-slate-100 text-slate-500 border border-slate-200'
                   }`}
                 >
@@ -162,20 +165,20 @@ export const SuperAdminLayout: React.FC = () => {
         </div>
 
         {/* User Footer Profile Card */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50 font-sans">
           <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs font-sans">
                 SA
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 truncate font-heading">
                   {currentStaff.name || 'Platform SuperAdmin'}
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-mono mt-0.5">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-sans mt-0.5">
                   <span className="text-[#0B5A54] font-bold">{currentStaff.staff_code || 'SA101'}</span>
                   <span className="text-slate-300">•</span>
-                  <span className="text-slate-400 text-[10px]">Root Level</span>
+                  <span className="text-slate-400 text-[11px]">Root Level</span>
                 </div>
               </div>
             </div>
@@ -209,6 +212,8 @@ export const SuperAdminLayout: React.FC = () => {
               <span className="text-slate-900 font-bold capitalize font-heading">
                 {activeTab === 'dashboard'
                   ? 'Overview'
+                  : activeTab === 'devices'
+                  ? 'Patient App Devices'
                   : activeTab === 'hospitals'
                   ? 'Hospital Facilities'
                   : activeTab === 'admins'
@@ -231,6 +236,8 @@ export const SuperAdminLayout: React.FC = () => {
               onOpenAddAdmin={(hospId) => handleOpenAddAdmin(hospId)}
             />
           )}
+
+          {activeTab === 'devices' && <AppUserDevices />}
 
           {activeTab === 'hospitals' && (
             <HospitalManagement

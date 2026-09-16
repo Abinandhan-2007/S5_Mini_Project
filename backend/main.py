@@ -37,7 +37,7 @@ import urllib.parse
 import random
 import time
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import config
 import database
 from database import init_db, get_pg_connection, read_json_db, write_json_db, cosine_similarity
@@ -63,6 +63,7 @@ from schemas import (
     DoctorResponse,
     DoctorAvailabilityUpdate,
     DeviceTokenRequest,
+    DeviceInfoRequest,
     AppointmentCancelRequest,
     TokenStatusUpdate,
     ScanMatchRequest,
@@ -2022,6 +2023,162 @@ def save_patient_device_token(req: DeviceTokenRequest):
         logger.warning(f"Note spawning topic subscribe thread: {e}")
 
     return {"success": True, "message": "Device token registered successfully"}
+
+
+@app.post("/api/patient/device-info")
+@app.post("/patient/device-info")
+def save_patient_device_info(req: DeviceInfoRequest, request: Request):
+    """
+    Register or update patient mobile/web device specifications upon login or active session.
+    Logs Phone Model, Manufacturer, OS Version, App Version, Client IP, and Last Login Time.
+    """
+    client_ip = request.headers.get("x-forwarded-for", "")
+    if client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    elif request.client and request.client.host:
+        client_ip = request.client.host
+    else:
+        client_ip = ""
+
+    dev_id = (req.device_id or "").strip()
+    if not dev_id:
+        dev_id = str(uuid.uuid4())
+
+    p_id = (req.patient_id or "").strip()
+    p_id_sql = None
+    if p_id:
+        try:
+            p_id_sql = str(uuid.UUID(p_id))
+        except (ValueError, TypeError):
+            p_id_sql = None
+
+    # Handle PostgreSQL
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # Self-heal table if not present
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS patient_devices (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+                            device_id VARCHAR(255),
+                            device_model VARCHAR(255) DEFAULT 'Unknown Device',
+                            manufacturer VARCHAR(100) DEFAULT 'Unknown',
+                            platform VARCHAR(50) DEFAULT 'android',
+                            os_version VARCHAR(50) DEFAULT '',
+                            app_version VARCHAR(50) DEFAULT '1.0.0',
+                            ip_address VARCHAR(100) DEFAULT '',
+                            fcm_token TEXT DEFAULT '',
+                            is_active BOOLEAN DEFAULT true,
+                            last_login TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_patient_devices_patient_id ON patient_devices(patient_id);
+                        """
+                    )
+                    # Check for existing device record
+                    if p_id_sql:
+                        cur.execute(
+                            "SELECT id FROM patient_devices WHERE patient_id = %s AND (device_id = %s OR (device_id IS NULL AND device_model = %s)) LIMIT 1",
+                            (p_id_sql, dev_id, req.device_model or "Unknown Device")
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            cur.execute(
+                                """
+                                UPDATE patient_devices
+                                SET device_id = %s,
+                                    device_model = %s,
+                                    manufacturer = %s,
+                                    platform = %s,
+                                    os_version = %s,
+                                    app_version = %s,
+                                    ip_address = %s,
+                                    fcm_token = CASE WHEN %s != '' THEN %s ELSE fcm_token END,
+                                    is_active = true,
+                                    last_login = CURRENT_TIMESTAMP
+                                WHERE id = %s
+                                """,
+                                (
+                                    dev_id,
+                                    req.device_model or "Unknown Device",
+                                    req.manufacturer or "Unknown",
+                                    req.platform or "android",
+                                    req.os_version or "",
+                                    req.app_version or "1.0.0",
+                                    client_ip,
+                                    req.fcm_token or "",
+                                    req.fcm_token or "",
+                                    row["id"]
+                                )
+                            )
+                        else:
+                            cur.execute(
+                                """
+                                INSERT INTO patient_devices (
+                                    patient_id, device_id, device_model, manufacturer,
+                                    platform, os_version, app_version, ip_address, fcm_token, is_active, last_login
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, true, CURRENT_TIMESTAMP)
+                                """,
+                                (
+                                    p_id_sql,
+                                    dev_id,
+                                    req.device_model or "Unknown Device",
+                                    req.manufacturer or "Unknown",
+                                    req.platform or "android",
+                                    req.os_version or "",
+                                    req.app_version or "1.0.0",
+                                    client_ip,
+                                    req.fcm_token or ""
+                                )
+                            )
+                        conn.commit()
+                        logger.info(f"📱 Recorded device info for patient {p_id_sql}: {req.device_model} ({req.platform} {req.os_version})")
+                        return {"success": True, "device_id": dev_id}
+        except Exception as e:
+            logger.warning(f"Note recording patient_devices in PostgreSQL: {e}")
+
+    # Fallback to local database.json
+    db = read_json_db()
+    devices = db.setdefault("patient_devices", [])
+    now_iso = datetime.now(timezone.utc).isoformat()
+    matched = False
+    for d in devices:
+        if (p_id and d.get("patient_id") == p_id) and (d.get("device_id") == dev_id or d.get("device_model") == req.device_model):
+            d["device_id"] = dev_id
+            d["device_model"] = req.device_model or d.get("device_model") or "Unknown Device"
+            d["manufacturer"] = req.manufacturer or d.get("manufacturer") or "Unknown"
+            d["platform"] = req.platform or d.get("platform") or "android"
+            d["os_version"] = req.os_version or d.get("os_version") or ""
+            d["app_version"] = req.app_version or d.get("app_version") or "1.0.0"
+            d["ip_address"] = client_ip or d.get("ip_address") or ""
+            if req.fcm_token:
+                d["fcm_token"] = req.fcm_token
+            d["is_active"] = True
+            d["last_login"] = now_iso
+            matched = True
+            break
+    if not matched:
+        devices.append({
+            "id": str(uuid.uuid4()),
+            "patient_id": p_id,
+            "device_id": dev_id,
+            "device_model": req.device_model or "Unknown Device",
+            "manufacturer": req.manufacturer or "Unknown",
+            "platform": req.platform or "android",
+            "os_version": req.os_version or "",
+            "app_version": req.app_version or "1.0.0",
+            "ip_address": client_ip,
+            "fcm_token": req.fcm_token or "",
+            "is_active": True,
+            "last_login": now_iso,
+            "created_at": now_iso
+        })
+    write_json_db(db)
+    logger.info(f"📱 Recorded device info in JSON DB for patient {p_id}: {req.device_model}")
+    return {"success": True, "device_id": dev_id}
 
 
 @app.put("/api/appointments/{appointment_id}/cancel")

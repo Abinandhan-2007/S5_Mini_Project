@@ -38,6 +38,36 @@
   "consultations": [],
   "appointments": [
     {
+      "id": "88452218-e473-4ee1-89e4-d5952ee388c2",
+      "patient_id": "9f2da5ed-1110-42c1-a78c-2d8497fed3ec",
+      "patientId": "9f2da5ed-1110-42c1-a78c-2d8497fed3ec",
+      "patient_uuid": "9f2da5ed-1110-42c1-a78c-2d8497fed3ec",
+      "patient_name": "Sivanagu",
+      "patientName": "Sivanagu",
+      "ticket_number": "TK-482",
+      "ticketNumber": "TK-482",
+      "doctor_id": "doc-dcd123",
+      "doctorId": "doc-dcd123",
+      "doctor_name": "Dr. Abhinandhan K",
+      "doctorName": "Dr. Abhinandhan K",
+      "doctor_specialty": "General Medicine",
+      "doctorSpecialty": "General Medicine",
+      "doctor_photo": "/doctor_default.jpg",
+      "doctorPhoto": "/doctor_default.jpg",
+      "hospital_id": "hosp-kmch-ad06b5",
+      "hospitalId": "hosp-kmch-ad06b5",
+      "hospital_name": "KMCH",
+      "hospitalName": "KMCH",
+      "date": "2026-09-13",
+      "time_slot": "11:00 AM - 12:00 PM",
+      "timeSlot": "11:00 AM - 12:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming",
+      "is_checked_in": false,
+      "checked_in_at": null,
+      "created_at": "2026-09-11T20:10:30.202413"
+    },
+    {
       "id": "39168847-4604-4427-94dc-80dba7c7345f",
       "patient_id": "usr-fa5cb1f787",
       "patientId": "usr-fa5cb1f787",
@@ -1194,6 +1224,38 @@
       "hospital_id": "hosp-kmch-ad06b5",
       "hospitalId": "hosp-kmch-ad06b5",
       "joinDate": "2026-09-08"
+    }
+  ],
+  "patient_devices": [
+    {
+      "id": "8b0135e8-40ab-4d12-b91b-1fb248916f10",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "device_id": "test_device_samsung_s23_ultra",
+      "device_model": "Samsung Galaxy S23 Ultra (SM-S918B)",
+      "manufacturer": "Samsung",
+      "platform": "android",
+      "os_version": "Android 14",
+      "app_version": "1.0.4",
+      "ip_address": "testclient",
+      "fcm_token": "sample_fcm_push_token_999",
+      "is_active": true,
+      "last_login": "2026-09-16T05:39:03.225154+00:00",
+      "created_at": "2026-09-16T05:39:03.225154+00:00"
+    },
+    {
+      "id": "04a53147-2b3e-42a3-956d-a52318338c2b",
+      "patient_id": "usr-101",
+      "device_id": "dev_737wjdpp_mu3obr46",
+      "device_model": "Windows Desktop Browser",
+      "manufacturer": "PC / Workstation",
+      "platform": "web",
+      "os_version": "Windows 10/11",
+      "app_version": "1.0.4",
+      "ip_address": "127.0.0.1",
+      "fcm_token": "",
+      "is_active": true,
+      "last_login": "2026-09-16T05:42:18.267071+00:00",
+      "created_at": "2026-09-16T05:42:18.159675+00:00"
     }
   ]
 }

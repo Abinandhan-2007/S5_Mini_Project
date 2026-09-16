@@ -89,7 +89,7 @@ export const SuperAdminLogin: React.FC = () => {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0D3831] to-[#051B17] border border-[#16564B] flex items-center justify-center text-[#00DC82] shadow-inner mb-4">
             <Globe2 className="w-7 h-7" />
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded font-mono text-[10px] font-bold tracking-widest bg-[#00DC82]/15 text-[#00DC82] border border-[#00DC82]/30 uppercase mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold tracking-wider bg-[#00DC82]/15 text-[#00DC82] border border-[#00DC82]/30 uppercase mb-2">
             <ShieldCheck className="w-3.5 h-3.5" />
             ROOT INFRASTRUCTURE LEVEL 0
           </div>
@@ -106,7 +106,7 @@ export const SuperAdminLogin: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="mb-6 p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs font-mono flex items-start gap-2.5"
+            className="mb-6 p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs font-sans flex items-start gap-2.5"
           >
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
             <span>{error}</span>
@@ -116,7 +116,7 @@ export const SuperAdminLogin: React.FC = () => {
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-sans">
               Username or Work Email
             </label>
             <div className="relative">
@@ -129,13 +129,13 @@ export const SuperAdminLogin: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="superadmin or superadmin@carepulse.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
+                className="w-full pl-10 pr-4 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-sans"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 font-sans">
               Master Access Key
             </label>
             <div className="relative">
@@ -148,7 +148,7 @@ export const SuperAdminLogin: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••••••"
-                className="w-full pl-10 pr-10 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-mono"
+                className="w-full pl-10 pr-10 py-2.5 bg-[#08231E] border border-[#11453D] text-white rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#00DC82] focus:border-transparent transition-all placeholder:text-slate-500 font-sans"
               />
               <button
                 type="button"
@@ -163,7 +163,7 @@ export const SuperAdminLogin: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 mt-2 bg-[#00DC82] hover:bg-[#00c776] text-[#051B17] font-bold rounded-xl text-xs font-mono shadow-lg shadow-[#00DC82]/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full py-3 px-4 mt-2 bg-[#00DC82] hover:bg-[#00c776] text-[#051B17] font-bold rounded-xl text-xs shadow-lg shadow-[#00DC82]/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer font-sans"
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-[#051B17]/30 border-t-[#051B17] rounded-full animate-spin" />
@@ -178,29 +178,29 @@ export const SuperAdminLogin: React.FC = () => {
 
         {/* Quick Demo Credentials Assistant */}
         <div className="mt-6 pt-5 border-t border-[#0D3831] text-center">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-mono">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-sans">
             <span>Demo Root Access:</span>
             <button
               type="button"
               onClick={handleQuickFill}
-              className="text-[#00DC82] hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
+              className="text-[#00DC82] hover:underline font-bold inline-flex items-center gap-1 cursor-pointer font-sans"
             >
               <CheckCircle2 className="w-3 h-3" />
               Auto-Fill
             </button>
           </div>
-          <div className="bg-[#03110E] p-3 rounded-xl border border-[#0D3831] text-left font-mono text-[11px] text-slate-300 space-y-1">
+          <div className="bg-[#03110E] p-3 rounded-xl border border-[#0D3831] text-left text-[11px] text-slate-300 space-y-1 font-sans">
             <div className="flex justify-between">
               <span className="text-slate-500">Identity:</span>
-              <span className="text-slate-300">superadmin@carepulse.com</span>
+              <span className="text-slate-300 font-mono">superadmin@carepulse.com</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Role Code:</span>
-              <span className="text-[#00DC82] font-bold">SA101</span>
+              <span className="text-[#00DC82] font-bold font-mono">SA101</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Key:</span>
-              <span className="text-slate-300">SuperAdmin@123</span>
+              <span className="text-slate-300 font-mono">SuperAdmin@123</span>
             </div>
           </div>
         </div>
@@ -210,7 +210,7 @@ export const SuperAdminLogin: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/staff/login')}
-            className="text-xs text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 cursor-pointer font-mono"
+            className="text-xs text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 cursor-pointer font-sans"
           >
             <Building2 className="w-3.5 h-3.5 text-[#00DC82]" />
             <span>Switch to Hospital Staff Portal</span>

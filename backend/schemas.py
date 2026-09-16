@@ -320,6 +320,17 @@ class DeviceTokenRequest(BaseModel):
     fcm_token: str
     platform: Optional[str] = "android"
 
+class DeviceInfoRequest(BaseModel):
+    patient_id: Optional[str] = None
+    device_id: Optional[str] = None
+    device_model: Optional[str] = "Unknown Device"
+    manufacturer: Optional[str] = "Unknown"
+    platform: Optional[str] = "android"
+    os_version: Optional[str] = ""
+    app_version: Optional[str] = "1.0.0"
+    fcm_token: Optional[str] = ""
+
+
 class AppointmentCancelRequest(BaseModel):
     reason: Optional[str] = "Patient requested cancellation"
 

@@ -4,6 +4,8 @@ import type {
   SuperAdminAdmin,
   SuperAdminStats,
   SuperAdminAuditEvent,
+  SuperAdminAppDevice,
+  SuperAdminAppDeviceStats,
   Staff
 } from '../types/staff';
 
@@ -153,6 +155,46 @@ export const superadminService = {
       throw new Error(data.detail || 'Failed to fetch platform audit logs');
     }
     return data.audit_logs || [];
+  },
+
+  getAppDevices: async (params?: {
+    platform?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ devices: SuperAdminAppDevice[]; stats: SuperAdminAppDeviceStats; count: number }> => {
+    const queryParts: string[] = [];
+    if (params?.platform && params.platform !== 'ALL') {
+      queryParts.push(`platform=${encodeURIComponent(params.platform)}`);
+    }
+    if (params?.search) {
+      queryParts.push(`search=${encodeURIComponent(params.search)}`);
+    }
+    if (params?.limit) {
+      queryParts.push(`limit=${params.limit}`);
+    }
+    if (params?.offset) {
+      queryParts.push(`offset=${params.offset}`);
+    }
+    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+    const res = await apiGet(`/superadmin/devices${queryString}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Failed to fetch patient app devices');
+    }
+    return {
+      devices: data.devices || [],
+      stats: data.stats || { total_devices: 0, android_count: 0, ios_count: 0, web_count: 0, active_24h: 0 },
+      count: data.count || 0,
+    };
+  },
+
+  deleteAppDevice: async (deviceId: string): Promise<void> => {
+    const res = await apiDelete(`/superadmin/devices/${deviceId}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Failed to revoke device session');
+    }
   },
 };
 
