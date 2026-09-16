@@ -225,18 +225,21 @@ async def check_medication_reminders():
             if diff_minutes <= 15.0:
                 dedup_type = f"med_reminder_{hr:02d}{mn:02d}_{today_str}"
                 if not is_notification_already_sent(p_id, dedup_type, rx_id):
-                    title = "Medication Reminder"
-                    body = f"Time to take your {drug_name} ({dosage})" if dosage else f"Time to take your {drug_name}"
+                    title = "💊 Medication Reminder"
+                    dosage_str = f" ({dosage})" if dosage else ""
+                    body = f"Time to take your {drug_name}{dosage_str} • Tap to mark Taken or Snooze 30 min"
                     data = {
                         "type": "medication_reminder",
-                        "screen": "/history",
-                        "prescription_id": rx_id,
-                        "patient_id": p_id,
-                        "drug_name": drug_name
+                        "screen": "/reminders",
+                        "prescription_id": str(rx_id),
+                        "patient_id": str(p_id),
+                        "drug_name": str(drug_name),
+                        "dosage": str(dosage or "1 dose"),
+                        "action": "prompt_intake"
                     }
                     send_push_notification(p_id, title, body, data)
                     log_notification(p_id, dedup_type, rx_id)
-                    logger.info(f"📢 Dispatched medication reminder to patient {p_id} for {drug_name}")
+                    logger.info(f"📢 Dispatched interactive medication reminder to patient {p_id} for {drug_name}")
 
 
 def start_scheduler():

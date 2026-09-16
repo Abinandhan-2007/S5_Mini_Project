@@ -192,6 +192,37 @@ export const triggerIntakePrompt = (item: DosePromptItem, force = false) => {
 };
 
 /**
+ * Immediately display a native notification with interactive "Taken" and "Snooze 30 min" action buttons.
+ */
+export const showLocalMedicationReminder = async (item: DosePromptItem) => {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const notifId = hashStringToId(`prompt-${item.medId}-${item.slotId}-${Date.now() % 100000}`);
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notifId,
+            title: `💊 Medication Reminder: ${item.drugName}`,
+            body: `Time to take your ${item.dosage} (${item.timingCategory || 'Dose'}). Have you taken it?`,
+            sound: 'default',
+            actionTypeId: 'MEDICINE_INTAKE_PROMPT',
+            extra: {
+              medId: item.medId,
+              slotId: item.slotId,
+              drugName: item.drugName,
+              dosage: item.dosage,
+              timingCategory: item.timingCategory || 'Prescription',
+            },
+          },
+        ],
+      });
+    } catch (e) {
+      console.warn('Could not schedule interactive local notification:', e);
+    }
+  }
+};
+
+/**
  * Initialize action types and background check timers.
  */
 export const initMedicationNotificationService = async () => {
@@ -200,7 +231,7 @@ export const initMedicationNotificationService = async () => {
       await LocalNotifications.requestPermissions();
 
       // Register interactive action buttons for Android notifications:
-      // "Yes, I Ate It" and "No, 30 Min Later"
+      // "Taken" and "Snooze 30 min"
       await LocalNotifications.registerActionTypes({
         types: [
           {
@@ -208,12 +239,12 @@ export const initMedicationNotificationService = async () => {
             actions: [
               {
                 id: 'TAKE_MED',
-                title: '✅ Yes, I Ate It',
+                title: '✅ Taken',
                 foreground: false,
               },
               {
                 id: 'SNOOZE_30',
-                title: '⏰ No (30m Later)',
+                title: '⏰ Snooze 30 min',
                 foreground: false,
               },
             ],

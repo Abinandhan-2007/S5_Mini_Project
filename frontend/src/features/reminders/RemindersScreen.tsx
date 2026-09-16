@@ -3,10 +3,18 @@ import { Pill, Plus, CheckCircle2, Clock, Sparkles, BellRing } from 'lucide-reac
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { triggerIntakePrompt } from '../../services/medicationNotificationService';
+import { useCarePulseStore } from '../../lib/store';
+import {
+  triggerIntakePrompt,
+  markDoseAsAte,
+  snoozeDoseFor30Minutes,
+  isDoseAlreadyTaken,
+} from '../../services/medicationNotificationService';
 
 interface ReminderItem {
   id: string;
+  medId: string;
+  slotId: string;
   medicationName: string;
   dosage: string;
   time: string;
@@ -19,6 +27,52 @@ interface ReminderItem {
 export const RemindersScreen: React.FC = () => {
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
 
+  // 1. Automatically populate reminders from consultation prescriptions & default formulary
+  useEffect(() => {
+    const history = useCarePulseStore.getState().history || [];
+    const loaded: ReminderItem[] = [];
+
+    history.forEach((visit) => {
+      const list = visit.prescriptions || visit.soapData?.prescriptions || [];
+      list.forEach((rx: any, idx: number) => {
+        const name = typeof rx === 'string' ? rx : rx.drug_name || rx.name || 'Prescription';
+        const dosage = typeof rx === 'object' ? rx.dosage || '1 Tablet' : '1 Tablet';
+        const medId = `rx-${visit.id || 'visit'}-${idx}`;
+        const slotId = 'afternoon';
+        loaded.push({
+          id: medId,
+          medId,
+          slotId,
+          medicationName: name,
+          dosage,
+          time: '01:45 PM',
+          timingCategory: 'Afternoon',
+          taken: isDoseAlreadyTaken(medId, slotId),
+          active: true,
+          doctorPrescribed: visit.doctorName || 'Dr. Specialist',
+        });
+      });
+    });
+
+    // Ensure default Paracetamol 650mg is always ready if no prescriptions found
+    if (loaded.length === 0) {
+      loaded.push({
+        id: 'rx-paracetamol-650',
+        medId: 'rx-paracetamol-650',
+        slotId: 'afternoon',
+        medicationName: 'Paracetamol 650mg',
+        dosage: '1 Tab',
+        time: '01:45 PM',
+        timingCategory: 'Afternoon',
+        taken: isDoseAlreadyTaken('rx-paracetamol-650', 'afternoon'),
+        active: true,
+        doctorPrescribed: 'Clinical Prescription',
+      });
+    }
+
+    setReminders(loaded);
+  }, []);
+
   // Sync state when dose is marked taken via notification prompt
   useEffect(() => {
     const handleDoseTaken = (e: Event) => {
@@ -27,7 +81,10 @@ export const RemindersScreen: React.FC = () => {
         const drug = custom.detail.drugName?.toLowerCase() || '';
         setReminders((prev) =>
           prev.map((r) => {
-            if (drug && r.medicationName.toLowerCase().includes(drug.split(' ')[0])) {
+            if (
+              r.medId === custom.detail.medId ||
+              (drug && r.medicationName.toLowerCase().includes(drug.split(' ')[0]))
+            ) {
               return { ...r, taken: true };
             }
             return r;
@@ -39,16 +96,49 @@ export const RemindersScreen: React.FC = () => {
     return () => window.removeEventListener('carepulse:dose_taken', handleDoseTaken);
   }, []);
 
-  const toggleTaken = (id: string) => {
-    setReminders(prev =>
-      prev.map(r => (r.id === id ? { ...r, taken: !r.taken } : r))
-    );
+  const handleMarkTaken = (rem: ReminderItem) => {
+    if (!rem.taken) {
+      markDoseAsAte(rem.medId, rem.slotId, rem.medicationName);
+      setReminders((prev) =>
+        prev.map((r) => (r.id === rem.id ? { ...r, taken: true } : r))
+      );
+    } else {
+      setReminders((prev) =>
+        prev.map((r) => (r.id === rem.id ? { ...r, taken: false } : r))
+      );
+    }
+  };
+
+  const handleSnooze30 = async (rem: ReminderItem) => {
+    await snoozeDoseFor30Minutes({
+      id: `${rem.medId}-${rem.slotId}`,
+      medId: rem.medId,
+      slotId: rem.slotId,
+      drugName: rem.medicationName,
+      dosage: rem.dosage,
+      timeLabel: rem.time,
+      timingCategory: rem.timingCategory,
+      instructions: 'Take with warm water after food',
+    }, 30);
   };
 
   const toggleActive = (id: string) => {
-    setReminders(prev =>
-      prev.map(r => (r.id === id ? { ...r, active: !r.active } : r))
+    setReminders((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r))
     );
+  };
+
+  const handleTriggerPromptModal = (rem: ReminderItem) => {
+    triggerIntakePrompt({
+      id: `${rem.medId}-${rem.slotId}`,
+      medId: rem.medId,
+      slotId: rem.slotId,
+      drugName: rem.medicationName,
+      dosage: rem.dosage,
+      timeLabel: rem.time,
+      timingCategory: `${rem.timingCategory} Dose`,
+      instructions: 'Take after food with water',
+    }, true);
   };
 
   const handleTriggerTestNotification = () => {
@@ -57,24 +147,18 @@ export const RemindersScreen: React.FC = () => {
       alert("No medications scheduled. Add a medication to test reminders.");
       return;
     }
-    triggerIntakePrompt({
-      id: `${activeMed.id}-morning`,
-      medId: activeMed.id,
-      slotId: 'morning',
-      drugName: activeMed.medicationName,
-      dosage: activeMed.dosage,
-      timeLabel: activeMed.time,
-      timingCategory: `${activeMed.timingCategory} Dose (Eating Time)`,
-      instructions: 'Take with warm water after breakfast',
-    });
+    handleTriggerPromptModal(activeMed);
   };
 
   const handleAddCustom = () => {
     const name = prompt('Enter Medication / Prescription Name:');
     if (!name) return;
     const time = prompt('Enter Dosage Time (e.g. 09:00 PM):') || '09:00 PM';
+    const customId = `rem-${Date.now()}`;
     const newRem: ReminderItem = {
-      id: `rem-${Date.now()}`,
+      id: customId,
+      medId: customId,
+      slotId: 'evening',
       medicationName: name,
       dosage: '1 Tablet',
       time: time,
@@ -175,7 +259,11 @@ export const RemindersScreen: React.FC = () => {
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1 flex-1">
+                  <div 
+                    className="space-y-1 flex-1 cursor-pointer"
+                    onClick={() => handleTriggerPromptModal(rem)}
+                    title="Click to open interactive intake prompt"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-gray-900">{rem.medicationName}</span>
                       <Badge variant={rem.taken ? 'success' : 'tint'} size="sm">
@@ -196,20 +284,32 @@ export const RemindersScreen: React.FC = () => {
                   </div>
 
                   {/* Right Action buttons */}
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <button
-                      onClick={() => toggleTaken(rem.id)}
-                      className={`p-2 rounded-xl transition-all shadow-2xs flex items-center justify-center ${
-                        rem.taken
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:border-emerald-600'
-                      }`}
-                      title={rem.taken ? 'Mark as Not Taken' : 'Mark as Taken'}
-                    >
-                      <CheckCircle2 className="w-5 h-5" />
-                    </button>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleMarkTaken(rem)}
+                        className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer ${
+                          rem.taken
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                        }`}
+                        title={rem.taken ? 'Marked as Taken' : 'Mark as Taken'}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{rem.taken ? 'Taken' : 'Take'}</span>
+                      </button>
 
-                    <label className="relative inline-flex items-center cursor-pointer">
+                      <button
+                        onClick={() => handleSnooze30(rem)}
+                        className="px-2 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                        title="Snooze 30 Minutes"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>30m</span>
+                      </button>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer mt-0.5">
                       <input
                         type="checkbox"
                         checked={rem.active}

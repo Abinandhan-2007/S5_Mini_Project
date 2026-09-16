@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import type { Token, ActionPerformed, PushNotificationSchema } from '@capacitor/push-notifications';
 import { apiFetch } from './apiFetch';
+import { triggerIntakePrompt, showLocalMedicationReminder } from '../services/medicationNotificationService';
 
 let isPushInitialized = false;
 let currentRegisteredPatientId: string | null = null;
@@ -82,14 +83,32 @@ export async function registerPushNotifications(patientId?: string): Promise<voi
       });
 
       // Foreground push notification received
-      await PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
+      await PushNotifications.addListener('pushNotificationReceived', async (notification: PushNotificationSchema) => {
         console.log('Push notification received in foreground:', notification);
+        const data = (notification.data || {}) as Record<string, any>;
+        if (data.type === 'medication_reminder') {
+          const medItem = {
+            id: `fcm-${data.prescription_id || Date.now()}`,
+            medId: data.prescription_id || 'med-reminder',
+            slotId: 'scheduled',
+            drugName: data.drug_name || 'Paracetamol 650mg',
+            dosage: data.dosage || '1 Tab',
+            timeLabel: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timingCategory: 'Prescription Schedule',
+            instructions: 'Time to take your medication.',
+          };
+          // 1. Immediately trigger the interactive in-app modal
+          triggerIntakePrompt(medItem, true);
+
+          // 2. Also present a native local notification with interactive "Taken" & "Snooze 30 min" action buttons
+          await showLocalMedicationReminder(medItem);
+        }
       });
 
       // Notification action / tap performed
       await PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
         console.log('🔔 Push notification action performed:', action);
-        const data = action?.notification?.data || {};
+        const data = (action?.notification?.data || {}) as Record<string, any>;
         
         let targetScreen = '/history';
         if (data.type === 'app_update') {
@@ -97,11 +116,33 @@ export async function registerPushNotifications(patientId?: string): Promise<voi
             window.dispatchEvent(new CustomEvent('carepulse:check_update'));
           }
           return;
+        } else if (data.type === 'medication_reminder') {
+          targetScreen = '/reminders';
+          const medItem = {
+            id: `fcm-${data.prescription_id || Date.now()}`,
+            medId: data.prescription_id || 'med-reminder',
+            slotId: 'scheduled',
+            drugName: data.drug_name || action.notification?.title || 'Paracetamol 650mg',
+            dosage: data.dosage || '1 Tab',
+            timeLabel: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timingCategory: 'Prescription Schedule',
+            instructions: 'Time to take your medication.',
+          };
+
+          // Cache so if app is cold-starting, modal still appears
+          try {
+            sessionStorage.setItem('carepulse_pending_intake_prompt', JSON.stringify(medItem));
+          } catch (_) {}
+
+          // Trigger in-app modal prompt
+          setTimeout(() => {
+            triggerIntakePrompt(medItem, true);
+          }, 350);
         } else if (data.screen) {
           targetScreen = data.screen;
         } else if (data.url && typeof data.url === 'string' && data.url.startsWith('/')) {
           targetScreen = data.url;
-        } else if (data.type === 'appointment_cancelled' || data.type === 'appointment_reminder' || data.type === 'medication_reminder') {
+        } else if (data.type === 'appointment_cancelled' || data.type === 'appointment_reminder') {
           targetScreen = '/history';
         }
 
