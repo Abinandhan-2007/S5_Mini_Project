@@ -39,6 +39,12 @@ export const SuperAdminLogin: React.FC = () => {
       });
 
       if (data && data.staff) {
+        if (data.token) {
+          localStorage.setItem('superadmin_token', data.token);
+          sessionStorage.setItem('superadmin_token', data.token);
+          sessionStorage.setItem('active_staff_token', data.token);
+          sessionStorage.setItem('active_staff_role', 'superadmin');
+        }
         setStaffAuth(
           {
             id: data.staff.id,

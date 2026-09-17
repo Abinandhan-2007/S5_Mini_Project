@@ -1177,6 +1177,119 @@ def compute_effective_queue_position(
     return max(scheduled_dt, actual_arrival)
 
 
+def clean_expired_unvisited_appointments(hospital_id: Optional[str] = None) -> List[str]:
+    """
+    Automatically deletes appointments/slots from the database where the patient has not visited
+    (not checked in and not in consultation/completed) after 24 hours from the scheduled appointment date/time.
+    Deletes records across both PostgreSQL and database.json fallback to prevent ghost slots and free up doctor capacity.
+    """
+    deleted_ids = []
+    now = datetime.now()
+    cutoff_threshold = timedelta(hours=24)
+
+    # 1. PostgreSQL Cleanup
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = """
+                        SELECT id, date, time_slot, status, is_checked_in, hospital_id, created_at
+                        FROM appointments
+                        WHERE (is_checked_in IS NOT TRUE)
+                          AND (status IS NULL OR status NOT IN ('Checked In', 'In Consultation', 'Completed'))
+                    """
+                    params = []
+                    if hospital_id:
+                        query += " AND hospital_id = %s"
+                        params.append(hospital_id)
+                    cur.execute(query, tuple(params))
+                    rows = cur.fetchall()
+
+                    to_delete = []
+                    for r in rows:
+                        app_date = r.get("date")
+                        time_slot = r.get("time_slot")
+                        created_at = r.get("created_at")
+                        scheduled_dt = parse_appointment_scheduled_datetime(app_date, time_slot)
+                        if not scheduled_dt and created_at and isinstance(created_at, datetime):
+                            scheduled_dt = created_at
+                        
+                        if scheduled_dt:
+                            if hasattr(scheduled_dt, "tzinfo") and scheduled_dt.tzinfo:
+                                scheduled_dt = scheduled_dt.replace(tzinfo=None)
+                            if (now - scheduled_dt) > cutoff_threshold:
+                                to_delete.append(str(r["id"]))
+
+                    if to_delete:
+                        # Cascade delete related dependent records first for safety
+                        cur.execute("DELETE FROM lab_tests WHERE appointment_id = ANY(%s::uuid[])", (to_delete,))
+                        cur.execute("DELETE FROM vitals WHERE appointment_id = ANY(%s::uuid[])", (to_delete,))
+                        cur.execute("DELETE FROM appointments WHERE id = ANY(%s::uuid[])", (to_delete,))
+                        conn.commit()
+                        deleted_ids.extend(to_delete)
+                        logger.info(f"🧹 [AUTO-PURGE] Deleted {len(to_delete)} unvisited appointments older than 24 hours from PostgreSQL: {to_delete}")
+        except Exception as e:
+            logger.error(f"Error purging unvisited appointments from PostgreSQL: {e}")
+
+    # 2. JSON DB Cleanup
+    try:
+        db = database.read_json_db()
+        raw_apps = db.get("appointments", [])
+        retained_apps = []
+        json_deleted = set(deleted_ids)
+
+        for app in raw_apps:
+            app_id = str(app.get("id"))
+            if app_id in json_deleted:
+                continue
+
+            app_hosp = app.get("hospital_id") or app.get("hospitalId")
+            if hospital_id and app_hosp and app_hosp != hospital_id:
+                retained_apps.append(app)
+                continue
+
+            is_checked = bool(app.get("is_checked_in", False))
+            status_val = str(app.get("status") or "")
+            visited = is_checked or status_val in ["Checked In", "In Consultation", "Completed"]
+
+            if not visited:
+                app_date = app.get("date")
+                time_slot = app.get("time_slot") or app.get("timeSlot")
+                scheduled_dt = parse_appointment_scheduled_datetime(app_date, time_slot)
+                if not scheduled_dt:
+                    created_val = app.get("created_at") or app.get("createdAt")
+                    if created_val and isinstance(created_val, str):
+                        try:
+                            scheduled_dt = datetime.fromisoformat(created_val.replace("Z", "+00:00")).replace(tzinfo=None)
+                        except Exception:
+                            pass
+
+                if scheduled_dt:
+                    if hasattr(scheduled_dt, "tzinfo") and scheduled_dt.tzinfo:
+                        scheduled_dt = scheduled_dt.replace(tzinfo=None)
+                    if (now - scheduled_dt) > cutoff_threshold:
+                        json_deleted.add(app_id)
+                        continue
+
+            retained_apps.append(app)
+
+        if json_deleted:
+            db["appointments"] = [a for a in db.get("appointments", []) if str(a.get("id")) not in json_deleted]
+            if "vitals" in db:
+                db["vitals"] = [v for v in db["vitals"] if str(v.get("appointment_id")) not in json_deleted]
+            if "lab_tests" in db:
+                db["lab_tests"] = [lt for lt in db["lab_tests"] if str(lt.get("appointment_id")) not in json_deleted]
+            database.write_json_db(db)
+            for jid in json_deleted:
+                if jid not in deleted_ids:
+                    deleted_ids.append(jid)
+            logger.info(f"🧹 [AUTO-PURGE] Cleaned {len(json_deleted)} unvisited appointments older than 24 hours from JSON DB: {list(json_deleted)}")
+    except Exception as e:
+        logger.error(f"Error purging unvisited appointments from JSON DB: {e}")
+
+    return deleted_ids
+
+
 def fetch_all_tokens_from_db(
     doctor_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
@@ -1222,6 +1335,12 @@ def fetch_all_tokens_from_db(
     if not is_superadmin and not effective_hosp_id:
         logger.warning("Unscoped token query rejected: no valid hospital context provided.")
         return []
+
+    # Auto-purge expired unvisited appointments (> 24 hours) from DB so slots are freed automatically
+    try:
+        clean_expired_unvisited_appointments(hospital_id=effective_hosp_id)
+    except Exception as e:
+        logger.warning(f"Notice on auto-cleaning expired unvisited appointments: {e}")
 
     tokens = []
     seen_ids = set()
@@ -1737,6 +1856,25 @@ def checkin_appointment(
         "effectiveQueueTime": effective_pos.strftime("%I:%M %p"),
         "message": "Patient successfully checked in and joined the live queue."
     }
+
+
+@router.post("/appointments/cleanup-unvisited")
+def trigger_cleanup_unvisited(authorization: Optional[str] = Header(None)):
+    """
+    Explicit receptionist/staff endpoint to purge appointments from the database
+    where the patient has not visited within 24 hours of their scheduled appointment time.
+    """
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    hosp_id = staff_ctx.get("hospital_id") if staff_ctx else None
+    deleted = clean_expired_unvisited_appointments(hospital_id=hosp_id)
+    return {
+        "success": True,
+        "deletedCount": len(deleted),
+        "deletedIds": deleted,
+        "message": f"Successfully deleted {len(deleted)} unvisited slot(s) older than 24 hours from database."
+    }
+
 
 @router.patch("/tokens/{token_id}/status")
 def update_token_status(

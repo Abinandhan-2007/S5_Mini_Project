@@ -271,4 +271,4 @@ def generate_conversational_response(
             "Please call 108 / 911 or proceed to the nearest Emergency Room right away."
         )
 
-    return "Cloud ML Agent service is currently unavailable. Please verify your MISTRAL_API_KEY and active internet connection."
+    return "The AI is currently not working. Please try again later or consult a doctor directly."

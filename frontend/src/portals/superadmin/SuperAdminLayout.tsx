@@ -51,6 +51,10 @@ export const SuperAdminLayout: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('superadmin_token');
+    sessionStorage.removeItem('superadmin_token');
+    sessionStorage.removeItem('active_staff_token');
+    sessionStorage.removeItem('active_staff_role');
     logoutStaff();
     navigate('/staff/superadmin');
   };

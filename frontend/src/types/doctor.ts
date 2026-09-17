@@ -26,6 +26,8 @@ export interface PrescriptionMedicine {
   frequency: string;    // e.g. "OD (Once daily)", "BD (Twice daily)", "TDS (Thrice daily)", "SOS"
   duration: string;     // e.g. "5 Days", "10 Days", "1 Month"
   instructions: string; // e.g. "After food", "Before breakfast", "At bedtime"
+  genericName?: string; // Active generic molecule (e.g. "Paracetamol", "Amoxicillin")
+  category?: string;    // Therapeutic category (e.g. "Analgesic / Antipyretic", "Antibiotic")
 }
 
 export interface PatientEMRRecord {

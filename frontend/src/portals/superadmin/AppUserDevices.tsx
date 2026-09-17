@@ -417,12 +417,22 @@ export const AppUserDevices: React.FC = () => {
               <XCircle className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-rose-700">{error}</p>
-            <button
-              onClick={() => fetchDevices(true)}
-              className="mt-3 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Try Again
-            </button>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <button
+                onClick={() => fetchDevices(true)}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Try Again
+              </button>
+              {error.includes('Role') && (
+                <a
+                  href="/superadmin/login"
+                  className="px-4 py-2 rounded-xl bg-teal-800 text-white text-xs font-semibold hover:bg-teal-700 transition-colors inline-block"
+                >
+                  Log In as SuperAdmin
+                </a>
+              )}
+            </div>
           </div>
         ) : filteredDevices.length === 0 ? (
           <div className="p-16 text-center">

@@ -202,14 +202,22 @@ def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
             patient_context_str=request.patient_context or "",
             rag_context_str=rag_ctx
         )
-        chips = generate_contextual_chips(full_user_text or last_msg, dept)
+        if "The AI is currently not working" in reply:
+            chips = ["Try Again", "Book Doctor Visit", "🚨 Emergency (108)"]
+        else:
+            chips = generate_contextual_chips(full_user_text or last_msg, dept)
 
-    # 5. Generate structured SOAP note for clinical documentation
-    soap_note = generate_soap_clinical_note(
-        patient_text=full_user_text or last_msg,
-        extracted_context=triage_assessment.get("extracted_context", {}),
-        triage_info=triage_assessment
-    )
+    # 5. Generate structured SOAP note for clinical documentation (only if AI is functioning)
+    is_ai_failed = "The AI is currently not working" in reply
+    if is_ai_failed and not is_emergency:
+        soap_note = None
+        conf_score = 0.0
+    else:
+        soap_note = generate_soap_clinical_note(
+            patient_text=full_user_text or last_msg,
+            extracted_context=triage_assessment.get("extracted_context", {}),
+            triage_info=triage_assessment
+        )
 
     return AIChatResponse(
         reply=reply,
@@ -217,8 +225,8 @@ def predict_rag_chat(request: AIChatRequest) -> AIChatResponse:
         disclaimer="This is a preliminary AI-based assessment and is not a confirmed medical diagnosis.",
         provider="CarePulse Mistral AI Engine",
         confidence_score=conf_score,
-        risk_level=risk_level,
-        suggested_specialties=[dept],
+        risk_level="low" if is_ai_failed and not is_emergency else risk_level,
+        suggested_specialties=[dept] if not is_ai_failed or is_emergency else [],
         quickReplyChips=chips,
         is_emergency=is_emergency,
         soap_note=soap_note

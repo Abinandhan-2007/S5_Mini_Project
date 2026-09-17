@@ -16,6 +16,7 @@ interface MedicineAutocompleteInputProps {
   inputClassName?: string;
   dropdownClassName?: string;
   pill?: boolean;
+  compact?: boolean;
   actionButton?: React.ReactNode;
   onSubmit?: () => void;
 }
@@ -31,6 +32,7 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
   inputClassName,
   dropdownClassName,
   pill = false,
+  compact = false,
   actionButton,
   onSubmit,
 }) => {
@@ -170,7 +172,12 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
       {/* Search Input Row (Input + Optional Action Button) */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0 flex items-center">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Search
+            className={clsx(
+              'text-slate-400 pointer-events-none absolute top-1/2 -translate-y-1/2',
+              compact ? 'w-3.5 h-3.5 left-2.5' : 'w-4 h-4 left-3.5'
+            )}
+          />
 
           <input
             ref={inputRef}
@@ -189,28 +196,43 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
             autoComplete="off"
             spellCheck={false}
             className={clsx(
-              'w-full text-slate-800 text-xs sm:text-[13px] font-semibold placeholder:text-slate-400 pl-10 pr-10 py-3 transition-all',
-              pill
-                ? 'rounded-full bg-[#F1F5F9]/80 border border-slate-200/90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white focus:ring-2 focus:ring-blue-500/30'
-                : 'rounded-2xl bg-[#F8FAFC] border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white shadow-2xs',
+              'w-full text-slate-800 placeholder:text-slate-400 transition-all',
+              compact
+                ? 'text-xs py-2 pl-8 pr-7 rounded-lg bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] focus:border-[#0B5A54] shadow-2xs font-bold text-slate-900'
+                : pill
+                ? 'text-xs sm:text-[13px] font-semibold pl-10 pr-10 py-3 rounded-full bg-[#F1F5F9]/80 border border-slate-200/90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white focus:ring-2 focus:ring-blue-500/30'
+                : 'text-xs sm:text-[13px] font-semibold pl-10 pr-10 py-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white shadow-2xs',
               inputClassName
             )}
           />
 
           {/* Loading Spinner or Clear Button */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+          <div
+            className={clsx(
+              'absolute top-1/2 -translate-y-1/2 flex items-center gap-1.5',
+              compact ? 'right-2' : 'right-3'
+            )}
+          >
             {isLoading && (
-              <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+              <Loader2
+                className={clsx(
+                  compact ? 'w-3.5 h-3.5 text-[#0B5A54]' : 'w-4 h-4 text-blue-500',
+                  'animate-spin'
+                )}
+              />
             )}
 
             {value && !isLoading && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="w-5 h-5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                className={clsx(
+                  'rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer',
+                  compact ? 'w-4 h-4' : 'w-5 h-5'
+                )}
                 title="Clear input"
               >
-                <X className="w-3 h-3" />
+                <X className={clsx(compact ? 'w-2.5 h-2.5' : 'w-3 h-3')} />
               </button>
             )}
           </div>
@@ -228,7 +250,8 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
       {isOpen && (
         <div
           className={clsx(
-            'absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-50 overflow-hidden text-left max-h-64 sm:max-h-80 overflow-y-auto',
+            'absolute left-0 top-full mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-50 overflow-hidden text-left max-h-64 sm:max-h-80 overflow-y-auto',
+            compact ? 'w-[320px] sm:w-[420px] max-w-[90vw]' : 'right-0',
             dropdownClassName
           )}
         >

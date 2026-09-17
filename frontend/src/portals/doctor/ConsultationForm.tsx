@@ -54,13 +54,54 @@ const QUICK_DIAGNOSES = [
   'Routine Preventive Health Check',
 ];
 
+import { MedicineAutocompleteInput } from '../../components/medicines/MedicineAutocompleteInput';
+import type { MedicineSearchResultItem } from '../../lib/types';
+
 interface MedItem {
   id: string;
   name: string;
   dosage: string;
   frequency: string;
   duration: string;
+  genericName?: string;
+  category?: string;
 }
+
+/**
+ * Infer dosage, frequency, duration, instructions from drug metadata
+ */
+const inferPrescriptionDefaults = (item: MedicineSearchResultItem) => {
+  const form = (item.dosage_form || '').toLowerCase();
+  const cat = (item.category || '').toLowerCase();
+  const gen = (item.generic_name || '').toLowerCase();
+  const name = (item.name || '').toLowerCase();
+
+  let dosage = '1 Tab';
+  if (form.includes('capsule') || form.includes('cap')) dosage = '1 Cap';
+  else if (form.includes('syrup') || form.includes('suspension')) dosage = '5 ml';
+  else if (form.includes('injection') || form.includes('inj')) dosage = '1 Vial';
+  else if (form.includes('inhal') || form.includes('rotacap')) dosage = '1 Puff';
+  else if (form.includes('drop')) dosage = '2 Drops';
+
+  let frequency = 'BD (Twice daily)';
+  let duration = '5 Days';
+
+  if (cat.includes('antacid') || gen.includes('prazole') || name.includes('pan ')) {
+    frequency = 'OD (Once daily before breakfast)';
+    duration = '7 Days';
+  } else if (cat.includes('antibiotic') || gen.includes('cillin') || gen.includes('mycin') || gen.includes('cefix')) {
+    frequency = 'BD (Twice daily after food)';
+    duration = '5 Days';
+  } else if (cat.includes('antihistamine') || gen.includes('cetirizine')) {
+    frequency = 'OD (Night / Bedtime)';
+    duration = '5 Days';
+  } else if (cat.includes('analgesic') || gen.includes('paracetamol') || name.includes('dolo')) {
+    frequency = 'TDS (Thrice daily after food)';
+    duration = '3 Days';
+  }
+
+  return { dosage, frequency, duration };
+};
 
 export const ConsultationForm: React.FC<ConsultationFormProps> = ({
   patient,
@@ -84,6 +125,8 @@ export const ConsultationForm: React.FC<ConsultationFormProps> = ({
       dosage: '1 Tab',
       frequency: 'TDS (Thrice daily after meals)',
       duration: '3 Days',
+      genericName: 'Paracetamol',
+      category: 'Analgesic',
     },
   ]);
 
@@ -103,6 +146,24 @@ export const ConsultationForm: React.FC<ConsultationFormProps> = ({
   const handleUpdateMed = (id: string, field: keyof MedItem, val: string) => {
     setMedications((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: val } : m))
+    );
+  };
+
+  const handleSelectMedicine = (id: string, item: MedicineSearchResultItem) => {
+    const defaults = inferPrescriptionDefaults(item);
+    setMedications((prev) =>
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        return {
+          ...m,
+          name: item.name,
+          dosage: defaults.dosage,
+          frequency: defaults.frequency,
+          duration: defaults.duration,
+          genericName: item.generic_name || undefined,
+          category: item.category || undefined,
+        };
+      })
     );
   };
 
@@ -291,7 +352,11 @@ export const ConsultationForm: React.FC<ConsultationFormProps> = ({
 
             <div className="space-y-2">
               {medications.map((med, idx) => (
-                <div key={med.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div
+                  key={med.id}
+                  className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 relative"
+                  style={{ zIndex: medications.length - idx + 10 }}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[10px] font-black text-slate-400 uppercase font-mono">Rx #{idx + 1}</span>
                     {medications.length > 1 && (
@@ -307,14 +372,22 @@ export const ConsultationForm: React.FC<ConsultationFormProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <div className="sm:col-span-2">
-                      <input
-                        type="text"
-                        placeholder="Drug Name (e.g., Amoxicillin 500mg)"
+                    <div className="sm:col-span-2 relative">
+                      <MedicineAutocompleteInput
                         value={med.name}
-                        onChange={(e) => handleUpdateMed(med.id, 'name', e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                        onChange={(val) => handleUpdateMed(med.id, 'name', val)}
+                        onSelect={(item) => handleSelectMedicine(med.id, item)}
+                        placeholder="Drug Name (e.g., Amoxicillin 500mg)"
+                        compact={true}
                       />
+                      {med.genericName && (
+                        <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-[#0B5A54] font-medium bg-teal-50/80 px-2 py-0.5 rounded-md border border-teal-100">
+                          <Sparkles className="w-3 h-3 text-teal-600 shrink-0" />
+                          <span className="truncate">
+                            <span className="font-bold">Active:</span> {med.genericName}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <input

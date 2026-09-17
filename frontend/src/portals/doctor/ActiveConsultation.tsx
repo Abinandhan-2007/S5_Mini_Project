@@ -27,12 +27,15 @@ import {
   Copy,
   Check,
   Microscope,
+  Sparkles,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { PrescriptionMedicine, SoapNotes, PatientVitals, PatientEMRRecord, TriagePriority } from '../../types/doctor';
 import { staffConsultationService } from '../../services/consultationService';
 import { useStaffStore } from '../../store/staffStore';
 import { apiFetch } from '../../lib/apiFetch';
+import { MedicineAutocompleteInput } from '../../components/medicines/MedicineAutocompleteInput';
+import type { MedicineSearchResultItem } from '../../lib/types';
 
 export interface ActiveConsultationProps {
   patient: TokenQueueItem | null;
@@ -52,15 +55,109 @@ export interface ActiveConsultationProps {
 type ConsultationTab = 'soap' | 'rx' | 'summary';
 
 const COMMON_DRUG_PRESETS = [
-  { name: 'Paracetamol 650mg', dosage: '1 Tab', frequency: 'TDS (Thrice daily)', duration: '3 Days', instructions: 'Take after meals for fever/pain' },
-  { name: 'Amoxicillin + Clavulanic Acid 625mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '5 Days', instructions: 'Complete full course after meals' },
-  { name: 'Pantoprazole 40mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '7 Days', instructions: 'Take empty stomach in morning' },
-  { name: 'Cetirizine 10mg', dosage: '1 Tab', frequency: 'OD (Night)', duration: '5 Days', instructions: 'Take at bedtime for allergy/cold' },
-  { name: 'Telmisartan 40mg', dosage: '1 Tab', frequency: 'OD (Morning)', duration: '30 Days', instructions: 'Take daily after breakfast' },
-  { name: 'Metformin 500mg (SR)', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '30 Days', instructions: 'Take with major meals' },
-  { name: 'Azithromycin 500mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '3 Days', instructions: 'Take 1 hour before food' },
-  { name: 'Ibuprofen 400mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '3 Days', instructions: 'Take strictly with or after food' },
+  { name: 'Paracetamol 650mg', dosage: '1 Tab', frequency: 'TDS (Thrice daily)', duration: '3 Days', instructions: 'Take after meals for fever/pain', genericName: 'Paracetamol', category: 'Analgesic / Antipyretic' },
+  { name: 'Amoxicillin + Clavulanic Acid 625mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '5 Days', instructions: 'Complete full course after meals', genericName: 'Amoxicillin + Clavulanate', category: 'Antibiotic' },
+  { name: 'Pantoprazole 40mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '7 Days', instructions: 'Take empty stomach in morning', genericName: 'Pantoprazole', category: 'Antacid / PPI' },
+  { name: 'Cetirizine 10mg', dosage: '1 Tab', frequency: 'OD (Night)', duration: '5 Days', instructions: 'Take at bedtime for allergy/cold', genericName: 'Cetirizine', category: 'Antihistamine' },
+  { name: 'Telmisartan 40mg', dosage: '1 Tab', frequency: 'OD (Morning)', duration: '30 Days', instructions: 'Take daily after breakfast', genericName: 'Telmisartan', category: 'Antihypertensive' },
+  { name: 'Metformin 500mg (SR)', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '30 Days', instructions: 'Take with major meals', genericName: 'Metformin Hydrochloride', category: 'Antidiabetic' },
+  { name: 'Azithromycin 500mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '3 Days', instructions: 'Take 1 hour before food', genericName: 'Azithromycin', category: 'Antibiotic' },
+  { name: 'Ibuprofen 400mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '3 Days', instructions: 'Take strictly with or after food', genericName: 'Ibuprofen', category: 'NSAID / Analgesic' },
 ];
+
+/**
+ * Intelligently infer prescription dosage, frequency, duration, and instructions
+ * from drug formulary metadata (dosage form, generic active ingredient, and therapeutic class).
+ */
+const inferPrescriptionDefaults = (item: MedicineSearchResultItem) => {
+  const form = (item.dosage_form || '').toLowerCase();
+  const cat = (item.category || '').toLowerCase();
+  const gen = (item.generic_name || '').toLowerCase();
+  const name = (item.name || '').toLowerCase();
+
+  // 1. Dosage Form Inference
+  let dosage = '1 Tab';
+  if (form.includes('capsule') || form.includes('cap')) {
+    dosage = '1 Cap';
+  } else if (form.includes('syrup') || form.includes('suspension') || form.includes('liquid') || form.includes('solution') || form.includes('oral')) {
+    dosage = '5 ml';
+  } else if (form.includes('injection') || form.includes('inj') || form.includes('vial') || form.includes('amp')) {
+    dosage = '1 Vial';
+  } else if (form.includes('inhal') || form.includes('rotacap') || form.includes('resp')) {
+    dosage = '1 Puff';
+  } else if (form.includes('drop') || form.includes('eye') || form.includes('ear') || form.includes('nasal')) {
+    dosage = '2 Drops';
+  } else if (form.includes('cream') || form.includes('ointment') || form.includes('gel')) {
+    dosage = 'Apply thin layer';
+  }
+
+  // 2. Frequency, Duration & Instructions Inference
+  let frequency = 'BD (Twice daily)';
+  let duration = '5 Days';
+  let instructions = 'Take after meals';
+
+  // PPI / Antacids / Gastro
+  if (
+    cat.includes('antacid') || cat.includes('gastro') || cat.includes('proton') || cat.includes('ulcer') ||
+    gen.includes('prazole') || gen.includes('antacid') || gen.includes('ranitidine') || gen.includes('famotidine') ||
+    name.includes('pan ') || name.includes('pantocid') || name.includes('rabekind') || name.includes('omez')
+  ) {
+    frequency = 'OD (Once daily)';
+    duration = '7 Days';
+    instructions = 'Take on empty stomach 30 mins before breakfast';
+  }
+  // Antibiotics & Anti-infectives
+  else if (
+    cat.includes('antibiotic') || cat.includes('anti-infective') || cat.includes('antibacterial') ||
+    gen.includes('cillin') || gen.includes('mycin') || gen.includes('floxacin') || gen.includes('cefix') || gen.includes('clav')
+  ) {
+    frequency = 'BD (Twice daily)';
+    duration = '5 Days';
+    instructions = 'Complete full course after meals';
+  }
+  // Antihistamines & Allergy / Cold
+  else if (
+    cat.includes('antihistamine') || cat.includes('allergy') || cat.includes('cold') ||
+    gen.includes('cetirizine') || gen.includes('montelukast') || gen.includes('pheniramine') || gen.includes('fexo')
+  ) {
+    frequency = 'OD (Night)';
+    duration = '5 Days';
+    instructions = 'Take at bedtime for allergy/cold';
+  }
+  // Analgesic / Antipyretic / NSAID
+  else if (
+    cat.includes('analgesic') || cat.includes('antipyretic') || cat.includes('nsaid') || cat.includes('pain') ||
+    gen.includes('paracetamol') || gen.includes('ibuprofen') || gen.includes('aceclofenac') || gen.includes('diclofenac') ||
+    name.includes('dolo') || name.includes('calpol') || name.includes('crocin')
+  ) {
+    frequency = 'TDS (Thrice daily)';
+    duration = '3 Days';
+    instructions = 'Take after meals for fever/pain';
+  }
+  // Hypertension / Cardiovascular
+  else if (
+    cat.includes('antihypertensive') || cat.includes('cardio') || cat.includes('blood pressure') ||
+    gen.includes('sartan') || gen.includes('dipine') || gen.includes('olol')
+  ) {
+    frequency = 'OD (Morning)';
+    duration = '30 Days';
+    instructions = 'Take daily after breakfast';
+  }
+  // Diabetes Mellitus
+  else if (
+    cat.includes('antidiabetic') || cat.includes('diabet') ||
+    gen.includes('metformin') || gen.includes('glimepiride') || gen.includes('gliptin')
+  ) {
+    frequency = 'BD (Twice daily)';
+    duration = '30 Days';
+    instructions = 'Take with major meals';
+  }
+  else if (item.purpose) {
+    instructions = `Take after meals (${item.purpose})`;
+  }
+
+  return { dosage, frequency, duration, instructions };
+};
 
 const CATEGORIZED_DIAGNOSES = [
   { category: 'Cardiology', items: ['Stage 1 Essential Hypertension', 'Chest Tightness Evaluation', 'Mild Sinus Tachycardia'] },
@@ -245,6 +342,26 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     setPrescriptions((prev) => prev.filter((m) => m.id !== id));
   };
 
+  const handleSelectMedicine = (id: string, item: MedicineSearchResultItem) => {
+    const defaults = inferPrescriptionDefaults(item);
+    setPrescriptions((prev) =>
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        return {
+          ...m,
+          drugName: item.name,
+          dosage: defaults.dosage,
+          frequency: defaults.frequency,
+          duration: defaults.duration,
+          instructions: defaults.instructions,
+          genericName: item.generic_name || undefined,
+          category: item.category || undefined,
+        };
+      })
+    );
+    showToast(`Autofilled prescription for ${item.name}`);
+  };
+
   const handleApplyPresetDrug = (preset: typeof COMMON_DRUG_PRESETS[0]) => {
     setPrescriptions((prev) => [
       ...prev.filter((p) => p.drugName.trim() !== ''),
@@ -255,6 +372,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
         frequency: preset.frequency,
         duration: preset.duration,
         instructions: preset.instructions,
+        genericName: preset.genericName,
+        category: preset.category,
       },
     ]);
     showToast(`Added ${preset.name} to prescription`);
@@ -473,7 +592,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                     ${prescriptions.filter(m => m.drugName.trim()).map((m, idx) => `
                       <tr>
                         <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
-                        <td class="med-name">${m.drugName}</td>
+                        <td class="med-name">
+                          <strong>${m.drugName}</strong>
+                          ${m.genericName ? `<div style="font-size: 7.5pt; color: #0b5a54; font-weight: 600; margin-top: 1px;">(Active: ${m.genericName})</div>` : ''}
+                        </td>
                         <td class="med-dosage">${m.dosage}</td>
                         <td><span class="med-freq-badge">${m.frequency}</span></td>
                         <td class="med-duration">${m.duration}</td>
@@ -1252,7 +1374,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 {prescriptions.map((med, index) => (
                   <div
                     key={med.id}
-                    className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2.5 transition-all shadow-2xs"
+                    className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2.5 transition-all shadow-2xs relative"
+                    style={{ zIndex: prescriptions.length - index + 10 }}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider font-mono">
@@ -1271,16 +1394,36 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                      {/* Drug Name */}
-                      <div className="sm:col-span-5">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5 font-mono">Drug Name</label>
-                        <input
-                          type="text"
+                      {/* Drug Name with Live Autocomplete & Autofill */}
+                      <div className="sm:col-span-5 relative">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                            Drug Name
+                          </label>
+                          {med.genericName && (
+                            <span className="text-[9px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+                              Autofilled
+                            </span>
+                          )}
+                        </div>
+                        <MedicineAutocompleteInput
                           value={med.drugName}
-                          onChange={(e) => handleUpdateMed(med.id, 'drugName', e.target.value)}
-                          placeholder="e.g. Paracetamol 650mg"
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                          onChange={(val) => handleUpdateMed(med.id, 'drugName', val)}
+                          onSelect={(item) => handleSelectMedicine(med.id, item)}
+                          placeholder="Type medicine (e.g. Dolo 650, Augmentin)..."
+                          compact={true}
                         />
+                        {med.genericName && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-[#0B5A54] font-medium bg-teal-50/80 px-2 py-1 rounded-lg border border-teal-200/80">
+                            <Sparkles className="w-3 h-3 text-teal-600 shrink-0" />
+                            <span className="truncate">
+                              <span className="font-bold">Active:</span> {med.genericName}
+                              {med.category && med.category !== 'General' && (
+                                <span className="text-slate-500 font-normal"> • {med.category}</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Dosage */}
@@ -1534,7 +1677,14 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                         {prescriptions.filter((m) => m.drugName.trim()).map((m, idx) => (
                           <tr key={m.id} className={`divide-x divide-slate-100 ${idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}`}>
                             <td className="p-2 text-center font-bold text-slate-500 font-mono">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{m.drugName}</td>
+                            <td className="p-2">
+                              <p className="font-bold text-slate-900">{m.drugName}</p>
+                              {m.genericName && (
+                                <p className="text-[10.5px] font-medium text-[#0B5A54] mt-0.5">
+                                  Active: <span className="font-semibold">{m.genericName}</span> {m.category && `• ${m.category}`}
+                                </p>
+                              )}
+                            </td>
                             <td className="p-2 font-semibold text-slate-700">{m.dosage}</td>
                             <td className="p-2">
                               <span className="font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 text-[10px]">

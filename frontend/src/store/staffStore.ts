@@ -290,7 +290,15 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   error: null,
 
   setStaffAuth: (staff, token) => {
-    if (token) localStorage.setItem('staff_token', token);
+    if (token) {
+      localStorage.setItem('staff_token', token);
+      sessionStorage.setItem('active_staff_token', token);
+      if (staff?.role) {
+        localStorage.setItem(`${staff.role}_token`, token);
+        sessionStorage.setItem(`${staff.role}_token`, token);
+        sessionStorage.setItem('active_staff_role', staff.role);
+      }
+    }
     if (staff) {
       const hospId = staff.hospitalId || staff.hospital_id;
       const hospName = staff.hospitalName || staff.hospital_name || 'CarePulse Medical Center';
@@ -302,6 +310,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
         hospital_name: hospName,
       };
       localStorage.setItem('carepulse_staff', JSON.stringify(updatedStaff));
+      sessionStorage.setItem('carepulse_staff', JSON.stringify(updatedStaff));
 
       set((state) => ({
         hospitalSettings: {
@@ -353,6 +362,14 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   logoutStaff: () => {
     localStorage.removeItem('staff_token');
     localStorage.removeItem('carepulse_staff');
+    sessionStorage.removeItem('active_staff_token');
+    sessionStorage.removeItem('active_staff_role');
+    sessionStorage.removeItem('carepulse_staff');
+    sessionStorage.removeItem('superadmin_token');
+    sessionStorage.removeItem('nurse_token');
+    sessionStorage.removeItem('doctor_token');
+    sessionStorage.removeItem('receptionist_token');
+    sessionStorage.removeItem('admin_token');
     set({ currentStaff: null });
   },
 

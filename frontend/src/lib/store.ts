@@ -637,162 +637,70 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
 
         if (res && res.ok) {
           const aiData = await res.json();
-          const replyText = aiData.reply || aiData.response || "I've reviewed your symptoms. Please stay hydrated and monitor your condition.";
-          const botMsg: ChatMessage = {
-            id: `msg-${Date.now() + 1}`,
-            sender: 'bot',
-            text: replyText,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            quickReplyChips: aiData.quickReplyChips,
-            confidence: aiData.confidence_score ?? 88,
-            riskLevel: aiData.risk_level ?? 'low',
-            specialty: (aiData.suggested_specialties && aiData.suggested_specialties[0]) || 'General Medicine',
-            isEmergency: aiData.is_emergency ?? false,
-            soapNote: aiData.soap_note,
-          };
+          const replyText = aiData.reply || aiData.response;
+          if (replyText) {
+            const isFailure = replyText.includes("currently not working") || replyText.includes("currently unavailable");
+            const botMsg: ChatMessage = {
+              id: `msg-${Date.now() + 1}`,
+              sender: 'bot',
+              text: replyText,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              quickReplyChips: isFailure
+                ? ['Try Again', 'Book Doctor Visit', '🚨 Emergency (108)']
+                : aiData.quickReplyChips,
+              confidence: isFailure ? 0 : (aiData.confidence_score ?? 88),
+              riskLevel: isFailure ? 'low' : (aiData.risk_level ?? 'low'),
+              specialty: isFailure ? undefined : ((aiData.suggested_specialties && aiData.suggested_specialties[0]) || 'General Medicine'),
+              isEmergency: aiData.is_emergency ?? false,
+              soapNote: isFailure ? undefined : aiData.soap_note,
+            };
 
-          set((state) => ({
-            chatMessages: [...state.chatMessages, botMsg],
-            latestAssessment: aiData.soap_note ? {
-              subjective: aiData.soap_note.subjective || msg.text,
-              objective: aiData.soap_note.objective || 'Pending in-person clinical examination.',
-              assessmentDiagnosis: aiData.soap_note.assessment || `${aiData.suggested_specialties?.[0] || 'General Medicine'} Evaluation`,
-              plan: aiData.soap_note.plan || 'Schedule specialist consultation for formal assessment.',
-              confidence: aiData.confidence_score ?? 88,
-              riskLevel: aiData.risk_level ?? 'low',
-              specialty: aiData.suggested_specialties?.[0] || 'General Medicine',
-            } : state.latestAssessment,
-            isAiTyping: false,
-          }));
-          return botMsg;
+            set((state) => ({
+              chatMessages: [...state.chatMessages, botMsg],
+              latestAssessment: (!isFailure && aiData.soap_note) ? {
+                subjective: aiData.soap_note.subjective || msg.text,
+                objective: aiData.soap_note.objective || 'Pending in-person clinical examination.',
+                assessmentDiagnosis: aiData.soap_note.assessment || `${aiData.suggested_specialties?.[0] || 'General Medicine'} Evaluation`,
+                plan: aiData.soap_note.plan || 'Schedule specialist consultation for formal assessment.',
+                confidence: aiData.confidence_score ?? 88,
+                riskLevel: aiData.risk_level ?? 'low',
+                specialty: aiData.suggested_specialties?.[0] || 'General Medicine',
+              } : state.latestAssessment,
+              isAiTyping: false,
+            }));
+            return botMsg;
+          }
         }
       } catch (err) {
         console.warn('Health AI Chat API error:', err);
       }
 
-      // Offline / fallback reasoning if network unreachable
-      const userMessages = [...currentHistory, userMsg].filter((m) => m.sender === 'user').map((m) => m.text);
-      const fullHistoryLower = userMessages.join(' ').toLowerCase();
-      const turnCount = userMessages.length;
+      // If AI service is unreachable or failed: display transparent failure notification (NO default mock messages)
+      const lower = msg.text.toLowerCase();
+      const isEmergency = lower.includes('chest pain') || lower.includes('cannot breathe') || lower.includes('severe breathlessness') || lower.includes('unconscious');
 
-      let botReply = "I've noted the symptoms you described. To help evaluate this, could you share how long this has been present and if anything specific relieves it?";
-      let chips: string[] = ['Book Doctor Visit', 'Check Symptoms', 'Home Care Guidance', 'Review SOAP Note'];
-      let confidence = 85;
-      let riskLevel: 'low' | 'moderate' | 'critical' = 'low';
-      let specialty = 'General Medicine';
-      let topCondition = 'General Health Intake Evaluation';
+      const failureReply = isEmergency
+        ? "🚨 CRITICAL SAFETY ALERT: Severe chest pain, pressure, or acute shortness of breath requires IMMEDIATE emergency medical attention. Please call 108 / 911 or visit the nearest ER right away."
+        : "The AI is currently not working. Please try again later or consult a doctor directly.";
 
-      if (fullHistoryLower.includes('chest') || fullHistoryLower.includes('breath') || fullHistoryLower.includes('emergency')) {
-        botReply = "🚨 CRITICAL SAFETY ALERT: Severe chest pain, pressure, or shortness of breath requires IMMEDIATE emergency medical attention. Please call 108 / 911 or visit the nearest ER right away.";
-        chips = ['🚨 Call 108 Emergency', 'Find Nearest ER', 'Emergency Contact'];
-        confidence = 98;
-        riskLevel = 'critical';
-        specialty = 'Cardiology';
-        topCondition = 'Acute Critical Emergency (Immediate Hospital Attention Required)';
-      } else if (fullHistoryLower.includes('fever') || fullHistoryLower.includes('fewer') || fullHistoryLower.includes('fevr') || fullHistoryLower.includes('chills') || fullHistoryLower.includes('temp')) {
-        specialty = 'General Medicine';
-        topCondition = 'Acute Febrile Illness / Temperature Elevation';
-        if (turnCount > 1) {
-          botReply = "Thank you for providing those details. Based on your symptoms, this is consistent with an Acute Febrile Illness. Recommended care steps: Stay well-hydrated, rest in a cool room, and monitor your temperature. Consult a physician if your fever exceeds 102°F or persists beyond 48 hours.";
-          chips = ['Book Doctor Visit', 'Review SOAP Note', 'Home Care Guidance'];
-        } else {
-          botReply = "I hear you are dealing with an elevated temperature or fever. Stay well-hydrated with fluids and electrolytes, rest in a cool room, and monitor your readings. How many days have you had this fever?";
-          chips = ['Check Temperature', 'Duration: 1-2 days', 'Body aches & Chills', 'Book Doctor Visit'];
-        }
-        confidence = 88;
-      } else if (fullHistoryLower.includes('headache') || fullHistoryLower.includes('hedache') || fullHistoryLower.includes('migraine')) {
-        specialty = 'General Medicine';
-        topCondition = 'Tension Headache / Cephalea Evaluation';
-        if (turnCount > 1) {
-          botReply = "Thank you for the update. Headaches often correlate with tension, dehydration, or eye strain. Ensure adequate hydration, rest in a quiet dim room, and take a screen break. If pain is severe or sudden, seek medical evaluation.";
-          chips = ['Book Doctor Visit', 'Review SOAP Note', 'Home Care Guidance'];
-        } else {
-          botReply = "Headaches can stem from dehydration, tension, or eye strain. Is the pain throbbing or dull, and does bright light or noise make it worse?";
-          chips = ['Throbbing pain', 'Pain relief tips', 'Book Telehealth'];
-        }
-        confidence = 86;
-      } else if (fullHistoryLower.includes('cough') || fullHistoryLower.includes('phlegm') || fullHistoryLower.includes('mucus')) {
-        specialty = 'Pulmonology';
-        topCondition = 'Acute Upper Respiratory Tract Infection';
-        if (turnCount > 1) {
-          botReply = "Thank you for sharing. Your symptoms are consistent with an upper respiratory infection. Stay hydrated, sip warm fluids with honey, and use steam inhalation to soothe airway irritation. Consult a doctor if shortness of breath occurs.";
-          chips = ['Book Doctor Visit', 'Review SOAP Note', 'Consult Pulmonology'];
-        } else {
-          botReply = "I understand you are dealing with a cough. Is it a dry tickly cough, or are you bringing up mucus or phlegm?";
-          chips = ['Dry cough', 'Cough with phlegm', 'Home remedies', 'Consult Pulmonology'];
-        }
-        confidence = 86;
-      } else if (fullHistoryLower.includes('neck') || fullHistoryLower.includes('cervical') || fullHistoryLower.includes('neckpain')) {
-        specialty = 'General Medicine';
-        topCondition = 'Cervical Strain / Postural Discomfort';
-        if (turnCount > 1) {
-          botReply = "Thank you for the details. Neck pain is frequently linked to muscle strain or sleeping posture. Gentle stretching, warm compresses, and maintaining good ergonomic posture can help. Seek medical attention if pain radiates or fever develops.";
-          chips = ['Stiff neck check', 'Posture tips', 'Consult Specialist'];
-        } else {
-          botReply = "I hear you are experiencing neck pain or stiffness. How long have you had this neck pain, and can you turn your head side-to-side without severe discomfort?";
-          chips = ['Stiff neck check', 'Posture tips', 'Duration > 3 days', 'Consult Specialist'];
-        }
-        confidence = 86;
-      } else if (fullHistoryLower.includes('back') || fullHistoryLower.includes('lumbago')) {
-        specialty = 'Orthopedics';
-        topCondition = 'Musculoskeletal Lumbar Strain';
-        if (turnCount > 1) {
-          botReply = "Thank you for the update. Back discomfort typically responds to rest, gentle stretching, avoiding heavy lifting, and applying heat or cold packs. Consult an orthopedist if pain radiates down your leg or worsens.";
-          chips = ['Posture & Stretching', 'Book Orthopedics', 'Review SOAP Note'];
-        } else {
-          botReply = "I note you are experiencing back discomfort. Is the pain located in your upper or lower back, and does it radiate down your legs?";
-          chips = ['Lower back pain', 'Posture & Stretching', 'Pain relief tips', 'Book Orthopedics'];
-        }
-        confidence = 85;
-      } else if (fullHistoryLower.includes('stomach') || fullHistoryLower.includes('acid') || fullHistoryLower.includes('reflux') || fullHistoryLower.includes('belly')) {
-        specialty = 'Gastroenterology';
-        topCondition = 'Dyspepsia / Acid Reflux Evaluation';
-        if (turnCount > 1) {
-          botReply = "Thank you for providing those details. For abdominal discomfort or acid reflux, eat smaller bland meals, avoid lying down immediately after eating, and stay hydrated. Consult a gastroenterologist if pain is sharp or persistent.";
-          chips = ['Bland diet tips', 'Book Gastroenterology', 'Review SOAP Note'];
-        } else {
-          botReply = "I hear you are having stomach or abdominal discomfort. Where is the discomfort located, and is it a burning acid sensation or sharp cramps?";
-          chips = ['Acid reflux / heartburn', 'Bland diet tips', 'Sharp stomach cramps', 'Book Gastroenterology'];
-        }
-        confidence = 86;
-      } else if (turnCount > 1) {
-        botReply = "Thank you for providing those details. I have synthesized your clinical intake profile based on your symptoms. Please review your generated SOAP Note or schedule a consultation with our general medicine specialists for formal examination.";
-        chips = ['Book Doctor Visit', 'Review SOAP Note', 'Check Symptoms'];
-      }
-
-      const soapDraft = {
-        status: 'draft_pending_physician_review',
-        department: specialty,
-        subjective: `Patient reports primary complaint of ${msg.text}.`,
-        objective: 'Vital Signs: Pending triage desk recording.',
-        assessment: `1. Primary Clinical Impression: ${topCondition}.\n2. Recommended Referral: ${specialty}.`,
-        plan: `1. Schedule clinical evaluation with ${specialty}.\n2. Monitor symptoms and seek emergency care if red flags develop.`
-      };
+      const failureChips = isEmergency
+        ? ['🚨 Call 108 Emergency', 'Find Nearest ER', 'Emergency Contact']
+        : ['Try Again', 'Book Doctor Visit', '🚨 Emergency (108)'];
 
       const botMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'bot',
-        text: botReply,
+        text: failureReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        quickReplyChips: chips,
-        confidence,
-        riskLevel,
-        specialty,
-        isEmergency: riskLevel === 'critical',
-        soapNote: soapDraft
+        quickReplyChips: failureChips,
+        confidence: isEmergency ? 99 : 0,
+        riskLevel: isEmergency ? 'critical' : 'low',
+        specialty: isEmergency ? 'Emergency Medicine' : undefined,
+        isEmergency,
       };
 
       set((state) => ({
         chatMessages: [...state.chatMessages, botMsg],
-        latestAssessment: {
-          subjective: soapDraft.subjective,
-          objective: soapDraft.objective,
-          assessmentDiagnosis: soapDraft.assessment,
-          plan: soapDraft.plan,
-          confidence,
-          riskLevel,
-          specialty
-        },
         isAiTyping: false,
       }));
       return botMsg;
