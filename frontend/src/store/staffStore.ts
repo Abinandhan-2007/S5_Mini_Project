@@ -51,7 +51,7 @@ const INITIAL_TOKENS: TokenQueueItem[] = [];
 
 const getStoredStaff = (): Staff | null => {
   try {
-    const raw = localStorage.getItem('carepulse_staff');
+    const raw = localStorage.getItem('carepulse_staff') || sessionStorage.getItem('carepulse_staff');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -355,8 +355,11 @@ export const useStaffStore = create<StaffState>((set, get) => ({
           },
         }));
       }
+
+      set({ currentStaff: updatedStaff });
+    } else {
+      set({ currentStaff: null });
     }
-    set({ currentStaff: staff });
   },
 
   logoutStaff: () => {

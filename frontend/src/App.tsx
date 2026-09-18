@@ -7,31 +7,6 @@ import { OfflineBanner } from './components/ui/OfflineBanner';
 
 import { Capacitor } from '@capacitor/core';
 
-// Helper to determine if current URL is a staff portal
-const isStaffLanding = (): boolean => {
-  if (typeof window === 'undefined') return false;
-
-  const path = window.location.pathname.toLowerCase();
-  const isStaffPath =
-    path.startsWith('/receptionist') ||
-    path.startsWith('/doctor') ||
-    path.startsWith('/admin') ||
-    path.startsWith('/staff');
-
-  if (isStaffPath) return true;
-
-  if (!Capacitor.isNativePlatform()) {
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
-    const isMobileBrowser =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
-      (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
-
-    const hasPatientSession = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
-    if (!isMobileBrowser && path === '/' && !hasPatientSession) return true;
-  }
-
-  return false;
-};
 
 /**
  * Handles push notification taps and deep-link routing inside React Router.
@@ -133,6 +108,25 @@ export const App: React.FC = () => {
         ) {
           return false;
         }
+
+        // On desktop web, if user has an active session, skip splash on reload
+        if (!Capacitor.isNativePlatform()) {
+          const path = window.location.pathname.toLowerCase();
+          const hasStaff = !!localStorage.getItem('carepulse_staff') || !!sessionStorage.getItem('carepulse_staff');
+          const hasPatient = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
+          const isStaffRoute =
+            path.startsWith('/receptionist') ||
+            path.startsWith('/doctor') ||
+            path.startsWith('/admin') ||
+            path.startsWith('/staff') ||
+            path.startsWith('/superadmin') ||
+            path.startsWith('/nurse');
+
+          if (hasStaff || hasPatient || isStaffRoute) {
+            sessionStorage.setItem('carepulse_skip_splash', 'true');
+            return false;
+          }
+        }
       } catch {}
     }
     return true;
@@ -146,11 +140,9 @@ export const App: React.FC = () => {
     }
   }, [showSplash]);
 
-  // Restore session
+  // Restore session on app mount
   useEffect(() => {
-    if (isStaffLanding()) {
-      checkAuthSession();
-    }
+    checkAuthSession();
   }, [checkAuthSession]);
 
   // Automatically register device for push notifications and initialize medication eating alerts
@@ -162,6 +154,9 @@ export const App: React.FC = () => {
   }, []);
 
   const handleSplashComplete = (updateInfo?: AppVersionInfo | null) => {
+    try {
+      sessionStorage.setItem('carepulse_skip_splash', 'true');
+    } catch {}
     setShowSplash(false);
     if (updateInfo && updateInfo.isUpdateAvailable) {
       // Prompt user FIRST with update modal before mounting routes, login screen, or biometric lock

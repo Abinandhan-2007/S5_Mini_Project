@@ -340,6 +340,7 @@ class ScanMatchRequest(BaseModel):
     ocr_text: Optional[str] = None
     patientId: Optional[str] = None
     patient_id: Optional[str] = None
+    lang: Optional[str] = "en"
 
 class DrugInfoSchema(BaseModel):
     drug_name: str
@@ -385,6 +386,21 @@ class MedicineInfoLookupRequest(BaseModel):
     generic_name: Optional[str] = None
     medicineId: Optional[str] = None
     medicine_id: Optional[str] = None
+    lang: Optional[str] = "en"
+
+class MedicineTranslateRequest(BaseModel):
+    targetLang: Optional[str] = "en"
+    target_lang: Optional[str] = None
+    drugName: Optional[str] = ""
+    genericName: Optional[str] = ""
+    purpose: Optional[str] = ""
+    indicationsAndUsage: Optional[str] = ""
+    summary: Optional[str] = ""
+    mainUses: Optional[List[str]] = None
+    howToTake: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    sideEffects: Optional[List[str]] = None
+    disclaimer: Optional[str] = None
 
 class MedicineInfoLookupResponse(BaseModel):
     status: str  # FOUND, UNCLEAR_TEXT, NO_INFO_AVAILABLE
@@ -400,6 +416,7 @@ class MedicineInfoLookupResponse(BaseModel):
     warnings: Optional[List[str]] = None
     sideEffects: Optional[List[str]] = None
     boxedWarning: Optional[List[str]] = None
+    lang: Optional[str] = "en"
     disclaimer: Optional[str] = "General Information Only — This is NOT a verification against your prescriptions. For personal dosage instructions, use 'Check My Prescription'."
 
 class MedicineSearchResultItem(BaseModel):

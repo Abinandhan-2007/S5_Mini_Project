@@ -162,6 +162,7 @@ export interface MedicineInfoLookupResponse {
   sideEffects?: string[] | null;
   boxedWarning?: string[] | null;
   disclaimer?: string;
+  lang?: string;
 }
 
 export interface MedicineSearchResultItem {

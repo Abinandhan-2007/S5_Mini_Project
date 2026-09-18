@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation, useLocalizedEntities } from '../../i18n';
+import { markDoseAsAte } from '../../services/medicationNotificationService';
 
 export interface MedicationItem {
   id: string;
@@ -383,7 +384,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     return () => window.removeEventListener('carepulse:dose_taken', handleDoseTakenEvent);
   }, []);
 
-  // Handle toggling a dose slot
+  // Handle recording a dose slot (one-way: once taken, it cannot be unmarked)
   const handleTakeSlotDose = (med: MedicationItem, slotId: string) => {
     const today = getTodayDateKey();
     const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -392,16 +393,15 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       const currentMedEntry = prev[med.id]?.date === today ? prev[med.id] : { date: today, slots: {} };
       const isAlreadyTaken = Boolean(currentMedEntry.slots[slotId]);
 
-      let updatedSlots: Record<string, string>;
+      // If already recorded as taken, permanently keep it taken (cannot be unmarked)
       if (isAlreadyTaken) {
-        updatedSlots = { ...currentMedEntry.slots };
-        delete updatedSlots[slotId];
-      } else {
-        updatedSlots = {
-          ...currentMedEntry.slots,
-          [slotId]: nowTimeStr,
-        };
+        return prev;
       }
+
+      const updatedSlots = {
+        ...currentMedEntry.slots,
+        [slotId]: nowTimeStr,
+      };
 
       const updatedRecord = { date: today, slots: updatedSlots };
       try {
@@ -415,6 +415,9 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
         [med.id]: updatedRecord,
       };
     });
+
+    // Also call markDoseAsAte to cancel active snoozes/notifications and broadcast across the app
+    markDoseAsAte(med.id, slotId, med.drugName);
 
     if (onMarkTaken) {
       onMarkTaken(med, true);
@@ -708,20 +711,22 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                             <button
                               key={slot.id}
                               type="button"
-                              disabled={isCourseFinished}
+                              disabled={isCourseFinished || isSlotTaken}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleTakeSlotDose(med, slot.id);
+                                if (!isSlotTaken && !isCourseFinished) {
+                                  handleTakeSlotDose(med, slot.id);
+                                }
                               }}
                               className={clsx(
-                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold active:scale-95 cursor-pointer',
+                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold',
                                 isCourseFinished
                                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
                                   : isSlotTaken
-                                    ? slotTheme.taken
-                                    : slotTheme.unrecorded
+                                    ? clsx(slotTheme.taken, 'cursor-default opacity-95')
+                                    : clsx(slotTheme.unrecorded, 'cursor-pointer active:scale-95')
                               )}
-                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Click to unmark)` : `Click to record ${slotTheme.label} dose`}
+                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Completed)` : `Click to record ${slotTheme.label} dose`}
                             >
                               <span className="text-base sm:text-lg leading-none shrink-0 select-none" role="img" aria-label={slotTheme.label}>
                                 {slotTheme.emoji}

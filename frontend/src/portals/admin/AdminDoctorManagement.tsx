@@ -10,6 +10,7 @@ import {
   X,
   Building2,
   ChevronRight,
+  ChevronDown,
   Eye,
   EyeOff,
   KeyRound,
@@ -62,9 +63,6 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
   const [statusFilter, setStatusFilter] = useState<'All' | 'Available' | 'Not Available'>('All');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
-  // Password visibility map
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(autoOpenAddModal);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -88,10 +86,6 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [formRoom, setFormRoom] = useState('Cabin 101');
   const [formDays, setFormDays] = useState<string[]>(DEFAULT_DAYS);
-
-  const toggleShowPassword = (id: string) => {
-    setShowPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
 
   // Filtered doctors
   const filteredDoctors = doctors.filter((doc) => {
@@ -264,42 +258,41 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            Manage physician credentials, login passwords for the doctor portal, clinical departments, and consultation schedules.
+            Manage physician credentials, doctor portal accounts, clinical departments, and consultation schedules.
           </p>
         </div>
 
         <button
           onClick={handleOpenAdd}
-          className="px-5 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer shrink-0 self-start sm:self-auto"
+          className="flex items-center justify-center gap-2 bg-[#0B5A54] hover:bg-[#084540] text-white px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Add Doctor</span>
         </button>
       </div>
 
-      {/* ── Filter Bar & View Mode Toggle ── */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Search Input */}
+      {/* ── Search & Filter Toolbar ── */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        {/* Search Bar */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by physician name, username, specialty, department, or cabin..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54]"
+            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all text-slate-900 placeholder:text-slate-400"
           />
         </div>
 
-        {/* Filter Chips & Department Dropdown */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {/* Department Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-            <Building2 className="w-3.5 h-3.5 text-slate-500" />
+          <div className="relative">
             <select
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+              className="appearance-none pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 cursor-pointer"
             >
               <option value="All">All Departments</option>
               {availableDepartments.map((deptName) => (
@@ -308,15 +301,17 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                 </option>
               ))}
             </select>
+            <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-200">
+          {/* Availability Filter */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-2xl text-xs font-bold">
             {(['All', 'Available', 'Not Available'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                   statusFilter === status
                     ? 'bg-white text-[#0B5A54] shadow-2xs font-black'
                     : 'text-slate-500 hover:text-slate-900'
@@ -328,11 +323,11 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+          <div className="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200/60">
             <button
               onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'table' ? 'bg-white text-[#0B5A54] shadow-2xs' : 'text-slate-400 hover:text-slate-600'
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white text-[#0B5A54] shadow-2xs' : 'text-slate-400 hover:text-slate-700'
               }`}
               title="Table View"
             >
@@ -340,8 +335,8 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'grid' ? 'bg-white text-[#0B5A54] shadow-2xs' : 'text-slate-400 hover:text-slate-600'
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'grid' ? 'bg-white text-[#0B5A54] shadow-2xs' : 'text-slate-400 hover:text-slate-700'
               }`}
               title="Card Grid View"
             >
@@ -379,7 +374,6 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                   filteredDoctors.map((doc) => {
                     const totalSlotsThisWeek = (doc.slotCapacities || []).reduce((acc, s) => acc + (s.bookedSeats || 0), 0);
                     const usernameDisplay = doc.username || doc.email.split('@')[0] || 'doctor';
-                    const isPasswordRevealed = !!showPasswords[doc.id];
 
                     return (
                       <tr
@@ -423,29 +417,13 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                           <p className="text-[10px] text-slate-400 font-medium">{doc.phone || '+91 98765 00000'}</p>
                         </td>
 
-                        {/* Portal Credentials (Username & Masked Password) */}
+                        {/* Portal Credentials (Username Only - No Password) */}
                         <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-900">
-                              <span className="text-slate-400 text-[10px]">User:</span>
-                              <span className="font-mono text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 text-[11px]">
-                                {usernameDisplay}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-slate-400 text-[10px]">Pass:</span>
-                              <span className="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200/70">
-                                {isPasswordRevealed ? (doc.password || 'doc123') : '••••••••'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => toggleShowPassword(doc.id)}
-                                className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5 rounded hover:bg-slate-100 transition-colors"
-                                title={isPasswordRevealed ? 'Hide Password' : 'Show Password'}
-                              >
-                                {isPasswordRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
-                            </div>
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-900">
+                            <span className="text-slate-400 text-[10px]">User:</span>
+                            <span className="font-mono text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 text-[11px]">
+                              {usernameDisplay}
+                            </span>
                           </div>
                         </td>
 
@@ -523,7 +501,6 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredDoctors.map((doc) => {
             const usernameDisplay = doc.username || doc.email.split('@')[0] || 'doctor';
-            const isPasswordRevealed = !!showPasswords[doc.id];
 
             return (
               <div
@@ -576,7 +553,7 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                   </div>
                 </div>
 
-                {/* Portal Credentials Pill */}
+                {/* Portal Credentials Pill (Username Only) */}
                 <div
                   className="p-3 bg-teal-50/50 rounded-2xl border border-teal-100 flex items-center justify-between text-xs"
                   onClick={(e) => e.stopPropagation()}
@@ -584,18 +561,6 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
                   <div>
                     <span className="text-[10px] text-slate-400 font-bold uppercase block">Doctor Portal Login</span>
                     <span className="font-mono text-[11px] font-black text-[#0B5A54]">{usernameDisplay}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-slate-700 bg-white px-2 py-0.5 rounded text-[11px] font-bold border border-teal-200">
-                      {isPasswordRevealed ? (doc.password || 'doc123') : '••••••••'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleShowPassword(doc.id)}
-                      className="text-slate-400 hover:text-slate-700 cursor-pointer"
-                    >
-                      {isPasswordRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
                   </div>
                 </div>
 
@@ -646,41 +611,14 @@ export const AdminDoctorManagement: React.FC<AdminDoctorManagementProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-[#0B5A54] uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4" />
-                  Doctor Portal Login Credentials
+                  Doctor Portal Login Account
                 </span>
-                <button
-                  onClick={() => {
-                    setResetPasswordDoc(selectedDoctor);
-                    setNewResetPassword('');
-                  }}
-                  className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>Change Password</span>
-                </button>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Portal Username / ID</span>
-                  <span className="font-mono font-black text-slate-900">
-                    {selectedDoctor.username || selectedDoctor.email.split('@')[0] || 'doctor'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Portal Password</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-teal-200">
-                      {showPasswords[selectedDoctor.id] ? (selectedDoctor.password || 'doc123') : '••••••••'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleShowPassword(selectedDoctor.id)}
-                      className="text-slate-500 hover:text-slate-900 cursor-pointer"
-                    >
-                      {showPasswords[selectedDoctor.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
+              <div className="text-xs pt-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Portal Username / ID</span>
+                <span className="font-mono font-black text-slate-900">
+                  {selectedDoctor.username || selectedDoctor.email.split('@')[0] || 'doctor'}
+                </span>
               </div>
             </div>
 

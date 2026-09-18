@@ -24,6 +24,7 @@ import { hospitalService } from '../../services/hospitalService';
 import { doctorService } from '../../services/doctorService';
 import type { Hospital, Doctor } from '../../lib/types';
 import { useLocalizedEntities } from '../../i18n';
+import { HospitalRouteModal } from '../../components/hospitals/HospitalRouteModal';
 
 type HospitalSortOption = 'rating' | 'distance' | 'reviews' | 'name';
 
@@ -69,6 +70,7 @@ export const FindHospitalsScreen: React.FC = () => {
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<HospitalSortOption>('rating');
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [selectedRouteHospital, setSelectedRouteHospital] = useState<Hospital | null>(null);
 
   // Load hospitals & doctors from database
   useEffect(() => {
@@ -385,10 +387,25 @@ export const FindHospitalsScreen: React.FC = () => {
                     <span>{t('doctors.onDuty', 'OPD Open Today')}</span>
                   </div>
 
-                  <button className="bg-[#0B5A54] group-hover:bg-[#08423D] text-white text-xs font-black py-1.5 px-3.5 rounded-full shadow-2xs hover:shadow-xs active:scale-95 transition-all flex items-center gap-1">
-                    <span>{t('common.view', 'View Details')}</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRouteHospital(hosp);
+                      }}
+                      className="bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200/80 text-xs font-bold py-1.5 px-3 rounded-full transition-all flex items-center gap-1 cursor-pointer"
+                      title="Find route to this hospital"
+                    >
+                      <Navigation className="w-3 h-3 text-[#0B5A54]" />
+                      <span>Route</span>
+                    </button>
+
+                    <button className="bg-[#0B5A54] group-hover:bg-[#08423D] text-white text-xs font-black py-1.5 px-3.5 rounded-full shadow-2xs hover:shadow-xs active:scale-95 transition-all flex items-center gap-1">
+                      <span>{t('common.view', 'View Details')}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -419,6 +436,16 @@ export const FindHospitalsScreen: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Interactive Hospital Route & Navigation Map Dialog */}
+      {selectedRouteHospital && (
+        <HospitalRouteModal
+          isOpen={Boolean(selectedRouteHospital)}
+          onClose={() => setSelectedRouteHospital(null)}
+          hospitalName={selectedRouteHospital.name}
+          facilityAddress={selectedRouteHospital.address}
+        />
+      )}
 
       <BottomNav />
     </div>

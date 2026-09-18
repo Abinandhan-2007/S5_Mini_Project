@@ -22,6 +22,8 @@ import {
   AlertOctagon,
   ChevronDown,
   ChevronUp,
+  Languages,
+  Check,
 } from 'lucide-react';
 import { apiFetch } from '../../lib/apiFetch';
 import type { MedicineInfoLookupResponse, MedicineSearchResultItem } from '../../lib/types';
@@ -33,6 +35,14 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { speakText, stopSpeaking } from '../../lib/speechUtils';
 import { useTranslation } from '../../i18n';
+
+// Supported Medical Information Languages
+export const SCAN_LANGUAGES = [
+  { code: 'en', label: 'English', native: 'English', voiceLocale: 'en-US' },
+  { code: 'ta', label: 'Tamil', native: 'தமிழ்', voiceLocale: 'ta-IN' },
+  { code: 'ml', label: 'Malayalam', native: 'മലയാളം', voiceLocale: 'ml-IN' },
+  { code: 'hi', label: 'Hindi', native: 'हिंदी', voiceLocale: 'hi-IN' },
+];
 
 // Rich Curated Clinical Knowledge Fallback for Instant Samples / Offline
 const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
@@ -234,6 +244,15 @@ export const MedicineInfoLookupScreen: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isWarningsExpanded, setIsWarningsExpanded] = useState(false);
   const [isSideEffectsExpanded, setIsSideEffectsExpanded] = useState(false);
+  const [scanLanguage, setScanLanguage] = useState<string>(language || 'en');
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  // Synchronize initial language from i18n
+  useEffect(() => {
+    if (language && !scanLanguage) {
+      setScanLanguage(language);
+    }
+  }, [language]);
 
   // Stop speech synthesis on unmount
   useEffect(() => {
@@ -271,7 +290,53 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     return () => clearInterval(timer);
   }, [isAnalyzing]);
 
-  // Voice narration for accessibility (reads structured sections)
+  // Fast on-the-fly translation when switching languages on active result
+  const handleSwitchLanguage = async (newLang: string) => {
+    setScanLanguage(newLang);
+    if (!lookupResult || lookupResult.status !== 'FOUND') return;
+
+    // If result already has this lang, avoid redundant API call
+    if (lookupResult.lang === newLang) return;
+
+    setIsTranslating(true);
+    stopSpeaking();
+    setIsSpeaking(false);
+
+    try {
+      const res = await apiFetch('/medicine/translate-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetLang: newLang,
+          drugName: lookupResult.drugName,
+          genericName: lookupResult.genericName,
+          purpose: lookupResult.purpose,
+          indicationsAndUsage: lookupResult.indicationsAndUsage,
+          summary: lookupResult.summary,
+          mainUses: lookupResult.mainUses,
+          howToTake: lookupResult.howToTake,
+          warnings: lookupResult.warnings,
+          sideEffects: lookupResult.sideEffects,
+          disclaimer: lookupResult.disclaimer,
+        }),
+      });
+
+      if (res.ok) {
+        const data: MedicineInfoLookupResponse = await res.json();
+        setLookupResult((prev) => ({
+          ...prev,
+          ...data,
+          lang: newLang,
+        }));
+      }
+    } catch (err) {
+      console.warn('Medicine translation note:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Voice narration for accessibility (reads in the selected language)
   const handleToggleSpeech = (result: MedicineInfoLookupResponse) => {
     if (isSpeaking) {
       stopSpeaking();
@@ -301,7 +366,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
 
       const textToRead = parts.join(' ');
       speakText(textToRead, {
-        lang: language,
+        lang: scanLanguage || language || 'en',
         rate: 0.95,
         onStart: () => setIsSpeaking(true),
         onEnd: () => setIsSpeaking(false),
@@ -444,7 +509,10 @@ export const MedicineInfoLookupScreen: React.FC = () => {
       const res = await apiFetch('/medicine/lookup-info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          lang: scanLanguage,
+        }),
       });
 
       if (res.ok) {
@@ -722,6 +790,46 @@ export const MedicineInfoLookupScreen: React.FC = () => {
         {/* RESULTS STATE */}
         {!isAnalyzing && lookupResult && (
           <div className="space-y-4 sm:space-y-5 animate-in fade-in">
+            {/* Multilingual Scan Selector Pill Bar */}
+            {lookupResult.status === 'FOUND' && (
+              <div className="space-y-2">
+                <div className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs flex items-center justify-between gap-3 overflow-x-auto">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 shrink-0">
+                    <Languages className="w-4 h-4 text-blue-600" />
+                    <span>Language / மொழி:</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {SCAN_LANGUAGES.map((item) => (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => handleSwitchLanguage(item.code)}
+                        disabled={isTranslating}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                          scanLanguage === item.code
+                            ? 'bg-[#1E3A8A] text-white shadow-xs scale-102'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                        } ${isTranslating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <span>{item.native}</span>
+                        {scanLanguage === item.code && <Check className="w-3 h-3 stroke-[3]" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {isTranslating && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-center text-xs font-bold text-blue-800 animate-pulse flex items-center justify-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                    <span>
+                      Translating clinical purpose and usage into{' '}
+                      {SCAN_LANGUAGES.find((l) => l.code === scanLanguage)?.native}...
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* FOUND RESULT VIEW */}
             {lookupResult.status === 'FOUND' && (
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-blue-200/80 shadow-[0_10px_30px_rgba(30,58,138,0.08)] space-y-5 text-left">

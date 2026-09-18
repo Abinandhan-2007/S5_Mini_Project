@@ -17,27 +17,31 @@ import { apiPost } from '../../lib/apiFetch';
 import { getTodayDateString, calculateAge } from '../../lib/dateUtils';
 import { Avatar } from '../../components/ui/Avatar';
 import { useTranslation } from '../../i18n';
+import { Preferences } from '@capacitor/preferences';
 
 export const PROFILE_PROMPT_KEY = 'profile_prompt_last_shown';
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export const isUserProfileIncomplete = (user: any): boolean => {
   if (!user) return false;
+  if (user.isProfileCompleted === true || user.profileCompleted === true) return false;
+
   try {
     const isMarked = localStorage.getItem(`carepulse_profile_completed_${user.id}`);
     if (isMarked === 'true') return false;
+    const isDismissed = localStorage.getItem(`carepulse_profile_dismissed_${user.id}`);
+    if (isDismissed === 'true') return false;
   } catch {}
 
   const cleanPhone = (user.phone || '').trim().replace(/\D/g, '');
-  const hasNoPhone = cleanPhone.length < 10 || cleanPhone === '9876500000' || cleanPhone === '9876543210';
+  // Only truly missing phone (<10 digits or dummy zeroes)
+  const hasNoPhone = cleanPhone.length < 10 || cleanPhone === '9876500000';
   const hasNoGender = !user.gender || user.gender === 'Not specified';
   const hasNoDob = !user.dob || user.dob === getTodayDateString();
-  const cleanEmerg = (user.emergencyContact?.phone || '').trim().replace(/\D/g, '');
-  const hasNoEmergency = cleanEmerg.length < 10 || cleanEmerg === '9876500000' || cleanEmerg === '9876543210';
 
   if (hasNoPhone) return true;
   if (user.authProvider === 'google') {
-    return hasNoGender || hasNoEmergency || hasNoDob || !user.address;
+    return hasNoGender || hasNoDob || !user.address;
   }
   return false;
 };
@@ -221,6 +225,8 @@ export const CompleteProfileScreen: React.FC = () => {
         phone: cleanEmergPhone || cleanPhone,
         relationship: emergencyRel,
       },
+      isProfileCompleted: true,
+      profileCompleted: true,
     };
 
     try {
@@ -234,6 +240,7 @@ export const CompleteProfileScreen: React.FC = () => {
         }
         try {
           localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
+          Preferences.set({ key: `carepulse_profile_completed_${user.id}`, value: 'true' }).catch(() => {});
         } catch {}
         // Clear tracking key entirely once profile is completed
         clearProfilePromptTracking(user.id);
@@ -253,7 +260,11 @@ export const CompleteProfileScreen: React.FC = () => {
   const handleSkip = () => {
     if (user?.id) {
       try {
+        localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
+        localStorage.setItem(`carepulse_profile_dismissed_${user.id}`, 'true');
         sessionStorage.setItem(`carepulse_profile_modal_dismissed_${user.id}`, 'true');
+        Preferences.set({ key: `carepulse_profile_completed_${user.id}`, value: 'true' }).catch(() => {});
+        Preferences.set({ key: `carepulse_profile_dismissed_${user.id}`, value: 'true' }).catch(() => {});
       } catch {}
       markProfilePromptShown(user.id);
     }

@@ -3,7 +3,6 @@ import {
   Search,
   Plus,
   HeartPulse,
-  Activity,
   Edit2,
   Trash2,
   X,
@@ -14,12 +13,11 @@ import {
   Building2,
   Copy,
   Check,
-  Phone,
-  Mail,
-  UserCheck,
-  RefreshCw,
   Sparkles,
-  AlertCircle
+  ShieldCheck,
+  ChevronDown,
+  List,
+  LayoutGrid,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { NurseRecord } from '../../types/staff';
@@ -69,6 +67,7 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
   const [departmentFilter, setDepartmentFilter] = useState<string>('All');
   const [shiftFilter, setShiftFilter] = useState<string>('All');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -138,19 +137,13 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
       (statusFilter === 'Inactive' && !n.isActive);
 
     const matchesDepartment =
-      departmentFilter === 'All' || n.department.toLowerCase().includes(departmentFilter.toLowerCase());
+      departmentFilter === 'All' || n.department === departmentFilter;
 
     const matchesShift =
-      shiftFilter === 'All' || (n.shift && n.shift.toLowerCase().includes(shiftFilter.toLowerCase()));
+      shiftFilter === 'All' || (n.shift && n.shift.includes(shiftFilter));
 
     return matchesSearch && matchesStatus && matchesDepartment && matchesShift;
   });
-
-  // KPI Metrics
-  const totalNurses = nurses.length;
-  const activeNurses = nurses.filter((n) => n.isActive).length;
-  const triageNurses = nurses.filter((n) => (n.department || '').toLowerCase().includes('triage') || (n.department || '').toLowerCase().includes('vitals')).length;
-  const shiftsCovered = new Set(nurses.map((n) => n.shift || 'Morning')).size;
 
   const handleOpenAdd = () => {
     setFormData({
@@ -172,8 +165,8 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
     setFormData({
       name: nurse.name,
       email: nurse.email,
-      username: nurse.username || nurse.email.split('@')[0],
-      password: nurse.password || '',
+      username: nurse.username || (nurse.email ? nurse.email.split('@')[0] : 'nurse'),
+      password: nurse.password || 'Nurse@123',
       phone: nurse.phone || '+91 98765 00000',
       department: nurse.department || 'Triage & Vitals',
       shift: nurse.shift || 'Morning (07:00 AM - 03:30 PM)',
@@ -191,20 +184,19 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetPasswordNurse || !newResetPassword.trim()) {
-      onShowToast?.('Please enter a valid new password.');
+      onShowToast?.('Please enter a valid password.');
       return;
     }
-
     setIsSubmitting(true);
     try {
       await updateNurse(resetPasswordNurse.id, {
         password: newResetPassword.trim(),
       });
-      onShowToast?.(`Password for ${resetPasswordNurse.name} reset to: ${newResetPassword.trim()}`);
+      onShowToast?.(`Credentials reset successfully for ${resetPasswordNurse.name}`);
       setResetPasswordNurse(null);
       setNewResetPassword('');
     } catch {
-      onShowToast?.('Failed to reset password. Please try again.');
+      onShowToast?.('Failed to reset credentials.');
     } finally {
       setIsSubmitting(false);
     }
@@ -213,24 +205,27 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.email.trim()) {
-      onShowToast?.('Please provide full name and email address.');
+      onShowToast?.('Please provide nurse full name and email.');
       return;
     }
-
     setIsSubmitting(true);
     try {
-      const derivedUsername = formData.username.trim() || formData.email.split('@')[0].trim().toLowerCase();
-      const created = await createNurse({
-        ...formData,
-        username: derivedUsername,
+      await createNurse({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        username: formData.username.trim() || formData.email.split('@')[0],
+        password: formData.password.trim(),
+        phone: formData.phone.trim(),
+        department: formData.department,
+        shift: formData.shift,
+        avatarUrl: formData.avatarUrl,
         hospital_id: currentStaff?.hospitalId || currentStaff?.hospital_id,
         hospitalId: currentStaff?.hospitalId || currentStaff?.hospital_id,
       });
       setIsAddModalOpen(false);
-      const code = created?.staff_code || created?.staffCode || '';
-      onShowToast?.(`Nurse ${formData.name} successfully provisioned with Staff Code ${code || 'assigned'}!`);
+      onShowToast?.(`Nurse ${formData.name} successfully registered to ${formData.department}!`);
     } catch {
-      onShowToast?.('Could not create nurse profile. Please verify details.');
+      onShowToast?.('Could not create nurse record.');
     } finally {
       setIsSubmitting(false);
     }
@@ -239,12 +234,10 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedNurse) return;
-
     setIsSubmitting(true);
     try {
       await updateNurse(selectedNurse.id, {
         name: formData.name,
-        fullName: formData.name,
         email: formData.email,
         username: formData.username,
         phone: formData.phone,
@@ -285,360 +278,557 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* ── 1. Page Header with Title and Add Action ── */}
+      {/* ── Page Header ── */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54] shadow-xs">
-              <HeartPulse className="w-5 h-5 text-[#0B5A54]" />
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading flex items-center gap-2">
-                Nursing Team Management
-                <span className="bg-teal-50 text-[#0B5A54] border border-teal-200 text-xs font-black px-2.5 py-0.5 rounded-full">
-                  {nurses.length} Nurses
-                </span>
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-                Provision nurse credentials, assign triage & vitals stations, and enable real-time pre-consultation handoffs to doctors.
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+              Nurse Management
+            </h2>
+            <span className="bg-teal-50 text-[#0B5A54] border border-teal-200 text-xs font-black px-2.5 py-0.5 rounded-full">
+              {nurses.length} Nurses
+            </span>
           </div>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            Manage nursing staff credentials, clinical stations, duty shifts, and pre-consultation vitals handoffs.
+          </p>
         </div>
 
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="px-5 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md hover:shadow-lg hover:shadow-teal-950/20 active:scale-95 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+          className="flex items-center justify-center gap-2 bg-[#0B5A54] hover:bg-[#084540] text-white px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Add Nurse</span>
         </button>
       </div>
 
-      {/* ── 2. KPI Summary Ribbon ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-teal-50 text-[#0B5A54] border border-teal-200 flex items-center justify-center shrink-0">
-            <HeartPulse className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Nurses</p>
-            <h3 className="text-xl font-black text-slate-900 font-heading">{totalNurses}</h3>
-          </div>
+      {/* ── Search & Filter Toolbar ── */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        {/* Search Bar */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by nurse name, staff code (N007101), username, or station..."
+            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] transition-all text-slate-900 placeholder:text-slate-400"
+          />
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
-            <UserCheck className="w-5 h-5" />
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* Department Filter */}
+          <div className="relative">
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="appearance-none pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 cursor-pointer"
+            >
+              <option value="All">All Departments</option>
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+            <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active On Duty</p>
-            <h3 className="text-xl font-black text-emerald-700 font-heading">{activeNurses}</h3>
-          </div>
-        </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center shrink-0">
-            <Activity className="w-5 h-5" />
+          {/* Shift Filter */}
+          <div className="relative">
+            <select
+              value={shiftFilter}
+              onChange={(e) => setShiftFilter(e.target.value)}
+              className="appearance-none pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 cursor-pointer"
+            >
+              <option value="All">All Shifts</option>
+              <option value="Morning">Morning Shift</option>
+              <option value="Evening">Evening Shift</option>
+              <option value="Night">Night Shift</option>
+              <option value="Rotational">Rotational</option>
+            </select>
+            <Clock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Triage Specialists</p>
-            <h3 className="text-xl font-black text-sky-700 font-heading">{triageNurses}</h3>
-          </div>
-        </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Shifts Active</p>
-            <h3 className="text-xl font-black text-purple-700 font-heading">{shiftsCovered} Covered</h3>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 3. Search & Filter Bar ── */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by nurse name, staff code (N007101), username, email..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 focus:border-[#0B5A54] font-medium"
-            />
-            {searchTerm && (
+          {/* Availability Filter */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-2xl text-xs font-bold">
+            {(['All', 'Active', 'Inactive'] as const).map((status) => (
               <button
+                key={status}
                 type="button"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl text-xs font-bold shrink-0">
-            {(['All', 'Active', 'Inactive'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setStatusFilter(tab)}
+                onClick={() => setStatusFilter(status)}
                 className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                  statusFilter === tab
-                    ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800'
+                  statusFilter === status
+                    ? 'bg-white text-[#0B5A54] shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                {tab}
+                {status}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Dropdown Filters for Department & Shift */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 text-xs font-medium">
-          <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Filter by:</span>
-
-          <select
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
-          >
-            <option value="All">All Clinical Departments</option>
-            {DEPARTMENTS.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={shiftFilter}
-            onChange={(e) => setShiftFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
-          >
-            <option value="All">All Duty Shifts</option>
-            <option value="Morning">Morning Shift</option>
-            <option value="Evening">Evening Shift</option>
-            <option value="Night">Night Shift</option>
-            <option value="Rotational">Rotational</option>
-          </select>
-
-          {(departmentFilter !== 'All' || shiftFilter !== 'All' || searchTerm) && (
+          {/* View Mode Toggle */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200/60">
             <button
               type="button"
-              onClick={() => {
-                setDepartmentFilter('All');
-                setShiftFilter('All');
-                setSearchTerm('');
-              }}
-              className="text-[11px] text-teal-700 font-bold hover:underline ml-auto cursor-pointer"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white text-[#0B5A54] shadow-2xs' : 'text-slate-400 hover:text-slate-700'
+              }`}
+              title="Table View"
             >
-              Reset Filters
+              <List className="w-4 h-4" />
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                viewMode === 'grid' ? 'bg-white text-[#0B5A54] shadow-2xs' : 'text-slate-400 hover:text-slate-700'
+              }`}
+              title="Card Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── 4. Nurse Roster Grid ── */}
-      {filteredNurses.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 border border-dashed border-slate-300 text-center shadow-xs">
-          <HeartPulse className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <h4 className="text-base font-bold text-slate-800">No Nurses Found</h4>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
-            {searchTerm || departmentFilter !== 'All' || statusFilter !== 'All'
-              ? 'No nurse records match your current search and filter criteria.'
-              : 'No nurses have been provisioned for this hospital branch yet.'}
-          </p>
-          <button
-            type="button"
-            onClick={handleOpenAdd}
-            className="mt-4 px-4 py-2 bg-[#0B5A54] text-white rounded-xl text-xs font-bold hover:bg-[#084540] transition-colors cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add First Nurse</span>
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredNurses.map((nurse) => {
-            const isPasswordVisible = !!showPasswords[nurse.id];
-            const displayCode = nurse.staff_code || nurse.staffCode || 'Pending Code';
-            const displayUsername = nurse.username || (nurse.email ? nurse.email.split('@')[0] : 'nurse');
+      {/* ── View 1: Nurse Roster (Table View) ── */}
+      {viewMode === 'table' && (
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  <th className="py-3.5 px-5">Nurse Staff</th>
+                  <th className="py-3.5 px-4">Clinical Department</th>
+                  <th className="py-3.5 px-4">Duty Shift & Contact</th>
+                  <th className="py-3.5 px-4">Credentials & Login</th>
+                  <th className="py-3.5 px-4 text-center">Duty Status</th>
+                  <th className="py-3.5 px-5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+                {filteredNurses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
+                      No nurses registered yet for this hospital. Click "+ Add Nurse" to provision a staff account.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredNurses.map((nurse) => {
+                    const isPasswordVisible = !!showPasswords[nurse.id];
+                    const displayCode = nurse.staff_code || nurse.staffCode || 'N007101';
+                    const displayUsername = nurse.username || (nurse.email ? nurse.email.split('@')[0] : 'nurse');
 
-            return (
-              <div
-                key={nurse.id}
-                className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-lg hover:border-teal-300 transition-all duration-200 p-5 flex flex-col justify-between space-y-4 group relative overflow-hidden"
-              >
-                {/* Header: Avatar, Name, Staff Code, Duty Badge */}
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <img
-                          src={nurse.avatarUrl || AVATAR_PRESETS[0]}
-                          alt={nurse.name}
-                          className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-2xs group-hover:scale-105 transition-transform"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = AVATAR_PRESETS[0];
-                          }}
-                        />
-                        <span
-                          className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                            nurse.isActive ? 'bg-emerald-500' : 'bg-slate-400'
-                          }`}
-                          title={nurse.isActive ? 'Active On Duty' : 'Off Duty'}
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="font-extrabold text-sm sm:text-base text-slate-900 truncate font-heading group-hover:text-[#0B5A54] transition-colors">
-                            {nurse.name}
-                          </h4>
-                        </div>
-                        <p className="text-[11px] font-mono text-slate-500 font-semibold truncate flex items-center gap-1">
-                          <span>@{displayUsername}</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Staff Code & Status */}
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="font-mono text-[11px] font-black px-2 py-0.5 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-200 shadow-2xs">
-                        {displayCode}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleStatus(nurse, e)}
-                        className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border cursor-pointer transition-all ${
-                          nurse.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                        }`}
-                        title="Click to toggle duty status"
+                    return (
+                      <tr
+                        key={nurse.id}
+                        onClick={() => setSelectedNurse(nurse)}
+                        className="hover:bg-teal-50/20 transition-colors cursor-pointer"
                       >
-                        {nurse.isActive ? 'Active Duty' : 'On Leave'}
-                      </button>
+                        {/* Avatar & Name */}
+                        <td className="py-4 px-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-800 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0 font-heading">
+                              {nurse.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-black text-slate-900">{nurse.name}</p>
+                                <span className="text-[10px] font-mono text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded font-black">
+                                  {displayCode}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-medium">{nurse.email}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Department */}
+                        <td className="py-4 px-4">
+                          <span className="text-[#0B5A54] bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200 text-[11px] font-black inline-block">
+                            {nurse.department || 'Triage & Vitals'}
+                          </span>
+                        </td>
+
+                        {/* Duty Shift & Contact */}
+                        <td className="py-4 px-4">
+                          <p className="font-black text-slate-900">{nurse.shift || 'Morning Shift'}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{nurse.phone || '+91 98765 00000'}</p>
+                        </td>
+
+                        {/* Credentials & Login */}
+                        <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-900">
+                              <span className="text-slate-400 text-[10px]">User:</span>
+                              <span className="font-mono text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/70 text-[11px]">
+                                {displayUsername}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-400 text-[10px]">Pass:</span>
+                              <span className="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200/70">
+                                {isPasswordVisible ? (nurse.password || 'Nurse@123') : '••••••••'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleShowPassword(nurse.id)}
+                                className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5 rounded hover:bg-slate-100 transition-colors"
+                                title={isPasswordVisible ? 'Hide Password' : 'Show Password'}
+                              >
+                                {isPasswordVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyCredentials(nurse)}
+                                className="text-slate-400 hover:text-slate-700 cursor-pointer p-0.5 rounded hover:bg-slate-100 transition-colors"
+                                title="Copy Credentials"
+                              >
+                                {copiedId === nurse.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Duty Status */}
+                        <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleStatus(nurse, e)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer ${
+                              nurse.isActive
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                            }`}
+                          >
+                            {nurse.isActive ? 'Active Duty' : 'Station Inactive'}
+                          </button>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-4 px-5 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenResetPassword(nurse, e)}
+                              className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors cursor-pointer"
+                              title="Reset Nurse Password"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenEdit(nurse, e)}
+                              className="p-1.5 rounded-lg hover:bg-teal-50 text-slate-400 hover:text-[#0B5A54] transition-colors cursor-pointer"
+                              title="Edit Nurse Record"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNurseToDelete(nurse);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="Remove Nurse"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── View 2: Nurse Roster (Card Grid View) ── */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredNurses.length === 0 ? (
+            <div className="col-span-full bg-white rounded-3xl p-12 border border-dashed border-slate-300 text-center shadow-xs">
+              <HeartPulse className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <h4 className="text-base font-bold text-slate-800">No Nurses Found</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+                No nurse records match your current search and filter criteria.
+              </p>
+            </div>
+          ) : (
+            filteredNurses.map((nurse) => {
+              const isPasswordVisible = !!showPasswords[nurse.id];
+              const displayCode = nurse.staff_code || nurse.staffCode || 'N007101';
+              const displayUsername = nurse.username || (nurse.email ? nurse.email.split('@')[0] : 'nurse');
+
+              return (
+                <div
+                  key={nurse.id}
+                  onClick={() => setSelectedNurse(nurse)}
+                  className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer space-y-4 group"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-800 text-white flex items-center justify-center font-black text-base shadow-xs shrink-0 font-heading">
+                        {nurse.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-sm font-black text-slate-900 group-hover:text-[#0B5A54] transition-colors">
+                            {nurse.name}
+                          </h3>
+                          <span className="text-[10px] font-mono text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded font-black">
+                            {displayCode}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-medium">{nurse.email}</p>
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleStatus(nurse, e)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-black border transition-all cursor-pointer shrink-0 ${
+                        nurse.isActive
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                          : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                      }`}
+                    >
+                      {nurse.isActive ? 'Active Duty' : 'On Leave'}
+                    </button>
                   </div>
 
-                  {/* Badges: Department & Shift */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 flex items-center gap-1">
-                      <Building2 className="w-3 h-3 text-sky-600" />
-                      <span>{nurse.department || 'Triage & Vitals'}</span>
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-500" />
-                      <span>{nurse.shift || 'Morning Shift'}</span>
-                    </span>
-                  </div>
-
-                  {/* Contact Details */}
-                  <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50/80 p-3 rounded-2xl border border-slate-100 font-medium">
-                    <div className="flex items-center gap-2 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{nurse.email}</span>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Department</span>
+                      <span className="font-black text-slate-800 truncate block">{nurse.department || 'Triage & Vitals'}</span>
                     </div>
-                    <div className="flex items-center gap-2 truncate">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="font-mono">{nurse.phone || '+91 98765 00000'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Credentials Handover Box */}
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="min-w-0">
-                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
-                        Handover Password
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Shift</span>
+                      <span className="font-black text-slate-800 truncate block">
+                        {nurse.shift ? nurse.shift.split(' ')[0] : 'Morning'}
                       </span>
-                      <p className="font-mono text-xs font-black text-slate-900 truncate">
-                        {isPasswordVisible ? (nurse.password || 'Nurse@123') : '••••••••••••'}
-                      </p>
                     </div>
+                  </div>
 
-                    <div className="flex items-center gap-1">
+                  {/* Portal Credentials Pill */}
+                  <div
+                    className="p-3 bg-teal-50/50 rounded-2xl border border-teal-100 flex items-center justify-between text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Nurse Portal Login</span>
+                      <span className="font-mono text-[11px] font-black text-[#0B5A54]">{displayUsername}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-slate-700 bg-white px-2 py-0.5 rounded text-[11px] font-bold border border-teal-200">
+                        {isPasswordVisible ? (nurse.password || 'Nurse@123') : '••••••••'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => toggleShowPassword(nurse.id)}
-                        className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
-                        title={isPasswordVisible ? 'Hide Password' : 'Show Password'}
+                        className="text-slate-400 hover:text-slate-700 cursor-pointer"
                       >
                         {isPasswordVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
-
                       <button
                         type="button"
                         onClick={() => handleCopyCredentials(nurse)}
-                        className={`p-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          copiedId === nurse.id
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                        }`}
-                        title="Copy full credentials card for physical handover"
+                        className="text-slate-400 hover:text-slate-700 cursor-pointer ml-1"
+                        title="Copy Credentials"
                       >
-                        {copiedId === nurse.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedId === nurse.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Actions Footer */}
-                  <div className="flex items-center justify-between gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={(e) => handleOpenResetPassword(nurse, e)}
-                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-teal-300 bg-white hover:bg-teal-50/60 text-slate-600 hover:text-[#0B5A54] text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                      title="Reset or re-issue login credentials"
-                    >
-                      <KeyRound className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0B5A54]" />
-                      <span>Reset Pass</span>
-                    </button>
-
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-500">
+                    <span className="font-mono text-slate-400 text-[11px]">{nurse.phone || '+91 98765 00000'}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenResetPassword(nurse, e)}
+                        className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors cursor-pointer"
+                        title="Reset Password"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => handleOpenEdit(nurse, e)}
-                        className="p-1.5 rounded-xl border border-slate-200 hover:border-teal-300 bg-white hover:bg-teal-50/60 text-slate-600 hover:text-[#0B5A54] transition-all cursor-pointer shadow-2xs"
-                        title="Edit Nurse details"
+                        className="p-1.5 rounded-lg hover:bg-teal-50 text-slate-400 hover:text-[#0B5A54] transition-colors cursor-pointer"
+                        title="Edit Nurse Record"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
-
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setNurseToDelete(nurse);
                         }}
-                        className="p-1.5 rounded-xl border border-slate-200 hover:border-rose-200 bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition-all cursor-pointer shadow-2xs"
-                        title="Remove nurse from roster"
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        title="Remove Nurse"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       )}
 
-      {/* ── 5. MODAL: ADD NURSE ── */}
+      {/* ── 5. Detail Modal (When Nurse Clicked) ── */}
+      {selectedNurse && !isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-800 text-white flex items-center justify-center font-black text-xl shadow-md font-heading">
+                  {selectedNurse.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-900 font-heading">
+                      {selectedNurse.name}
+                    </h3>
+                    <span className="text-[10px] font-mono text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded font-black">
+                      {selectedNurse.staff_code || selectedNurse.staffCode || 'N007101'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-semibold">
+                    {selectedNurse.department || 'Triage & Vitals'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedNurse(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Nurse Credentials Card */}
+            <div className="p-4 rounded-2xl bg-teal-50/60 border border-teal-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-[#0B5A54] uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  Nurse Portal Login Credentials
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyCredentials(selectedNurse)}
+                  className="text-xs font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedId === selectedNurse.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedId === selectedNurse.id ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Portal Username / ID</span>
+                  <span className="font-mono font-black text-slate-900 truncate block">
+                    {selectedNurse.username || selectedNurse.email.split('@')[0] || 'nurse'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Station Password</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-teal-200">
+                      {showPasswords[selectedNurse.id] ? (selectedNurse.password || 'Nurse@123') : '••••••••'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleShowPassword(selectedNurse.id)}
+                      className="text-slate-500 hover:text-slate-900 cursor-pointer"
+                    >
+                      {showPasswords[selectedNurse.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Department & Shift Info */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-medium">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase block font-bold">Assigned Department</span>
+                <span className="text-slate-900 font-bold">{selectedNurse.department || 'Triage & Vitals'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase block font-bold">Assigned Duty Shift</span>
+                <span className="text-slate-900 font-bold">{selectedNurse.shift || 'Morning Shift'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase block font-bold">Email Address</span>
+                <span className="text-slate-900 font-bold truncate block">{selectedNurse.email}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase block font-bold">Contact Phone</span>
+                <span className="text-slate-900 font-bold font-mono">{selectedNurse.phone || '+91 98765 00000'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase block font-bold">Duty Status</span>
+                <span className={`font-bold ${selectedNurse.isActive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {selectedNurse.isActive ? 'Active Duty' : 'On Leave / Off Duty'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setNurseToDelete(selectedNurse)}
+                className="px-4 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove Nurse</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedNurse(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(selectedNurse)}
+                  className="px-5 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit Record</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. MODAL: ADD NURSE ── */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 duration-200 my-8">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
@@ -770,27 +960,6 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
                 />
               </div>
 
-              {/* Avatar Preset Selector */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1.5">Avatar Image</label>
-                <div className="flex items-center gap-2.5">
-                  {AVATAR_PRESETS.map((url, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, avatarUrl: url })}
-                      className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                        formData.avatarUrl === url
-                          ? 'border-[#0B5A54] ring-2 ring-[#0B5A54]/30 scale-105'
-                          : 'border-slate-200 opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={url} alt="preset" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -812,10 +981,10 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
         </div>
       )}
 
-      {/* ── 6. MODAL: EDIT NURSE ── */}
+      {/* ── 7. MODAL: EDIT NURSE ── */}
       {isEditModalOpen && selectedNurse && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 duration-200 my-8">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0B5A54]">
@@ -936,7 +1105,7 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
         </div>
       )}
 
-      {/* ── 7. MODAL: RESET PASSWORD & HANDOVER ── */}
+      {/* ── 8. MODAL: RESET PASSWORD ── */}
       {resetPasswordNurse && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
@@ -960,22 +1129,8 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
             </div>
 
             <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-xs font-medium">
-              <p className="text-xs text-slate-600">
-                Enter a new password for <strong className="text-slate-900">{resetPasswordNurse.name}</strong>. Passwords will be securely hashed upon save.
-              </p>
-
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-700 font-bold">New Password</label>
-                  <button
-                    type="button"
-                    onClick={() => setNewResetPassword(generateRandomPassword())}
-                    className="text-[10px] text-teal-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    <span>Generate Random</span>
-                  </button>
-                </div>
+                <label className="block text-slate-700 font-bold mb-1">New Password *</label>
                 <input
                   type="text"
                   required
@@ -985,18 +1140,18 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setResetPasswordNurse(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'Updating...' : 'Update Password'}
                 </button>
@@ -1006,26 +1161,29 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
         </div>
       )}
 
-      {/* ── 8. MODAL: DELETE CONFIRMATION ── */}
+      {/* ── 9. MODAL: DELETE CONFIRMATION ── */}
       {nurseToDelete && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-6 h-6" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 font-heading">Remove Nurse?</h3>
+                <p className="text-xs text-slate-400">This action will permanently revoke portal credentials.</p>
+              </div>
             </div>
 
-            <div className="text-center space-y-1">
-              <h3 className="text-base font-black text-slate-900 font-heading">Remove Nurse from Roster?</h3>
-              <p className="text-xs text-slate-500">
-                Are you sure you want to remove <strong className="text-slate-800">{nurseToDelete.name}</strong> ({nurseToDelete.staff_code || nurseToDelete.staffCode || 'N/A'})? This will revoke portal access.
-              </p>
+            <div className="p-3 bg-rose-50/50 rounded-2xl border border-rose-100 text-xs text-rose-900 font-medium">
+              Are you sure you want to remove <strong className="font-black">{nurseToDelete.name}</strong> ({nurseToDelete.staff_code || nurseToDelete.staffCode}) from the roster?
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setNurseToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs cursor-pointer"
               >
                 Cancel
               </button>
@@ -1033,9 +1191,9 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={isSubmitting}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                {isSubmitting ? 'Removing...' : 'Confirm Remove'}
+                {isSubmitting ? 'Removing...' : 'Yes, Remove'}
               </button>
             </div>
           </div>
@@ -1044,3 +1202,5 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
     </div>
   );
 };
+
+export default AdminNurseManagement;

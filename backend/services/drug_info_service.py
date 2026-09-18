@@ -369,13 +369,23 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
     return fallback_payload
 
 
+LANGUAGE_NAMES = {
+    "ta": "Tamil (தமிழ்)",
+    "ml": "Malayalam (മലയാളം)",
+    "hi": "Hindi (हिंदी)",
+    "en": "English",
+}
+
+
 def get_clinical_ai_medicine_summary(
     drug_name: str,
-    generic_name: Optional[str] = None
+    generic_name: Optional[str] = None,
+    lang: str = "en"
 ) -> Dict[str, Any]:
     """
     Clinical AI knowledge synthesis when OpenFDA does not index regional or commercial packaging brands.
     Provides verified clinical purpose, indications, how to take, warnings, and side effects.
+    Supports language localization (English, Tamil, Malayalam, Hindi).
     """
     if not drug_name or not str(drug_name).strip():
         return {"found": False}
@@ -383,7 +393,8 @@ def get_clinical_ai_medicine_summary(
     raw_drug = str(drug_name).strip()
     raw_gen = str(generic_name or "").strip()
     target_name = f"{raw_drug} ({raw_gen})" if raw_gen and raw_gen.lower() != raw_drug.lower() else raw_drug
-    cache_key = f"ai_{target_name.lower()}"
+    lang_code = (lang or "en").lower().strip()
+    cache_key = f"ai_{target_name.lower()}_{lang_code}"
     if cache_key in _DRUG_INFO_CACHE:
         return _DRUG_INFO_CACHE[cache_key]
 
@@ -402,8 +413,17 @@ def get_clinical_ai_medicine_summary(
                 "Authorization": f"Bearer {mistral_key}",
                 "Content-Type": "application/json"
             }
+            lang_name = LANGUAGE_NAMES.get(lang_code, "English")
+            lang_prompt_extra = ""
+            if lang_code not in ("en", "english"):
+                lang_prompt_extra = (
+                    f"IMPORTANT: Write the purpose, indications_and_usage, how_to_take, warnings, and side_effects "
+                    f"strictly in {lang_name} for the patient's convenience.\n"
+                )
+
             prompt = (
                 f"You are a clinical pharmacist AI. Provide accurate medical information for the medication: {target_name}.\n"
+                f"{lang_prompt_extra}"
                 "Return ONLY a JSON object with keys:\n"
                 "{\n"
                 '  "purpose": "1-2 sentences explaining what this medicine is and its clinical mechanism",\n'
@@ -418,7 +438,7 @@ def get_clinical_ai_medicine_summary(
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.1,
-                "max_tokens": 450
+                "max_tokens": 500
             }
             with httpx.Client(timeout=12.0) as client:
                 res = client.post(url, headers=headers, json=payload)
@@ -460,7 +480,7 @@ def get_clinical_ai_medicine_summary(
                         "howToTake": how_to_take_list or None,
                         "warnings": warnings_list or None,
                         "sideEffects": [str(s) for s in side_effects if str(s).strip()] or None,
-                        "source": "CarePulse Clinical AI (Packaging Vision)"
+                        "source": f"CarePulse Clinical AI ({lang_name})"
                     }
                     _DRUG_INFO_CACHE[cache_key] = result
                     return result
@@ -468,3 +488,90 @@ def get_clinical_ai_medicine_summary(
             logger.warning(f"Clinical AI medicine summary note: {e}")
 
     return {"found": False}
+
+
+def translate_medicine_info(
+    info_dict: Dict[str, Any],
+    target_lang: str = "en"
+) -> Dict[str, Any]:
+    """
+    Translates clinical medicine information (purpose, indicationsAndUsage, summary,
+    mainUses, howToTake, warnings, sideEffects) into the requested language (Tamil, Malayalam, Hindi, English).
+    Uses Mistral AI with in-memory caching.
+    """
+    lang_code = (target_lang or "en").lower().strip()
+    if lang_code in ("en", "english"):
+        return info_dict
+
+    lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
+    # Check cache
+    cache_seed = f"{info_dict.get('drugName', '')}_{info_dict.get('purpose', '')[:40]}_{lang_code}"
+    cache_key = f"trans_{cache_seed}"
+    if cache_key in _DRUG_INFO_CACHE:
+        return _DRUG_INFO_CACHE[cache_key]
+
+    mistral_key = (os.getenv("MISTRAL_API_KEY") or "").strip()
+    if not mistral_key:
+        try:
+            import config
+            mistral_key = (getattr(config, "MISTRAL_API_KEY", "") or "").strip()
+        except Exception:
+            pass
+
+    if not mistral_key:
+        return info_dict
+
+    try:
+        url = "https://api.mistral.ai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {mistral_key}",
+            "Content-Type": "application/json"
+        }
+        extract_for_translation = {
+            "purpose": info_dict.get("purpose") or "",
+            "indicationsAndUsage": info_dict.get("indicationsAndUsage") or "",
+            "summary": info_dict.get("summary") or "",
+            "mainUses": info_dict.get("mainUses") or [],
+            "howToTake": info_dict.get("howToTake") or [],
+            "warnings": info_dict.get("warnings") or [],
+            "sideEffects": info_dict.get("sideEffects") or [],
+            "disclaimer": info_dict.get("disclaimer") or "Informational reference only. Consult your doctor or pharmacist.",
+        }
+
+        prompt = (
+            f"You are a clinical healthcare translator. Accurately translate ALL fields in the following patient medicine instructions into {lang_name}.\n"
+            f"Translate strings and every single item in lists ('mainUses', 'howToTake', 'warnings', 'sideEffects') into {lang_name}.\n"
+            f"Keep the meaning clear, medically safe, and easy for a patient to understand.\n"
+            f"Input JSON:\n{json.dumps(extract_for_translation, ensure_ascii=False)}\n\n"
+            f"Return ONLY a JSON object with the exact same keys and structure, with all text and list items translated into {lang_name}."
+        )
+
+        payload = {
+            "model": "ministral-8b-latest",
+            "messages": [{"role": "user", "content": prompt}],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
+            "max_tokens": 700
+        }
+        with httpx.Client(timeout=14.0) as client:
+            res = client.post(url, headers=headers, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                content = data["choices"][0]["message"]["content"].strip()
+                if content.startswith("```"):
+                    content = re.sub(r"^```(?:json)?\s*", "", content)
+                    content = re.sub(r"\s*```$", "", content)
+                parsed = json.loads(content)
+
+                translated_res = dict(info_dict)
+                for k in ["purpose", "indicationsAndUsage", "summary", "mainUses", "howToTake", "warnings", "sideEffects", "disclaimer"]:
+                    if k in parsed and parsed[k]:
+                        translated_res[k] = parsed[k]
+                translated_res["lang"] = lang_code
+                _DRUG_INFO_CACHE[cache_key] = translated_res
+                return translated_res
+    except Exception as e:
+        logger.warning(f"Error translating medicine info: {e}")
+
+    return info_dict
+

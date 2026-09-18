@@ -70,6 +70,7 @@ from schemas import (
     ScanMatchResponse,
     PrescriptionMatchedItem,
     DrugInfoSchema,
+    MedicineTranslateRequest,
     MedicineInfoLookupRequest,
     MedicineInfoLookupResponse,
     MedicineSearchResultItem,
@@ -79,7 +80,7 @@ from auth import verify_google_token, process_google_login, generate_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
 from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr, scan_medicine_packaging_vision
-from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary
+from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary, translate_medicine_info
 from services.medicine_search_service import search_medicines
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
@@ -2556,13 +2557,14 @@ def scan_and_match_prescription(
         )
 
     # 3. Vision AI Packaging Analysis / OCR Text Extraction
+    target_lang = (req.lang or "en").lower().strip()
     extracted_text = ""
     candidate_drug = None
     candidate_generic = None
     if req.ocrText or req.ocr_text:
         extracted_text = (req.ocrText or req.ocr_text).strip()
     elif req.image:
-        vision_res = scan_medicine_packaging_vision(req.image)
+        vision_res = scan_medicine_packaging_vision(req.image, lang=target_lang)
         candidate_drug = vision_res.get("drug_name", "")
         candidate_generic = vision_res.get("generic_name", "")
         all_text = vision_res.get("all_text", "")
@@ -2586,6 +2588,8 @@ def scan_and_match_prescription(
         matched_drug = match_result["match"]["drugName"]
         try:
             drug_info_data = get_drug_info(matched_drug)
+            if drug_info_data and target_lang not in ("en", "english"):
+                drug_info_data = translate_medicine_info(drug_info_data, target_lang=target_lang)
             match_result["match"]["drugInfo"] = drug_info_data
         except Exception as e:
             logger.warning(f"Error fetching OpenFDA drug info: {e}")
@@ -2631,7 +2635,9 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
     Google Lens-style Medicine Purpose Lookup via Multimodal Vision AI & OpenFDA.
     Scans ANY medicine packaging (strip, box, bottle) or accepts a drug name, extracting
     brand name, active chemical formula, and verified clinical indications/usage.
+    Supports multilingual results (English, Tamil, Malayalam, Hindi).
     """
+    target_lang = (req.lang or "en").lower().strip()
     extracted_text = ""
     candidate_name = None
     generic_name = (req.genericName or req.generic_name or "").strip() or None
@@ -2644,7 +2650,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         extracted_text = (req.ocrText or req.ocr_text).strip()
         candidate_name = extract_drug_candidate_from_ocr(extracted_text)
     elif req.image:
-        vision_res = scan_medicine_packaging_vision(req.image)
+        vision_res = scan_medicine_packaging_vision(req.image, lang=target_lang)
         candidate_name = (
             vision_res.get("drug_name") or
             extract_drug_candidate_from_ocr(vision_res.get("all_text", ""))
@@ -2663,7 +2669,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             purpose="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
             indicationsAndUsage="",
             summary="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
-            source="None"
+            source="None",
+            lang=target_lang
         )
 
     # 2.5 Fast-path: Single-shot Vision AI already extracted verified clinical purpose & instructions
@@ -2682,6 +2689,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=vision_res.get("warnings") if vision_res.get("warnings") else None,
             sideEffects=vision_res.get("side_effects") if vision_res.get("side_effects") else None,
             boxedWarning=None,
+            lang=target_lang
         )
 
     # 3. Resolve generic active ingredient for OpenFDA if not explicitly provided
@@ -2701,13 +2709,16 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         info = get_drug_info(candidate_name)
 
     if info.get("found"):
+        if target_lang not in ("en", "english"):
+            info = translate_medicine_info(info, target_lang=target_lang)
+
         return MedicineInfoLookupResponse(
             status="FOUND",
             drugName=candidate_name,
             genericName=generic_name,
             extractedText=extracted_text,
             purpose=info.get("purpose"),
-            indicationsAndUsage=info.get("indications_and_usage") or info.get("summary") or "",
+            indicationsAndUsage=info.get("indications_and_usage") or info.get("indicationsAndUsage") or info.get("summary") or "",
             summary=info.get("summary") or "General therapeutic medication.",
             source=info.get("source") or "OpenFDA",
             mainUses=info.get("mainUses"),
@@ -2715,43 +2726,84 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=info.get("warnings"),
             sideEffects=info.get("sideEffects"),
             boxedWarning=info.get("boxedWarning"),
+            lang=target_lang
         )
     else:
         # 5. Attempt Clinical AI knowledge synthesis when packaging scan finds a real brand not in OpenFDA
         if req.image and candidate_name:
-            ai_info = get_clinical_ai_medicine_summary(candidate_name, generic_name)
+            ai_info = get_clinical_ai_medicine_summary(candidate_name, generic_name, lang=target_lang)
             if ai_info.get("found"):
                 return MedicineInfoLookupResponse(
-                status="FOUND",
-                drugName=candidate_name,
-                genericName=generic_name,
-                extractedText=extracted_text,
-                purpose=ai_info.get("purpose"),
-                indicationsAndUsage=ai_info.get("indications_and_usage") or "",
-                summary=ai_info.get("summary") or "General therapeutic clinical medication.",
-                source=ai_info.get("source") or "CarePulse Clinical AI (Packaging Vision)",
-                mainUses=[ai_info.get("indications_and_usage")] if ai_info.get("indications_and_usage") else None,
-                howToTake=ai_info.get("howToTake"),
-                warnings=ai_info.get("warnings"),
-                sideEffects=ai_info.get("sideEffects"),
-                boxedWarning=None,
-            )
-        else:
-            return MedicineInfoLookupResponse(
-                status="NO_INFO_AVAILABLE",
-                drugName=candidate_name,
-                genericName=generic_name,
-                extractedText=extracted_text,
-                purpose=None,
-                indicationsAndUsage="",
-                summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
-                source="Fallback",
-                mainUses=None,
-                howToTake=None,
-                warnings=None,
-                sideEffects=None,
-                boxedWarning=None,
-            )
+                    status="FOUND",
+                    drugName=candidate_name,
+                    genericName=generic_name,
+                    extractedText=extracted_text,
+                    purpose=ai_info.get("purpose"),
+                    indicationsAndUsage=ai_info.get("indications_and_usage") or "",
+                    summary=ai_info.get("summary") or "General therapeutic clinical medication.",
+                    source=ai_info.get("source") or "CarePulse Clinical AI (Packaging Vision)",
+                    mainUses=[ai_info.get("indications_and_usage")] if ai_info.get("indications_and_usage") else None,
+                    howToTake=ai_info.get("howToTake"),
+                    warnings=ai_info.get("warnings"),
+                    sideEffects=ai_info.get("sideEffects"),
+                    boxedWarning=None,
+                    lang=target_lang
+                )
+        return MedicineInfoLookupResponse(
+            status="NO_INFO_AVAILABLE",
+            drugName=candidate_name,
+            genericName=generic_name,
+            extractedText=extracted_text,
+            purpose=None,
+            indicationsAndUsage="",
+            summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
+            source="Fallback",
+            mainUses=None,
+            howToTake=None,
+            warnings=None,
+            sideEffects=None,
+            boxedWarning=None,
+            lang=target_lang
+        )
+
+
+@app.post("/api/medicine/translate-info", response_model=MedicineInfoLookupResponse)
+def translate_medicine_info_endpoint(req: MedicineTranslateRequest):
+    """
+    Instantly translates medical scan / lookup details into Tamil, Malayalam, Hindi, or English.
+    Enables single-tap language switching for patients on the medicine scan results screen.
+    """
+    target_lang = (req.targetLang or req.target_lang or "en").lower().strip()
+    data_dict = {
+        "drugName": req.drugName or "",
+        "genericName": req.genericName or "",
+        "purpose": req.purpose or "",
+        "indicationsAndUsage": req.indicationsAndUsage or "",
+        "summary": req.summary or "",
+        "mainUses": req.mainUses or [],
+        "howToTake": req.howToTake or [],
+        "warnings": req.warnings or [],
+        "sideEffects": req.sideEffects or [],
+        "disclaimer": req.disclaimer or "Informational reference only. Consult your doctor or pharmacist.",
+    }
+    translated = translate_medicine_info(data_dict, target_lang=target_lang)
+    return MedicineInfoLookupResponse(
+        status="FOUND",
+        drugName=req.drugName or "",
+        genericName=req.genericName or None,
+        extractedText="",
+        purpose=translated.get("purpose"),
+        indicationsAndUsage=translated.get("indicationsAndUsage") or "",
+        summary=translated.get("summary") or "",
+        source=f"CarePulse Medical Translation ({target_lang.upper()})",
+        mainUses=translated.get("mainUses"),
+        howToTake=translated.get("howToTake"),
+        warnings=translated.get("warnings"),
+        sideEffects=translated.get("sideEffects"),
+        boxedWarning=None,
+        lang=target_lang,
+        disclaimer=translated.get("disclaimer"),
+    )
 
 
 

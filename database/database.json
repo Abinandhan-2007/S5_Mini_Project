@@ -1041,6 +1041,21 @@
       "is_active": true,
       "last_login": "2026-09-17T15:50:56.965553+00:00",
       "created_at": "2026-09-17T15:50:49.466970+00:00"
+    },
+    {
+      "id": "1adab82e-faa9-4441-b617-e40cdd51204c",
+      "patient_id": "0c479fa5-fcdc-4165-b76b-f5b085e7942b",
+      "device_id": "dev_737wjdpp_mu3obr46",
+      "device_model": "Windows Desktop Browser",
+      "manufacturer": "PC / Workstation",
+      "platform": "web",
+      "os_version": "Windows 10/11",
+      "app_version": "1.0.4",
+      "ip_address": "127.0.0.1",
+      "fcm_token": "",
+      "is_active": true,
+      "last_login": "2026-09-18T16:28:15.473897+00:00",
+      "created_at": "2026-09-18T16:18:34.630457+00:00"
     }
   ],
   "medicines": [

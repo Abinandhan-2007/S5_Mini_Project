@@ -97,16 +97,12 @@ export const RemindersScreen: React.FC = () => {
   }, []);
 
   const handleMarkTaken = (rem: ReminderItem) => {
-    if (!rem.taken) {
-      markDoseAsAte(rem.medId, rem.slotId, rem.medicationName);
-      setReminders((prev) =>
-        prev.map((r) => (r.id === rem.id ? { ...r, taken: true } : r))
-      );
-    } else {
-      setReminders((prev) =>
-        prev.map((r) => (r.id === rem.id ? { ...r, taken: false } : r))
-      );
-    }
+    if (rem.taken) return; // Once marked as taken, cannot be unmarked
+
+    markDoseAsAte(rem.medId, rem.slotId, rem.medicationName);
+    setReminders((prev) =>
+      prev.map((r) => (r.id === rem.id ? { ...r, taken: true } : r))
+    );
   };
 
   const handleSnooze30 = async (rem: ReminderItem) => {
@@ -280,25 +276,28 @@ export const RemindersScreen: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleMarkTaken(rem)}
-                        className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer ${
+                        disabled={rem.taken}
+                        className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1 ${
                           rem.taken
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                            ? 'bg-emerald-600 text-white cursor-default opacity-95'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 cursor-pointer active:scale-95'
                         }`}
-                        title={rem.taken ? 'Marked as Taken' : 'Mark as Taken'}
+                        title={rem.taken ? 'Completed (Already Taken)' : 'Mark as Taken'}
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>{rem.taken ? 'Taken' : 'Take'}</span>
                       </button>
 
-                      <button
-                        onClick={() => handleSnooze30(rem)}
-                        className="px-2 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                        title="Snooze 30 Minutes"
-                      >
-                        <Clock className="w-3.5 h-3.5 text-amber-700" />
-                        <span>30m</span>
-                      </button>
+                      {!rem.taken && (
+                        <button
+                          onClick={() => handleSnooze30(rem)}
+                          className="px-2 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Snooze 30 Minutes"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-amber-700" />
+                          <span>30m</span>
+                        </button>
+                      )}
                     </div>
 
                     <label className="relative inline-flex items-center cursor-pointer mt-0.5">

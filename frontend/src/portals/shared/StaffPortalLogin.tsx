@@ -96,28 +96,73 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       // Fallback to client-side store verification
     }
 
-    // 2. Check SuperAdmin Credentials fallback (Username or Email)
+    // 2. Check SuperAdmin Credentials (API or Local Fallback)
     if (
-      (cleanId === 'superadmin' || cleanId === 'superadmin@carepulse.com' || cleanId === 'sa101' || cleanId === 'sa') &&
-      (cleanPassword === 'SuperAdmin@123' || cleanPassword === 'superadmin')
+      cleanId === 'superadmin' ||
+      cleanId === 'superadmin@carepulse.com' ||
+      cleanId === 'sa101' ||
+      cleanId === 'sa'
     ) {
-      setStaffAuth(
-        {
-          id: 'superadmin-1',
-          name: 'Platform SuperAdmin',
-          email: 'superadmin@carepulse.com',
-          role: 'superadmin',
-          department: 'Global Platform Operations',
-          staff_code: 'SA101',
-          staffCode: 'SA101',
-          hospitalId: undefined,
-          hospital_id: undefined,
-        },
-        'token-superadmin-session'
-      );
-      setIsLoading(false);
-      navigate('/superadmin');
-      return;
+      try {
+        const saRes = await apiPost('/superadmin/login', {
+          email: cleanId,
+          username: cleanId,
+          identifier: cleanId,
+          password: cleanPassword,
+        });
+        if (saRes.ok) {
+          const saData = await saRes.json();
+          if (saData && saData.staff) {
+            const token = saData.token || 'token-superadmin-session';
+            localStorage.setItem('superadmin_token', token);
+            sessionStorage.setItem('superadmin_token', token);
+            setStaffAuth(
+              {
+                id: saData.staff.id || 'superadmin-1',
+                name: saData.staff.name || 'Platform SuperAdmin',
+                email: saData.staff.email || 'superadmin@carepulse.com',
+                role: 'superadmin',
+                department: saData.staff.department || 'Global Platform Operations',
+                avatarUrl: saData.staff.avatarUrl,
+                staff_code: saData.staff.staff_code || 'SA101',
+                staffCode: saData.staff.staff_code || 'SA101',
+                phone: saData.staff.phone,
+                hospital_id: undefined,
+                hospitalId: undefined,
+              },
+              token
+            );
+            setIsLoading(false);
+            navigate('/superadmin');
+            return;
+          }
+        }
+      } catch {
+        // Continue to offline credential verification
+      }
+
+      if (cleanPassword === 'SuperAdmin@123' || cleanPassword === 'superadmin') {
+        const fallbackToken = 'token-superadmin-session';
+        localStorage.setItem('superadmin_token', fallbackToken);
+        sessionStorage.setItem('superadmin_token', fallbackToken);
+        setStaffAuth(
+          {
+            id: 'superadmin-1',
+            name: 'Platform SuperAdmin',
+            email: 'superadmin@carepulse.com',
+            role: 'superadmin',
+            department: 'Global Platform Operations',
+            staff_code: 'SA101',
+            staffCode: 'SA101',
+            hospitalId: undefined,
+            hospital_id: undefined,
+          },
+          fallbackToken
+        );
+        setIsLoading(false);
+        navigate('/superadmin');
+        return;
+      }
     }
 
     // 3. Check Admin Credentials (Username or Email)
@@ -342,7 +387,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               CarePulse Staff
             </h1>
             <p className="text-sm text-teal-100/70 font-medium leading-relaxed">
-              Single sign-on for Administrators, Clinical Physicians, and Front-Desk Receptionists.
+              Single sign-on for SuperAdmin, Hospital Administrators, Clinical Physicians, Nurses, and Front-Desk Receptionists.
             </p>
           </motion.div>
 

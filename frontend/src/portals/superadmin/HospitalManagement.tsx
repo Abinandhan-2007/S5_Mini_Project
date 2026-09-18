@@ -293,7 +293,7 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             {error.toLowerCase().includes('token') || error.toLowerCase().includes('authentication') ? (
               <a
-                href="/staff/superadmin"
+                href="/staff/login"
                 className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold font-sans text-xs transition-colors shadow-2xs"
               >
                 Re-Authenticate &rarr;

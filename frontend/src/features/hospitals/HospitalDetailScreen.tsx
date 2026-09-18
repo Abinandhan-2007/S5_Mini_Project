@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Star, ArrowLeft, ArrowUpRight, Clock, ShieldCheck, Check, Filter } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, ArrowUpRight, Clock, ShieldCheck, Check, Filter, Navigation } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
@@ -9,6 +9,7 @@ import { hospitalService } from '../../services/hospitalService';
 import type { Hospital, Doctor } from '../../lib/types';
 import { useCarePulseStore } from '../../lib/store';
 import { useLocalizedEntities } from '../../i18n';
+import { HospitalRouteModal } from '../../components/hospitals/HospitalRouteModal';
 
 export const HospitalDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,7 @@ export const HospitalDetailScreen: React.FC = () => {
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'available' | 'offduty'>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
 
   // Live polling: Fetch hospital and affiliated doctors from backend database in real-time
   const fetchLiveHospitalData = React.useCallback(() => {
@@ -201,12 +203,19 @@ export const HospitalDetailScreen: React.FC = () => {
             <span className="leading-snug">{hospital.address} • <strong className="text-[#111827]">{hospital.distanceMiles} {t('hospitals.distanceKm', 'miles away')}</strong></span>
           </div>
 
-          <div className="pt-2 border-t border-[#E4E7EC] flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
+          <div className="pt-2.5 border-t border-[#E4E7EC] flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-emerald-700 font-bold">{t('hospitalDetail.emergency247', 'Open 24/7 Emergency Care')}</span>
             </div>
-            <span className="text-[#0B5A54] font-bold">{t('hospitalDetail.verifiedHospital', 'Verified Center')}</span>
+            <button
+              type="button"
+              onClick={() => setIsRouteModalOpen(true)}
+              className="bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200/80 px-2.5 py-1 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs cursor-pointer"
+            >
+              <Navigation className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span>Find Route & Map</span>
+            </button>
           </div>
         </div>
 
@@ -462,6 +471,16 @@ export const HospitalDetailScreen: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Interactive Hospital Route & Navigation Map Dialog */}
+      {hospital && (
+        <HospitalRouteModal
+          isOpen={isRouteModalOpen}
+          onClose={() => setIsRouteModalOpen(false)}
+          hospitalName={hospital.name}
+          facilityAddress={hospital.address}
+        />
+      )}
 
       <BottomNav />
     </div>

@@ -426,7 +426,7 @@ export const AppUserDevices: React.FC = () => {
               </button>
               {error.includes('Role') && (
                 <a
-                  href="/superadmin/login"
+                  href="/staff/login"
                   className="px-4 py-2 rounded-xl bg-teal-800 text-white text-xs font-semibold hover:bg-teal-700 transition-colors inline-block"
                 >
                   Log In as SuperAdmin

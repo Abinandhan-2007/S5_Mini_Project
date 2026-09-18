@@ -28,6 +28,9 @@ import {
   Check,
   Microscope,
   Sparkles,
+  Zap,
+  RotateCcw,
+  X,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { PrescriptionMedicine, SoapNotes, PatientVitals, PatientEMRRecord, TriagePriority } from '../../types/doctor';
@@ -164,6 +167,115 @@ const CATEGORIZED_DIAGNOSES = [
   { category: 'Respiratory', items: ['Acute Upper Respiratory Infection', 'Seasonal Allergic Rhinitis', 'Bronchial Asthma Follow-Up'] },
   { category: 'Gastroenterology', items: ['Acute Viral Gastroenteritis', 'Acid Peptic Disease / GERD', 'Functional Dyspepsia'] },
   { category: 'General / Metabolic', items: ['Type 2 Diabetes Mellitus Review', 'Routine Preventive Health Checkup', 'Musculoskeletal Lumbar Strain'] },
+];
+
+export interface SoapTemplate {
+  id: string;
+  name: string;
+  badge: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+}
+
+const SMART_SOAP_TEMPLATES: SoapTemplate[] = [
+  {
+    id: 'uri',
+    name: 'Common Cold / URI',
+    badge: 'Respiratory',
+    subjective: 'Patient reports sore throat, dry cough, clear rhinorrhea, and mild body aches for 2 days. No dyspnea or wheezing.',
+    objective: 'Pharynx mildly congested. Bilateral lung fields clear to auscultation with normal vesicular breath sounds. S1 S2 heard normal. Vitals stable.',
+    assessment: 'Acute Upper Respiratory Tract Infection (URI)',
+    plan: 'Steam inhalation twice daily. Warm saline gargles TDS. High oral fluid intake, rest. Review in 3 days if fever or symptoms persist.',
+  },
+  {
+    id: 'gerd',
+    name: 'Acid Peptic / GERD',
+    badge: 'Gastroenterology',
+    subjective: 'Complains of retrosternal burning, sour belching, postprandial epigastric discomfort, and nausea for 3 days.',
+    objective: 'Abdomen soft, mild epigastric tenderness, no organomegaly or guarding. Bowel sounds normal.',
+    assessment: 'Acid Peptic Disease / Gastroesophageal Reflux Disease (GERD)',
+    plan: 'Avoid spicy, oily foods, tea, coffee, and late-night meals. Eat small frequent meals. Elevate head end of bed. Review in 5 days.',
+  },
+  {
+    id: 'htn',
+    name: 'Hypertension Review',
+    badge: 'Cardiology',
+    subjective: 'Routine blood pressure review. Asymptomatic, denies headaches, dizziness, chest tightness, palpitations, or visual changes.',
+    objective: 'Cardiovascular exam S1 S2 normal, no murmurs. Bilateral lung fields clear. Peripheral pulses palpable, no pedal edema.',
+    assessment: 'Stage 1 Essential Hypertension (Follow-Up)',
+    plan: 'Maintain low-sodium diet (< 2g/day). 30 mins brisk walking 5 days/week. Daily morning BP charting. Review in 14 days.',
+  },
+  {
+    id: 't2dm',
+    name: 'Type 2 Diabetes Review',
+    badge: 'Metabolic',
+    subjective: 'Routine diabetes checkup. Compliant with prescribed medications. No polyuria, polydipsia, paresthesias, or foot sores.',
+    objective: 'Bilateral feet warm, sensation intact, peripheral pulses present. Blood pressure and vitals stable. No skin lesions.',
+    assessment: 'Type 2 Diabetes Mellitus (Under Glycemic Control)',
+    plan: 'Strict diabetic diet, zero refined sugars. Regular aerobic exercise. Fasting/PP blood sugar tracking. Order HbA1c test.',
+  },
+  {
+    id: 'lumbar',
+    name: 'Musculoskeletal Strain',
+    badge: 'Orthopedics',
+    subjective: 'Aching lower back pain aggravated by prolonged sitting and bending. No radiating pain to lower limbs, numbness, or weakness.',
+    objective: 'Lumbar paraspinal muscle tenderness and mild spasm noted. Straight Leg Raise (SLR) test negative bilaterally. Gait steady.',
+    assessment: 'Acute Musculoskeletal Lumbar Strain',
+    plan: 'Hot water fomentation TDS. Avoid forward bending and lifting heavy objects. Ergonomic seating posture. Gentle core stretches after 3 days.',
+  },
+  {
+    id: 'checkup',
+    name: 'Preventive Health Check',
+    badge: 'Wellness',
+    subjective: 'Patient reports for routine preventive health checkup. Denies any active constitutional symptoms or acute discomfort.',
+    objective: 'Alert, oriented, well-nourished. Vitals within normal limits. Systemic examination (CVS, RS, PA, CNS) unremarkable.',
+    assessment: 'Routine Preventive Health Evaluation (Satisfactory)',
+    plan: 'Balanced diet rich in fiber and vegetables. Maintain 7-8 hours restful sleep. Annual preventive screening recommended.',
+  },
+];
+
+const QUICK_SYMPTOMS = [
+  'Fever',
+  'Dry Cough',
+  'Productive Cough',
+  'Sore Throat',
+  'Runny Nose',
+  'Headache',
+  'Body Ache',
+  'Chest Tightness',
+  'Breathlessness',
+  'Nausea / Vomiting',
+  'Abdominal Pain',
+  'Loose Stools',
+  'Joint Pain',
+  'Fatigue',
+];
+
+const QUICK_EXAM_FINDINGS = [
+  'Vitals Stable',
+  'Throat Congested',
+  'B/L Lungs Clear',
+  'S1 S2 Normal',
+  'Abdomen Soft & Non-tender',
+  'No Pedal Edema',
+  'Pallor / Icterus Nil',
+  'Gait Normal',
+];
+
+const QUICK_PLANS = [
+  'Adequate Hydration & Rest',
+  'Warm Saline Gargles TDS',
+  'Steam Inhalation BD',
+  'Light Bland Diet',
+  'Low Salt & Low Oil Diet',
+  'Diabetic Diet Plan',
+  'Order Routine CBC',
+  'Review in 3 Days',
+  'Review in 1 Week',
+  'Review in 2 Weeks',
+  'SOS if symptoms worsen',
 ];
 
 export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
@@ -315,6 +427,50 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     setIsCopiedPhone(true);
     showToast('Copied patient contact number');
     setTimeout(() => setIsCopiedPhone(false), 2000);
+  };
+
+  // Helper to append quick chips cleanly to SOAP textareas
+  const handleAppendText = (field: keyof SoapNotes, textToAdd: string) => {
+    setSoap((prev) => {
+      const current = (prev[field] || '').trim();
+      if (!current) {
+        return { ...prev, [field]: textToAdd };
+      }
+      if (current.toLowerCase().includes(textToAdd.toLowerCase())) {
+        return prev;
+      }
+      const separator = current.endsWith('.') || current.endsWith(';') ? ' ' : ', ';
+      return { ...prev, [field]: `${current}${separator}${textToAdd}` };
+    });
+  };
+
+  // Helper to load 1-click clinical templates
+  const handleApplySoapTemplate = (template: SoapTemplate) => {
+    setSoap({
+      subjective: template.subjective,
+      objective: template.objective,
+      assessment: template.assessment,
+      plan: template.plan,
+    });
+    showToast(`Applied clinical template: ${template.name}`);
+  };
+
+  // Clear SOAP to blank slate
+  const handleClearSoap = () => {
+    setSoap({
+      subjective: '',
+      objective: '',
+      assessment: '',
+      plan: '',
+    });
+    showToast('Cleared SOAP notes');
+  };
+
+  // Insert live vitals summary into Objective notes
+  const handleInsertVitals = () => {
+    const vitalsStr = `Vitals Recorded: BP ${vitals.bpSys}/${vitals.bpDia} mmHg, HR ${vitals.heartRate} bpm, Temp ${vitals.temperature}°F, SpO2 ${vitals.spo2}%, Weight ${vitals.weight} kg.`;
+    handleAppendText('objective', vitalsStr);
+    showToast('Inserted vitals into Objective notes');
   };
 
   // Add a medication row
@@ -1242,21 +1398,66 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
               transition={{ duration: 0.15 }}
               className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 space-y-5"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              {/* Top Header with Clear & Status */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#0B5A54]" />
                   <h2 className="text-sm sm:text-base font-black text-slate-900 font-heading tracking-tight">Clinical SOAP Record</h2>
+                  <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                    4-Field Clinical Note
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
-                  Standard Clinical Record
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleClearSoap}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-[11px] flex items-center gap-1 border border-slate-200 transition-colors cursor-pointer"
+                    title="Reset all fields to blank"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Clear All</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ⚡ 1-Click Smart Clinical Templates */}
+              <div className="p-3.5 bg-gradient-to-r from-teal-50/70 via-emerald-50/50 to-white rounded-2xl border border-teal-200/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-[#0B5A54] font-heading">
+                    <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                    <span>1-Click Smart Clinical Templates (Fills S, O, A, P Instantly)</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-500 hidden sm:inline">
+                    Tap to autofill complete standard notes
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {SMART_SOAP_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => handleApplySoapTemplate(tmpl)}
+                      className="px-2.5 py-1 rounded-xl bg-white hover:bg-teal-600 hover:text-white text-slate-700 text-[11px] font-bold border border-teal-300/80 shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer group"
+                    >
+                      <Sparkles className="w-3 h-3 text-teal-600 group-hover:text-white transition-colors" />
+                      <span>{tmpl.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Categorized Quick Diagnoses Shortcuts */}
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
-                  Quick Diagnosis Shortcuts by Specialty
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
+                    Quick Diagnosis Shortcuts by Specialty
+                  </span>
+                  {soap.assessment && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-xs">
+                      Active Dx: {soap.assessment}
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {CATEGORIZED_DIAGNOSES.map((cat) => (
                     <div key={cat.category} className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1.5">
@@ -1284,35 +1485,147 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 </div>
               </div>
 
-              {/* SOAP Fields with Distinct Color-Coded Left Accent Bars */}
+              {/* ══════════════════════════════════════════════════════
+                  SOAP FIELDS: ALL 4 FIELDS (S, O, A, P) FULLY DISPLAYED
+              ══════════════════════════════════════════════════════ */}
               <div className="space-y-4 pt-1">
-                {/* S - Subjective (Purple Left Accent Bar) */}
-                <div className="border-l-4 border-purple-500 pl-3.5 space-y-1">
-                  <label className="block text-xs font-bold text-slate-900">
-                    <span className="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-purple-200 text-[10px]">S</span>
-                    Subjective (Patient Symptoms & History of Present Illness)
-                  </label>
+                {/* ── S: SUBJECTIVE ── */}
+                <div className="border-l-4 border-purple-500 pl-3.5 space-y-2 bg-purple-50/20 p-2.5 rounded-r-2xl border border-purple-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-purple-300 text-[10px]">S</span>
+                      Subjective (Patient Symptoms & History of Present Illness)
+                    </label>
+                    <span className="text-[10px] font-semibold text-purple-700">Chief Complaints</span>
+                  </div>
+
+                  {/* Quick Symptom Chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_SYMPTOMS.map((sym) => (
+                      <button
+                        key={sym}
+                        type="button"
+                        onClick={() => handleAppendText('subjective', sym)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 transition-colors cursor-pointer"
+                        title={`Add ${sym} to symptoms`}
+                      >
+                        + {sym}
+                      </button>
+                    ))}
+                  </div>
+
                   <textarea
                     rows={3}
                     value={soap.subjective}
                     onChange={(e) => setSoap((s) => ({ ...s, subjective: e.target.value }))}
                     placeholder="Patient reports symptoms, duration, intensity, triggers, and aggravating factors..."
-                    className="w-full p-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+                    className="w-full p-3 bg-white border border-purple-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
                   />
                 </div>
 
-                {/* P - Plan (Emerald Left Accent Bar) */}
-                <div className="border-l-4 border-emerald-600 pl-3.5 space-y-1">
-                  <label className="block text-xs font-bold text-slate-900">
-                    <span className="text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-emerald-200 text-[10px]">P</span>
-                    Plan & Treatment Done (Therapeutic Regimen, Procedures, Diet/Lifestyle Advice)
-                  </label>
+                {/* ── O: OBJECTIVE ── */}
+                <div className="border-l-4 border-sky-500 pl-3.5 space-y-2 bg-sky-50/20 p-2.5 rounded-r-2xl border border-sky-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-sky-300 text-[10px]">O</span>
+                      Objective (Physical Examination & Clinical Findings)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleInsertVitals}
+                      className="text-[10.5px] font-bold px-2 py-0.5 rounded-lg bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 flex items-center gap-1 shadow-2xs transition-colors self-start sm:self-auto cursor-pointer"
+                    >
+                      <Activity className="w-3 h-3 text-sky-600" />
+                      <span>+ Insert Current Vitals ({vitals.bpSys}/{vitals.bpDia}, {vitals.heartRate} bpm)</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Exam Findings Chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_EXAM_FINDINGS.map((exam) => (
+                      <button
+                        key={exam}
+                        type="button"
+                        onClick={() => handleAppendText('objective', exam)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-sky-100 text-sky-900 border border-sky-200 transition-colors cursor-pointer"
+                        title={`Add ${exam} to exam findings`}
+                      >
+                        + {exam}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={soap.objective}
+                    onChange={(e) => setSoap((s) => ({ ...s, objective: e.target.value }))}
+                    placeholder="General appearance, vitals, auscultation (CVS / RS), abdominal palpation, neurological exam..."
+                    className="w-full p-3 bg-white border border-sky-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
+                  />
+                </div>
+
+                {/* ── A: ASSESSMENT (CLINICAL DIAGNOSIS) ── */}
+                <div className="border-l-4 border-amber-500 pl-3.5 space-y-2 bg-amber-50/20 p-2.5 rounded-r-2xl border border-amber-100">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-amber-300 text-[10px]">A</span>
+                      Assessment & Clinical Diagnosis
+                    </label>
+                    <span className="text-[10px] font-semibold text-amber-700">Primary Provisional Diagnosis</span>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={soap.assessment}
+                      onChange={(e) => setSoap((s) => ({ ...s, assessment: e.target.value }))}
+                      placeholder="Type provisional diagnosis or click any diagnosis shortcut above..."
+                      className="w-full p-3 pr-10 bg-white border border-amber-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                    />
+                    {soap.assessment && (
+                      <button
+                        type="button"
+                        onClick={() => setSoap((s) => ({ ...s, assessment: '' }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                        title="Clear diagnosis"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── P: PLAN & TREATMENT DONE ── */}
+                <div className="border-l-4 border-emerald-600 pl-3.5 space-y-2 bg-emerald-50/20 p-2.5 rounded-r-2xl border border-emerald-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-emerald-300 text-[10px]">P</span>
+                      Plan & Treatment Done (Therapeutic Regimen, Procedures, Diet/Lifestyle Advice)
+                    </label>
+                    <span className="text-[10px] font-semibold text-emerald-700">Management & Advice</span>
+                  </div>
+
+                  {/* Quick Plan Chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_PLANS.map((pln) => (
+                      <button
+                        key={pln}
+                        type="button"
+                        onClick={() => handleAppendText('plan', pln)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition-colors cursor-pointer"
+                        title={`Add ${pln} to plan`}
+                      >
+                        + {pln}
+                      </button>
+                    ))}
+                  </div>
+
                   <textarea
                     rows={3}
                     value={soap.plan}
                     onChange={(e) => setSoap((s) => ({ ...s, plan: e.target.value }))}
-                    placeholder="Therapeutic regimen, dietary instructions, diagnostic lab investigations, follow-up..."
-                    className="w-full p-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all font-medium"
+                    placeholder="Therapeutic regimen, dietary instructions, diagnostic lab investigations, follow-up advice..."
+                    className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all font-medium"
                   />
                 </div>
               </div>
@@ -1322,7 +1635,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('rx')}
-                  className="px-4 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center gap-1.5 border border-teal-200 transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <span>Proceed to Prescription (Rx)</span>
                   <ChevronRight className="w-3.5 h-3.5" />
