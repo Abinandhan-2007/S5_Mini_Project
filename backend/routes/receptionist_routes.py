@@ -1395,6 +1395,8 @@ def fetch_all_tokens_from_db(
                         query += " AND a.doctor_id = %s"
                         params.append(doctor_id)
 
+                    query += " AND a.status != 'Cancelled'"
+
                     if checked_in_only:
                         query += " AND (a.is_checked_in = TRUE OR a.status IN ('Checked In', 'In Consultation', 'Completed'))"
 
@@ -1420,7 +1422,16 @@ def fetch_all_tokens_from_db(
                         j_app = json_apps_map.get(app_id, {})
 
                         raw_status = app_dict.get("status") or "Waiting"
-                        token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed", "Checked In"] else raw_status
+                        if raw_status == "Cancelled":
+                            continue
+
+                        is_checked = bool(app_dict.get("is_checked_in", False))
+                        if is_checked or raw_status == "Checked In":
+                            token_status = "Checked In"
+                        elif raw_status in ["Upcoming", "Waiting", "Confirmed"]:
+                            token_status = "Waiting"
+                        else:
+                            token_status = raw_status
 
                         p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Patient"
                         p_phone = app_dict.get("patient_phone_db") or app_dict.get("patient_phone") or "+91 98765 43210"
@@ -1572,8 +1583,12 @@ def fetch_all_tokens_from_db(
                 if doctor_id and app_doc_id != doctor_id:
                     continue
 
+                raw_status = app_dict.get("status") or "Waiting"
+                if raw_status == "Cancelled":
+                    continue
+
                 is_checked = app_dict.get("is_checked_in") is True
-                is_active_or_done = app_dict.get("status") in ["Checked In", "In Consultation", "Completed"]
+                is_active_or_done = raw_status in ["Checked In", "In Consultation", "Completed"]
                 if checked_in_only and not (is_checked or is_active_or_done):
                     continue
 
@@ -1583,8 +1598,12 @@ def fetch_all_tokens_from_db(
                 p_name = app_dict.get("patient_name") or app_dict.get("patientName") or p_obj.get("full_name") or "Patient"
                 p_phone = app_dict.get("patient_phone") or app_dict.get("patientPhone") or p_obj.get("phone") or "+91 98765 43210"
 
-                raw_status = app_dict.get("status") or "Waiting"
-                token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed", "Checked In"] else raw_status
+                if is_checked or raw_status == "Checked In":
+                    token_status = "Checked In"
+                elif raw_status in ["Upcoming", "Waiting", "Confirmed"]:
+                    token_status = "Waiting"
+                else:
+                    token_status = raw_status
 
                 checked_in_at_val = app_dict.get("checked_in_at")
                 created_at_val = app_dict.get("created_at") or app_dict.get("createdAt")
@@ -1796,19 +1815,42 @@ def checkin_appointment(
 
     now_dt = datetime.now()
     updated_record = None
+    clean_app_id = str(appointment_id).strip()
+
+    is_uuid = False
+    try:
+        uuid.UUID(clean_app_id)
+        is_uuid = True
+    except Exception:
+        is_uuid = False
 
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("""
-                        UPDATE appointments
-                        SET is_checked_in = TRUE,
-                            checked_in_at = %s,
-                            status = 'Checked In'
-                        WHERE id::text = %s OR ticket_number = %s
-                        RETURNING *
-                    """, (now_dt, appointment_id, appointment_id))
+                    if is_uuid:
+                        cur.execute("""
+                            UPDATE appointments
+                            SET is_checked_in = TRUE,
+                                checked_in_at = %s,
+                                status = 'Checked In'
+                            WHERE id::text = %s
+                            RETURNING *
+                        """, (now_dt, clean_app_id))
+                    else:
+                        cur.execute("""
+                            UPDATE appointments
+                            SET is_checked_in = TRUE,
+                                checked_in_at = %s,
+                                status = 'Checked In'
+                            WHERE id = (
+                                SELECT id FROM appointments
+                                WHERE ticket_number = %s
+                                ORDER BY (is_checked_in IS TRUE) ASC, date ASC, time_slot ASC
+                                LIMIT 1
+                            )
+                            RETURNING *
+                        """, (now_dt, clean_app_id))
                     row = cur.fetchone()
                     conn.commit()
                     if row:
@@ -1819,7 +1861,12 @@ def checkin_appointment(
     try:
         db = database.read_json_db()
         for app in db.get("appointments", []):
-            if str(app.get("id")) == appointment_id or str(app.get("ticket_number")) == appointment_id or str(app.get("ticketNumber")) == appointment_id:
+            match = False
+            if is_uuid:
+                match = (str(app.get("id")) == clean_app_id)
+            else:
+                match = (str(app.get("id")) == clean_app_id or str(app.get("ticket_number")) == clean_app_id or str(app.get("ticketNumber")) == clean_app_id)
+            if match:
                 app["is_checked_in"] = True
                 app["checked_in_at"] = now_dt.isoformat()
                 app["status"] = "Checked In"
@@ -1886,21 +1933,47 @@ def update_token_status(
     now = datetime.now()
     now_time_str = now.strftime("%I:%M %p")
     effective_check_in_time = payload.check_in_time or payload.checkInTime or (now_time_str if payload.status == "Checked In" else None)
+    clean_token_id = str(token_id).strip()
+
+    is_uuid = False
+    try:
+        uuid.UUID(clean_token_id)
+        is_uuid = True
+    except Exception:
+        is_uuid = False
+
+    is_checking_in = (payload.status == "Checked In")
 
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    update_fields = ["status = %s"]
+                    params = [payload.status]
                     if effective_check_in_time:
-                        cur.execute(
-                            "UPDATE appointments SET status = %s, check_in_time = %s WHERE id::text = %s OR ticket_number = %s",
-                            (payload.status, effective_check_in_time, token_id, token_id)
-                        )
+                        update_fields.append("check_in_time = %s")
+                        params.append(effective_check_in_time)
+                    if is_checking_in:
+                        update_fields.append("is_checked_in = TRUE")
+                        update_fields.append("checked_in_at = COALESCE(checked_in_at, %s)")
+                        params.append(now)
+
+                    set_clause = ", ".join(update_fields)
+                    if is_uuid:
+                        sql = f"UPDATE appointments SET {set_clause} WHERE id::text = %s"
+                        params.append(clean_token_id)
                     else:
-                        cur.execute(
-                            "UPDATE appointments SET status = %s WHERE id::text = %s OR ticket_number = %s",
-                            (payload.status, token_id, token_id)
-                        )
+                        sql = f"""
+                            UPDATE appointments SET {set_clause}
+                            WHERE id = (
+                                SELECT id FROM appointments
+                                WHERE ticket_number = %s
+                                ORDER BY date ASC, time_slot ASC
+                                LIMIT 1
+                            )
+                        """
+                        params.append(clean_token_id)
+                    cur.execute(sql, tuple(params))
                 conn.commit()
         except Exception as e:
             logger.warning(f"DB update status note: {e}")
@@ -1908,11 +1981,20 @@ def update_token_status(
     try:
         db = database.read_json_db()
         for app in db.get("appointments", []):
-            if str(app.get("id")) == token_id or app.get("ticket_number") == token_id or app.get("ticketNumber") == token_id:
+            match = False
+            if is_uuid:
+                match = (str(app.get("id")) == clean_token_id)
+            else:
+                match = (str(app.get("id")) == clean_token_id or app.get("ticket_number") == clean_token_id or app.get("ticketNumber") == clean_token_id)
+            if match:
                 app["status"] = payload.status
                 if effective_check_in_time:
                     app["check_in_time"] = effective_check_in_time
                     app["checkInTime"] = effective_check_in_time
+                if is_checking_in:
+                    app["is_checked_in"] = True
+                    if not app.get("checked_in_at"):
+                        app["checked_in_at"] = now.isoformat()
                 break
         database.write_json_db(db)
     except Exception as e:

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import doctorAvatar from '../../assets/doctor_avatar.png';
 import { Home, Building2, Activity, User } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useTranslation } from '../../lib/i18n';
+import { useTranslation } from '../../i18n';
 
 /**
  * System Theme-Aware Executive Bottom Navigation Capsule

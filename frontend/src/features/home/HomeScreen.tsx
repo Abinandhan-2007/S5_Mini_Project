@@ -33,11 +33,11 @@ import { isUserProfileIncomplete } from '../auth/CompleteProfileScreen';
 import { MedicationCardStack, SmartMedicineLensCard } from '../../components/prescriptions';
 import { AppointmentCardStack } from '../../components/appointments/AppointmentCardStack';
 import type { Appointment } from '../../lib/types';
-import { useTranslation } from '../../i18n';
+import { useLocalizedEntities } from '../../i18n';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, formatSpecialty, formatDoctorName, formatHospitalName } = useLocalizedEntities();
   const user = useCarePulseStore((s) => s.user);
   const appointments = useCarePulseStore((s) => s.appointments);
   const activeAppointment = useCarePulseStore((s) => s.activeAppointment);
@@ -267,12 +267,12 @@ export const HomeScreen: React.FC = () => {
                     />
                     <div className="min-w-0 space-y-0.5">
                       <h4 className="text-sm sm:text-base font-black text-[#111827] group-hover:text-[#0B5A54] transition-colors truncate tracking-tight">
-                        {activeAppointments[0].doctorName}
+                        {formatDoctorName(activeAppointments[0].doctorName)}
                       </h4>
-                      <p className="text-xs text-[#0B5A54] font-extrabold">{activeAppointments[0].doctorSpecialty}</p>
+                      <p className="text-xs text-[#0B5A54] font-extrabold">{formatSpecialty(activeAppointments[0].doctorSpecialty)}</p>
                       <p className="text-[10.5px] text-slate-500 font-semibold truncate flex items-center gap-1">
                         <Building2 className="w-3 h-3 text-[#14B8A6] shrink-0" />
-                        <span>{activeAppointments[0].hospitalName}</span>
+                        <span>{formatHospitalName(activeAppointments[0].hospitalName)}</span>
                       </p>
                     </div>
                   </div>
@@ -375,8 +375,8 @@ export const HomeScreen: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <Avatar src={modalApp.doctorPhoto} size="sm" />
                   <div>
-                    <h4 className="text-xs font-extrabold text-[#111827] leading-tight">{modalApp.doctorName}</h4>
-                    <p className="text-[10px] font-bold text-[#0B5A54] leading-tight">{modalApp.doctorSpecialty}</p>
+                    <h4 className="text-xs font-extrabold text-[#111827] leading-tight">{formatDoctorName(modalApp.doctorName)}</h4>
+                    <p className="text-[10px] font-bold text-[#0B5A54] leading-tight">{formatSpecialty(modalApp.doctorSpecialty)}</p>
                   </div>
                 </div>
 

@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation, useLocalizedEntities } from '../../i18n';
 
 export interface MedicationItem {
   id: string;
@@ -266,11 +267,13 @@ const DEFAULT_COURSE_DAYS = [
 
 export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   prescriptions = [],
-  title = 'ACTIVE PRESCRIPTIONS',
+  title,
   onViewAll,
   onSelectMedication,
   onMarkTaken,
 }) => {
+  const { t } = useTranslation();
+  const { formatDoctorName, formatHospitalName } = useLocalizedEntities();
   const [activeIndex, setActiveIndex] = useState(0);
   const [takenSlotsMap, setTakenSlotsMap] = useState<
     Record<string, { date: string; slots: Record<string, string> }>
@@ -485,7 +488,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       {/* 1. HEADER ROW */}
       <div className="flex justify-between items-center px-1 pb-1">
         <h3 className="text-xs sm:text-sm font-black text-[#0B5A54] uppercase tracking-widest font-heading">
-          {title}
+          {title || t('home.activePrescriptionsHeader', 'ACTIVE PRESCRIPTIONS')}
         </h3>
 
         {hasPrescriptions && (
@@ -496,7 +499,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                 onClick={onViewAll}
                 className="text-xs sm:text-sm font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                <span>View All</span>
+                <span>{t('common.viewAll', 'View All')}</span>
                 <span className="bg-[#E3F3F1] text-[#0B5A54] text-[11px] font-black px-2 py-0.5 rounded-full border border-[#14B8A6]/30">
                   {totalCards}
                 </span>
@@ -504,7 +507,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
               </button>
             ) : (
               <span className="bg-[#E3F3F1] text-[#0B5A54] text-[11px] font-black px-2 py-0.5 rounded-full border border-[#14B8A6]/30">
-                {totalCards} {totalCards === 1 ? 'Prescription' : 'Prescriptions'}
+                {totalCards} {t('prescriptions.title', 'Prescriptions')}
               </span>
             )}
           </div>
@@ -526,14 +529,14 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2">
               <h4 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
-                No Active Medications
+                {t('home.noActiveMedications', 'No Active Medications')}
               </h4>
               <span className="bg-[#0B5A54]/10 text-[#0B5A54] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                Wallet Empty
+                {t('home.walletEmpty', 'Wallet Empty')}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Active prescriptions and dosage schedules prescribed by your doctors will stack here automatically.
+              {t('home.noActiveMedicationsDesc', 'Active prescriptions and dosage schedules prescribed by your doctors will stack here automatically.')}
             </p>
           </div>
         </motion.div>
@@ -651,7 +654,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
                     <div className="shrink-0 flex items-center gap-1.5 pt-0.5">
                       <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                        {completedSlotsCount}/{doseSlots.length} doses
+                        {completedSlotsCount}/{doseSlots.length} {t('prescriptions.doses', 'doses')}
                       </span>
                     </div>
                   </div>
@@ -668,10 +671,10 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <div className="flex items-center justify-between text-xs sm:text-[13.5px] mb-2">
                         <div className="flex items-center gap-1.5 text-slate-800 font-extrabold">
                           <Calendar className={clsx('w-4 h-4', theme.accentColor)} />
-                          <span>Day {effectiveCompleted} of {baseTotal} Days Prescribed</span>
+                          <span>{t('prescriptions.dayOfDays', `Day ${effectiveCompleted} of ${baseTotal} Days Prescribed`, { day: effectiveCompleted, total: baseTotal })}</span>
                         </div>
                         <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                          {progressPercent}% Done
+                          {progressPercent}% {t('prescriptions.done', 'Done')}
                         </span>
                       </div>
 
@@ -688,10 +691,10 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <div className="flex items-center justify-between text-xs sm:text-[13px] mb-2">
                         <span className="font-bold text-slate-700 flex items-center gap-1.5">
                           <Clock className={clsx('w-4 h-4', theme.accentColor)} />
-                          <span>Today's Dosage Schedule:</span>
+                          <span>{t('home.todaySchedule', "Today's Dosage Schedule:")}</span>
                         </span>
                         <span className={clsx('text-[11px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                          {allDosesTakenToday ? 'All doses taken today' : `${completedSlotsCount} of ${doseSlots.length} taken`}
+                          {allDosesTakenToday ? t('prescriptions.allDosesTaken', 'All doses taken today') : t('prescriptions.dosesTakenOf', `${completedSlotsCount} of ${doseSlots.length} taken`, { count: completedSlotsCount, total: doseSlots.length })}
                         </span>
                       </div>
 
@@ -739,12 +742,12 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                     <div className={clsx('pt-2 border-t flex items-center justify-between gap-2 text-xs sm:text-[12.5px] font-medium', theme.footerBorder, theme.footerText)}>
                       <div className="flex items-center gap-1.5 truncate">
                         <Building2 className={clsx('w-4 h-4 shrink-0', theme.accentColor)} />
-                        <span className="truncate font-bold text-slate-700">{med.hospitalName}</span>
+                        <span className="truncate font-bold text-slate-700">{formatHospitalName(med.hospitalName)}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 truncate text-xs">
                         <UserIcon className={clsx('w-3.5 h-3.5 shrink-0', theme.accentColor)} />
-                        <span className="truncate font-semibold text-slate-700">{med.prescriber}</span>
+                        <span className="truncate font-semibold text-slate-700">{formatDoctorName(med.prescriber)}</span>
                       </div>
                     </div>
                   </div>

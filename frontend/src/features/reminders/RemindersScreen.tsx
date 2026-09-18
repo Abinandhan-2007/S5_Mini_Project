@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useCarePulseStore } from '../../lib/store';
 import {
-  triggerIntakePrompt,
+  showInteractiveMedicationNotification,
   markDoseAsAte,
   snoozeDoseFor30Minutes,
   isDoseAlreadyTaken,
@@ -128,26 +128,22 @@ export const RemindersScreen: React.FC = () => {
     );
   };
 
-  const handleTriggerPromptModal = (rem: ReminderItem) => {
-    triggerIntakePrompt({
-      id: `${rem.medId}-${rem.slotId}`,
-      medId: rem.medId,
-      slotId: rem.slotId,
-      drugName: rem.medicationName,
-      dosage: rem.dosage,
-      timeLabel: rem.time,
-      timingCategory: `${rem.timingCategory} Dose`,
-      instructions: 'Take after food with water',
-    }, true);
-  };
-
-  const handleTriggerTestNotification = () => {
+  const handleTriggerTestNotification = async () => {
     const activeMed = reminders.find((r) => !r.taken) || reminders[0];
     if (!activeMed) {
       alert("No medications scheduled. Add a medication to test reminders.");
       return;
     }
-    handleTriggerPromptModal(activeMed);
+    await showInteractiveMedicationNotification({
+      id: `${activeMed.medId}-${activeMed.slotId}`,
+      medId: activeMed.medId,
+      slotId: activeMed.slotId,
+      drugName: activeMed.medicationName,
+      dosage: activeMed.dosage,
+      timeLabel: activeMed.time,
+      timingCategory: `${activeMed.timingCategory} Dose`,
+      instructions: 'Take after food with water',
+    });
   };
 
   const handleAddCustom = () => {
@@ -259,11 +255,7 @@ export const RemindersScreen: React.FC = () => {
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div 
-                    className="space-y-1 flex-1 cursor-pointer"
-                    onClick={() => handleTriggerPromptModal(rem)}
-                    title="Click to open interactive intake prompt"
-                  >
+                  <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-gray-900">{rem.medicationName}</span>
                       <Badge variant={rem.taken ? 'success' : 'tint'} size="sm">

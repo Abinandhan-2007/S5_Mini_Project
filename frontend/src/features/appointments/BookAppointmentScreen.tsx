@@ -20,6 +20,7 @@ import type { Doctor } from '../../lib/types';
 import { useCarePulseStore } from '../../lib/store';
 import { useStaffStore } from '../../store/staffStore';
 import { apiFetch } from '../../lib/apiFetch';
+import { useLocalizedEntities } from '../../i18n';
 
 /**
  * Ultra-Premium Executive Book Appointment Screen
@@ -30,7 +31,7 @@ import { apiFetch } from '../../lib/apiFetch';
 export const BookAppointmentScreen: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
   const navigate = useNavigate();
-  const appointments = useCarePulseStore((s) => s.appointments);
+  const { t, formatSpecialty, formatDoctorName, formatHospitalName } = useLocalizedEntities();
   const addAppointment = useCarePulseStore((s) => s.addAppointment);
   const user = useCarePulseStore((s) => s.user);
   const staffDoctors = useStaffStore((s) => s.doctors);
@@ -161,8 +162,8 @@ export const BookAppointmentScreen: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const nextNum = 482 + appointments.length;
-    const newTicketNum = `TK-${nextNum}`;
+    const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
+    const newTicketNum = `TK-${Date.now().toString().slice(-4)}${uniqueSuffix}`;
     setBookedTicket(newTicketNum);
 
     const payload = {
@@ -241,7 +242,7 @@ export const BookAppointmentScreen: React.FC = () => {
             >
               <ArrowLeft className="w-4 h-4 text-white" />
             </button>
-            <h1 className="text-lg font-black text-white">Book Appointment</h1>
+            <h1 className="text-lg font-black text-white">{t('booking.title', 'Book Appointment')}</h1>
           </div>
         </header>
         <div className="max-w-sm mx-auto text-center space-y-4 px-4 my-auto">
@@ -249,16 +250,16 @@ export const BookAppointmentScreen: React.FC = () => {
             <AlertCircle className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-800">Doctor Profile Not Found</h3>
+            <h3 className="text-base font-bold text-slate-800">{t('hospitals.noHospitalsFound', 'Doctor Profile Not Found')}</h3>
             <p className="text-xs text-slate-500">
-              The requested doctor schedule is currently unavailable or has been removed.
+              {t('hospitals.noHospitalsFound', 'The requested doctor schedule is currently unavailable or has been removed.')}
             </p>
           </div>
           <button
             onClick={() => navigate(-1)}
             className="w-full bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-bold py-3 px-4 rounded-full shadow-sm transition-all"
           >
-            Go Back
+            {t('common.cancel', 'Go Back')}
           </button>
         </div>
       </div>
@@ -280,10 +281,10 @@ export const BookAppointmentScreen: React.FC = () => {
 
           <div className="text-center flex-1 min-w-0 pr-9">
             <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight drop-shadow-2xs truncate">
-              Book Appointment
+              {t('booking.title', 'Book Appointment')}
             </h1>
             <p className="text-[11px] font-medium text-cyan-50/90 tracking-wide">
-              Step 1 of 2 • Slot & Facility Confirmation
+              {t('booking.stepDoctor', 'Step 1 of 2')} • {t('booking.stepDateTime', 'Slot & Facility Confirmation')}
             </p>
           </div>
         </div>
@@ -306,12 +307,12 @@ export const BookAppointmentScreen: React.FC = () => {
                 {doctor.isAvailable === false || doctor.is_available === false ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold tracking-wide">
                     <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                    <span>Off-Duty / Temporarily Away</span>
+                    <span>{t('doctors.offDuty', 'Off-Duty')} / Temporarily Away</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold tracking-wide">
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>Available Today · Cabin Active</span>
+                    <span>{t('doctors.availableNow', 'Available Today')} · Cabin Active</span>
                   </span>
                 )}
               </div>
@@ -319,7 +320,7 @@ export const BookAppointmentScreen: React.FC = () => {
               {/* Doctor Name & Staff Code */}
               <div className="flex items-center gap-2 flex-wrap pt-0.5">
                 <h2 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight truncate">
-                  {doctor.name}
+                  {formatDoctorName(doctor.name)}
                 </h2>
                 {(doctor.staff_code || doctor.staffCode) && (
                   <span className="font-mono text-xs font-bold text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-full border border-[#14B8A6]/30 shadow-2xs">
@@ -347,7 +348,7 @@ export const BookAppointmentScreen: React.FC = () => {
               {/* Specialty & Credentials */}
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 flex-wrap">
                 <span className="text-[#0B5A54] bg-[#E3F3F1] px-2.5 py-0.5 rounded-md font-extrabold">
-                  {doctor.specialty || 'General Medicine'}
+                  {formatSpecialty(doctor.specialty || 'General Medicine')}
                 </span>
                 <span>•</span>
                 <span className="text-slate-600">MD, DM (Clinical Specialist)</span>
@@ -375,7 +376,7 @@ export const BookAppointmentScreen: React.FC = () => {
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-xs px-2.5 py-0.5 rounded-full shadow-xs border border-slate-200/80 flex items-center gap-1 shrink-0">
                 <span className={`w-2 h-2 rounded-full ${doctor.isAvailable === false || doctor.is_available === false ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse'}`} />
                 <span className="text-[9.5px] font-black text-slate-700 whitespace-nowrap">
-                  {doctor.isAvailable === false || doctor.is_available === false ? 'Off-Duty' : 'Online'}
+                  {doctor.isAvailable === false || doctor.is_available === false ? t('doctors.offDuty', 'Off-Duty') : t('doctors.availableNow', 'Online')}
                 </span>
               </div>
             </div>
@@ -388,7 +389,7 @@ export const BookAppointmentScreen: React.FC = () => {
             </div>
             <div className="min-w-0">
               <p className="font-black text-slate-800 truncate">
-                {doctor.hospitalName || 'CarePulse Medical Center'}
+                {formatHospitalName(doctor.hospitalName || 'CarePulse Medical Center')}
               </p>
               <p className="text-[11px] font-medium text-slate-500 truncate">
                 OPD Floor 3, Cabin 301 • Verified Department
@@ -402,17 +403,17 @@ export const BookAppointmentScreen: React.FC = () => {
           <div>
             <h3 className="text-sm font-black font-heading text-slate-900 flex items-center gap-1.5">
               <CalendarIcon className="w-4 h-4 text-[#0B5A54]" />
-              <span>Select Appointment Date</span>
+              <span>{t('booking.appointmentDate', 'Select Appointment Date')}</span>
             </h3>
             <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-              {formattedSelectedDate} • <span className="text-[#0B5A54] font-black">{selectedSlot || 'Select Slot'}</span>
+              {formattedSelectedDate} • <span className="text-[#0B5A54] font-black">{selectedSlot || t('booking.selectSlotPrompt', 'Select Slot')}</span>
             </p>
           </div>
 
           {/* Horizontal Date Scroller (Rolling 8-day window) */}
           <div className="space-y-1.5">
             <div className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5">
-              <span>Available Dates</span>
+              <span>{t('booking.availableSlots', 'Available Dates')}</span>
             </div>
             <DateScroller
               selectedDate={selectedDate}
@@ -424,7 +425,7 @@ export const BookAppointmentScreen: React.FC = () => {
           {/* Time Slots Grid */}
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <div className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5">
-              <span>Doctor Consultation Time Slots</span>
+              <span>{t('booking.availableSlots', 'Doctor Consultation Time Slots')}</span>
             </div>
             <TimeSlotGrid
               selectedSlot={selectedSlot}
@@ -443,7 +444,7 @@ export const BookAppointmentScreen: React.FC = () => {
           <div className="flex items-center justify-between w-full sm:w-auto gap-4">
             <div>
               <p className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider">
-                Appointment Schedule
+                {t('booking.consultationSummary', 'Appointment Schedule')}
               </p>
               <p className="text-xs font-black text-slate-800 font-heading">
                 {formattedSelectedDate} • <span className="text-[#0B5A54]">{selectedSlot}</span>
@@ -459,7 +460,7 @@ export const BookAppointmentScreen: React.FC = () => {
                 className="w-full py-3.5 px-6 rounded-2xl bg-rose-50 text-rose-700 font-black text-xs sm:text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-rose-200 shadow-2xs"
               >
                 <X className="w-4 h-4 text-rose-500 shrink-0" />
-                <span className="truncate">Doctor Unavailable {doctor.availabilityReason ? `(${doctor.availabilityReason})` : '(Off-Duty)'}</span>
+                <span className="truncate">{t('doctors.offDuty', 'Doctor Unavailable')} {doctor.availabilityReason ? `(${doctor.availabilityReason})` : '(Off-Duty)'}</span>
               </button>
             ) : (!((doctor as any)?.slotCapacities?.length > 0 || (doctor as any)?.slot_capacities?.length > 0)) ? (
               <button
@@ -468,7 +469,7 @@ export const BookAppointmentScreen: React.FC = () => {
                 className="w-full py-3.5 px-6 rounded-2xl bg-slate-200 text-slate-500 font-black text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-slate-300"
               >
                 <AlertCircle className="w-4 h-4 text-slate-400" />
-                <span>No Time Slots Configured</span>
+                <span>{t('booking.allSlotsFilled', 'No Time Slots Configured')}</span>
               </button>
             ) : !selectedSlot ? (
               <button
@@ -477,7 +478,7 @@ export const BookAppointmentScreen: React.FC = () => {
                 className="w-full py-3.5 px-6 rounded-2xl bg-slate-200 text-slate-500 font-black text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-slate-300"
               >
                 <AlertCircle className="w-4 h-4 text-slate-400" />
-                <span>Select a Time Slot Above</span>
+                <span>{t('booking.selectSlotPrompt', 'Select a Time Slot Above')}</span>
               </button>
             ) : (
               <motion.button
@@ -491,12 +492,12 @@ export const BookAppointmentScreen: React.FC = () => {
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Confirming Pass...</span>
+                    <span>{t('booking.processing', 'Confirming Pass...')}</span>
                   </div>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-teal-200" />
-                    <span>Confirm & Generate Token</span>
+                    <span>{t('booking.confirmBooking', 'Confirm & Generate Pass')}</span>
                     <ChevronRight className="w-4 h-4 text-teal-200 ml-auto sm:ml-0" />
                   </>
                 )}
@@ -522,10 +523,10 @@ export const BookAppointmentScreen: React.FC = () => {
 
               <div className="space-y-1">
                 <h3 className="text-xl font-black font-heading text-slate-900 tracking-tight">
-                  Appointment Confirmed! 🎉
+                  {t('booking.bookingConfirmed', 'Appointment Confirmed!')} 🎉
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Your official OPD pass has been generated and synced with hospital queue desk.
+                  {t('booking.instructions', 'Your official OPD pass has been generated and synced with hospital queue desk.')}
                 </p>
               </div>
 
@@ -549,10 +550,10 @@ export const BookAppointmentScreen: React.FC = () => {
                   />
                   <div className="min-w-0 flex-1">
                     <h4 className="text-sm font-black font-heading text-slate-900 truncate">
-                      {doctor.name}
+                      {formatDoctorName(doctor.name)}
                     </h4>
                     <p className="text-xs font-bold text-[#0B5A54]">
-                      {doctor.specialty} Specialist
+                      {formatSpecialty(doctor.specialty)} Specialist
                     </p>
                   </div>
                 </div>
@@ -564,7 +565,7 @@ export const BookAppointmentScreen: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-2.5 text-xs">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block">DATE & TIME</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t('booking.appointmentDate', 'DATE & TIME')}</span>
                     <span className="font-black text-slate-800">
                       {formattedSelectedDate}
                     </span>
@@ -572,12 +573,12 @@ export const BookAppointmentScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block">FACILITY ROOM</span>
+                    <span className="text-[10px] font-bold text-slate-400 block">{t('hospitalDetail.facilityType', 'FACILITY ROOM')}</span>
                     <span className="font-black text-slate-800 truncate block">
                       Cabin 301 (3rd Floor)
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium truncate block">
-                      {doctor.hospitalName}
+                      {formatHospitalName(doctor.hospitalName)}
                     </span>
                   </div>
                 </div>
@@ -608,7 +609,7 @@ export const BookAppointmentScreen: React.FC = () => {
                   }}
                   className="py-3.5 rounded-2xl font-black text-xs shadow-md bg-[#0B5A54] hover:bg-[#08423D]"
                 >
-                  Return to Dashboard
+                  {t('booking.backToHome', 'Return to Dashboard')}
                 </Button>
 
                 <button
@@ -618,7 +619,7 @@ export const BookAppointmentScreen: React.FC = () => {
                   }}
                   className="text-xs font-bold text-[#0B5A54] hover:underline block mx-auto pt-1 cursor-pointer"
                 >
-                  View in Appointment History →
+                  {t('booking.viewInHistory', 'View In Medical History')} →
                 </button>
               </div>
             </motion.div>

@@ -23,42 +23,44 @@ import { requestNativeLocation } from '../../lib/locationService';
 import { hospitalService } from '../../services/hospitalService';
 import { doctorService } from '../../services/doctorService';
 import type { Hospital, Doctor } from '../../lib/types';
+import { useLocalizedEntities } from '../../i18n';
 
 type HospitalSortOption = 'rating' | 'distance' | 'reviews' | 'name';
-
-const SORT_OPTIONS: { key: HospitalSortOption; label: string; icon: React.ReactNode }[] = [
-  {
-    key: 'rating',
-    label: 'Top Rated',
-    icon: <Star className="w-4 h-4 text-amber-500 fill-amber-500" />,
-  },
-  {
-    key: 'distance',
-    label: 'Nearest First',
-    icon: <Navigation className="w-4 h-4 text-[#0B5A54]" />,
-  },
-  {
-    key: 'reviews',
-    label: 'Most Reviewed',
-    icon: <MessageSquareText className="w-4 h-4 text-sky-600" />,
-  },
-  {
-    key: 'name',
-    label: 'Name (A to Z)',
-    icon: <ArrowDownAZ className="w-4 h-4 text-indigo-600" />,
-  },
-];
-
-const sortLabelMap: Record<HospitalSortOption, string> = {
-  rating: 'Top Rated',
-  distance: 'Nearest',
-  reviews: 'Most Reviewed',
-  name: 'Name (A-Z)',
-};
 
 export const FindHospitalsScreen: React.FC = () => {
   const navigate = useNavigate();
   const locationRoute = useLocation();
+  const { t, formatSpecialty, formatHospitalName } = useLocalizedEntities();
+
+  const SORT_OPTIONS: { key: HospitalSortOption; label: string; icon: React.ReactNode }[] = [
+    {
+      key: 'rating',
+      label: t('hospitals.sortTopRated', 'Top Rated'),
+      icon: <Star className="w-4 h-4 text-amber-500 fill-amber-500" />,
+    },
+    {
+      key: 'distance',
+      label: t('hospitals.sortNearest', 'Nearest First'),
+      icon: <Navigation className="w-4 h-4 text-[#0B5A54]" />,
+    },
+    {
+      key: 'reviews',
+      label: t('hospitals.sortMostReviewed', 'Most Reviewed'),
+      icon: <MessageSquareText className="w-4 h-4 text-sky-600" />,
+    },
+    {
+      key: 'name',
+      label: t('hospitals.sortNameAsc', 'Name (A to Z)'),
+      icon: <ArrowDownAZ className="w-4 h-4 text-indigo-600" />,
+    },
+  ];
+
+  const sortLabelMap: Record<HospitalSortOption, string> = {
+    rating: t('hospitals.sortTopRated', 'Top Rated'),
+    distance: t('hospitals.sortNearest', 'Nearest'),
+    reviews: t('hospitals.sortMostReviewed', 'Most Reviewed'),
+    name: t('hospitals.sortNameAsc', 'Name (A-Z)'),
+  };
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -162,14 +164,16 @@ export const FindHospitalsScreen: React.FC = () => {
           {/* Top Row: Title + Notification Bell */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight">Find Hospitals</h1>
+              <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight">
+                {t('hospitals.title', 'Find Hospitals & Clinics')}
+              </h1>
             </div>
 
             <button
               onClick={() => navigate('/notifications')}
               className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
-              aria-label="Notifications"
-              title="Notifications"
+              aria-label={t('nav.notifications', 'Notifications')}
+              title={t('nav.notifications', 'Notifications')}
             >
               <Bell className="w-4 h-4 text-[#111827]" />
               <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
@@ -187,7 +191,7 @@ export const FindHospitalsScreen: React.FC = () => {
                   setSearchQuery(e.target.value);
                   if (locationStatus) setLocationStatus(null);
                 }}
-                placeholder="Search hospitals, doctors, specialties, city..."
+                placeholder={t('hospitals.searchPlaceholder', 'Search hospitals, doctors, specialties, city...')}
                 className="w-full bg-transparent border-none text-xs sm:text-sm text-[#111827] font-semibold focus:outline-none placeholder:text-[#9CA3AF]"
               />
 
@@ -196,7 +200,7 @@ export const FindHospitalsScreen: React.FC = () => {
                   type="button"
                   onClick={() => setSearchQuery('')}
                   className="p-1 text-slate-400 hover:text-slate-600 mr-1 cursor-pointer"
-                  title="Clear Search"
+                  title={t('common.clear', 'Clear Search')}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -207,7 +211,7 @@ export const FindHospitalsScreen: React.FC = () => {
                 onClick={runGeolocationDetection}
                 disabled={isLocating}
                 className="w-8 h-8 rounded-full bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white transition-all shrink-0 active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
-                title="Detect Current Location"
+                title={t('hospitals.detectLocation', 'Detect Current Location')}
               >
                 {isLocating ? <Loader2 className="w-4 h-4 animate-spin text-[#0B5A54]" /> : <LocateFixed className="w-4 h-4" />}
               </button>
@@ -227,12 +231,12 @@ export const FindHospitalsScreen: React.FC = () => {
         {/* Active Search Term Filter Header */}
         {searchQuery && (
           <div className="flex justify-between items-center text-xs font-extrabold text-[#0B5A54] px-1 pt-0.5">
-            <span>Showing results for "{searchQuery}"</span>
+            <span>{t('hospitals.showingResultsFor', { query: searchQuery })}</span>
             <button
               onClick={() => setSearchQuery('')}
               className="text-[11px] font-bold text-slate-500 hover:text-[#0B5A54] underline cursor-pointer"
             >
-              Clear
+              {t('common.clear', 'Clear')}
             </button>
           </div>
         )}
@@ -241,7 +245,7 @@ export const FindHospitalsScreen: React.FC = () => {
         <div className="flex items-center justify-between px-1 relative z-20">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-black text-slate-800 tracking-tight">
-              Hospital Facilities
+              {t('hospitals.hospitalFacilities', 'Hospital Facilities')}
             </span>
             <span className="text-[11px] font-bold text-slate-400">
               ({filteredHospitals.length})
@@ -256,7 +260,7 @@ export const FindHospitalsScreen: React.FC = () => {
               className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-[#0B5A54] border border-slate-200/90 px-3 py-1.5 rounded-full text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
               <ArrowUpDown className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <span>Sort: {sortLabelMap[sortBy]}</span>
+              <span>{t('hospitals.sort', 'Sort')}: {sortLabelMap[sortBy]}</span>
               <ChevronDown className={clsx('w-3.5 h-3.5 text-slate-400 transition-transform duration-200', isSortOpen && 'rotate-180')} />
             </button>
 
@@ -269,7 +273,7 @@ export const FindHospitalsScreen: React.FC = () => {
                 />
                 <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-30 space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
                   <div className="px-2.5 py-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                    Sort Hospitals By
+                    {t('hospitals.sort', 'Sort Hospitals By')}
                   </div>
                   {SORT_OPTIONS.map((opt) => (
                     <button
@@ -336,7 +340,7 @@ export const FindHospitalsScreen: React.FC = () => {
                     <div className="absolute bottom-3 right-3">
                       <span className="bg-white/95 backdrop-blur-md text-[#0B5A54] font-black text-[10.5px] px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 border border-white/60">
                         <MapPin className="w-3 h-3 text-[#0B5A54]" />
-                        <span>{hosp.distanceMiles} mi</span>
+                        <span>{hosp.distanceMiles} {t('hospitals.distanceMi', 'mi')}</span>
                       </span>
                     </div>
                   </div>
@@ -346,7 +350,7 @@ export const FindHospitalsScreen: React.FC = () => {
                     {/* Hospital Name & Code Row */}
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-base font-black font-heading text-slate-900 line-clamp-1 tracking-tight group-hover:text-[#0B5A54] transition-colors">
-                        {hosp.name}
+                        {formatHospitalName(hosp.name)}
                       </h3>
                       {(hosp.hospital_code || hosp.hospitalCode) && (
                         <span className="bg-slate-100 text-slate-600 font-mono text-[10px] font-black px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
@@ -367,7 +371,7 @@ export const FindHospitalsScreen: React.FC = () => {
                           key={spec}
                           className="text-[10.5px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 group-hover:border-teal-200 group-hover:bg-teal-50/50 group-hover:text-[#0B5A54] px-2.5 py-0.5 rounded-full transition-colors"
                         >
-                          {spec}
+                          {formatSpecialty(spec)}
                         </span>
                       ))}
                     </div>
@@ -378,11 +382,11 @@ export const FindHospitalsScreen: React.FC = () => {
                 <div className="px-4 pb-4 pt-1 flex items-center justify-between border-t border-slate-100 mt-2">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#0B5A54]">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>OPD Open Today</span>
+                    <span>{t('doctors.onDuty', 'OPD Open Today')}</span>
                   </div>
 
                   <button className="bg-[#0B5A54] group-hover:bg-[#08423D] text-white text-xs font-black py-1.5 px-3.5 rounded-full shadow-2xs hover:shadow-xs active:scale-95 transition-all flex items-center gap-1">
-                    <span>View Details</span>
+                    <span>{t('common.view', 'View Details')}</span>
                     <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </div>
@@ -395,12 +399,12 @@ export const FindHospitalsScreen: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-slate-800">
-                  {searchQuery ? 'No matching facilities found' : 'No hospital facilities available'}
+                  {searchQuery ? t('hospitals.noHospitalsFound', 'No matching facilities found') : t('common.noData', 'No hospital facilities available')}
                 </h3>
                 <p className="text-xs text-slate-500">
                   {searchQuery
-                    ? 'Try searching for a different doctor, specialty, or location.'
-                    : 'There are currently no hospitals registered in the database.'}
+                    ? t('hospitals.searchHospitals', 'Try searching for a different doctor, specialty, or location.')
+                    : t('common.noData', 'There are currently no hospitals registered in the database.')}
                 </p>
               </div>
               {searchQuery && (
@@ -408,7 +412,7 @@ export const FindHospitalsScreen: React.FC = () => {
                   onClick={() => setSearchQuery('')}
                   className="text-xs font-extrabold text-[#0B5A54] bg-[#E3F3F1] px-4 py-2 rounded-full hover:bg-[#0B5A54] hover:text-white transition-all inline-block"
                 >
-                  Clear Search Filter
+                  {t('common.clear', 'Clear Search Filter')}
                 </button>
               )}
             </div>

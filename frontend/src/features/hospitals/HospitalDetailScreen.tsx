@@ -8,11 +8,13 @@ import { Badge } from '../../components/ui/Badge';
 import { hospitalService } from '../../services/hospitalService';
 import type { Hospital, Doctor } from '../../lib/types';
 import { useCarePulseStore } from '../../lib/store';
+import { useLocalizedEntities } from '../../i18n';
 
 export const HospitalDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const setBookingDoctor = useCarePulseStore((s) => s.setBookingDoctor);
+  const { t, formatSpecialty, formatDoctorName, formatHospitalName } = useLocalizedEntities();
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -91,7 +93,8 @@ export const HospitalDetailScreen: React.FC = () => {
     if (isOffDuty) {
       const reasonText = doctor.availabilityReason ? ` (${doctor.availabilityReason})` : '';
       const timeText = doctor.unavailableUntil ? ` Expected back in ${doctor.unavailableUntil}.` : '';
-      setToastMessage(`Dr. ${doctor.name} is currently off-duty${reasonText}.${timeText} Please choose an active specialist.`);
+      const formattedName = formatDoctorName(doctor.name);
+      setToastMessage(`${formattedName} is currently off-duty${reasonText}.${timeText} Please choose an active specialist.`);
       setTimeout(() => setToastMessage(null), 4500);
       return;
     }
@@ -104,7 +107,7 @@ export const HospitalDetailScreen: React.FC = () => {
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-4 border-[#0B5A54] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-bold text-slate-500">Loading hospital details...</p>
+          <p className="text-xs font-bold text-slate-500">{t('common.loading', 'Loading hospital details...')}</p>
         </div>
       </div>
     );
@@ -121,23 +124,23 @@ export const HospitalDetailScreen: React.FC = () => {
           >
             <ArrowLeft className="w-5 h-5 text-[#0B5A54]" />
           </button>
-          <span className="font-bold text-slate-800 text-sm">Hospital Details</span>
+          <span className="font-bold text-slate-800 text-sm">{t('hospitalDetail.verifiedHospital', 'Hospital Details')}</span>
         </div>
         <div className="max-w-sm mx-auto text-center space-y-4 px-4 my-auto">
           <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-[#0B5A54] mx-auto">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-800">Hospital Not Found</h3>
+            <h3 className="text-base font-bold text-slate-800">{t('hospitals.noHospitalsFound', 'Hospital Not Found')}</h3>
             <p className="text-xs text-slate-500">
-              The requested hospital facility does not exist or has been removed from the database.
+              {t('hospitals.noHospitalsFound', 'The requested hospital facility does not exist or has been removed from the database.')}
             </p>
           </div>
           <button
             onClick={() => navigate('/hospitals')}
             className="w-full bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-bold py-3 px-4 rounded-full shadow-sm transition-all"
           >
-            Browse All Hospitals
+            {t('hospitals.title', 'Browse All Hospitals')}
           </button>
         </div>
         <BottomNav />
@@ -171,10 +174,10 @@ export const HospitalDetailScreen: React.FC = () => {
         {/* Hero Badges Overlay */}
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2">
           <span className="bg-[#0B5A54] text-white text-[10px] sm:text-xs font-extrabold uppercase px-3 py-1 rounded-full tracking-wider shadow-md border border-white/20">
-            Multi-Specialty Center
+            {t('specialties.generalMedicine', 'Multi-Specialty Center')}
           </span>
           <Badge variant="rating" className="bg-white/95 backdrop-blur-md px-3 py-1 shadow-md text-slate-900 font-extrabold">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {hospital.rating} ({hospital.reviewsCount} reviews)
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {hospital.rating} ({hospital.reviewsCount} {t('doctors.reviews', 'reviews')})
           </Badge>
         </div>
       </div>
@@ -186,24 +189,24 @@ export const HospitalDetailScreen: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#0B5A54]">
               <ShieldCheck className="w-4 h-4 text-[#0B5A54]" />
-              <span>NABH Accredited Hospital</span>
+              <span>{t('hospitalDetail.verifiedHospital', 'NABH Accredited Hospital')}</span>
             </div>
             <h1 className="text-lg sm:text-xl font-extrabold font-heading text-[#111827] leading-tight">
-              {hospital.name}
+              {formatHospitalName(hospital.name)}
             </h1>
           </div>
 
           <div className="flex items-start gap-2 text-xs text-[#6B7280]">
             <MapPin className="w-4 h-4 text-[#0B5A54] shrink-0 mt-0.5" />
-            <span className="leading-snug">{hospital.address} • <strong className="text-[#111827]">{hospital.distanceMiles} miles away</strong></span>
+            <span className="leading-snug">{hospital.address} • <strong className="text-[#111827]">{hospital.distanceMiles} {t('hospitals.distanceKm', 'miles away')}</strong></span>
           </div>
 
           <div className="pt-2 border-t border-[#E4E7EC] flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-emerald-700 font-bold">Open 24/7 Emergency Care</span>
+              <span className="text-emerald-700 font-bold">{t('hospitalDetail.emergency247', 'Open 24/7 Emergency Care')}</span>
             </div>
-            <span className="text-[#0B5A54] font-bold">Verified Center</span>
+            <span className="text-[#0B5A54] font-bold">{t('hospitalDetail.verifiedHospital', 'Verified Center')}</span>
           </div>
         </div>
 
@@ -211,15 +214,15 @@ export const HospitalDetailScreen: React.FC = () => {
         <div className="space-y-3 text-left">
           <div className="flex justify-between items-center px-1">
             <div>
-              <h2 className="text-base font-extrabold font-heading text-[#111827]">Our Specialists</h2>
-              <p className="text-xs text-[#6B7280]">Select a physician to view schedule & book</p>
+              <h2 className="text-base font-extrabold font-heading text-[#111827]">{t('hospitals.viewDoctors', 'Our Specialists')}</h2>
+              <p className="text-xs text-[#6B7280]">{t('home.browseDoctors', 'Select a physician to view schedule & book')}</p>
             </div>
             {selectedSpecialties.length > 0 && (
               <button
                 onClick={() => setSelectedSpecialties([])}
                 className="text-xs font-bold text-rose-600 hover:text-rose-700 underline"
               >
-                Reset Filter
+                {t('hospitalDetail.resetFilters', 'Reset Filter')}
               </button>
             )}
           </div>
@@ -238,7 +241,7 @@ export const HospitalDetailScreen: React.FC = () => {
               )}
             >
               <Filter className="w-3 h-3" />
-              <span>All</span>
+              <span>{t('specialties.all', 'All')}</span>
             </button>
 
             {/* Department Specialty Chips */}
@@ -257,7 +260,7 @@ export const HospitalDetailScreen: React.FC = () => {
                   )}
                 >
                   {isActive && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                  <span>{spec}</span>
+                  <span>{formatSpecialty(spec)}</span>
                 </button>
               );
             })}
@@ -281,11 +284,11 @@ export const HospitalDetailScreen: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black font-heading text-slate-900 tracking-tight">
-                  Hospital Specialists
+                  {t('hospitals.viewDoctors', 'Hospital Specialists')}
                 </h2>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live Synced" />
               </div>
-              <p className="text-xs text-slate-500 font-medium">Real-time status synced with reception</p>
+              <p className="text-xs text-slate-500 font-medium">{t('hospitalDetail.verifiedHospital', 'Real-time status synced with reception')}</p>
             </div>
 
             {/* Live Availability Filter Pills */}
@@ -300,7 +303,7 @@ export const HospitalDetailScreen: React.FC = () => {
                     : 'text-slate-500 hover:text-slate-800'
                 )}
               >
-                All ({doctors.length})
+                {t('hospitalDetail.allDoctors', { count: String(doctors.length) })}
               </button>
               <button
                 type="button"
@@ -313,7 +316,7 @@ export const HospitalDetailScreen: React.FC = () => {
                 )}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Available ({availableCount})</span>
+                <span>{t('hospitalDetail.available', { count: String(availableCount) })}</span>
               </button>
               <button
                 type="button"
@@ -326,7 +329,7 @@ export const HospitalDetailScreen: React.FC = () => {
                 )}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                <span>Off-Duty ({offDutyCount})</span>
+                <span>{t('hospitalDetail.offDuty', { count: String(offDutyCount) })}</span>
               </button>
             </div>
           </div>
@@ -362,11 +365,11 @@ export const HospitalDetailScreen: React.FC = () => {
                       {isOffDuty ? (
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center gap-1 max-w-[80%] truncate">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
-                          <span className="truncate">Off-Duty {doc.availabilityReason ? `(${doc.availabilityReason})` : ''}</span>
+                          <span className="truncate">{t('doctors.offDuty', 'Off-Duty')} {doc.availabilityReason ? `(${doc.availabilityReason})` : ''}</span>
                         </span>
                       ) : (
                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Available
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {t('doctors.availableNow', 'Available')}
                         </span>
                       )}
 
@@ -393,7 +396,7 @@ export const HospitalDetailScreen: React.FC = () => {
                           'text-xs sm:text-sm font-black leading-tight tracking-tight multiline-clamp-2',
                           isSelected ? 'text-white' : isOffDuty ? 'text-slate-700' : 'text-[#111827] group-hover:text-[#0B5A54] transition-colors'
                         )}>
-                          {doc.name}
+                          {formatDoctorName(doc.name)}
                         </h3>
                       </div>
                     </div>
@@ -403,7 +406,7 @@ export const HospitalDetailScreen: React.FC = () => {
                       'text-[11px] sm:text-xs font-bold truncate',
                       isSelected ? 'text-teal-100' : 'text-slate-400'
                     )}>
-                      {doc.specialty}
+                      {formatSpecialty(doc.specialty)}
                     </p>
                   </div>
 
@@ -420,7 +423,7 @@ export const HospitalDetailScreen: React.FC = () => {
                         'text-[10px] font-bold block mt-0.5',
                         isSelected ? 'text-teal-100' : 'text-slate-400'
                       )}>
-                        {doc.reviewsCount || 85} Reviews
+                        {doc.reviewsCount || 85} {t('doctors.reviews', 'Reviews')}
                       </span>
                     </div>
 
@@ -434,7 +437,7 @@ export const HospitalDetailScreen: React.FC = () => {
                         : 'bg-slate-100 text-[#0B5A54] group-hover:bg-[#0B5A54] group-hover:text-white'
                     )}>
                       {isOffDuty ? (
-                        <span>Off-Duty</span>
+                        <span>{t('doctors.offDuty', 'Off-Duty')}</span>
                       ) : (
                         <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
                       )}
@@ -445,7 +448,7 @@ export const HospitalDetailScreen: React.FC = () => {
             })
           ) : (
             <div className="col-span-full bg-white border border-[#E4E7EC] rounded-3xl p-8 text-center space-y-2">
-              <p className="text-xs font-bold text-slate-700">No specialists match the selected criteria</p>
+              <p className="text-xs font-bold text-slate-700">{t('hospitalDetail.noDoctorsAvailable', 'No doctors matching selected filters')}</p>
               <button
                 onClick={() => {
                   setSelectedSpecialties([]);
@@ -453,7 +456,7 @@ export const HospitalDetailScreen: React.FC = () => {
                 }}
                 className="text-xs font-bold text-[#0B5A54] underline cursor-pointer"
               >
-                Reset All Filters
+                {t('hospitalDetail.resetFilters', 'Reset All Filters')}
               </button>
             </div>
           )}

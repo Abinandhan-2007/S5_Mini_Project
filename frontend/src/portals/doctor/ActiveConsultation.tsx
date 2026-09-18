@@ -577,33 +577,39 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   <span class="rx-title">Prescription Order (Medications)</span>
                 </div>
 
-                <table class="rx-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 28px; text-align: center;">#</th>
-                      <th>Medication Name & Formulation</th>
-                      <th style="width: 70px;">Dosage</th>
-                      <th style="width: 135px;">Frequency (Timing)</th>
-                      <th style="width: 70px;">Duration</th>
-                      <th>Special Instructions & Diet Warning</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${prescriptions.filter(m => m.drugName.trim()).map((m, idx) => `
+                ${prescriptions.filter(m => m.drugName.trim()).length === 0 ? `
+                  <div style="padding: 18px; text-align: center; color: #64748b; font-size: 8.5pt; font-style: italic; border: 1px dashed #cbd5e1; border-radius: 8px; margin: 12px 0; background: #f8fafc;">
+                    No prescription added. Clinical consultation completed without medication orders.
+                  </div>
+                ` : `
+                  <table class="rx-table">
+                    <thead>
                       <tr>
-                        <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
-                        <td class="med-name">
-                          <strong>${m.drugName}</strong>
-                          ${m.genericName ? `<div style="font-size: 7.5pt; color: #0b5a54; font-weight: 600; margin-top: 1px;">(Active: ${m.genericName})</div>` : ''}
-                        </td>
-                        <td class="med-dosage">${m.dosage}</td>
-                        <td><span class="med-freq-badge">${m.frequency}</span></td>
-                        <td class="med-duration">${m.duration}</td>
-                        <td class="med-instructions">${m.instructions || 'Take as directed'}</td>
+                        <th style="width: 28px; text-align: center;">#</th>
+                        <th>Medication Name & Formulation</th>
+                        <th style="width: 70px;">Dosage</th>
+                        <th style="width: 135px;">Frequency (Timing)</th>
+                        <th style="width: 70px;">Duration</th>
+                        <th>Special Instructions & Diet Warning</th>
                       </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      ${prescriptions.filter(m => m.drugName.trim()).map((m, idx) => `
+                        <tr>
+                          <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
+                          <td class="med-name">
+                            <strong>${m.drugName}</strong>
+                            ${m.genericName ? `<div style="font-size: 7.5pt; color: #0b5a54; font-weight: 600; margin-top: 1px;">(Active: ${m.genericName})</div>` : ''}
+                          </td>
+                          <td class="med-dosage">${m.dosage}</td>
+                          <td><span class="med-freq-badge">${m.frequency}</span></td>
+                          <td class="med-duration">${m.duration}</td>
+                          <td class="med-instructions">${m.instructions || 'Take as directed'}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                `}
               </div>
 
               <div class="prescription-footer">
@@ -1654,50 +1660,81 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   </p>
                 </div>
 
-                {/* 4. Prescription Table */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center gap-2 border-b border-[#0B5A54] pb-1.5">
-                    <span className="text-xl font-serif font-black text-[#0B5A54] leading-none">℞</span>
-                    <span className="text-xs font-bold text-[#0B5A54] uppercase tracking-wider font-mono">Prescription Order (Medications)</span>
+                {/* 4. Prescription Table or Empty State */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between border-b border-[#0B5A54] pb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-serif font-black text-[#0B5A54] leading-none">℞</span>
+                      <span className="text-xs font-bold text-[#0B5A54] uppercase tracking-wider font-mono">Prescription Order (Medications)</span>
+                    </div>
+                    {prescriptions.filter((m) => m.drugName.trim()).length > 0 && (
+                      <span className="text-[10px] font-mono font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        {prescriptions.filter((m) => m.drugName.trim()).length} Items Prescribed
+                      </span>
+                    )}
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
-                      <thead className="bg-slate-100/90 text-[10px] font-bold text-slate-700 uppercase tracking-wider font-mono">
-                        <tr className="divide-x divide-slate-200 border-b border-slate-200">
-                          <th className="p-2 w-8 text-center">#</th>
-                          <th className="p-2">Medication Name & Formulation</th>
-                          <th className="p-2 w-20">Dosage</th>
-                          <th className="p-2 w-32">Frequency</th>
-                          <th className="p-2 w-20">Duration</th>
-                          <th className="p-2">Special Instructions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {prescriptions.filter((m) => m.drugName.trim()).map((m, idx) => (
-                          <tr key={m.id} className={`divide-x divide-slate-100 ${idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}`}>
-                            <td className="p-2 text-center font-bold text-slate-500 font-mono">{idx + 1}</td>
-                            <td className="p-2">
-                              <p className="font-bold text-slate-900">{m.drugName}</p>
-                              {m.genericName && (
-                                <p className="text-[10.5px] font-medium text-[#0B5A54] mt-0.5">
-                                  Active: <span className="font-semibold">{m.genericName}</span> {m.category && `• ${m.category}`}
-                                </p>
-                              )}
-                            </td>
-                            <td className="p-2 font-semibold text-slate-700">{m.dosage}</td>
-                            <td className="p-2">
-                              <span className="font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 text-[10px]">
-                                {m.frequency}
-                              </span>
-                            </td>
-                            <td className="p-2 font-bold text-slate-800 font-mono">{m.duration}</td>
-                            <td className="p-2 text-slate-600 italic text-[11px]">{m.instructions || 'As directed'}</td>
+                  {prescriptions.filter((m) => m.drugName.trim()).length === 0 ? (
+                    <div className="p-6 sm:p-7 bg-slate-50/90 border border-dashed border-slate-200 rounded-2xl text-center space-y-3">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center mx-auto text-[#0B5A54] shadow-2xs">
+                        <Pill className="w-5 h-5 text-[#0B5A54]" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight font-heading">
+                          No Prescription Added
+                        </h4>
+                        <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+                          This clinical consultation has been conducted without prescribed medications. Therapeutic advice, diagnostic assessments, and non-pharmacological care are recorded above.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('rx')}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Medication to Prescription</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                        <thead className="bg-slate-100/90 text-[10px] font-bold text-slate-700 uppercase tracking-wider font-mono">
+                          <tr className="divide-x divide-slate-200 border-b border-slate-200">
+                            <th className="p-2 w-8 text-center">#</th>
+                            <th className="p-2">Medication Name & Formulation</th>
+                            <th className="p-2 w-20">Dosage</th>
+                            <th className="p-2 w-32">Frequency</th>
+                            <th className="p-2 w-20">Duration</th>
+                            <th className="p-2">Special Instructions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {prescriptions.filter((m) => m.drugName.trim()).map((m, idx) => (
+                            <tr key={m.id} className={`divide-x divide-slate-100 ${idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}`}>
+                              <td className="p-2 text-center font-bold text-slate-500 font-mono">{idx + 1}</td>
+                              <td className="p-2">
+                                <p className="font-bold text-slate-900">{m.drugName}</p>
+                                {m.genericName && (
+                                  <p className="text-[10.5px] font-medium text-[#0B5A54] mt-0.5">
+                                    Active: <span className="font-semibold">{m.genericName}</span> {m.category && `• ${m.category}`}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="p-2 font-semibold text-slate-700">{m.dosage}</td>
+                              <td className="p-2">
+                                <span className="font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 text-[10px]">
+                                  {m.frequency}
+                                </span>
+                              </td>
+                              <td className="p-2 font-bold text-slate-800 font-mono">{m.duration}</td>
+                              <td className="p-2 text-slate-600 italic text-[11px]">{m.instructions || 'As directed'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* 5. Footer (Authentication Block) */}

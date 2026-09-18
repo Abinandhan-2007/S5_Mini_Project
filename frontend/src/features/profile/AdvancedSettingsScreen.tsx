@@ -162,10 +162,10 @@ export const AdvancedSettingsScreen: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest font-heading flex items-center gap-1.5">
-              <span>APP FEATURES & ON/OFF CONTROLS</span>
+              <span>{t('settings.featuresTitle', 'APP FEATURES & ON/OFF CONTROLS')}</span>
             </h3>
             <span className="text-[11px] font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200/90 shadow-2xs">
-              Settings
+              {t('settings.badge', 'Settings')}
             </span>
           </div>
 
@@ -217,7 +217,7 @@ export const AdvancedSettingsScreen: React.FC = () => {
                 <div className="text-left space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black font-heading text-slate-900 truncate">
-                      Tablet Eating Alerts
+                      {t('settings.medAlerts', 'Tablet Eating Alerts')}
                     </h4>
                     <span
                       className={clsx(
@@ -227,11 +227,11 @@ export const AdvancedSettingsScreen: React.FC = () => {
                           : 'bg-slate-100 text-slate-500 border border-slate-200'
                       )}
                     >
-                      {isMedAlertsEnabled ? 'ON' : 'OFF'}
+                      {isMedAlertsEnabled ? t('common.on', 'ON') : t('common.off', 'OFF')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Alerts with Yes/No 30-min repeat snooze
+                    {t('settings.medAlertsSubtext', 'Alerts with Yes/No 30-min repeat snooze')}
                   </p>
                 </div>
               </div>
@@ -272,7 +272,7 @@ export const AdvancedSettingsScreen: React.FC = () => {
                 <div className="text-left space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black font-heading text-slate-900 truncate">
-                      Biometric App Lock
+                      {t('settings.biometricLock', 'Biometric App Lock')}
                     </h4>
                     <span
                       className={clsx(
@@ -282,13 +282,13 @@ export const AdvancedSettingsScreen: React.FC = () => {
                           : 'bg-slate-100 text-slate-500 border border-slate-200'
                       )}
                     >
-                      {isBiometricEnabled ? 'ON' : 'OFF'}
+                      {isBiometricEnabled ? t('common.on', 'ON') : t('common.off', 'OFF')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium">
                     {isBiometricEnabled
-                      ? '1-touch Face ID & Fingerprint unlock active'
-                      : 'Disabled — Password required'}
+                      ? t('settings.biometricLockSubtextActive', '1-touch Face ID & Fingerprint unlock active')
+                      : t('settings.biometricLockSubtextDisabled', 'Disabled — Password required')}
                   </p>
                 </div>
               </div>
@@ -329,7 +329,7 @@ export const AdvancedSettingsScreen: React.FC = () => {
                 <div className="text-left space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black font-heading text-slate-900 truncate">
-                      Health & Queue Push Alerts
+                      {t('settings.pushAlerts', 'Health & Queue Push Alerts')}
                     </h4>
                     <span
                       className={clsx(
@@ -339,11 +339,11 @@ export const AdvancedSettingsScreen: React.FC = () => {
                           : 'bg-slate-100 text-slate-500 border border-slate-200'
                       )}
                     >
-                      {isPushNotifsEnabled ? 'ON' : 'OFF'}
+                      {isPushNotifsEnabled ? t('common.on', 'ON') : t('common.off', 'OFF')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Live OPD token calls & doctor alerts
+                    {t('settings.pushAlertsSubtext', 'Live OPD token calls & doctor alerts')}
                   </p>
                 </div>
               </div>
@@ -384,7 +384,7 @@ export const AdvancedSettingsScreen: React.FC = () => {
                 <div className="text-left space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black font-heading text-slate-900 truncate">
-                      Automatic Update Checks
+                      {t('settings.autoUpdate', 'Automatic Update Checks')}
                     </h4>
                     <span
                       className={clsx(
@@ -394,11 +394,11 @@ export const AdvancedSettingsScreen: React.FC = () => {
                           : 'bg-slate-100 text-slate-500 border border-slate-200'
                       )}
                     >
-                      {isAutoUpdateEnabled ? 'ON' : 'OFF'}
+                      {isAutoUpdateEnabled ? t('common.on', 'ON') : t('common.off', 'OFF')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Checks for latest APK features on launch
+                    {t('settings.autoUpdateSubtext', 'Checks for latest APK features on launch')}
                   </p>
                 </div>
               </div>
@@ -439,7 +439,7 @@ export const AdvancedSettingsScreen: React.FC = () => {
                 <div className="text-left space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black font-heading text-slate-900 truncate">
-                      Audio Chimes & Sounds
+                      {t('settings.audioChimes', 'Audio Chimes & Sounds')}
                     </h4>
                     <span
                       className={clsx(
@@ -449,11 +449,11 @@ export const AdvancedSettingsScreen: React.FC = () => {
                           : 'bg-slate-100 text-slate-500 border border-slate-200'
                       )}
                     >
-                      {isSoundEnabled ? 'ON' : 'OFF'}
+                      {isSoundEnabled ? t('common.on', 'ON') : t('common.off', 'OFF')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Sound chimes on alerts & reminders
+                    {t('settings.audioChimesSubtext', 'Sound chimes on alerts & reminders')}
                   </p>
                 </div>
               </div>
@@ -484,11 +484,10 @@ export const AdvancedSettingsScreen: React.FC = () => {
         <div className="p-4 rounded-3xl bg-teal-50/80 border border-teal-200/80 space-y-2 text-left shadow-2xs">
           <div className="flex items-center gap-2 text-[#0B5A54] font-black text-xs font-heading">
             <Shield className="w-4 h-4 text-[#0B5A54]" />
-            <span>End-to-End Encrypted Settings</span>
+            <span>{t('settings.encryptionTitle', 'End-to-End Encrypted Settings')}</span>
           </div>
           <p className="text-[11px] text-teal-900/80 leading-relaxed font-medium">
-            All feature preferences, biometric lock credentials, and alert configurations are stored
-            securely on your device and synchronized instantly with local hardware engines.
+            {t('settings.encryptionDesc', 'All feature preferences, biometric lock credentials, and alert configurations are stored securely on your device and synchronized instantly with local hardware engines.')}
           </p>
         </div>
       </main>

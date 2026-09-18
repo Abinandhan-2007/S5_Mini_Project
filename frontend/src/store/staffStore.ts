@@ -660,7 +660,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       // Optimistically update bookings and tokens
       set((state) => ({
         bookings: state.bookings.map((b) =>
-          b.id === appointmentId || b.ticketNumber === appointmentId
+          b.id === appointmentId
             ? {
                 ...b,
                 isCheckedIn: true,
@@ -671,6 +671,19 @@ export const useStaffStore = create<StaffState>((set, get) => ({
                 effectiveQueueTime: res?.effectiveQueueTime || nowTimeStr,
               }
             : b
+        ),
+        tokens: state.tokens.map((t) =>
+          t.id === appointmentId
+            ? {
+                ...t,
+                isCheckedIn: true,
+                status: 'Checked In',
+                checkedInAt: res?.checkedInAt || now.toISOString(),
+                checkInTime: nowTimeStr,
+                effectiveQueuePosition: res?.effectiveQueuePosition,
+                effectiveQueueTime: res?.effectiveQueueTime || nowTimeStr,
+              }
+            : t
         ),
       }));
 

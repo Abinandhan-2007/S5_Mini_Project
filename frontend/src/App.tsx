@@ -70,7 +70,6 @@ const NotificationNavigationListener: React.FC = () => {
 import { checkForAppUpdate, type AppVersionInfo } from './lib/versionChecker';
 import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
 import { registerPushNotifications } from './lib/pushNotifications';
-import { MedicineIntakePromptModal } from './components/prescriptions/MedicineIntakePromptModal';
 import { initMedicationNotificationService } from './services/medicationNotificationService';
 import { LanguageProvider } from './i18n';
 import { TtsFallbackToast } from './components/ui/TtsFallbackToast';
@@ -201,7 +200,6 @@ export const App: React.FC = () => {
         <NotificationNavigationListener />
         <AppResumeUpdateChecker />
         <OfflineBanner />
-        <MedicineIntakePromptModal />
         <TtsFallbackToast />
         <div className="min-h-screen min-h-[100dvh] bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col items-stretch overflow-x-hidden">
           <AppRoutes />

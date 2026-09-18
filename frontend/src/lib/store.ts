@@ -473,17 +473,12 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       if (res && res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const currentAppointments = get().appointments || [];
-          const fetchedIds = new Set(data.map((a: any) => String(a.id)));
-          const localOnly = currentAppointments.filter((a) => !fetchedIds.has(String(a.id)));
-          const combined = [...data, ...localOnly];
-
-          const active = combined.find((a: any) => {
+          const active = data.find((a: any) => {
             const s = (a.status || '').toLowerCase();
             return s !== 'completed' && s !== 'cancelled' && s !== 'rejected' && s !== 'archived';
           });
           set({
-            appointments: combined,
+            appointments: data,
             activeAppointment: active || null,
           });
         }
