@@ -13,11 +13,13 @@ import {
   TrendingUp,
   Activity,
   XCircle,
+  CalendarX,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { TriagePriority, DoctorTab } from '../../types/doctor';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
 import { useStaffStore } from '../../store/staffStore';
+import { DoctorLeaveModal } from './DoctorLeaveModal';
 
 export interface DoctorDashboardProps {
   queue: TokenQueueItem[];
@@ -57,6 +59,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(new Date().getDate());
   const [searchQuery, setSearchQuery] = useState('');
   const [queueFilter, setQueueFilter] = useState<'All' | 'Waiting' | 'Urgent' | 'Completed'>('All');
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
 
   // Derive counts & stats
   const totalToday = queue.length;
@@ -198,6 +201,32 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   return (
     <div className="space-y-6 font-sans">
+      {/* ── DOCTOR WELCOME & QUICK ACTIONS BAR ────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-2xs">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 font-heading">
+              Welcome back, {currentDoctor.name}
+            </h2>
+            <span className="px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[#0B5A54] text-[10.5px] font-black uppercase tracking-wider">
+              {currentDoctor.specialty}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Room: {currentDoctor.roomNumber || 'Cabin 101'} • Active Consultation Session
+          </p>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setIsLeaveModalOpen(true)}
+            className="px-4 py-2.5 rounded-2xl bg-teal-50 hover:bg-teal-100/80 text-[#0B5A54] border border-teal-200/90 font-black text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer hover:scale-102 active:scale-98"
+          >
+            <CalendarX className="w-4 h-4 text-[#0B5A54]" />
+            <span>Apply Leave / View Leaves</span>
+          </button>
+        </div>
+      </div>
 
       {/* ── TOP STATS ROW (4 STAT CARDS) ─────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -657,8 +686,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         </div>
       </div>
 
-
-
+      {/* Doctor Leave Application & Management Modal */}
+      <DoctorLeaveModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        doctorId={currentDoctor.id}
+        doctorName={currentDoctor.name}
+      />
     </div>
   );
 };

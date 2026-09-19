@@ -72,6 +72,8 @@ export const DoctorLayout: React.FC = () => {
   const rawTokens = useStaffStore((s) => s.tokens);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
+  const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
+  const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
@@ -112,17 +114,21 @@ export const DoctorLayout: React.FC = () => {
 
   const activeDoctorId = currentStaff?.doctorId || currentStaff?.doctor_id || currentStaff?.id;
 
-  // Initial fetch for doctor availability state
+  // Initial fetch for doctor availability state and announcements
   useEffect(() => {
     fetchDoctors(true);
-  }, [fetchDoctors]);
+    fetchAnnouncements(true);
+    fetchStaffMessages(true);
+  }, [fetchDoctors, fetchAnnouncements, fetchStaffMessages]);
 
-  // Background polling for real-time doctor queue and availability sync
+  // Background polling for real-time doctor queue, availability, and broadcasts sync
   usePolling(
     async () => {
       await Promise.all([
         fetchTokens(activeDoctorId, true),
         fetchDoctors(true),
+        fetchAnnouncements(true),
+        fetchStaffMessages(true),
       ]);
     },
     {

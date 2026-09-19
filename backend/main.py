@@ -90,6 +90,7 @@ from routes.superadmin_routes import router as superadmin_router
 from routes.nurse_routes import router as nurse_router
 from routes.ai_routes import router as ai_router
 from routes.patient_qr_routes import router as patient_qr_router
+from routes.communication_routes import router as communication_router
 from notifications.fcm_service import register_device_token, send_push_notification, broadcast_app_update_notification
 from notifications.scheduler import start_scheduler, shutdown_scheduler
 
@@ -148,6 +149,7 @@ app.include_router(doctor_router)
 app.include_router(superadmin_router)
 app.include_router(nurse_router)
 app.include_router(patient_qr_router)
+app.include_router(communication_router)
 
 # Mount static downloads directory for lab reports and documents
 downloads_dir = backend_dir / "static_downloads"
@@ -2000,6 +2002,260 @@ def get_patient_appointments(patient_id: str):
     return result
 
 
+@app.get("/api/appointments/{appointment_id}/live-queue")
+def get_appointment_live_queue(appointment_id: str):
+    """
+    Retrieve real-time live OPD queue status and timeline for a patient's appointment.
+    Queries the actual doctor's daily roster and checked-in queue from PostgreSQL and local database.
+    """
+    database.check_pg_health_and_sync()
+
+    target_app = None
+    clean_id = appointment_id.strip()
+
+    # 1. Look up the target appointment in PostgreSQL
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT a.*, p.full_name as patient_name, d.name as doc_name, d.specialty as doc_specialty, d.photo_url as doc_photo
+                        FROM appointments a
+                        LEFT JOIN patients p ON a.patient_id = p.id
+                        LEFT JOIN doctors d ON a.doctor_id = d.id
+                        WHERE a.id::text = %s OR a.ticket_number = %s
+                        LIMIT 1
+                    """, (clean_id, clean_id))
+                    row = cur.fetchone()
+                    if row:
+                        target_app = {
+                            "id": str(row["id"]),
+                            "ticketNumber": row.get("ticket_number") or "#CP-1001",
+                            "patientId": str(row.get("patient_id") or ""),
+                            "patientName": row.get("patient_name") or "",
+                            "doctorId": row["doctor_id"],
+                            "doctorName": row.get("doc_name") or row.get("doctor_name") or "Specialist Doctor",
+                            "doctorSpecialty": row.get("doc_specialty") or row.get("doctor_specialty") or "General Medicine",
+                            "doctorPhoto": row.get("doc_photo") or row.get("doctor_photo") or "/doctor_default.jpg",
+                            "hospitalId": row.get("hospital_id"),
+                            "date": str(row.get("date") or ""),
+                            "timeSlot": row.get("time_slot") or "",
+                            "status": row.get("status") or "Upcoming",
+                            "isCheckedIn": bool(row.get("is_checked_in", False)),
+                            "createdAt": str(row.get("created_at") or "")
+                        }
+        except Exception as e:
+            logger.warning(f"Error fetching appointment for queue from PG: {e}")
+
+    # Fallback lookup in JSON DB
+    if not target_app:
+        db = read_json_db()
+        for a in db.get("appointments", []):
+            if str(a.get("id")) == clean_id or a.get("ticket_number") == clean_id or a.get("ticketNumber") == clean_id:
+                target_app = {
+                    "id": str(a.get("id")),
+                    "ticketNumber": a.get("ticket_number") or a.get("ticketNumber") or "#CP-1001",
+                    "patientId": str(a.get("patient_id") or a.get("patientId") or ""),
+                    "patientName": a.get("patient_name") or a.get("patientName") or "",
+                    "doctorId": a.get("doctor_id") or a.get("doctorId") or "doc-1",
+                    "doctorName": a.get("doctor_name") or a.get("doctorName") or "Specialist Doctor",
+                    "doctorSpecialty": a.get("doctor_specialty") or a.get("doctorSpecialty") or "General Medicine",
+                    "doctorPhoto": a.get("doctor_photo") or a.get("doctorPhoto") or "/doctor_default.jpg",
+                    "hospitalId": a.get("hospital_id") or a.get("hospitalId"),
+                    "date": str(a.get("date") or ""),
+                    "timeSlot": a.get("time_slot") or a.get("timeSlot") or "",
+                    "status": a.get("status") or "Upcoming",
+                    "isCheckedIn": bool(a.get("is_checked_in") or a.get("isCheckedIn", False)),
+                    "createdAt": str(a.get("created_at") or "")
+                }
+                break
+
+    if not target_app:
+        raise HTTPException(status_code=404, detail="Appointment not found.")
+
+    doc_id = target_app["doctorId"]
+    appt_date = target_app["date"]
+
+    # 2. Fetch all appointments for this doctor on this date
+    all_doctor_appts = []
+    seen_ids = set()
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT a.*, p.full_name as patient_name
+                        FROM appointments a
+                        LEFT JOIN patients p ON a.patient_id = p.id
+                        WHERE (a.doctor_id = %s OR a.doctor_name = %s)
+                          AND a.date::text = %s
+                          AND a.status != 'Cancelled'
+                        ORDER BY a.created_at ASC
+                    """, (doc_id, target_app["doctorName"], appt_date))
+                    for r in cur.fetchall():
+                        r_id = str(r["id"])
+                        seen_ids.add(r_id)
+                        all_doctor_appts.append({
+                            "id": r_id,
+                            "ticketNumber": r.get("ticket_number") or f"#TK-{r_id[:6]}",
+                            "patientName": r.get("patient_name") or "Patient",
+                            "status": r.get("status") or "Waiting",
+                            "isCheckedIn": bool(r.get("is_checked_in", False)),
+                            "timeSlot": r.get("time_slot") or "",
+                            "createdAt": str(r.get("created_at") or "")
+                        })
+        except Exception as e:
+            logger.warning(f"Error fetching doctor daily appointments from PG: {e}")
+
+    # Merge JSON DB
+    db = read_json_db()
+    for a in db.get("appointments", []):
+        a_id = str(a.get("id"))
+        if a_id in seen_ids:
+            continue
+        a_doc = a.get("doctor_id") or a.get("doctorId") or a.get("doctor_name") or a.get("doctorName")
+        a_date = str(a.get("date") or "")
+        if (a_doc == doc_id or a_doc == target_app["doctorName"]) and (a_date == appt_date or not appt_date):
+            raw_s = a.get("status") or "Waiting"
+            if raw_s != "Cancelled":
+                seen_ids.add(a_id)
+                all_doctor_appts.append({
+                    "id": a_id,
+                    "ticketNumber": a.get("ticket_number") or a.get("ticketNumber") or f"#TK-{a_id[:6]}",
+                    "patientName": a.get("patient_name") or a.get("patientName") or "Patient",
+                    "status": raw_s,
+                    "isCheckedIn": bool(a.get("is_checked_in") or a.get("isCheckedIn", False)),
+                    "timeSlot": a.get("time_slot") or a.get("timeSlot") or "",
+                    "createdAt": str(a.get("created_at") or "")
+                })
+
+    # Ensure target_app is in the list
+    if target_app["id"] not in seen_ids:
+        all_doctor_appts.append({
+            "id": target_app["id"],
+            "ticketNumber": target_app["ticketNumber"],
+            "patientName": target_app["patientName"],
+            "status": target_app["status"],
+            "isCheckedIn": target_app["isCheckedIn"],
+            "timeSlot": target_app["timeSlot"],
+            "createdAt": target_app["createdAt"]
+        })
+
+    # 3. Categorize into completed, currently in consultation, and waiting
+    completed_tokens = [a for a in all_doctor_appts if a["status"] == "Completed"]
+    consulting_tokens = [a for a in all_doctor_appts if a["status"] == "In Consultation"]
+    waiting_tokens = [a for a in all_doctor_appts if a["status"] not in ("Completed", "In Consultation")]
+
+    # Sort waiting by check-in / time slot
+    waiting_tokens.sort(key=lambda x: (not x["isCheckedIn"], x["timeSlot"], x["createdAt"]))
+
+    # Find target patient position
+    is_target_consulting = any(a["id"] == target_app["id"] for a in consulting_tokens)
+    is_target_completed = any(a["id"] == target_app["id"] for a in completed_tokens)
+
+    target_idx = -1
+    for idx, a in enumerate(waiting_tokens):
+        if a["id"] == target_app["id"]:
+            target_idx = idx
+            break
+
+    if is_target_consulting:
+        persons_ahead = 0
+        current_status = "In Consultation"
+    elif is_target_completed:
+        persons_ahead = 0
+        current_status = "Completed"
+    elif target_idx >= 0:
+        persons_ahead = len(consulting_tokens) + target_idx
+        current_status = "Checked In" if target_app.get("isCheckedIn") else target_app["status"]
+    else:
+        persons_ahead = len(consulting_tokens) + len(waiting_tokens)
+        current_status = target_app["status"]
+
+    # 4. Build real timeline list
+    timeline = []
+    # Up to 2 recent completed
+    for c in completed_tokens[-2:]:
+        timeline.append({
+            "id": c["id"],
+            "tokenNumber": c["ticketNumber"],
+            "patientName": c["patientName"],
+            "status": "Completed",
+            "time": "Called Earlier",
+            "isUser": c["id"] == target_app["id"]
+        })
+
+    # In Consultation
+    for cur in consulting_tokens:
+        timeline.append({
+            "id": cur["id"],
+            "tokenNumber": cur["ticketNumber"],
+            "patientName": cur["patientName"],
+            "status": "In Consultation",
+            "time": "Now in Cabin",
+            "isUser": cur["id"] == target_app["id"]
+        })
+
+    # Waiting patients before target
+    if target_idx > 0:
+        for w in waiting_tokens[:target_idx]:
+            timeline.append({
+                "id": w["id"],
+                "tokenNumber": w["ticketNumber"],
+                "patientName": w["patientName"],
+                "status": "Waiting" if w["isCheckedIn"] else "Scheduled",
+                "time": w["timeSlot"] or "Next",
+                "isUser": False
+            })
+
+    # Target patient's own card
+    if not is_target_consulting and not is_target_completed:
+        timeline.append({
+            "id": target_app["id"],
+            "tokenNumber": target_app["ticketNumber"],
+            "patientName": target_app["patientName"],
+            "status": current_status,
+            "time": target_app["timeSlot"] or "Scheduled Today",
+            "isUser": True,
+            "personsAhead": persons_ahead
+        })
+
+    # Waiting patients after target (up to 2)
+    if target_idx >= 0 and target_idx < len(waiting_tokens) - 1:
+        for w in waiting_tokens[target_idx + 1: target_idx + 3]:
+            timeline.append({
+                "id": w["id"],
+                "tokenNumber": w["ticketNumber"],
+                "patientName": w["patientName"],
+                "status": "Upcoming",
+                "time": w["timeSlot"] or "Upcoming",
+                "isUser": False
+            })
+
+    # If timeline only contains the user, add contextual doctor queue status
+    if len(timeline) == 1 and timeline[0]["isUser"]:
+        # Doctor has no active previous patients in cabin right now
+        doc_title = target_app['doctorName'] if target_app['doctorName'].startswith("Dr.") else f"Dr. {target_app['doctorName']}"
+        timeline.insert(0, {
+            "id": "doc-status",
+            "tokenNumber": doc_title,
+            "patientName": "Consultation Station Online",
+            "status": "Station Ready",
+            "time": "Cabin Ready",
+            "isUser": False
+        })
+
+    return {
+        "success": True,
+        "appointment": target_app,
+        "personsAhead": persons_ahead,
+        "currentStatus": current_status,
+        "inConsultation": consulting_tokens[0]["ticketNumber"] if consulting_tokens else None,
+        "timeline": timeline
+    }
+
+
 @app.post("/api/patient/device-token")
 def save_patient_device_token(req: DeviceTokenRequest):
     """Register or update patient FCM push notification device token."""
@@ -3339,11 +3595,29 @@ def get_doctor_by_id(doctor_id: str):
     raise HTTPException(status_code=404, detail="Doctor not found")
 
 
+def parse_slot_start_mins(time_slot_str: str) -> int:
+    try:
+        start_part = time_slot_str.split('-')[0].strip()
+        parts = start_part.split()
+        if len(parts) < 2:
+            return 0
+        time_digits, meridiem = parts[0], parts[1].upper()
+        h, m = map(int, time_digits.split(':'))
+        if meridiem == 'PM' and h != 12:
+            h += 12
+        elif meridiem == 'AM' and h == 12:
+            h = 0
+        return h * 60 + m
+    except Exception:
+        return 0
+
+
 @app.get("/api/doctors/{doctor_id}/slots")
 def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
     """
     Retrieve live slot availability for a doctor for a specific date directly from DB.
     Calculates live booked seats from appointments and tokens.
+    Integrates Approved Doctor Leave checks and dynamic 1h 30m slot freezing.
     """
     from routes.receptionist_routes import DEFAULT_SLOTS
     doc = None
@@ -3368,6 +3642,40 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
     if not doc:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
+    # 1. Check for Approved Doctor Leave for this date
+    is_on_leave = False
+    leave_reason = ""
+    if date:
+        if database.use_pg:
+            try:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            SELECT * FROM doctor_leaves
+                            WHERE (doctor_id = %s OR doctor_id = %s)
+                              AND status = 'Approved'
+                              AND start_date <= %s::date AND end_date >= %s::date
+                            LIMIT 1
+                        """, (doctor_id, str(doc.get("id") or ""), date, date))
+                        row = cur.fetchone()
+                        if row:
+                            is_on_leave = True
+                            leave_reason = row.get("reason") or "Doctor on Leave"
+            except Exception as e:
+                logger.warning(f"Error checking leave in pg: {e}")
+
+        if not is_on_leave:
+            db = read_json_db()
+            for l in db.get("doctor_leaves", []):
+                l_doc = l.get("doctor_id") or l.get("doctorId")
+                if l_doc in [doctor_id, str(doc.get("id") or "")] and l.get("status") == "Approved":
+                    l_start = str(l.get("start_date") or l.get("startDate") or "")
+                    l_end = str(l.get("end_date") or l.get("endDate") or "")
+                    if l_start <= date <= l_end:
+                        is_on_leave = True
+                        leave_reason = l.get("reason") or "Doctor on Leave"
+                        break
+
     raw_slots = doc.get("slot_capacities") or doc.get("slotCapacities") or []
     if isinstance(raw_slots, str):
         try:
@@ -3379,6 +3687,8 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
             "success": True,
             "doctorId": doctor_id,
             "date": date,
+            "onLeave": is_on_leave,
+            "leaveReason": leave_reason,
             "slots": []
         }
 
@@ -3391,7 +3701,6 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
             try:
                 with get_pg_connection() as conn:
                     with conn.cursor() as cur:
-                        # Count online appointments
                         cur.execute(
                             "SELECT time_slot, COUNT(*) as cnt FROM appointments WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' GROUP BY time_slot",
                             (doctor_id, date)
@@ -3399,7 +3708,6 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
                         for r in cur.fetchall():
                             online_booked_counts[r["time_slot"]] = int(r["cnt"])
 
-                        # Count walk-in tokens
                         cur.execute(
                             "SELECT time_slot, COUNT(*) as cnt FROM tokens WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' GROUP BY time_slot",
                             (doctor_id, date)
@@ -3422,6 +3730,16 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
                         ts = tok.get("time_slot") or tok.get("timeSlot")
                         if ts:
                             offline_booked_counts[ts] = offline_booked_counts.get(ts, 0) + 1
+
+    # Dynamic 1h 30m slot freezing calculation for current day
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    is_today = (date == today_str) or (not date)
+    current_time_mins = now.hour * 60 + now.minute
+    freeze_until_mins = current_time_mins + 90  # Next 1 hour 30 minutes window
+
+    is_doc_avail = bool(doc.get("is_available") if doc.get("is_available") is not None else doc.get("isAvailable", True))
+    unavail_reason = doc.get("availability_reason") or doc.get("availabilityReason") or "Doctor Away"
 
     computed_slots = []
     for s in raw_slots:
@@ -3451,7 +3769,49 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
         online_avail = max(0, online_max - online_booked)
         offline_avail = max(0, offline_max - offline_booked)
         is_slot_avail = bool(slot_dict.get("isAvailable") if slot_dict.get("isAvailable") is not None else True)
-        is_doc_avail = bool(doc.get("is_available") if doc.get("is_available") is not None else doc.get("isAvailable", True))
+
+        slot_start_mins = parse_slot_start_mins(time_slot)
+
+        # Slot Freezing / Availability Logic
+        is_frozen = False
+        freeze_type = None
+
+        if is_on_leave:
+            # 1. Approved Leave: Freeze ALL slots for this date
+            effective_avail = False
+            is_frozen = True
+            freeze_type = "On Leave"
+        elif not is_doc_avail:
+            # 2. Doctor Marked Unavailable (Away)
+            if is_today:
+                if slot_start_mins >= current_time_mins and slot_start_mins < freeze_until_mins:
+                    # Slot falls within the next 1h 30m freeze window!
+                    effective_avail = False
+                    is_frozen = True
+                    freeze_type = "Frozen (Doctor Away)"
+                elif slot_start_mins < current_time_mins:
+                    # Past slot
+                    effective_avail = False
+                    is_frozen = True
+                    freeze_type = "Completed"
+                else:
+                    # Slot starts after 1h 30m window! VISIBLE AND AVAILABLE!
+                    effective_avail = is_slot_avail
+                    is_frozen = False
+            else:
+                # Future date: doctor unavailability today does NOT freeze future dates!
+                effective_avail = is_slot_avail
+                is_frozen = False
+        else:
+            # 3. Doctor is Available (is_doc_avail == True):
+            # Unavailability freeze is lifted!
+            if is_today and slot_start_mins < current_time_mins:
+                effective_avail = False
+                is_frozen = True
+                freeze_type = "Completed"
+            else:
+                effective_avail = is_slot_avail
+                is_frozen = False
 
         computed_slots.append({
             "id": slot_dict.get("id") or f"slot-{uuid.uuid4().hex[:6]}",
@@ -3465,15 +3825,24 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
             "offlineMaxSeats": offline_max,
             "offlineBookedSeats": offline_booked,
             "offlineAvailableSeats": offline_avail,
-            "isAvailable": is_slot_avail and is_doc_avail,
+            "isAvailable": effective_avail,
+            "isFrozen": is_frozen,
+            "freezeType": freeze_type,
+            "onLeave": is_on_leave,
+            "leaveReason": leave_reason if is_on_leave else "",
+            "unavailabilityReason": unavail_reason if not is_doc_avail else ""
         })
 
     return {
         "success": True,
         "doctorId": doctor_id,
         "date": date,
+        "onLeave": is_on_leave,
+        "leaveReason": leave_reason,
+        "isDoctorAvailable": is_doc_avail,
         "slots": computed_slots
     }
+
 
 
 @app.delete("/api/doctors/{doctor_id}")

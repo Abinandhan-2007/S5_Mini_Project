@@ -340,4 +340,30 @@ export const receptionistService = {
       return { success: false, message: e.message || 'Network error updating password.' };
     }
   },
+
+  async getHospitalDoctorLeaves(): Promise<any[]> {
+    try {
+      const res = await apiFetch('/receptionist/leaves', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        return data.leaves || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch hospital doctor leaves', e);
+    }
+    return [];
+  },
+
+  async updateDoctorLeaveStatus(leaveId: string, status: string): Promise<any> {
+    const res = await apiFetch(`/receptionist/leaves/${encodeURIComponent(leaveId)}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to update leave status' }));
+      throw new Error(err.detail || `Failed with status ${res.status}`);
+    }
+    return await res.json();
+  },
 };

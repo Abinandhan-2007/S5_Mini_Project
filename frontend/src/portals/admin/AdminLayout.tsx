@@ -76,6 +76,9 @@ export const AdminLayout: React.FC = () => {
   const departments = useStaffStore((s) => s.departments);
   const tokens = useStaffStore((s) => s.tokens);
   const announcements = useStaffStore((s) => s.announcements);
+  const unreadStaffMessagesCount = useStaffStore((s) => s.unreadStaffMessagesCount);
+  const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
+  const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
   const fetchReceptionists = useStaffStore((s) => s.fetchReceptionists);
@@ -91,6 +94,8 @@ export const AdminLayout: React.FC = () => {
         fetchDoctors(true),
         fetchReceptionists(),
         fetchNurses(),
+        fetchAnnouncements(true),
+        fetchStaffMessages(true),
       ]);
     },
     {
@@ -195,10 +200,10 @@ export const AdminLayout: React.FC = () => {
       items: [
         {
           id: 'announcements',
-          label: 'Notifications',
+          label: 'Broadcasts & Staff Messages',
           icon: Megaphone,
-          badge: announcements.length > 0 ? `${announcements.length}` : undefined,
-          badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+          badge: unreadStaffMessagesCount > 0 ? `${unreadStaffMessagesCount} msg` : (announcements.length > 0 ? `${announcements.length}` : undefined),
+          badgeColor: unreadStaffMessagesCount > 0 ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse' : 'bg-amber-50 text-amber-800 border-amber-200',
         },
         { id: 'settings', label: 'Settings & Profile', icon: Settings },
       ],

@@ -200,15 +200,16 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   }, [doctor, slotCapacities, blockedSlots]);
 
   const isDoctorOffDuty = doctor?.isAvailable === false || doctor?.is_available === false;
+  const isDoctorOnLeave = (doctor as any)?.onLeave || (slotCapacities as any)?.[0]?.onLeave;
+  const leaveReason = (doctor as any)?.leaveReason || (slotCapacities as any)?.[0]?.leaveReason || 'Doctor on Leave';
 
   // Resolve doctor's receptionist-configured slots or fallback slots
   const slotsWithState = React.useMemo(() => {
-    if (isDoctorOffDuty) return [];
-
     const isToday = isDateToday(selectedDate);
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const minAllowedMinutes = currentMinutes + 30; // 30 minutes advance requirement for today
+    const freezeUntilMinutes = currentMinutes + 90; // 1 hour 30 minutes away window
 
     // 1. Check if doctor has receptionist-configured slot capacities
     const rawSlots: any[] | null =
@@ -225,10 +226,17 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
         const timeStr = cap.timeSlot || cap.time_slot || '';
         const startTime = extractStartTime(timeStr);
         const period = getPeriodFromTime(timeStr);
+        const slotStartMins = parseTimeToMinutes(startTime);
 
-        const isPastOrTooSoon = isToday && parseTimeToMinutes(startTime) < minAllowedMinutes;
+        const isPastOrTooSoon = isToday && slotStartMins < minAllowedMinutes;
         const isExplicitlyDisabled = cap.isAvailable === false || cap.is_available === false;
         const isBlockedByList = effectiveBlockedList.some((blocked) => isTimeInWindow(timeStr, blocked));
+
+        // 1h 30m slot freeze logic:
+        // If doctor marked unavailable: for today, slots within next 90 mins are frozen. Slots after 90 mins remain available!
+        // If doctor has approved leave: all slots for this date are frozen.
+        const isWithinAwayWindow = isDoctorOffDuty && isToday && (slotStartMins >= currentMinutes && slotStartMins < freezeUntilMinutes);
+        const isSlotOnLeave = isDoctorOnLeave || cap.onLeave === true;
 
         const onlineSeatsLeft =
           cap.onlineAvailableSeats !== undefined
@@ -239,13 +247,20 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
 
         const isFull = onlineSeatsLeft !== undefined && onlineSeatsLeft <= 0;
         const isBlocked = isExplicitlyDisabled || isBlockedByList;
-        const isFrozen = isPastOrTooSoon || isBlocked || isFull;
+        const isFrozen = cap.isFrozen || isSlotOnLeave || isWithinAwayWindow || isPastOrTooSoon || isBlocked || isFull;
 
-        let statusBadge = 'Available';
-        if (isBlocked) statusBadge = 'Closed';
-        else if (isPastOrTooSoon) statusBadge = 'Completed';
-        else if (isFull) statusBadge = 'Full';
-        else if (onlineSeatsLeft !== undefined && onlineSeatsLeft > 0) {
+        let statusBadge = cap.statusBadge || 'Available';
+        if (isSlotOnLeave) {
+          statusBadge = 'On Leave';
+        } else if (isWithinAwayWindow) {
+          statusBadge = 'Frozen (Doctor Away)';
+        } else if (isBlocked) {
+          statusBadge = 'Closed';
+        } else if (isPastOrTooSoon) {
+          statusBadge = 'Completed';
+        } else if (isFull) {
+          statusBadge = 'Full';
+        } else if (onlineSeatsLeft !== undefined && onlineSeatsLeft > 0) {
           statusBadge = `${onlineSeatsLeft} ${onlineSeatsLeft === 1 ? 'seat' : 'seats'}`;
         }
 
@@ -253,6 +268,8 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
           time: timeStr,
           period,
           isFrozen,
+          isSlotOnLeave,
+          isWithinAwayWindow,
           isPastOrTooSoon,
           isBlocked,
           isFull,
@@ -265,7 +282,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
 
     // No slots configured by receptionist for this doctor
     return [];
-  }, [effectiveBlockedList, isDoctorOffDuty, selectedDate, slotCapacities, doctor]);
+  }, [effectiveBlockedList, isDoctorOffDuty, isDoctorOnLeave, selectedDate, slotCapacities, doctor]);
 
   // List of valid, selectable slots
   const validSelectableSlots = React.useMemo(() => {
@@ -287,7 +304,11 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   // Handle slot click
   const handleSlotClick = (slot: (typeof slotsWithState)[0]) => {
     if (slot.isFrozen) {
-      if (slot.isBlocked) {
+      if (slot.isSlotOnLeave) {
+        setNoticeMessage(`⚠️ Doctor is on approved leave for this date (${leaveReason}).`);
+      } else if (slot.isWithinAwayWindow) {
+        setNoticeMessage(`⚠️ Doctor is temporarily away for 1h 30m. Slots starting after the 90-minute window are available for booking.`);
+      } else if (slot.isBlocked) {
         setNoticeMessage(`⚠️ ${slot.time} has been closed or reserved by hospital reception.`);
       } else if (slot.isFull) {
         setNoticeMessage(`⚠️ ${slot.time} is fully booked. Please choose another time slot.`);
@@ -308,20 +329,6 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
     setNoticeMessage(null);
     onSelectSlot(slot.time);
   };
-
-  if (isDoctorOffDuty) {
-    return (
-      <div className="p-6 text-center bg-rose-50/80 rounded-3xl border border-rose-200/90 space-y-2 shadow-xs">
-        <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-5 h-5 text-rose-600" />
-        </div>
-        <p className="text-sm font-black text-rose-900 font-heading">Specialist is Currently Off-Duty</p>
-        <p className="text-xs text-rose-700/90 max-w-sm mx-auto leading-relaxed">
-          {doctor?.name || 'This doctor'} has been marked unavailable by hospital reception. Online booking slots are temporarily closed.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-3">
@@ -349,6 +356,28 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Doctor on Approved Leave Banner */}
+      {isDoctorOnLeave && (
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-2.5 text-xs font-semibold shadow-2xs animate-in fade-in">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div>
+            <span className="font-extrabold">Specialist on Approved Leave: </span>
+            <span>{leaveReason || 'Doctor is on leave for this date'}. Booking slots for this date are temporarily closed.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Temporary 1h 30m Away Freeze Informational Banner */}
+      {isDoctorOffDuty && !isDoctorOnLeave && isDateToday(selectedDate) && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-2.5 text-xs font-semibold shadow-2xs animate-in fade-in">
+          <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+          <div>
+            <span className="font-extrabold">Temporary 1h 30m Away Freeze: </span>
+            <span>Slots starting in the next 90 minutes are frozen. Slots after the 90-minute window remain open and bookable.</span>
+          </div>
+        </div>
+      )}
 
       {/* Slots Grid with Dynamic Receptionist Slots */}
       {slotsWithState.length === 0 ? (

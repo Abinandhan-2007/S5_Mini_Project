@@ -118,5 +118,26 @@ export const nurseService = {
     }
     const data = await res.json();
     return data.nurse;
+  },
+
+  /**
+   * Patient-facing: Get all hospital vitals history for a patient
+   */
+  async getPatientVitalsHistory(patientId: string): Promise<any[]> {
+    const res = await apiFetch(`/nurse/patient-vitals/${encodeURIComponent(patientId)}`, { method: 'GET' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.vitals || [];
+  },
+
+  /**
+   * Patient-facing: Get all lab test orders and reports history for a patient
+   */
+  async getPatientLabTestsHistory(patientId: string): Promise<any[]> {
+    const res = await apiFetch(`/nurse/patient-tests/${encodeURIComponent(patientId)}`, { method: 'GET' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.tests || [];
   }
 };
+

@@ -135,19 +135,39 @@ export interface DepartmentRecord {
 
 export interface AnnouncementRecord {
   id: string;
+  hospitalId?: string;
   title: string;
   message: string;
-  audience: 'All Patients' | 'All Staff' | 'Clinical Staff' | 'Front Desk Reception';
+  audience: 'All Patients' | 'All Staff' | 'Clinical Staff' | 'Front Desk Reception' | 'Nursing Staff';
   department?: string;
   priority: 'Normal' | 'High' | 'Urgent';
   isActive?: boolean;
   postedAt?: string;
   authorName?: string;
+  authorRole?: string;
   status?: 'Scheduled' | 'Sent' | string;
   scheduledFor?: string;
   sentAt?: string;
   deliveredCount?: number;
   readCount?: number;
+}
+
+export interface StaffMessage {
+  id: string;
+  hospitalId?: string;
+  senderId: string;
+  senderName: string;
+  senderRole: StaffRole;
+  senderCode?: string;
+  recipientRole?: StaffRole | 'all';
+  recipientId?: string;
+  subject: string;
+  message: string;
+  priority: 'normal' | 'high' | 'urgent';
+  isRead: boolean;
+  parentId?: string;
+  createdAt: string;
+  replies?: StaffMessage[];
 }
 
 export type SuperAdminHospitalLifecycle = 'Draft' | 'Pending Setup' | 'Active' | 'Suspended';

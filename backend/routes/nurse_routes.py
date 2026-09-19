@@ -681,3 +681,212 @@ def upload_lab_report(payload: ReportUploadRequest):
         file_url=file_url,
         filename=unique_filename
     )
+
+
+# =========================================================================
+# Patient-Facing Endpoints for Vitals and Lab Test Tracking
+# =========================================================================
+
+@router.get("/patient-vitals/{patient_id}")
+def get_patient_vitals_history(patient_id: str):
+    """
+    Retrieve all hospital-recorded vitals for a specific patient across all visits.
+    Used by the Patient App to view vital sign trends, abnormal flags, and nurse triage records.
+    """
+    vitals_list = []
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = """
+                        SELECT 
+                            v.id AS vitals_id,
+                            v.appointment_id,
+                            v.patient_id,
+                            v.height_cm,
+                            v.weight_kg,
+                            v.bmi,
+                            v.bp_systolic,
+                            v.bp_diastolic,
+                            v.heart_rate,
+                            v.temperature,
+                            v.temperature_unit,
+                            v.respiratory_rate,
+                            v.spo2,
+                            v.blood_glucose,
+                            v.glucose_context,
+                            v.notes,
+                            v.recorded_at,
+                            s.full_name AS recorded_by_name,
+                            a.date AS appointment_date,
+                            a.time_slot AS appointment_time,
+                            a.ticket_number AS token_number,
+                            COALESCE(d.name, a.doctor_name, 'Attending Doctor') AS doctor_name,
+                            COALESCE(d.specialty, a.doctor_specialty, 'General Medicine') AS doctor_specialty,
+                            COALESCE(h.name, 'CarePulse Partner Hospital') AS hospital_name
+                        FROM vitals v
+                        LEFT JOIN appointments a ON v.appointment_id = a.id
+                        LEFT JOIN doctors d ON a.doctor_id = d.id
+                        LEFT JOIN hospitals h ON a.hospital_id = h.id
+                        LEFT JOIN staff s ON v.recorded_by = s.id
+                        WHERE v.patient_id::text = %s OR a.patient_id::text = %s
+                        ORDER BY v.recorded_at DESC NULLS LAST, a.date DESC
+                    """
+                    cur.execute(query, (patient_id, patient_id))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        rd = dict(r)
+                        v_obj = {
+                            "id": str(rd["vitals_id"]),
+                            "appointment_id": str(rd["appointment_id"]),
+                            "patient_id": str(rd["patient_id"]),
+                            "height_cm": float(rd["height_cm"]) if rd.get("height_cm") is not None else None,
+                            "weight_kg": float(rd["weight_kg"]) if rd.get("weight_kg") is not None else None,
+                            "bmi": float(rd["bmi"]) if rd.get("bmi") is not None else None,
+                            "bp_systolic": rd.get("bp_systolic"),
+                            "bp_diastolic": rd.get("bp_diastolic"),
+                            "heart_rate": rd.get("heart_rate"),
+                            "temperature": float(rd["temperature"]) if rd.get("temperature") is not None else None,
+                            "temperature_unit": rd.get("temperature_unit") or "C",
+                            "respiratory_rate": rd.get("respiratory_rate"),
+                            "spo2": rd.get("spo2"),
+                            "blood_glucose": float(rd["blood_glucose"]) if rd.get("blood_glucose") is not None else None,
+                            "glucose_context": rd.get("glucose_context"),
+                            "notes": rd.get("notes"),
+                            "recorded_at": str(rd["recorded_at"]) if rd.get("recorded_at") else None,
+                            "recorded_by_name": rd.get("recorded_by_name") or "Triage Nurse",
+                            "appointment_date": str(rd.get("appointment_date") or ""),
+                            "appointment_time": str(rd.get("appointment_time") or ""),
+                            "token_number": rd.get("token_number"),
+                            "doctor_name": rd.get("doctor_name"),
+                            "doctor_specialty": rd.get("doctor_specialty"),
+                            "hospital_name": rd.get("hospital_name")
+                        }
+                        v_obj["abnormal_flags"] = calculate_abnormal_flags(v_obj)
+                        vitals_list.append(v_obj)
+                    return {"success": True, "vitals": vitals_list}
+        except Exception as e:
+            logger.warning(f"PostgreSQL fetch patient vitals history error: {e}")
+
+    # Fallback to JSON DB
+    db = read_json_db()
+    all_vitals = db.get("vitals", [])
+    appointments_map = {a["id"]: a for a in db.get("appointments", [])}
+    doctors_map = {d["id"]: d for d in db.get("doctors", [])}
+    hospitals_map = {h["id"]: h for h in db.get("hospitals", [])}
+
+    for v in all_vitals:
+        p_id = str(v.get("patient_id") or "")
+        appt_id = str(v.get("appointment_id") or "")
+        appt = appointments_map.get(appt_id, {})
+        if p_id == patient_id or str(appt.get("patient_id") or "") == patient_id:
+            doc = doctors_map.get(appt.get("doctor_id"), {})
+            hosp = hospitals_map.get(appt.get("hospital_id"), {})
+            v_copy = dict(v)
+            v_copy["appointment_date"] = appt.get("date") or ""
+            v_copy["appointment_time"] = appt.get("time") or appt.get("timeSlot") or ""
+            v_copy["token_number"] = appt.get("token_number") or appt.get("tokenNumber")
+            v_copy["doctor_name"] = doc.get("name") or appt.get("doctor_name") or "Attending Doctor"
+            v_copy["doctor_specialty"] = doc.get("specialty") or appt.get("doctor_specialty") or "General Medicine"
+            v_copy["hospital_name"] = hosp.get("name") or appt.get("hospital_name") or "CarePulse Medical Center"
+            v_copy["abnormal_flags"] = calculate_abnormal_flags(v_copy)
+            vitals_list.append(v_copy)
+
+    return {"success": True, "vitals": vitals_list}
+
+
+@router.get("/patient-tests/{patient_id}")
+def get_patient_lab_tests_history(patient_id: str):
+    """
+    Retrieve all lab and diagnostic test orders and reports for a specific patient.
+    Enables patient real-time status tracking (Requested, Sample Collected, Processing, Completed)
+    and viewing/downloading report files.
+    """
+    tests_list = []
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = """
+                        SELECT 
+                            l.id AS test_id,
+                            l.appointment_id,
+                            l.patient_id,
+                            l.test_type,
+                            l.structured_results,
+                            l.free_text_result,
+                            l.file_url,
+                            l.status,
+                            l.recorded_at,
+                            s.full_name AS recorded_by_name,
+                            a.date AS appointment_date,
+                            a.time_slot AS appointment_time,
+                            a.ticket_number AS token_number,
+                            COALESCE(d.name, a.doctor_name, 'Attending Doctor') AS doctor_name,
+                            COALESCE(d.specialty, a.doctor_specialty, 'General Medicine') AS doctor_specialty,
+                            COALESCE(h.name, 'CarePulse Partner Hospital') AS hospital_name
+                        FROM lab_tests l
+                        LEFT JOIN appointments a ON l.appointment_id = a.id
+                        LEFT JOIN doctors d ON a.doctor_id = d.id
+                        LEFT JOIN hospitals h ON a.hospital_id = h.id
+                        LEFT JOIN staff s ON l.recorded_by = s.id
+                        WHERE l.patient_id::text = %s OR a.patient_id::text = %s
+                        ORDER BY l.recorded_at DESC NULLS LAST, a.date DESC
+                    """
+                    cur.execute(query, (patient_id, patient_id))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        rd = dict(r)
+                        s_results = rd.get("structured_results")
+                        if isinstance(s_results, str):
+                            try:
+                                s_results = json.loads(s_results)
+                            except Exception:
+                                s_results = {}
+                        tests_list.append({
+                            "id": str(rd["test_id"]),
+                            "appointment_id": str(rd["appointment_id"]),
+                            "patient_id": str(rd["patient_id"]),
+                            "test_type": rd.get("test_type"),
+                            "structured_results": s_results or {},
+                            "free_text_result": rd.get("free_text_result"),
+                            "file_url": rd.get("file_url"),
+                            "status": rd.get("status") or "completed",
+                            "recorded_at": str(rd["recorded_at"]) if rd.get("recorded_at") else None,
+                            "recorded_by_name": rd.get("recorded_by_name") or "Lab Technician / Nurse",
+                            "appointment_date": str(rd.get("appointment_date") or ""),
+                            "appointment_time": str(rd.get("appointment_time") or ""),
+                            "token_number": rd.get("token_number"),
+                            "doctor_name": rd.get("doctor_name"),
+                            "doctor_specialty": rd.get("doctor_specialty"),
+                            "hospital_name": rd.get("hospital_name")
+                        })
+                    return {"success": True, "tests": tests_list}
+        except Exception as e:
+            logger.warning(f"PostgreSQL fetch patient lab tests history error: {e}")
+
+    # Fallback to JSON DB
+    db = read_json_db()
+    all_tests = db.get("lab_tests", [])
+    appointments_map = {a["id"]: a for a in db.get("appointments", [])}
+    doctors_map = {d["id"]: d for d in db.get("doctors", [])}
+    hospitals_map = {h["id"]: h for h in db.get("hospitals", [])}
+
+    for t in all_tests:
+        p_id = str(t.get("patient_id") or "")
+        appt_id = str(t.get("appointment_id") or "")
+        appt = appointments_map.get(appt_id, {})
+        if p_id == patient_id or str(appt.get("patient_id") or "") == patient_id:
+            doc = doctors_map.get(appt.get("doctor_id"), {})
+            hosp = hospitals_map.get(appt.get("hospital_id"), {})
+            t_copy = dict(t)
+            t_copy["appointment_date"] = appt.get("date") or ""
+            t_copy["appointment_time"] = appt.get("time") or appt.get("timeSlot") or ""
+            t_copy["token_number"] = appt.get("token_number") or appt.get("tokenNumber")
+            t_copy["doctor_name"] = doc.get("name") or appt.get("doctor_name") or "Attending Doctor"
+            t_copy["doctor_specialty"] = doc.get("specialty") or appt.get("doctor_specialty") or "General Medicine"
+            t_copy["hospital_name"] = hosp.get("name") or appt.get("hospital_name") or "CarePulse Medical Center"
+            tests_list.append(t_copy)
+
+    return {"success": True, "tests": tests_list}
+

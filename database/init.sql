@@ -629,3 +629,62 @@ CREATE TABLE IF NOT EXISTS patient_devices (
 CREATE INDEX IF NOT EXISTS idx_patient_devices_patient_id ON patient_devices(patient_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_devices_pat_dev ON patient_devices(patient_id, device_id);
 
+-- Hospital Announcements Table (Broadcasts from Admin)
+CREATE TABLE IF NOT EXISTS hospital_announcements (
+    id VARCHAR(100) PRIMARY KEY,
+    hospital_id VARCHAR(100) NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+    author_id VARCHAR(100),
+    author_name VARCHAR(255),
+    author_role VARCHAR(50) DEFAULT 'admin',
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    audience VARCHAR(100) DEFAULT 'All Staff', -- 'All Staff', 'Clinical Staff', 'Front Desk Reception', 'Nursing Staff', 'All Patients'
+    department VARCHAR(100) DEFAULT 'All',
+    priority VARCHAR(50) DEFAULT 'Normal', -- 'Normal', 'High', 'Urgent'
+    status VARCHAR(50) DEFAULT 'Sent', -- 'Sent', 'Scheduled'
+    scheduled_for TIMESTAMP WITH TIME ZONE,
+    sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_announcements_hospital_id ON hospital_announcements(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_audience ON hospital_announcements(audience);
+
+-- Staff Messages Table (Two-way communication between staff and administration)
+CREATE TABLE IF NOT EXISTS staff_messages (
+    id VARCHAR(100) PRIMARY KEY,
+    hospital_id VARCHAR(100) NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+    sender_id VARCHAR(100) NOT NULL,
+    sender_name VARCHAR(255) NOT NULL,
+    sender_role VARCHAR(50) NOT NULL, -- 'admin', 'doctor', 'receptionist', 'nurse'
+    sender_code VARCHAR(50),
+    recipient_role VARCHAR(50) DEFAULT 'admin', -- 'admin', 'doctor', 'receptionist', 'nurse', 'all'
+    recipient_id VARCHAR(100),
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    priority VARCHAR(50) DEFAULT 'normal', -- 'normal', 'high', 'urgent'
+    is_read BOOLEAN DEFAULT FALSE,
+    parent_id VARCHAR(100), -- References staff_messages(id) for thread replies
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_staff_messages_hospital_id ON staff_messages(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_staff_messages_sender_id ON staff_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_staff_messages_parent_id ON staff_messages(parent_id);
+
+-- Doctor Leaves Table
+CREATE TABLE IF NOT EXISTS doctor_leaves (
+    id VARCHAR(100) PRIMARY KEY,
+    doctor_id VARCHAR(100) NOT NULL,
+    doctor_name VARCHAR(255) NOT NULL,
+    hospital_id VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    days_count INT NOT NULL DEFAULT 1,
+    reason VARCHAR(255) DEFAULT '',
+    status VARCHAR(50) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
+    applied_at VARCHAR(100) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_doctor_leaves_doctor_id ON doctor_leaves(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_doctor_leaves_hospital_id ON doctor_leaves(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_doctor_leaves_dates ON doctor_leaves(start_date, end_date);
+
+

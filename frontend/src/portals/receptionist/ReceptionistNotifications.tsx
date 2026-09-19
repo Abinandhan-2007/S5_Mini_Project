@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Bell,
   AlertTriangle,
@@ -41,14 +41,45 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
   onShowToast,
   onNavigateTab,
 }) => {
-  const profile = useStaffStore((s) => s.receptionistProfile);
+  const announcements = useStaffStore((s) => s.announcements);
+  const sendStaffMessage = useStaffStore((s) => s.sendStaffMessage);
+  const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
+  const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
+
   const [notifications, setNotifications] = useState<ReceptionistNotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState<boolean>(false);
-  const [broadcastTitle, setBroadcastTitle] = useState('');
-  const [broadcastMsg, setBroadcastMsg] = useState('');
-  const [broadcastPriority, setBroadcastPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [isAdminMsgOpen, setIsAdminMsgOpen] = useState<boolean>(false);
+  const [adminMsgSubject, setAdminMsgSubject] = useState('');
+  const [adminMsgContent, setAdminMsgContent] = useState('');
+  const [adminMsgPriority, setAdminMsgPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
+  const [isSendingAdminMsg, setIsSendingAdminMsg] = useState(false);
+
+  // Sync real announcements from backend / store
+  useEffect(() => {
+    fetchAnnouncements(true);
+    fetchStaffMessages(true);
+  }, [fetchAnnouncements, fetchStaffMessages]);
+
+  useEffect(() => {
+    if (!announcements || announcements.length === 0) return;
+    const annItems: ReceptionistNotificationItem[] = announcements.map((a) => ({
+      id: `ann-${a.id}`,
+      title: `[Notice] ${a.title}`,
+      message: a.message,
+      category: 'broadcast',
+      priority: a.priority === 'Urgent' ? 'high' : a.priority === 'High' ? 'medium' : 'low',
+      timestamp: a.sentAt || 'Recently',
+      timeAgo: a.sentAt || 'Recently',
+      isRead: false,
+      sender: `${a.authorName || 'Hospital Admin'} (Admin)`,
+    }));
+
+    setNotifications((prev) => {
+      const nonAnn = prev.filter((n) => !n.id.startsWith('ann-'));
+      return [...annItems, ...nonAnn];
+    });
+  }, [announcements]);
 
   // Filtered Notifications
   const filteredNotifications = useMemo(() => {
@@ -97,27 +128,25 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
     onShowToast?.('Cleared all read notifications.');
   };
 
-  const handleSendBroadcast = (e: React.FormEvent) => {
+  const handleSendMessageToAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!broadcastTitle || !broadcastMsg) return;
+    if (!adminMsgSubject.trim() || !adminMsgContent.trim()) return;
 
-    const newNotif: ReceptionistNotificationItem = {
-      id: `notif-${Date.now()}`,
-      title: broadcastTitle,
-      message: broadcastMsg,
-      category: broadcastPriority === 'high' ? 'urgent' : 'broadcast',
-      priority: broadcastPriority,
-      timestamp: 'Just now',
-      timeAgo: 'Just now',
-      isRead: false,
-      sender: `${profile.name} (Desk 01)`,
-    };
-
-    setNotifications((prev) => [newNotif, ...prev]);
-    setIsBroadcastModalOpen(false);
-    setBroadcastTitle('');
-    setBroadcastMsg('');
-    onShowToast?.('📢 Front desk alert broadcasted successfully.');
+    setIsSendingAdminMsg(true);
+    try {
+      await sendStaffMessage({
+        subject: adminMsgSubject.trim(),
+        message: adminMsgContent.trim(),
+        priority: adminMsgPriority,
+        recipientRole: 'admin',
+      });
+      setIsAdminMsgOpen(false);
+      setAdminMsgSubject('');
+      setAdminMsgContent('');
+      onShowToast?.('✓ Inquiry sent to Hospital Administration.');
+    } finally {
+      setIsSendingAdminMsg(false);
+    }
   };
 
   const getCategoryIcon = (category: string) => {
@@ -157,11 +186,11 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
       ══════════════════════════════════════════════════════════════════ */}
       <div className="flex flex-wrap items-center justify-end gap-2.5">
         <button
-          onClick={() => setIsBroadcastModalOpen(true)}
+          onClick={() => setIsAdminMsgOpen(true)}
           className="px-3.5 py-2 bg-gradient-to-r from-[#0B5A54] to-teal-800 hover:from-[#084540] hover:to-[#0B5A54] text-white font-extrabold rounded-xl text-xs shadow-md shadow-teal-900/15 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95"
         >
           <Send className="w-3.5 h-3.5 text-teal-200" />
-          <span>+ Broadcast Alert</span>
+          <span>+ Contact Administration</span>
         </button>
 
         {unreadCount > 0 && (
@@ -425,7 +454,7 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
       {/* ══════════════════════════════════════════════════════════════════
           5. BROADCAST NEW ALERT MODAL
       ══════════════════════════════════════════════════════════════════ */}
-      {isBroadcastModalOpen && (
+      {isAdminMsgOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 text-left animate-in zoom-in-95 duration-200 my-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -438,27 +467,27 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
                     Broadcast Front Desk Alert
                   </h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Send quick notice to doctors and clinical staff
+                    Send inquiry, emergency alert, or supply request to Administration
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setIsBroadcastModalOpen(false)}
+                onClick={() => setIsAdminMsgOpen(false)}
                 className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSendBroadcast} className="space-y-4 text-xs">
+            <form onSubmit={handleSendMessageToAdmin} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Alert Title</label>
+                <label className="font-bold text-slate-700 block mb-1">Subject / Issue Summary</label>
                 <input
                   type="text"
                   required
-                  value={broadcastTitle}
-                  onChange={(e) => setBroadcastTitle(e.target.value)}
-                  placeholder="e.g., Cardiology Cabin 102 Queue Full"
+                  value={adminMsgSubject}
+                  onChange={(e) => setAdminMsgSubject(e.target.value)}
+                  placeholder="e.g., Token printer malfunction at Desk A-1"
                   className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                 />
               </div>
@@ -467,17 +496,17 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
                 <label className="font-bold text-slate-700 block mb-1">Priority Level</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'low', label: 'Low / Info' },
-                    { id: 'medium', label: 'Medium' },
+                    { id: 'normal', label: 'Normal / Info' },
                     { id: 'high', label: 'High Priority' },
+                    { id: 'urgent', label: 'Urgent Alert' },
                   ].map((p) => (
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => setBroadcastPriority(p.id as 'high' | 'medium' | 'low')}
+                      onClick={() => setAdminMsgPriority(p.id as any)}
                       className={`py-2 px-2.5 rounded-xl font-extrabold text-[11px] border transition-all cursor-pointer text-center ${
-                        broadcastPriority === p.id
-                          ? p.id === 'high'
+                        adminMsgPriority === p.id
+                          ? p.id === 'urgent'
                             ? 'bg-rose-50 border-rose-400 text-rose-700 shadow-2xs'
                             : 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-2xs'
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
@@ -490,13 +519,13 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Alert Message</label>
+                <label className="font-bold text-slate-700 block mb-1">Inquiry / Requisition Details</label>
                 <textarea
                   required
                   rows={3}
-                  value={broadcastMsg}
-                  onChange={(e) => setBroadcastMsg(e.target.value)}
-                  placeholder="Type the announcement or notice message details..."
+                  value={adminMsgContent}
+                  onChange={(e) => setAdminMsgContent(e.target.value)}
+                  placeholder="Describe your request, patient overflow, or equipment requirements..."
                   className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-[#0B5A54] rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20 resize-none"
                 />
               </div>
@@ -504,16 +533,17 @@ export const ReceptionistNotifications: React.FC<ReceptionistNotificationsProps>
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsBroadcastModalOpen(false)}
+                  onClick={() => setIsAdminMsgOpen(false)}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95"
+                  disabled={isSendingAdminMsg}
+                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50"
                 >
-                  Broadcast Alert
+                  Send to Admin
                 </button>
               </div>
             </form>

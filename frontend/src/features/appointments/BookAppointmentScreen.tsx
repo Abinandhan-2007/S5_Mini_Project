@@ -453,16 +453,16 @@ export const BookAppointmentScreen: React.FC = () => {
           </div>
 
           <div className="w-full sm:w-auto flex-1 max-w-md">
-            {doctor.isAvailable === false || doctor.is_available === false ? (
+            {(doctor as any)?.onLeave ? (
               <button
                 type="button"
                 disabled
                 className="w-full py-3.5 px-6 rounded-2xl bg-rose-50 text-rose-700 font-black text-xs sm:text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-rose-200 shadow-2xs"
               >
                 <X className="w-4 h-4 text-rose-500 shrink-0" />
-                <span className="truncate">{t('doctors.offDuty', 'Doctor Unavailable')} {doctor.availabilityReason ? `(${doctor.availabilityReason})` : '(Off-Duty)'}</span>
+                <span className="truncate">Doctor on Leave ({(doctor as any)?.leaveReason || 'Booking Closed'})</span>
               </button>
-            ) : (!((doctor as any)?.slotCapacities?.length > 0 || (doctor as any)?.slot_capacities?.length > 0)) ? (
+            ) : !((doctor as any)?.slotCapacities?.length > 0 || (doctor as any)?.slot_capacities?.length > 0) ? (
               <button
                 type="button"
                 disabled

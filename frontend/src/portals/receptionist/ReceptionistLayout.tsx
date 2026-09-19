@@ -80,6 +80,8 @@ export const ReceptionistLayout: React.FC = () => {
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchTokens = useStaffStore((s) => s.fetchTokens);
   const fetchBookings = useStaffStore((s) => s.fetchBookings);
+  const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
+  const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
@@ -93,26 +95,28 @@ export const ReceptionistLayout: React.FC = () => {
 
   const handleCheckInFromDossier = async (patient: any, appt?: any) => {
     if (appt?.id) {
-      await updateTokenStatus(appt.id, 'Checked In');
-      showToast(`Checked in ${patient.fullName} for ticket ${appt.ticketNumber}!`);
+      await updateTokenStatus(appt.id, 'Waiting');
+      showToast(`Checked in ${patient?.fullName || 'Patient'} for appointment`);
     } else {
-      showToast(`Patient ${patient.fullName} checked in at reception desk.`);
+      showToast(`Loaded profile for ${patient?.fullName || 'Patient'}`);
     }
     setIsPatientDossierOpen(false);
   };
 
-  const handleNewAppointmentFromDossier = (_patient: any) => {
+  const handleBookAppointmentFromDossier = (_patient: any) => {
     setIsPatientDossierOpen(false);
     setIsNewAppointmentOpen(true);
   };
 
-  // Automatic robust background polling for receptionist token queue, bookings & doctors
+  // Automatic robust background polling for receptionist token queue, bookings, doctors, and broadcasts
   usePolling(
     async () => {
       await Promise.all([
         fetchTokens(undefined, true),
         fetchBookings(undefined, true),
         fetchDoctors(true),
+        fetchAnnouncements(true),
+        fetchStaffMessages(true),
       ]);
     },
     {
@@ -127,8 +131,10 @@ export const ReceptionistLayout: React.FC = () => {
       fetchTokens(undefined, true);
       fetchBookings(undefined, true);
       fetchDoctors(true);
+      fetchAnnouncements(true);
+      fetchStaffMessages(true);
     }
-  }, [currentStaff, fetchTokens, fetchBookings, fetchDoctors]);
+  }, [currentStaff, fetchTokens, fetchBookings, fetchDoctors, fetchAnnouncements, fetchStaffMessages]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -712,7 +718,7 @@ export const ReceptionistLayout: React.FC = () => {
         data={scannedPatientRecord}
         portalRole="receptionist"
         onCheckInPatient={handleCheckInFromDossier}
-        onNewAppointment={handleNewAppointmentFromDossier}
+        onNewAppointment={handleBookAppointmentFromDossier}
       />
     </div>
   );

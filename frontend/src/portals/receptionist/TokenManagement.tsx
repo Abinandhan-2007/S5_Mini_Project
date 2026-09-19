@@ -683,7 +683,9 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           1. TOP COMMAND DECK & SEARCH HEADER
       ══════════════════════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4 w-full min-w-0">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+        
+        {/* HEADER TITLE & DOCTOR SELECTIVITY IN A SINGLE RESPONSIVE ROW */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-sm shrink-0">
               <Ticket className="w-5 h-5 stroke-[2.5]" />
@@ -697,52 +699,28 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               </p>
             </div>
           </div>
-        </div>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            2. DOCTOR SELECTIVITY FILTER ROW
-        ══════════════════════════════════════════════════════════════════ */}
-        <div className="pt-2 border-t border-slate-100 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Stethoscope className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                1. Select Physician
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => scrollLeft(doctorScrollRef)}
-                className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
-                title="Scroll Left"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => scrollRight(doctorScrollRef)}
-                className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
-                title="Scroll Right"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
+          {/* DOCTOR SELECTOR PILLS */}
           <div
             ref={doctorScrollRef}
-            className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar w-full"
+            className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200/70 overflow-x-auto no-scrollbar shrink-0"
           >
+            <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider px-1 shrink-0 flex items-center gap-1">
+              <Stethoscope className="w-3 h-3 text-[#0B5A54]" />
+              <span>Doctor:</span>
+            </span>
+
             {/* All Physicians Pill */}
             <button
               onClick={() => {
                 setSelectedDoctorId('ALL');
                 setSelectedTimeSlot('ALL');
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${selectedDoctorId === 'ALL'
-                  ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs ring-2 ring-teal-500/20'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                selectedDoctorId === 'ALL'
+                  ? 'bg-[#0B5A54] text-white shadow-2xs ring-1 ring-teal-500/20'
+                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80'
+              }`}
             >
               <Users className="w-3.5 h-3.5" />
               <span>All Physicians ({doctors.length})</span>
@@ -762,14 +740,16 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                     setSelectedDoctorId(doc.id);
                     setSelectedTimeSlot('ALL');
                   }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${isSelected
-                      ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs ring-2 ring-teal-500/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-                    }`}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    isSelected
+                      ? 'bg-[#0B5A54] text-white shadow-2xs ring-1 ring-teal-500/20'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80'
+                  }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9.5px] font-black shrink-0 ${isSelected ? 'bg-teal-300 text-teal-950' : 'bg-teal-50 text-[#0B5A54]'
-                      }`}
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${
+                      isSelected ? 'bg-teal-300 text-teal-950' : 'bg-teal-50 text-[#0B5A54]'
+                    }`}
                   >
                     {doc.name.replace('Dr. ', '').charAt(0)}
                   </div>
@@ -777,18 +757,20 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   <span>{doc.name}</span>
 
                   <span
-                    className={`text-[9.5px] px-1.5 py-0.2 rounded font-semibold ${isSelected ? 'bg-teal-800/80 text-teal-100' : 'bg-slate-100 text-slate-500'
-                      }`}
+                    className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                      isSelected ? 'bg-teal-800/80 text-teal-100' : 'bg-slate-100 text-slate-500'
+                    }`}
                   >
                     {doc.specialty}
                   </span>
 
                   {docWaitingTokens > 0 && (
                     <span
-                      className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${isSelected
+                      className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
+                        isSelected
                           ? 'bg-amber-400 text-slate-950 font-mono'
                           : 'bg-amber-100 text-amber-900 border border-amber-200'
-                        }`}
+                      }`}
                     >
                       {docWaitingTokens}
                     </span>
@@ -800,14 +782,14 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            3. TIME SLOTS SELECTOR MATRIX (BASED ON DOCTOR SELECTIVITY)
+            2. TIME SLOTS SELECTOR MATRIX
         ══════════════════════════════════════════════════════════════════ */}
-        <div className="pt-2.5 border-t border-slate-100 space-y-2">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-[#0B5A54]" />
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                2. Select Time Slot {activeDoctor ? `for ${activeDoctor.name}` : '(All Doctors)'}
+                Select Time Slot {activeDoctor ? `for ${activeDoctor.name}` : '(All Doctors)'}
               </span>
             </div>
 
@@ -832,23 +814,25 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
           {/* Time Slots Carousel / Grid Container */}
           <div
             ref={slotScrollRef}
-            className="flex items-stretch gap-2.5 overflow-x-auto pb-2 pt-0.5 no-scrollbar w-full"
+            className="flex items-stretch gap-2.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar w-full"
           >
             {/* "All Time Slots" Master Card */}
             <button
               onClick={() => setSelectedTimeSlot('ALL')}
-              className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${selectedTimeSlot === 'ALL'
-                  ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-md ring-2 ring-teal-500/25'
+              className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${
+                selectedTimeSlot === 'ALL'
+                  ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs ring-2 ring-teal-500/25'
                   : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
-                }`}
+              }`}
             >
               <div>
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <span
-                    className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${selectedTimeSlot === 'ALL'
+                    className={`text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      selectedTimeSlot === 'ALL'
                         ? 'bg-white/20 text-white'
                         : 'bg-slate-100 text-slate-600'
-                      }`}
+                    }`}
                   >
                     Full Schedule
                   </span>
@@ -864,10 +848,11 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                   Total Queue:
                 </span>
                 <span
-                  className={`font-mono px-1.5 py-0.2 rounded font-black ${selectedTimeSlot === 'ALL'
+                  className={`font-mono px-1.5 py-0.2 rounded font-black ${
+                    selectedTimeSlot === 'ALL'
                       ? 'bg-white text-[#0B5A54]'
                       : 'bg-slate-100 text-slate-900'
-                    }`}
+                  }`}
                 >
                   {filteredTokens.length}
                 </span>
@@ -890,22 +875,24 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 <button
                   key={slotTime}
                   onClick={() => setSelectedTimeSlot(slotTime)}
-                  className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${isSelected
+                  className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer min-w-[170px] max-w-[200px] shrink-0 flex flex-col justify-between ${
+                    isSelected
                       ? 'bg-gradient-to-br from-teal-50 via-white to-emerald-50/70 border-teal-500 ring-2 ring-teal-500/30 shadow-xs'
                       : 'bg-white hover:bg-slate-50 border-slate-200 shadow-2xs'
-                    }`}
+                  }`}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <span
-                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${metrics.isBlocked
+                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          metrics.isBlocked
                             ? 'bg-rose-100 text-rose-800 border border-rose-200'
                             : hasActiveConsultation
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : isSelected
                                 ? 'bg-[#0B5A54] text-white'
                                 : 'bg-slate-100 text-slate-600'
-                          }`}
+                        }`}
                       >
                         {metrics.isBlocked ? (
                           '🚫 Blocked'
@@ -929,8 +916,9 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                     </div>
 
                     <h4
-                      className={`font-black text-xs truncate font-mono ${isSelected ? 'text-[#0B5A54]' : 'text-slate-900'
-                        }`}
+                      className={`font-black text-xs truncate font-mono ${
+                        isSelected ? 'text-[#0B5A54]' : 'text-slate-900'
+                      }`}
                     >
                       {slotTime}
                     </h4>
@@ -973,36 +961,38 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            4. DATE FILTER, STATUS FILTER & SORT TOOLBAR
+            3. DATE FILTER, STATUS FILTER & SORT TOOLBAR (UNIFIED)
         ══════════════════════════════════════════════════════════════════ */}
-        <div className="space-y-2.5 pt-2 border-t border-slate-100 w-full min-w-0">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-slate-50/80 p-2.5 sm:p-3 rounded-2xl border border-slate-200/70 w-full min-w-0">
+        <div className="pt-2 border-t border-slate-100 w-full min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50/80 p-2 sm:p-2.5 rounded-2xl border border-slate-200/70 w-full min-w-0">
             {/* Quick Date Pills + Date Input */}
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#0B5A54] shrink-0 mr-1">
-                <Calendar className="w-4 h-4 text-[#14B8A6]" />
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-1 text-xs font-black text-[#0B5A54] shrink-0 mr-0.5">
+                <Calendar className="w-3.5 h-3.5 text-[#14B8A6]" />
                 <span>Date:</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedDateFilter(getTodayISODate(0))}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none flex items-center gap-1.5 ${selectedDateFilter === getTodayISODate(0)
-                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                  }`}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                  selectedDateFilter === getTodayISODate(0)
+                    ? 'bg-[#0B5A54] text-white shadow-2xs font-black'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                }`}
               >
-                <span className={`w-2 h-2 rounded-full ${selectedDateFilter === getTodayISODate(0) ? 'bg-emerald-300' : 'bg-slate-300'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${selectedDateFilter === getTodayISODate(0) ? 'bg-emerald-300' : 'bg-slate-300'}`} />
                 <span>Today ({formatDisplayDate(getTodayISODate(0))})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedDateFilter(getTodayISODate(1))}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${selectedDateFilter === getTodayISODate(1)
-                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                  }`}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                  selectedDateFilter === getTodayISODate(1)
+                    ? 'bg-[#0B5A54] text-white shadow-2xs font-black'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                }`}
               >
                 Tomorrow
               </button>
@@ -1010,10 +1000,11 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDateFilter('ALL')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${selectedDateFilter === 'ALL'
-                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                  }`}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                  selectedDateFilter === 'ALL'
+                    ? 'bg-[#0B5A54] text-white shadow-2xs font-black'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                }`}
               >
                 All Dates
               </button>
@@ -1023,61 +1014,59 @@ export const TokenManagement: React.FC<TokenManagementProps> = ({
                 type="date"
                 value={selectedDateFilter === 'ALL' ? '' : selectedDateFilter}
                 onChange={(e) => setSelectedDateFilter(e.target.value || 'ALL')}
-                className="px-2 py-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer shadow-2xs"
+                className="px-2 py-0.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] cursor-pointer shadow-2xs"
                 title="Choose custom date"
               />
             </div>
 
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
-              <div className="flex items-center gap-1 text-xs font-black text-slate-600 shrink-0">
-                <ArrowUpDown className="w-3.5 h-3.5 text-[#0B5A54]" />
-                <span>Sort:</span>
+            {/* Status Filter Chips + Sort Dropdown */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5 shrink-0">
+                  Status:
+                </span>
+                {(['ALL', 'Waiting', 'Checked In', 'In Consultation', 'Completed'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                      statusFilter === st
+                        ? 'bg-slate-900 text-white shadow-2xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/70'
+                    }`}
+                  >
+                    {st === 'ALL' ? 'All Statuses' : st}
+                  </button>
+                ))}
               </div>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as TokenSortOption)}
-                className="px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] shadow-2xs cursor-pointer"
-              >
-                <option value="TIME_ASC">Time Slot (Earliest First)</option>
-                <option value="TIME_DESC">Time Slot (Latest First)</option>
-                <option value="DATE_DESC">Date (Newest First)</option>
-                <option value="DATE_ASC">Date (Oldest First)</option>
-                <option value="TOKEN_ASC">Token Number (#001 First)</option>
-                <option value="NAME_ASC">Patient Name (A → Z)</option>
-              </select>
-
-              {selectedDateFilter !== getTodayISODate(0) && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedDateFilter(getTodayISODate(0))}
-                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                  title="Reset Date to Today"
+              <div className="flex items-center gap-1 text-xs shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as TokenSortOption)}
+                  className="px-2 py-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] shadow-2xs cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
+                  <option value="TIME_ASC">Time Slot (Earliest First)</option>
+                  <option value="TIME_DESC">Time Slot (Latest First)</option>
+                  <option value="DATE_DESC">Date (Newest First)</option>
+                  <option value="DATE_ASC">Date (Oldest First)</option>
+                  <option value="TOKEN_ASC">Token Number (#001 First)</option>
+                  <option value="NAME_ASC">Patient Name (A → Z)</option>
+                </select>
 
-          {/* Status Filter Chips Row */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar w-full min-w-0">
-            <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">
-              Status:
-            </span>
-            {(['ALL', 'Waiting', 'Checked In', 'In Consultation', 'Completed'] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${statusFilter === st
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-              >
-                {st === 'ALL' ? 'All Statuses' : st}
-              </button>
-            ))}
+                {selectedDateFilter !== getTodayISODate(0) && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDateFilter(getTodayISODate(0))}
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    title="Reset Date to Today"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

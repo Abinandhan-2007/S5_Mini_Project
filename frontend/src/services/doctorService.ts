@@ -1,4 +1,4 @@
-import { apiGet } from '../lib/apiFetch';
+import { apiGet, apiFetch } from '../lib/apiFetch';
 import type { Doctor } from '../lib/types';
 import { useStaffStore } from '../store/staffStore';
 
@@ -161,7 +161,14 @@ export const doctorService = {
       if (res && res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.slots)) {
-          return data.slots;
+          const slots = data.slots.map((s: any) => ({
+            ...s,
+            onLeave: data.onLeave || false,
+            leaveReason: data.leaveReason || '',
+          }));
+          (slots as any).onLeave = data.onLeave || false;
+          (slots as any).leaveReason = data.leaveReason || '';
+          return slots;
         }
       }
     } catch (err) {
@@ -177,5 +184,52 @@ export const doctorService = {
     }
 
     return [];
+  },
+
+  /**
+   * Apply for multi-day doctor leave (defaults to Pending)
+   */
+  async applyDoctorLeave(payload: { startDate: string; endDate: string; reason?: string }): Promise<any> {
+    const res = await apiFetch('/doctor/leave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to submit leave application' }));
+      throw new Error(err.detail || `Failed to apply leave (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Get leave applications and status for current authenticated doctor
+   */
+  async getMyDoctorLeaves(doctorId?: string): Promise<any[]> {
+    try {
+      const q = doctorId ? `?doctor_id=${encodeURIComponent(doctorId)}` : '';
+      const res = await apiFetch(`/doctor/leave${q}`, { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        return data.leaves || [];
+      }
+    } catch (err) {
+      console.warn('Failed to fetch doctor leaves:', err);
+    }
+    return [];
+  },
+
+  /**
+   * Cancel an applied doctor leave (unfreezes slots if previously approved)
+   */
+  async cancelDoctorLeave(leaveId: string): Promise<any> {
+    const res = await apiFetch(`/doctor/leave/${encodeURIComponent(leaveId)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to cancel leave request' }));
+      throw new Error(err.detail || `Failed to cancel leave (HTTP ${res.status})`);
+    }
+    return await res.json();
   },
 };

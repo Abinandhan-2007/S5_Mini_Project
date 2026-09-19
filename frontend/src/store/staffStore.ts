@@ -9,6 +9,7 @@ import type {
   HospitalBranch,
   DepartmentRecord,
   AnnouncementRecord,
+  StaffMessage,
 } from '../types/staff';
 import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile, TimeSlotCapacity } from '../types/receptionist';
 import { receptionistService } from '../services/receptionistService';
@@ -184,6 +185,8 @@ export interface StaffState {
   hospitals: HospitalBranch[];
   departments: DepartmentRecord[];
   announcements: AnnouncementRecord[];
+  staffMessages: StaffMessage[];
+  unreadStaffMessagesCount: number;
   doctors: DoctorRecord[];
   tokens: TokenQueueItem[];
   bookings: TokenQueueItem[];
@@ -200,8 +203,15 @@ export interface StaffState {
   deleteDepartment: (id: string) => Promise<void>;
 
   // Announcement Actions
+  fetchAnnouncements: (silent?: boolean) => Promise<void>;
   addAnnouncement: (annData: Partial<AnnouncementRecord>) => Promise<void>;
   deleteAnnouncement: (id: string) => Promise<void>;
+
+  // Staff Communication & Messages Actions
+  fetchStaffMessages: (silent?: boolean) => Promise<void>;
+  sendStaffMessage: (msgData: Partial<StaffMessage>) => Promise<void>;
+  markStaffMessageRead: (id: string) => Promise<void>;
+  deleteStaffMessage: (id: string) => Promise<void>;
 
   // Hospital Branch Actions
   addHospital: (hospData: Partial<HospitalBranch>) => Promise<void>;
@@ -283,6 +293,8 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   hospitals: DEFAULT_HOSPITALS,
   departments: DEFAULT_DEPARTMENTS,
   announcements: DEFAULT_ANNOUNCEMENTS,
+  staffMessages: [],
+  unreadStaffMessagesCount: 0,
   doctors: INITIAL_DOCTORS,
   tokens: INITIAL_TOKENS,
   bookings: [],
@@ -1148,8 +1160,47 @@ export const useStaffStore = create<StaffState>((set, get) => ({
     }));
   },
 
+  fetchAnnouncements: async (silent?: boolean) => {
+    try {
+      const res = await apiFetch('/communication/announcements', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.announcements)) {
+          set({ announcements: data.announcements });
+        }
+      }
+    } catch (e) {
+      if (!silent) console.warn('Failed to fetch announcements:', e);
+    }
+  },
+
   addAnnouncement: async (annData: Partial<AnnouncementRecord>) => {
-    const newAnn: AnnouncementRecord = {
+    try {
+      const res = await apiFetch('/communication/announcements', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: annData.title,
+          message: annData.message,
+          audience: annData.audience || 'All Staff',
+          department: annData.department || 'All',
+          priority: annData.priority || 'Normal',
+          status: annData.status || 'Sent',
+          scheduledFor: annData.scheduledFor,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.announcement) {
+          set((state) => ({
+            announcements: [data.announcement, ...state.announcements.filter(a => a.id !== data.announcement.id)],
+          }));
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend announcement dispatch error, fallback to local:', e);
+    }
+    const fallbackAnn: AnnouncementRecord = {
       id: `ann-${Date.now()}`,
       title: annData.title || 'New Hospital Notice',
       message: annData.message || '',
@@ -1163,13 +1214,141 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       status: annData.status || 'Sent',
     };
     set((state) => ({
-      announcements: [newAnn, ...state.announcements],
+      announcements: [fallbackAnn, ...state.announcements],
     }));
   },
 
   deleteAnnouncement: async (id: string) => {
+    try {
+      await apiFetch(`/communication/announcements/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn('Backend delete announcement error:', e);
+    }
     set((state) => ({
       announcements: state.announcements.filter((a) => a.id !== id),
+    }));
+  },
+
+  fetchStaffMessages: async (silent?: boolean) => {
+    try {
+      const res = await apiFetch('/communication/messages', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.messages)) {
+          const msgs: StaffMessage[] = data.messages;
+          const unreadCount = msgs.reduce((acc, m) => {
+            let count = m.isRead ? 0 : 1;
+            if (m.replies) {
+              count += m.replies.filter(r => !r.isRead).length;
+            }
+            return acc + count;
+          }, 0);
+          set({ staffMessages: msgs, unreadStaffMessagesCount: unreadCount });
+        }
+      }
+    } catch (e) {
+      if (!silent) console.warn('Failed to fetch staff messages:', e);
+    }
+  },
+
+  sendStaffMessage: async (msgData: Partial<StaffMessage>) => {
+    try {
+      const res = await apiFetch('/communication/messages', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: msgData.subject,
+          message: msgData.message,
+          priority: msgData.priority || 'normal',
+          recipientRole: msgData.recipientRole || 'admin',
+          recipientId: msgData.recipientId,
+          parentId: msgData.parentId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newMsg: StaffMessage = data.data;
+        if (newMsg) {
+          set((state) => {
+            if (newMsg.parentId) {
+              return {
+                staffMessages: state.staffMessages.map((m) =>
+                  m.id === newMsg.parentId
+                    ? { ...m, replies: [...(m.replies || []), newMsg] }
+                    : m
+                ),
+              };
+            }
+            return {
+              staffMessages: [newMsg, ...state.staffMessages],
+            };
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Error sending staff message:', e);
+    }
+    const currentStaff = get().currentStaff;
+    const fallbackMsg: StaffMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: currentStaff?.id || 'staff',
+      senderName: currentStaff?.name || 'Staff Member',
+      senderRole: currentStaff?.role || 'doctor',
+      senderCode: currentStaff?.staff_code || '',
+      recipientRole: msgData.recipientRole || 'admin',
+      subject: msgData.subject || 'Support Request',
+      message: msgData.message || '',
+      priority: msgData.priority || 'normal',
+      isRead: false,
+      parentId: msgData.parentId,
+      createdAt: new Date().toISOString(),
+      replies: [],
+    };
+    set((state) => {
+      if (fallbackMsg.parentId) {
+        return {
+          staffMessages: state.staffMessages.map((m) =>
+            m.id === fallbackMsg.parentId
+              ? { ...m, replies: [...(m.replies || []), fallbackMsg] }
+              : m
+          ),
+        };
+      }
+      return {
+        staffMessages: [fallbackMsg, ...state.staffMessages],
+      };
+    });
+  },
+
+  markStaffMessageRead: async (id: string) => {
+    try {
+      await apiFetch(`/communication/messages/${id}/read`, { method: 'PATCH' });
+    } catch (e) {
+      console.warn('Error marking message read:', e);
+    }
+    set((state) => ({
+      staffMessages: state.staffMessages.map((m) => {
+        if (m.id === id) return { ...m, isRead: true };
+        if (m.replies && m.replies.some(r => r.id === id)) {
+          return {
+            ...m,
+            replies: m.replies.map(r => r.id === id ? { ...r, isRead: true } : r),
+          };
+        }
+        return m;
+      }),
+      unreadStaffMessagesCount: Math.max(0, state.unreadStaffMessagesCount - 1),
+    }));
+  },
+
+  deleteStaffMessage: async (id: string) => {
+    try {
+      await apiFetch(`/communication/messages/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn('Error deleting message:', e);
+    }
+    set((state) => ({
+      staffMessages: state.staffMessages.filter((m) => m.id !== id),
     }));
   },
 }));

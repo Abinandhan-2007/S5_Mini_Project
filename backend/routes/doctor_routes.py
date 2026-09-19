@@ -9,7 +9,15 @@ from pydantic import BaseModel
 import database
 from database import read_json_db, write_json_db, get_pg_connection
 from routes.staff_auth import get_current_staff
-from schemas import ConsultationCreate, ConsultationResponse, AppointmentResponse, DoctorAvailabilityUpdate
+from schemas import (
+    ConsultationCreate,
+    ConsultationResponse,
+    AppointmentResponse,
+    DoctorAvailabilityUpdate,
+    DoctorLeaveCreate,
+    DoctorLeaveResponse,
+    DoctorLeaveStatusUpdate,
+)
 
 logger = logging.getLogger("carepulse.doctor")
 
@@ -762,3 +770,177 @@ def toggle_doctor_availability_by_id(
     """
     from routes.receptionist_routes import toggle_doctor_availability
     return toggle_doctor_availability(doctor_id=doctor_id, payload=payload, authorization=authorization)
+
+
+@router.post("/leave")
+def apply_doctor_leave(
+    payload: DoctorLeaveCreate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Doctor applies for multi-day leave. Status defaults to 'Pending'.
+    Only APPROVED leave requests freeze slots.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized doctor session")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["doctor", "admin", "superadmin", "receptionist", "nurse"]:
+        raise HTTPException(status_code=403, detail="Only doctors or authorized staff can apply for leave")
+
+    doc_id = staff_ctx.get("doctor_id") or staff_ctx.get("staff_id") or staff_ctx.get("id")
+    hosp_id = staff_ctx.get("hospital_id") or "hosp-1"
+    doc_name = staff_ctx.get("name") or "Doctor"
+
+    try:
+        s_date = datetime.strptime(payload.startDate.strip(), "%Y-%m-%d").date()
+        e_date = datetime.strptime(payload.endDate.strip(), "%Y-%m-%d").date()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD")
+
+    if e_date < s_date:
+        raise HTTPException(status_code=400, detail="End date cannot be earlier than start date")
+
+    days_count = (e_date - s_date).days + 1
+    leave_id = f"leave-{uuid.uuid4().hex[:8]}"
+    applied_at = datetime.now().isoformat()
+    status_str = "Pending"
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO doctor_leaves (id, doctor_id, doctor_name, hospital_id, start_date, end_date, days_count, reason, status, applied_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING *
+                    """, (leave_id, doc_id, doc_name, hosp_id, s_date, e_date, days_count, payload.reason or "", status_str, applied_at))
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Error inserting doctor leave into pg: {e}")
+
+    db = read_json_db()
+    if "doctor_leaves" not in db:
+        db["doctor_leaves"] = []
+
+    leave_record = {
+        "id": leave_id,
+        "doctor_id": doc_id,
+        "doctorId": doc_id,
+        "doctor_name": doc_name,
+        "doctorName": doc_name,
+        "hospital_id": hosp_id,
+        "hospitalId": hosp_id,
+        "start_date": str(s_date),
+        "startDate": str(s_date),
+        "end_date": str(e_date),
+        "endDate": str(e_date),
+        "days_count": days_count,
+        "daysCount": days_count,
+        "reason": payload.reason or "",
+        "status": status_str,
+        "applied_at": applied_at,
+        "appliedAt": applied_at
+    }
+    db["doctor_leaves"].append(leave_record)
+    write_json_db(db)
+
+    return {"success": True, "leave": leave_record}
+
+
+@router.get("/leave")
+def get_my_doctor_leaves(
+    doctor_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve leave history for a doctor.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    target_doc_id = doctor_id
+    if not target_doc_id and staff_ctx:
+        target_doc_id = staff_ctx.get("doctor_id") or staff_ctx.get("staff_id") or staff_ctx.get("id")
+
+    if not target_doc_id:
+        return {"leaves": []}
+
+    leaves = []
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT * FROM doctor_leaves
+                        WHERE doctor_id = %s OR doctor_id IN (
+                            SELECT doctor_id FROM staff WHERE staff_code = %s OR id::text = %s
+                        )
+                        ORDER BY applied_at DESC
+                    """, (target_doc_id, target_doc_id, target_doc_id))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        leaves.append({
+                            "id": str(r["id"]),
+                            "doctorId": str(r["doctor_id"]),
+                            "doctor_id": str(r["doctor_id"]),
+                            "doctorName": r["doctor_name"],
+                            "hospitalId": str(r["hospital_id"]),
+                            "startDate": str(r["start_date"]),
+                            "start_date": str(r["start_date"]),
+                            "endDate": str(r["end_date"]),
+                            "end_date": str(r["end_date"]),
+                            "daysCount": r["days_count"],
+                            "days_count": r["days_count"],
+                            "reason": r.get("reason") or "",
+                            "status": r.get("status") or "Pending",
+                            "appliedAt": r["applied_at"],
+                            "applied_at": r["applied_at"]
+                        })
+        except Exception as e:
+            logger.warning(f"Error querying doctor leaves from pg: {e}")
+
+    if not leaves:
+        db = read_json_db()
+        for l in db.get("doctor_leaves", []):
+            if l.get("doctor_id") == target_doc_id or l.get("doctorId") == target_doc_id:
+                leaves.append(l)
+
+    return {"leaves": leaves}
+
+
+@router.delete("/leave/{leave_id}")
+def cancel_doctor_leave(
+    leave_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Cancel a leave request. If leave was previously Approved, cancelling it unfreezes slots.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    updated = False
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE doctor_leaves SET status = 'Cancelled' WHERE id = %s RETURNING *", (leave_id,))
+                    row = cur.fetchone()
+                    if row:
+                        conn.commit()
+                        updated = True
+        except Exception as e:
+            logger.warning(f"Error updating leave in pg: {e}")
+
+    db = read_json_db()
+    for l in db.get("doctor_leaves", []):
+        if l.get("id") == leave_id:
+            l["status"] = "Cancelled"
+            updated = True
+
+    if updated:
+        write_json_db(db)
+
+    return {"success": True, "message": "Doctor leave request cancelled successfully"}
+

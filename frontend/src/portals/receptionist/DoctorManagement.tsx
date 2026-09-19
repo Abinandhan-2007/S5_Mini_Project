@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Stethoscope,
   CheckCircle,
@@ -15,8 +15,12 @@ import {
   Sparkles,
   Check,
   Loader2,
+  CalendarX,
+  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { receptionistService } from '../../services/receptionistService';
 import type { DoctorRecord, TimeSlotCapacity } from '../../types/receptionist';
 
 interface DoctorManagementProps {
@@ -61,6 +65,42 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
 
   const [selectedDoctorForSlots, setSelectedDoctorForSlots] = useState<DoctorRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'directory' | 'leaves'>('directory');
+  const [leavesList, setLeavesList] = useState<any[]>([]);
+  const [isLoadingLeaves, setIsLoadingLeaves] = useState(false);
+  const [processingLeaveId, setProcessingLeaveId] = useState<string | null>(null);
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('all');
+
+  const loadHospitalLeaves = async () => {
+    setIsLoadingLeaves(true);
+    try {
+      const data = await receptionistService.getHospitalDoctorLeaves();
+      setLeavesList(data || []);
+    } catch (e) {
+      console.warn('Failed to load doctor leaves', e);
+    } finally {
+      setIsLoadingLeaves(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHospitalLeaves();
+  }, []);
+
+  const handleUpdateLeaveStatus = async (leaveId: string, status: string) => {
+    setProcessingLeaveId(leaveId);
+    try {
+      await receptionistService.updateDoctorLeaveStatus(leaveId, status);
+      onShowToast?.(`Doctor leave marked as ${status}. ${status === 'Approved' ? 'Slots are now frozen.' : 'Slots un-frozen.'}`);
+      await loadHospitalLeaves();
+    } catch (e: any) {
+      onShowToast?.(e.message || 'Failed to update leave status');
+    } finally {
+      setProcessingLeaveId(null);
+    }
+  };
+
+  const pendingLeavesCount = leavesList.filter((l) => (l.status || 'Pending') === 'Pending').length;
 
   // Add custom time slot state
   const [startTime, setStartTime] = useState('09:00 AM');
@@ -179,23 +219,237 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
           </div>
         </div>
 
-        {/* Search Toolbar */}
-        <div className="relative max-w-md pt-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search physician name, specialty, room number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
-          />
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => setActiveTab('directory')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'directory'
+                ? 'bg-[#0B5A54] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Stethoscope className="w-3.5 h-3.5" />
+            <span>Doctor Directory & Slots ({doctors.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('leaves');
+              loadHospitalLeaves();
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'leaves'
+                ? 'bg-[#0B5A54] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <CalendarX className="w-3.5 h-3.5" />
+            <span>Doctor Leave Approvals</span>
+            {pendingLeavesCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black">
+                {pendingLeavesCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Search Toolbar (for Directory) */}
+        {activeTab === 'directory' && (
+          <div className="relative max-w-md pt-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search physician name, specialty, room number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]"
+            />
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          2. DOCTOR CARDS GRID
+          2. DOCTOR LEAVE APPROVALS TAB
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {activeTab === 'leaves' && (
+        <div className="space-y-6">
+          {/* Status Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-slate-100 rounded-xl">
+              {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setLeaveStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black capitalize transition-all cursor-pointer ${
+                    leaveStatusFilter === st
+                      ? 'bg-white text-[#0B5A54] shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {st}
+                  {st === 'pending' && pendingLeavesCount > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 text-[10px]">
+                      {pendingLeavesCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={loadHospitalLeaves}
+              className="px-3.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200 text-xs font-black rounded-xl flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh Leaves</span>
+            </button>
+          </div>
+
+          {/* Cards List */}
+          {isLoadingLeaves ? (
+            <div className="p-12 text-center text-xs text-slate-500 bg-white rounded-3xl border border-slate-200 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-[#0B5A54]" />
+              <span>Loading doctor leave applications...</span>
+            </div>
+          ) : leavesList.filter((l) => leaveStatusFilter === 'all' || (l.status || 'Pending').toLowerCase() === leaveStatusFilter).length === 0 ? (
+            <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-2">
+              <CalendarX className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="text-sm font-black text-slate-800 font-heading">No Leave Applications Found</p>
+              <p className="text-xs text-slate-400">
+                {leaveStatusFilter === 'all'
+                  ? 'Doctors in your hospital have not submitted any leave applications yet.'
+                  : `No leave applications with status "${leaveStatusFilter}".`}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {leavesList
+                .filter((l) => leaveStatusFilter === 'all' || (l.status || 'Pending').toLowerCase() === leaveStatusFilter)
+                .map((leave) => {
+                  const status = leave.status || 'Pending';
+                  const isPending = status === 'Pending';
+                  const isApproved = status === 'Approved';
+                  const isRejected = status === 'Rejected';
+                  const isProcessing = processingLeaveId === leave.id;
+
+                  return (
+                    <div
+                      key={leave.id}
+                      className={`p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-4 shadow-2xs ${
+                        isApproved
+                          ? 'bg-emerald-50/40 border-emerald-200/90'
+                          : isPending
+                          ? 'bg-amber-50/40 border-amber-200/90'
+                          : isRejected
+                          ? 'bg-rose-50/40 border-rose-200/90'
+                          : 'bg-white border-slate-200/80 opacity-75'
+                      }`}
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm sm:text-base font-black text-slate-900 font-heading">
+                              {leave.doctorName || 'Doctor'}
+                            </h3>
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              Doctor ID: {leave.doctorId}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              isApproved
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : isPending
+                                ? 'bg-amber-100 text-amber-800'
+                                : isRejected
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </div>
+
+                        <div className="p-3 bg-white/90 rounded-2xl border border-slate-100 space-y-1">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                            <span className="flex items-center gap-1.5 font-mono">
+                              <Clock className="w-3.5 h-3.5 text-[#0B5A54]" />
+                              {leave.startDate} → {leave.endDate}
+                            </span>
+                            <span className="text-[11px] font-black text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-full">
+                              {leave.daysCount} {leave.daysCount === 1 ? 'day' : 'days'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 font-medium pt-1 border-t border-slate-100">
+                            <strong>Reason:</strong> {leave.reason || 'Personal Leave'}
+                          </p>
+                        </div>
+
+                        {isApproved && (
+                          <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>Active: Consultation slots for these dates are frozen.</span>
+                          </div>
+                        )}
+                        {isPending && (
+                          <div className="text-[11px] font-bold text-amber-800 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>Pending: Slots remain open until approved.</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                        {isPending && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleUpdateLeaveStatus(leave.id, 'Rejected')}
+                              className="px-3.5 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleUpdateLeaveStatus(leave.id, 'Approved')}
+                              className="px-4 py-1.5 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                              {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                              <span>Approve & Freeze Slots</span>
+                            </button>
+                          </>
+                        )}
+                        {isApproved && (
+                          <button
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => handleUpdateLeaveStatus(leave.id, 'Cancelled')}
+                            className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-white hover:bg-amber-50 text-amber-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                            <span>Revoke Approval (Unfreeze Slots)</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          3. DOCTOR CARDS GRID (DIRECTORY TAB)
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'directory' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredDoctors.map((doctor) => {
           const totalSeats = doctor.slotCapacities?.reduce((acc, s) => acc + s.maxSeats, 0) || 0;
           const bookedSeats = doctor.slotCapacities?.reduce((acc, s) => acc + s.bookedSeats, 0) || 0;
@@ -318,6 +572,7 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
           );
         })}
       </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           3. SIMPLE & CLEAN TIME SLOT CAPACITY CONFIGURATION MODAL

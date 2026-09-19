@@ -17,10 +17,14 @@ import {
   ChevronRight,
   Trash2,
   FileText,
+  MessageSquare,
+  Send,
+  Building2,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { DoctorTab } from '../../types/doctor';
 import { playCallChime } from '../../services/consultationService';
+import { useStaffStore } from '../../store/staffStore';
 
 export type NotificationCategory = 'all' | 'queue' | 'urgent' | 'broadcast';
 
@@ -115,6 +119,55 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
       return prev;
     });
   }, [tokens, soundEnabled]);
+
+  const announcements = useStaffStore((s) => s.announcements);
+  const sendStaffMessage = useStaffStore((s) => s.sendStaffMessage);
+
+  const [isAdminMsgOpen, setIsAdminMsgOpen] = useState(false);
+  const [adminMsgSubject, setAdminMsgSubject] = useState('');
+  const [adminMsgBody, setAdminMsgBody] = useState('');
+  const [adminMsgPriority, setAdminMsgPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
+  const [isSendingAdminMsg, setIsSendingAdminMsg] = useState(false);
+
+  // Sync hospital announcements into notification center
+  useEffect(() => {
+    if (!announcements || announcements.length === 0) return;
+    const annItems: ClinicalNotification[] = announcements.map((a) => ({
+      id: `ann-${a.id}`,
+      category: 'broadcast',
+      priority: a.priority === 'Urgent' ? 'urgent' : a.priority === 'High' ? 'high' : 'normal',
+      title: `[Notice] ${a.title}`,
+      message: a.message,
+      timestamp: a.sentAt || 'Today',
+      isRead: false,
+    }));
+
+    setNotifications((prev) => {
+      const nonAnn = prev.filter((n) => !n.id.startsWith('ann-'));
+      return [...annItems, ...nonAnn];
+    });
+  }, [announcements]);
+
+  const handleSendAdminMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminMsgSubject.trim() || !adminMsgBody.trim()) return;
+
+    setIsSendingAdminMsg(true);
+    try {
+      await sendStaffMessage({
+        subject: adminMsgSubject.trim(),
+        message: adminMsgBody.trim(),
+        priority: adminMsgPriority,
+        recipientRole: 'admin',
+      });
+      setAdminMsgSubject('');
+      setAdminMsgBody('');
+      setIsAdminMsgOpen(false);
+      showToast('✓ Message dispatched to Hospital Administration.');
+    } finally {
+      setIsSendingAdminMsg(false);
+    }
+  };
 
   const unreadCount = useMemo(() => {
     return notifications.filter((n) => !n.isRead).length;
@@ -459,32 +512,126 @@ export const DoctorNotificationCenter: React.FC<DoctorNotificationCenterProps> =
           </div>
 
           {/* ══════════════════════════════════════════════════════════
-              FOOTER: Quick Jump & Cabin Queue Shortcut
+              FOOTER: Quick Jump, Cabin Queue Shortcut & Contact Admin
           ══════════════════════════════════════════════════════════ */}
-          <div className="p-3.5 border-t border-slate-200/80 bg-white shrink-0 flex items-center justify-between gap-3">
+          <div className="p-3.5 border-t border-slate-200/80 bg-white shrink-0 flex flex-col gap-2">
             <button
-              onClick={() => {
-                onNavigateTab('queue');
-                onClose();
-              }}
-              className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-800 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => setIsAdminMsgOpen(true)}
+              className="w-full py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
-              <Activity className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <span>View Full Queue</span>
+              <MessageSquare className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <span>Contact Hospital Administration</span>
             </button>
 
-            <button
-              onClick={() => {
-                onNavigateTab('consultation');
-                onClose();
-              }}
-              className="flex-1 py-2 px-3 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-900/15 transition-all cursor-pointer"
-            >
-              <Stethoscope className="w-3.5 h-3.5 text-teal-200" />
-              <span>Clinical Room</span>
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={() => {
+                  onNavigateTab('queue');
+                  onClose();
+                }}
+                className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-800 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Activity className="w-3.5 h-3.5 text-[#0B5A54]" />
+                <span>View Full Queue</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  onNavigateTab('consultation');
+                  onClose();
+                }}
+                className="flex-1 py-2 px-3 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-900/15 transition-all cursor-pointer"
+              >
+                <Stethoscope className="w-3.5 h-3.5 text-teal-200" />
+                <span>Clinical Room</span>
+              </button>
+            </div>
           </div>
         </motion.aside>
+
+        {/* ── Contact Administration Modal ── */}
+        {isAdminMsgOpen && (
+          <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center text-[#0B5A54]">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 font-heading">
+                      Message Hospital Administration
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Direct line to Facility Administrator</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsAdminMsgOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSendAdminMessage} className="space-y-3 text-xs font-bold text-slate-700">
+                <div>
+                  <label className="block mb-1 text-slate-900">Subject / Requisition</label>
+                  <input
+                    type="text"
+                    required
+                    value={adminMsgSubject}
+                    onChange={(e) => setAdminMsgSubject(e.target.value)}
+                    placeholder="e.g. Additional PPE or cabin equipment request"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-900">Priority Level</label>
+                  <select
+                    value={adminMsgPriority}
+                    onChange={(e) => setAdminMsgPriority(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
+                  >
+                    <option value="normal">Normal (Routine Inquiries)</option>
+                    <option value="high">High Importance</option>
+                    <option value="urgent">Urgent Emergency</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-900">Message Content</label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={adminMsgBody}
+                    onChange={(e) => setAdminMsgBody(e.target.value)}
+                    placeholder="Describe your request, schedule change, or operational support needed..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0B5A54]/20"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminMsgOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSendingAdminMsg}
+                    className="px-5 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs font-black flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send to Admin</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </AnimatePresence>
   );

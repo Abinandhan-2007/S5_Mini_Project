@@ -13,7 +13,10 @@ import {
   CheckCircle2,
   Users,
   RefreshCw,
+  HeartPulse,
+  Microscope,
 } from 'lucide-react';
+
 
 
 
@@ -25,6 +28,7 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { Avatar } from '../../components/ui/Avatar';
 import { requestNativeLocation } from '../../lib/locationService';
 import { usePolling } from '../../lib/usePolling';
+import { apiFetch } from '../../lib/apiFetch';
 
 import { useCarePulseStore } from '../../lib/store';
 import { doctorService } from '../../services/doctorService';
@@ -34,6 +38,25 @@ import { MedicationCardStack, SmartMedicineLensCard } from '../../components/pre
 import { AppointmentCardStack } from '../../components/appointments/AppointmentCardStack';
 import type { Appointment } from '../../lib/types';
 import { useLocalizedEntities } from '../../i18n';
+
+interface LiveQueueTimelineItem {
+  id: string;
+  tokenNumber: string;
+  patientName: string;
+  status: string;
+  time: string;
+  isUser: boolean;
+  personsAhead?: number;
+}
+
+interface LiveQueueData {
+  success: boolean;
+  appointment: Appointment;
+  personsAhead: number;
+  currentStatus: string;
+  inConsultation: string | null;
+  timeline: LiveQueueTimelineItem[];
+}
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -65,6 +88,25 @@ export const HomeScreen: React.FC = () => {
   }, [appointments, activeAppointment]);
 
   const [selectedModalAppointment, setSelectedModalAppointment] = useState<Appointment | null>(null);
+  const [liveQueueData, setLiveQueueData] = useState<LiveQueueData | null>(null);
+  const [isLoadingQueue, setIsLoadingQueue] = useState(false);
+
+  const fetchLiveQueue = async (appointmentId: string, showSpinner = false) => {
+    if (showSpinner) setIsLoadingQueue(true);
+    try {
+      const res = await apiFetch(`/appointments/${appointmentId}/live-queue`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setLiveQueueData(data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch live queue data', err);
+    } finally {
+      if (showSpinner) setIsLoadingQueue(false);
+    }
+  };
 
   // Automatic background polling for Patient appointments & queue updates (3500ms)
   usePolling(
@@ -79,6 +121,25 @@ export const HomeScreen: React.FC = () => {
     {
       interval: 3500,
       enabled: !!user?.id,
+    }
+  );
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [completedNotice] = useState<string | null>(null);
+
+  // Periodic polling for live queue timeline when modal is open
+  usePolling(
+    async () => {
+      const modalApp = selectedModalAppointment || activeAppointment || activeAppointments[0];
+      if (isQueueModalOpen && modalApp?.id) {
+        await fetchLiveQueue(modalApp.id, false);
+      }
+    },
+    {
+      interval: 4000,
+      enabled: isQueueModalOpen && !!(selectedModalAppointment?.id || activeAppointment?.id || activeAppointments[0]?.id),
     }
   );
 
@@ -97,16 +158,21 @@ export const HomeScreen: React.FC = () => {
     };
   }, [user?.id, syncAppointments, syncPrescriptions]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [completedNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const modalApp = selectedModalAppointment || activeAppointment || activeAppointments[0];
+    if (isQueueModalOpen && modalApp?.id) {
+      fetchLiveQueue(modalApp.id, true);
+    }
+  }, [isQueueModalOpen, selectedModalAppointment?.id, activeAppointment?.id]);
 
-  const handleRefreshQueue = () => {
+  const handleRefreshQueue = async () => {
+    const modalApp = selectedModalAppointment || activeAppointment || activeAppointments[0];
+    if (!modalApp?.id) return;
     setIsRefreshing(true);
+    await fetchLiveQueue(modalApp.id, false);
     setTimeout(() => {
       setIsRefreshing(false);
-    }, 650);
+    }, 450);
   };
 
   // Prompt native mobile OS system location permission on app startup without redirecting
@@ -335,6 +401,49 @@ export const HomeScreen: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* ── HOSPITAL VITALS & LAB TEST TRACKING CARD ── */}
+        <div
+          onClick={() => navigate('/vitals-lab')}
+          className="bg-gradient-to-r from-[#0B5A54] via-teal-700 to-teal-600 rounded-3xl p-4 sm:p-5 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden"
+        >
+          {/* Decorative glow blob */}
+          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/8 blur-xl" />
+          <div className="absolute -right-2 -bottom-4 w-20 h-20 rounded-full bg-teal-300/10 blur-lg" />
+
+          <div className="flex items-center justify-between gap-3 relative z-10">
+            <div className="flex items-start gap-3.5">
+              {/* Icon cluster */}
+              <div className="flex items-center gap-1.5">
+                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-xs">
+                  <HeartPulse className="w-5 h-5 text-white" />
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-xs">
+                  <Microscope className="w-5 h-5 text-white" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-teal-200">
+                  Hospital Pre-Consultation
+                </p>
+                <h3 className="text-sm sm:text-base font-black text-white leading-tight tracking-tight">
+                  Vitals & Lab Test Tracking
+                </h3>
+                <p className="text-[11px] text-teal-200/80 font-medium leading-snug max-w-[200px]">
+                  View nurse-recorded triage vitals, live test status & diagnostic reports from your hospital visits
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 flex flex-col items-center gap-1.5">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center border border-white/25 group-hover:bg-white/30 transition-colors">
+                <ChevronRight className="w-4 h-4 text-white" />
+              </div>
+            </div>
+          </div>
+        </div>
+
       </main>
 
       <BottomNav />
@@ -395,99 +504,176 @@ export const HomeScreen: React.FC = () => {
                   <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                     OPD LIVE CONSULTATION TIMELINE
                   </span>
+                  {liveQueueData && (
+                    <span className="text-[9px] font-bold text-[#0B5A54] bg-[#E3F3F1] px-2 py-0.5 rounded-full border border-[#14B8A6]/20">
+                      Live Queue Active
+                    </span>
+                  )}
                 </div>
 
                 <div className="relative pl-1 space-y-2.5">
                   {/* Thin Vertical Timeline Line */}
                   <div className="absolute left-[11px] top-2.5 bottom-2.5 w-[1.5px] bg-slate-200 z-0" />
 
-                  {/* Token-1 (Completed - NO STRIKETHROUGH) */}
-                  <div className="relative flex items-center gap-2.5 z-10">
-                    <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
-                      <Check className="w-3 h-3 text-white stroke-[3]" />
+                  {isLoadingQueue && !liveQueueData ? (
+                    <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-400 z-10 relative">
+                      <RefreshCw className="w-5 h-5 animate-spin text-[#0B5A54]" />
+                      <span className="text-[11px] font-bold text-slate-500">Loading live OPD queue...</span>
                     </div>
-                    <div className="flex-1 flex items-center justify-between pr-0.5">
-                      <div>
-                        <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-1 (TK-478)</p>
-                        <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-500">Called 10:05 AM</span>
-                    </div>
-                  </div>
+                  ) : (liveQueueData?.timeline && liveQueueData.timeline.length > 0) ? (
+                    liveQueueData.timeline.map((item) => {
+                      // 1. Patient's Own Token
+                      if (item.isUser) {
+                        return (
+                          <div key={item.id} className="relative flex items-start gap-2.5 z-10">
+                            <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1 shadow-2xs">
+                              ⭐
+                            </div>
 
-                  {/* Token-2 (Completed - NO STRIKETHROUGH) */}
-                  <div className="relative flex items-center gap-2.5 z-10">
-                    <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
-                      <Check className="w-3 h-3 text-white stroke-[3]" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between pr-0.5">
-                      <div>
-                        <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-2 (TK-479)</p>
-                        <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-500">Called 10:18 AM</span>
-                    </div>
-                  </div>
+                            <div className="flex-1 bg-[#E3F3F1] border-2 border-[#0B5A54] rounded-xl p-2.5 space-y-1.5 shadow-xs">
+                              {/* Top Row: YOUR TOKEN badge + Token Number */}
+                              <div className="flex items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="bg-[#0B5A54] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
+                                    YOUR TOKEN
+                                  </span>
+                                  <span className="text-[11px] font-black text-[#111827] tracking-tight whitespace-nowrap">
+                                    {item.tokenNumber || modalApp.ticketNumber || '#CP-PENDING'}
+                                  </span>
+                                </div>
+                                <span className="text-[9.5px] font-extrabold text-[#0B5A54] bg-white px-2 py-0.5 rounded-md border border-[#0B5A54]/20 shadow-2xs">
+                                  {item.status || modalApp.status || 'Scheduled'}
+                                </span>
+                              </div>
 
-                  {/* Token-3 (Current Patient Consulting - NO WRAPPING PREMUM CARD) */}
-                  <div className="relative flex items-center gap-2.5 z-10">
-                    <div className="relative flex items-center justify-center w-5 h-5 shrink-0 z-10">
-                      <span className="absolute inset-0 rounded-full bg-amber-400/50 animate-ping" />
-                      <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs z-10">
-                        ✕
+                              {/* Patient Name */}
+                              <div>
+                                <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">PATIENT</p>
+                                <p className="text-xs font-extrabold text-[#0B5A54]">{item.patientName || modalApp.patientName}</p>
+                              </div>
+
+                              {/* Footer Queue Position Bar */}
+                              <div className="pt-1.5 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] font-bold text-[#0B5A54]">
+                                <span className="bg-[#0B5A54]/10 text-[#0B5A54] px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  <Users className="w-3 h-3 text-[#0B5A54]" />
+                                  {(liveQueueData.personsAhead ?? item.personsAhead ?? 0) === 0
+                                    ? (item.status === 'In Consultation' ? 'Currently Consulting' : 'You are Next')
+                                    : `${liveQueueData.personsAhead ?? item.personsAhead} ${(liveQueueData.personsAhead ?? item.personsAhead) === 1 ? 'Person' : 'Persons'} Ahead of You`}
+                                </span>
+                                <span className="text-slate-600 font-semibold">{modalApp.timeSlot || 'Scheduled Today'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // 2. Currently In Consultation
+                      if (item.status === 'In Consultation') {
+                        return (
+                          <div key={item.id} className="relative flex items-center gap-2.5 z-10">
+                            <div className="relative flex items-center justify-center w-5 h-5 shrink-0 z-10">
+                              <span className="absolute inset-0 rounded-full bg-amber-400/50 animate-ping" />
+                              <div className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs z-10">
+                                ●
+                              </div>
+                            </div>
+                            <div className="flex-1 bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 shadow-2xs">
+                              <div className="flex items-center justify-between gap-1">
+                                <div>
+                                  <p className="text-[11px] font-black text-amber-950 whitespace-nowrap">{item.tokenNumber}</p>
+                                  <p className="text-[9.5px] font-semibold text-amber-800">{item.patientName}</p>
+                                </div>
+                                <span className="text-[9px] font-extrabold text-amber-900 bg-white px-1.5 py-0.5 rounded border border-amber-200 whitespace-nowrap shrink-0">
+                                  In Consultation
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // 3. Completed Patient Token
+                      if (item.status === 'Completed') {
+                        return (
+                          <div key={item.id} className="relative flex items-center gap-2.5 z-10">
+                            <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
+                              <Check className="w-3 h-3 text-white stroke-[3]" />
+                            </div>
+                            <div className="flex-1 flex items-center justify-between pr-0.5">
+                              <div>
+                                <p className="text-[11px] font-bold text-slate-700 leading-tight">{item.tokenNumber}</p>
+                                <p className="text-[9.5px] text-slate-500 font-medium">Completed</p>
+                              </div>
+                              <span className="text-[10px] font-semibold text-slate-500">{item.time || 'Completed'}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // 4. Station Status / Ready
+                      if (item.status === 'Station Ready') {
+                        return (
+                          <div key={item.id} className="relative flex items-center gap-2.5 z-10">
+                            <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] shadow-2xs z-10 shrink-0">
+                              <Check className="w-3 h-3 text-white stroke-[3]" />
+                            </div>
+                            <div className="flex-1 flex items-center justify-between pr-0.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-2.5 py-1.5">
+                              <div>
+                                <p className="text-[11px] font-bold text-emerald-950 leading-tight">{item.tokenNumber}</p>
+                                <p className="text-[9.5px] text-emerald-700 font-medium">{item.patientName}</p>
+                              </div>
+                              <span className="text-[9px] font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">{item.time}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // 5. Waiting / Upcoming Patient Token
+                      return (
+                        <div key={item.id} className="relative flex items-center gap-2.5 z-10">
+                          <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0" />
+                          <div className="flex-1 flex items-center justify-between pr-0.5">
+                            <div>
+                              <p className="text-[11px] font-bold text-slate-700 leading-tight">{item.tokenNumber}</p>
+                              <p className="text-[9.5px] text-slate-400 font-medium">{item.status || 'Waiting'}</p>
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-400">{item.time || 'Upcoming'}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    // Default fallback if no timeline returned yet
+                    <div className="relative flex items-start gap-2.5 z-10">
+                      <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1 shadow-2xs">
+                        ⭐
+                      </div>
+
+                      <div className="flex-1 bg-[#E3F3F1] border-2 border-[#0B5A54] rounded-xl p-2.5 space-y-1.5 shadow-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-[#0B5A54] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
+                            YOUR TOKEN
+                          </span>
+                          <span className="text-[11px] font-black text-[#111827] tracking-tight whitespace-nowrap">
+                            {modalApp.ticketNumber || '#CP-PENDING'}
+                          </span>
+                        </div>
+
+                        <div>
+                          <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">PATIENT</p>
+                          <p className="text-xs font-extrabold text-[#0B5A54]">{modalApp.patientName}</p>
+                        </div>
+
+                        <div className="pt-1.5 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] font-bold text-[#0B5A54]">
+                          <span className="bg-[#0B5A54]/10 text-[#0B5A54] px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Users className="w-3 h-3 text-[#0B5A54]" />
+                            <span>Scheduled Consultation</span>
+                          </span>
+                          <span className="text-slate-600 font-semibold">{modalApp.timeSlot}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex-1 bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 shadow-2xs">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="text-[11px] font-black text-amber-950 whitespace-nowrap">Token-3 (TK-480)</p>
-                        <span className="text-[9px] font-extrabold text-amber-900 bg-white px-1.5 py-0.5 rounded border border-amber-200 whitespace-nowrap shrink-0">
-                          In Consultation
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Token-4 (Upcoming - CLEAN TITLE) */}
-                  <div className="relative flex items-center gap-2.5 z-10">
-                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 bg-white z-10 shrink-0" />
-                    <div className="flex-1 flex items-center justify-between pr-0.5">
-                      <p className="text-[11px] font-bold text-slate-700 leading-tight">Token-4 (TK-481)</p>
-                    </div>
-                  </div>
-
-                  {/* Token-5 (Patient's Own Token - Highlighted Box) */}
-                  <div className="relative flex items-start gap-2.5 z-10">
-                    <div className="w-5 h-5 rounded-full bg-[#0B5A54] text-white flex items-center justify-center ring-4 ring-[#E3F3F1] z-10 shrink-0 text-[9px] mt-1 shadow-2xs">
-                      ⭐
-                    </div>
-
-                    <div className="flex-1 bg-[#E3F3F1] border-2 border-[#0B5A54] rounded-xl p-2.5 space-y-1.5 shadow-xs">
-                      {/* Top Row: YOUR TOKEN badge + Token Number */}
-                      <div className="flex items-center gap-1.5">
-                        <span className="bg-[#0B5A54] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-2xs">
-                          YOUR TOKEN
-                        </span>
-                        <span className="text-[11px] font-black text-[#111827] tracking-tight whitespace-nowrap">
-                          {modalApp.ticketNumber || '#CP-PENDING'}
-                        </span>
-                      </div>
-
-                      {/* Patient Name */}
-                      <div>
-                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">PATIENT</p>
-                        <p className="text-xs font-extrabold text-[#0B5A54]">{modalApp.patientName}</p>
-                      </div>
-
-                      {/* Footer Queue Position Bar */}
-                      <div className="pt-1.5 border-t border-[#0B5A54]/15 flex items-center justify-between text-[10px] font-bold text-[#0B5A54]">
-                        <span className="bg-[#0B5A54]/10 text-[#0B5A54] px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <Users className="w-3 h-3 text-[#0B5A54]" />
-                          2 Persons Ahead of You
-                        </span>
-                        <span className="text-slate-600 font-semibold">Scheduled Today</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

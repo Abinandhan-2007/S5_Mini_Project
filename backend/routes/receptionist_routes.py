@@ -17,7 +17,8 @@ from schemas import (
     SlotCapacitySchema,
     TokenStatusUpdate,
     WalkInAppointmentCreate,
-    NurseCreateRequest
+    NurseCreateRequest,
+    DoctorLeaveStatusUpdate,
 )
 import database
 
@@ -2621,4 +2622,150 @@ def change_receptionist_password(
         "success": True,
         "message": "Password updated successfully. You can now use your new password for login."
     }
+
+
+@router.get("/leaves")
+def get_hospital_doctor_leaves(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve doctor leave applications strictly scoped to the authenticated receptionist's hospital_id.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["receptionist", "admin", "superadmin", "nurse"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only hospital staff can access leave management")
+
+    effective_hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (role == "superadmin")
+
+    if not is_superadmin and not effective_hosp_id:
+        return {"leaves": []}
+
+    leaves = []
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if is_superadmin and not effective_hosp_id:
+                        cur.execute("SELECT * FROM doctor_leaves ORDER BY applied_at DESC")
+                    else:
+                        cur.execute("SELECT * FROM doctor_leaves WHERE hospital_id = %s ORDER BY applied_at DESC", (effective_hosp_id,))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        leaves.append({
+                            "id": str(r["id"]),
+                            "doctorId": str(r["doctor_id"]),
+                            "doctor_id": str(r["doctor_id"]),
+                            "doctorName": r["doctor_name"],
+                            "hospitalId": str(r["hospital_id"]),
+                            "hospital_id": str(r["hospital_id"]),
+                            "startDate": str(r["start_date"]),
+                            "start_date": str(r["start_date"]),
+                            "endDate": str(r["end_date"]),
+                            "end_date": str(r["end_date"]),
+                            "daysCount": r["days_count"],
+                            "days_count": r["days_count"],
+                            "reason": r.get("reason") or "",
+                            "status": r.get("status") or "Pending",
+                            "appliedAt": r["applied_at"],
+                            "applied_at": r["applied_at"]
+                        })
+        except Exception as e:
+            logger.warning(f"Error fetching hospital leaves from pg: {e}")
+
+    if not leaves:
+        db = database.read_json_db()
+        for l in db.get("doctor_leaves", []):
+            l_hosp = l.get("hospital_id") or l.get("hospitalId")
+            if is_superadmin or (effective_hosp_id and l_hosp == effective_hosp_id):
+                leaves.append(l)
+
+    return {"leaves": leaves}
+
+
+@router.patch("/leaves/{leave_id}/status")
+def update_doctor_leave_status(
+    leave_id: str,
+    payload: DoctorLeaveStatusUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Approve, Reject, or Cancel a doctor leave request.
+    Strictly verifies that receptionist belongs to the same hospital as the leave request.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["receptionist", "admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only receptionists and administrators can approve leave requests")
+
+    new_status = (payload.status or "").strip().capitalize()
+    if new_status not in ["Approved", "Rejected", "Cancelled", "Pending"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Allowed: Approved, Rejected, Cancelled, Pending")
+
+    user_hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (role == "superadmin")
+
+    target_leave = None
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM doctor_leaves WHERE id = %s LIMIT 1", (leave_id,))
+                    row = cur.fetchone()
+                    if row:
+                        target_leave = dict(row)
+        except Exception as e:
+            logger.warning(f"Error fetching leave for status update in pg: {e}")
+
+    if not target_leave:
+        db = database.read_json_db()
+        for l in db.get("doctor_leaves", []):
+            if l.get("id") == leave_id:
+                target_leave = l
+                break
+
+    if not target_leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    leave_hosp_id = target_leave.get("hospital_id") or target_leave.get("hospitalId")
+    if not is_superadmin and user_hosp_id and leave_hosp_id and user_hosp_id != leave_hosp_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Cannot modify leave request for a doctor in another hospital."
+        )
+
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE doctor_leaves SET status = %s WHERE id = %s RETURNING *", (new_status, leave_id))
+                    row = cur.fetchone()
+                    if row:
+                        conn.commit()
+                        target_leave = dict(row)
+        except Exception as e:
+            logger.warning(f"Error updating leave status in pg: {e}")
+
+    db = database.read_json_db()
+    for l in db.get("doctor_leaves", []):
+        if l.get("id") == leave_id:
+            l["status"] = new_status
+            target_leave = l
+    database.write_json_db(db)
+
+    return {"success": True, "leave": target_leave}
+
 

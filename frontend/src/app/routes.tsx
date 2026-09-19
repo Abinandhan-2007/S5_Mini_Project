@@ -13,7 +13,6 @@ import { BookAppointmentScreen } from '../features/appointments/BookAppointmentS
 import { AppointmentDetailScreen } from '../features/appointments/AppointmentDetailScreen';
 import { HistoryScreen } from '../features/history/HistoryScreen';
 
-
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { AdvancedSettingsScreen } from '../features/profile/AdvancedSettingsScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
@@ -21,8 +20,7 @@ import { NotificationsScreen } from '../features/notifications/NotificationsScre
 import { PrescriptionsScreen } from '../features/prescriptions/PrescriptionsScreen';
 import { ScanMedicineScreen } from '../features/prescriptions/ScanMedicineScreen';
 import { MedicineInfoLookupScreen } from '../features/prescriptions/MedicineInfoLookupScreen';
-
-
+import { PatientVitalsLabScreen } from '../features/vitals-lab/PatientVitalsLabScreen';
 
 
 import { ReceptionistLayout } from '../portals/receptionist/ReceptionistLayout';
@@ -316,6 +314,14 @@ export const AppRoutes: React.FC = () => {
             element={
               <PageTransition>
                 <MedicineInfoLookupScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/vitals-lab"
+            element={
+              <PageTransition>
+                <PatientVitalsLabScreen />
               </PageTransition>
             }
           />

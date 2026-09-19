@@ -542,3 +542,27 @@ class ReportUploadResponse(BaseModel):
     success: bool
     file_url: str
     filename: str
+
+
+class DoctorLeaveCreate(BaseModel):
+    startDate: str
+    endDate: str
+    reason: Optional[str] = ""
+
+
+class DoctorLeaveResponse(BaseModel):
+    id: str
+    doctorId: str
+    doctorName: str
+    hospitalId: str
+    startDate: str
+    endDate: str
+    daysCount: int
+    reason: Optional[str] = ""
+    status: str
+    appliedAt: str
+
+
+class DoctorLeaveStatusUpdate(BaseModel):
+    status: str
+

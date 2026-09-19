@@ -44,7 +44,8 @@ def init_json_db() -> Dict[str, Any]:
             "prescriptions": [],
             "doctors": [],
             "hospitals": [],
-            "staff": []
+            "staff": [],
+            "doctor_leaves": []
         }
         with open(JSON_DB_PATH, "w", encoding="utf-8") as f:
             json.dump(initial_data, f, indent=2)

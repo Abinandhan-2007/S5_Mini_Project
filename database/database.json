@@ -83,6 +83,36 @@
   "consultations": [],
   "appointments": [
     {
+      "id": "54ce97ff-e5cf-4b67-aae1-606bb74fb1b5",
+      "patient_id": "0c479fa5-fcdc-4165-b76b-f5b085e7942b",
+      "patientId": "0c479fa5-fcdc-4165-b76b-f5b085e7942b",
+      "patient_uuid": "0c479fa5-fcdc-4165-b76b-f5b085e7942b",
+      "patient_name": "Abhinandhan Kannusamy",
+      "patientName": "Abhinandhan Kannusamy",
+      "ticket_number": "TK-73704079",
+      "ticketNumber": "TK-73704079",
+      "doctor_id": "doc-dcd123",
+      "doctorId": "doc-dcd123",
+      "doctor_name": "Dr. Abhinandhan K",
+      "doctorName": "Dr. Abhinandhan K",
+      "doctor_specialty": "General Medicine",
+      "doctorSpecialty": "General Medicine",
+      "doctor_photo": "/doctor_default.jpg",
+      "doctorPhoto": "/doctor_default.jpg",
+      "hospital_id": "hosp-kmch-ad06b5",
+      "hospitalId": "hosp-kmch-ad06b5",
+      "hospital_name": "KMCH",
+      "hospitalName": "KMCH",
+      "date": "2026-09-20",
+      "time_slot": "02:00 PM - 03:00 PM",
+      "timeSlot": "02:00 PM - 03:00 PM",
+      "type": "In-Person",
+      "status": "Upcoming",
+      "is_checked_in": false,
+      "checked_in_at": null,
+      "created_at": "2026-09-19T11:20:07.585084"
+    },
+    {
       "id": "6af6052e-d108-4cf1-a373-b8655f0175f9",
       "patient_id": "8d7378a7-303f-49e6-a536-0ec7610ff57c",
       "patientId": "8d7378a7-303f-49e6-a536-0ec7610ff57c",
@@ -178,6 +208,276 @@
       "unavailableUntil": "",
       "unavailable_until": "",
       "slot_capacities": []
+    },
+    {
+      "id": "doc-alpha-001",
+      "name": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "specialty": "General Medicine",
+      "is_available": true,
+      "isAvailable": true,
+      "slot_capacities": [
+        {
+          "id": "doc-alpha-001-s1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s4",
+          "timeSlot": "12:00 PM - 01:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s5",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s6",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s7",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s8",
+          "timeSlot": "06:00 PM - 07:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s9",
+          "timeSlot": "08:00 PM - 09:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s10",
+          "timeSlot": "10:00 PM - 11:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        }
+      ],
+      "slotCapacities": [
+        {
+          "id": "doc-alpha-001-s1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s4",
+          "timeSlot": "12:00 PM - 01:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s5",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s6",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s7",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s8",
+          "timeSlot": "06:00 PM - 07:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s9",
+          "timeSlot": "08:00 PM - 09:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-alpha-001-s10",
+          "timeSlot": "10:00 PM - 11:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        }
+      ],
+      "availabilityReason": "",
+      "availability_reason": "",
+      "unavailableUntil": "",
+      "unavailable_until": ""
+    },
+    {
+      "id": "doc-beta-001",
+      "name": "Dr. Beta Specialist",
+      "hospital_id": "hosp-beta",
+      "hospitalId": "hosp-beta",
+      "specialty": "General Medicine",
+      "is_available": true,
+      "isAvailable": true,
+      "slot_capacities": [
+        {
+          "id": "doc-beta-001-s1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s4",
+          "timeSlot": "12:00 PM - 01:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s5",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s6",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s7",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s8",
+          "timeSlot": "06:00 PM - 07:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s9",
+          "timeSlot": "08:00 PM - 09:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s10",
+          "timeSlot": "10:00 PM - 11:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        }
+      ],
+      "slotCapacities": [
+        {
+          "id": "doc-beta-001-s1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s4",
+          "timeSlot": "12:00 PM - 01:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s5",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s6",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s7",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s8",
+          "timeSlot": "06:00 PM - 07:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s9",
+          "timeSlot": "08:00 PM - 09:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s10",
+          "timeSlot": "10:00 PM - 11:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        }
+      ]
     }
   ],
   "staff": [
@@ -1228,6 +1528,21 @@
       "is_active": true,
       "last_login": "2026-09-19T04:07:31.534105+00:00",
       "created_at": "2026-09-18T16:18:34.630457+00:00"
+    },
+    {
+      "id": "e9741336-180c-4495-b767-3695babb82ab",
+      "patient_id": "40d4dbfa-44b7-44a8-98d5-4890352bdcae",
+      "device_id": "dev_737wjdpp_mu3obr46",
+      "device_model": "Windows Desktop Browser",
+      "manufacturer": "PC / Workstation",
+      "platform": "web",
+      "os_version": "Windows 10/11",
+      "app_version": "1.0.4",
+      "ip_address": "127.0.0.1",
+      "fcm_token": "",
+      "is_active": true,
+      "last_login": "2026-09-19T05:43:08.100657+00:00",
+      "created_at": "2026-09-19T05:38:08.371419+00:00"
     }
   ],
   "medicines": [
@@ -4922,6 +5237,202 @@
       ],
       "category": "Official Formulary (NIH RxTerms)",
       "purpose": "Verified pharmaceutical medicine from the US National Library of Medicine."
+    }
+  ],
+  "hospital_announcements": [
+    {
+      "id": "ann-35a7c66301d1",
+      "hospitalId": "hosp-bag",
+      "hospital_id": "hosp-bag",
+      "authorId": "admin-bag-01",
+      "authorName": "Admin BAG",
+      "authorRole": "admin",
+      "title": "Clinical Doctor Meeting at 4 PM",
+      "message": "Discussion on oncology protocol updates.",
+      "audience": "Clinical Staff",
+      "department": "All",
+      "priority": "Normal",
+      "status": "Sent",
+      "scheduledFor": null,
+      "sentAt": "Just now",
+      "createdAt": "2026-09-19T05:46:41.550942",
+      "deliveredCount": 54,
+      "readCount": 1
+    },
+    {
+      "id": "ann-c6586ba67014",
+      "hospitalId": "hosp-bag",
+      "hospital_id": "hosp-bag",
+      "authorId": "admin-bag-01",
+      "authorName": "Admin BAG",
+      "authorRole": "admin",
+      "title": "Confidential Staff Notice Hospital A",
+      "message": "Strictly internal to BAG facility.",
+      "audience": "All Staff",
+      "department": "All",
+      "priority": "Urgent",
+      "status": "Sent",
+      "scheduledFor": null,
+      "sentAt": "Just now",
+      "createdAt": "2026-09-19T05:46:41.517408",
+      "deliveredCount": 54,
+      "readCount": 1
+    },
+    {
+      "id": "ann-b7ff33eae774",
+      "hospitalId": "hosp-bag",
+      "hospital_id": "hosp-bag",
+      "authorId": "admin-bag-01",
+      "authorName": "Admin BAG",
+      "authorRole": "admin",
+      "title": "Hospital A Wing Closed for Sanitization",
+      "message": "Floor 2 is undergoing deep clinical cleaning.",
+      "audience": "All Staff",
+      "department": "All",
+      "priority": "High",
+      "status": "Sent",
+      "scheduledFor": null,
+      "sentAt": "Just now",
+      "createdAt": "2026-09-19T05:46:41.158370",
+      "deliveredCount": 54,
+      "readCount": 1
+    }
+  ],
+  "staff_messages": [
+    {
+      "id": "msg-d7f668ae1d22",
+      "hospitalId": "hosp-001",
+      "hospital_id": "hosp-001",
+      "senderId": "doc-hosp1-01",
+      "sender_id": "doc-hosp1-01",
+      "senderName": "Dr. John Doe",
+      "senderRole": "doctor",
+      "senderCode": "",
+      "recipientRole": "admin",
+      "recipientId": null,
+      "subject": "Hacked cross-hospital reply",
+      "message": "Attempting to inject reply across hospital boundaries",
+      "priority": "normal",
+      "isRead": false,
+      "parentId": "msg-5bbd6774d3cf",
+      "createdAt": "2026-09-19T05:46:41.677403",
+      "replies": []
+    },
+    {
+      "id": "msg-5bbd6774d3cf",
+      "hospitalId": "hosp-bag",
+      "hospital_id": "hosp-bag",
+      "senderId": "nurse-bag-01",
+      "sender_id": "nurse-bag-01",
+      "senderName": "Nurse Jenkins",
+      "senderRole": "nurse",
+      "senderCode": "",
+      "recipientRole": "admin",
+      "recipientId": null,
+      "subject": "Hospital A Private Requisition",
+      "message": "Strictly internal requisition.",
+      "priority": "normal",
+      "isRead": false,
+      "parentId": null,
+      "createdAt": "2026-09-19T05:46:41.652375",
+      "replies": []
+    },
+    {
+      "id": "msg-06429d46eb99",
+      "hospitalId": "hosp-bag",
+      "hospital_id": "hosp-bag",
+      "senderId": "admin-bag-01",
+      "sender_id": "admin-bag-01",
+      "senderName": "Admin BAG",
+      "senderRole": "admin",
+      "senderCode": "",
+      "recipientRole": "admin",
+      "recipientId": null,
+      "subject": "Re: Phlebotomy Vials Low in Triage Cabin 3",
+      "message": "Approved. Dispatched 60 EDTA vials from central store to Station 3.",
+      "priority": "normal",
+      "isRead": false,
+      "parentId": "msg-edd7f438a8bb",
+      "createdAt": "2026-09-19T05:46:41.622838",
+      "replies": []
+    },
+    {
+      "id": "msg-edd7f438a8bb",
+      "hospitalId": "hosp-bag",
+      "hospital_id": "hosp-bag",
+      "senderId": "nurse-bag-01",
+      "sender_id": "nurse-bag-01",
+      "senderName": "Nurse Jenkins",
+      "senderRole": "nurse",
+      "senderCode": "",
+      "recipientRole": "admin",
+      "recipientId": null,
+      "subject": "Phlebotomy Vials Low in Triage Cabin 3",
+      "message": "We need 50 EDTA blood collection tubes before 2 PM.",
+      "priority": "high",
+      "isRead": false,
+      "parentId": null,
+      "createdAt": "2026-09-19T05:46:41.598154",
+      "replies": []
+    }
+  ],
+  "doctor_leaves": [
+    {
+      "id": "leave-3c1e0049",
+      "doctor_id": "doc-alpha-001",
+      "doctorId": "doc-alpha-001",
+      "doctor_name": "Dr. Alpha Specialist",
+      "doctorName": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "start_date": "2026-09-24",
+      "startDate": "2026-09-24",
+      "end_date": "2026-09-24",
+      "endDate": "2026-09-24",
+      "days_count": 1,
+      "daysCount": 1,
+      "reason": "Conference",
+      "status": "Approved",
+      "applied_at": "2026-09-19T12:07:24.252125",
+      "appliedAt": "2026-09-19T12:07:24.252125"
+    },
+    {
+      "id": "leave-3c0eef7c",
+      "doctor_id": "doc-alpha-001",
+      "doctorId": "doc-alpha-001",
+      "doctor_name": "Dr. Alpha Specialist",
+      "doctorName": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "start_date": "2026-09-29",
+      "startDate": "2026-09-29",
+      "end_date": "2026-09-29",
+      "endDate": "2026-09-29",
+      "days_count": 1,
+      "daysCount": 1,
+      "reason": "Alpha Hospital CME",
+      "status": "Pending",
+      "applied_at": "2026-09-19T12:07:26.072561",
+      "appliedAt": "2026-09-19T12:07:26.072561"
+    },
+    {
+      "id": "leave-6a85230c",
+      "doctor_id": "doc-alpha-001",
+      "doctorId": "doc-alpha-001",
+      "doctor_name": "Dr. Alpha Specialist",
+      "doctorName": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "start_date": "2026-10-04",
+      "startDate": "2026-10-04",
+      "end_date": "2026-10-04",
+      "endDate": "2026-10-04",
+      "days_count": 1,
+      "daysCount": 1,
+      "reason": "Family Function",
+      "status": "Cancelled",
+      "applied_at": "2026-09-19T12:07:27.225274",
+      "appliedAt": "2026-09-19T12:07:27.225274"
     }
   ]
 }
