@@ -61,14 +61,15 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.staff) {
-          const hospId = data.staff.hospitalId || data.staff.hospital_id;
+          const userRole = data.staff.role === 'superadmin' ? 'admin' : data.staff.role;
+          const hospId = data.staff.hospitalId || data.staff.hospital_id || (data.staff.role === 'superadmin' ? 'hosp-1' : undefined);
           const hospName = data.staff.hospitalName || data.staff.hospital_name || 'CarePulse Medical Center';
           setStaffAuth(
             {
               id: data.staff.id,
               name: data.staff.name,
               email: data.staff.email,
-              role: data.staff.role,
+              role: userRole,
               department: data.staff.department,
               avatarUrl: data.staff.avatarUrl,
               hospitalId: hospId,
@@ -84,10 +85,9 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
             data.token
           );
           setIsLoading(false);
-          if (data.staff.role === 'superadmin') navigate('/superadmin');
-          else if (data.staff.role === 'admin') navigate('/admin');
-          else if (data.staff.role === 'doctor') navigate('/doctor');
-          else if (data.staff.role === 'nurse') navigate('/nurse');
+          if (userRole === 'admin') navigate('/admin');
+          else if (userRole === 'doctor') navigate('/doctor');
+          else if (userRole === 'nurse') navigate('/nurse');
           else navigate('/receptionist');
           return;
         }
@@ -96,27 +96,27 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       // Fallback to client-side store verification
     }
 
-    // 2. Check SuperAdmin Credentials fallback (Username or Email)
+    // 2. Check SuperAdmin Credentials on Staff portal -> redirect to Hospital Admin Portal
     if (
       (cleanId === 'superadmin' || cleanId === 'superadmin@carepulse.com' || cleanId === 'sa101' || cleanId === 'sa') &&
-      (cleanPassword === 'SuperAdmin@123' || cleanPassword === 'superadmin')
+      (cleanPassword === 'SuperAdmin@123' || cleanPassword === 'superadmin' || cleanPassword === 'superaadmin')
     ) {
       setStaffAuth(
         {
-          id: 'superadmin-1',
-          name: 'Platform SuperAdmin',
-          email: 'superadmin@carepulse.com',
-          role: 'superadmin',
-          department: 'Global Platform Operations',
-          staff_code: 'SA101',
-          staffCode: 'SA101',
-          hospitalId: undefined,
-          hospital_id: undefined,
+          id: 'admin-1',
+          name: 'Hospital Administrator',
+          email: 'admin@carepulse.com',
+          role: 'admin',
+          department: 'Chief Medical Administration',
+          staff_code: 'A001101',
+          staffCode: 'A001101',
+          hospitalId: 'hosp-1',
+          hospital_id: 'hosp-1',
         },
-        'token-superadmin-session'
+        'token-admin-session'
       );
       setIsLoading(false);
-      navigate('/superadmin');
+      navigate('/admin');
       return;
     }
 

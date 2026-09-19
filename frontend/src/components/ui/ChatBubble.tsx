@@ -1,7 +1,8 @@
 import React from 'react';
 import { clsx } from 'clsx';
-import { Sparkles, User as UserIcon, AlertTriangle } from 'lucide-react';
-import { Chip } from './Chip';
+import { User as UserIcon, AlertTriangle } from 'lucide-react';
+
+import doctorAvatar from '../../assets/doctor_avatar_fullbody.png';
 
 export interface ChatBubbleProps {
   sender: 'bot' | 'user';
@@ -12,7 +13,7 @@ export interface ChatBubbleProps {
 }
 
 // Simple text formatter for clean bullet points and bolding
-const formatMessageText = (content: string) => {
+const formatMessageText = (content: string, isUser = false) => {
   if (!content) return '';
   const lines = content.split('\n');
   return lines.map((line, lineIdx) => {
@@ -21,10 +22,24 @@ const formatMessageText = (content: string) => {
       <span key={lineIdx} className="block">
         {parts.map((part, pIdx) => {
           if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={pIdx} className="font-bold text-[#0B5A54]">{part.slice(2, -2)}</strong>;
+            return (
+              <strong
+                key={pIdx}
+                className={clsx('font-bold', isUser ? 'text-black' : 'text-[#0B5A54]')}
+              >
+                {part.slice(2, -2)}
+              </strong>
+            );
           }
           if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
-            return <em key={pIdx} className="text-slate-600 italic">{part.slice(1, -1)}</em>;
+            return (
+              <em
+                key={pIdx}
+                className={clsx('italic', isUser ? 'text-slate-800' : 'text-slate-600')}
+              >
+                {part.slice(1, -1)}
+              </em>
+            );
           }
           return part;
         })}
@@ -37,8 +52,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   sender,
   text,
   timestamp,
-  quickReplyChips,
-  onChipClick,
 }) => {
   const isBot = sender === 'bot';
   const isCriticalEmergency = isBot && (text.includes('🚨') || text.toLowerCase().includes('critical safety alert') || text.toLowerCase().includes('important medical safety alert'));
@@ -46,26 +59,26 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   return (
     <div
       className={clsx(
-        'flex gap-2 my-2 max-w-[90%] sm:max-w-[85%] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2',
+        'flex gap-2.5 my-2.5 max-w-[90%] sm:max-w-[85%] transition-all duration-300 animate-in fade-in slide-in-from-bottom-2',
         isBot ? 'self-start mr-auto' : 'self-end ml-auto flex-row-reverse'
       )}
     >
       {/* Avatar Icon */}
       <div
         className={clsx(
-          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white shadow-xs mt-1 ring-2 ring-white',
+          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white shadow-xs mt-0.5 ring-2 ring-white overflow-hidden',
           isBot
             ? isCriticalEmergency
               ? 'bg-rose-600 shadow-rose-200'
               : 'bg-gradient-to-tr from-[#0B5A54] to-[#14B8A6]'
-            : 'bg-[#0B5A54]'
+            : 'bg-gradient-to-tr from-slate-700 to-slate-900 shadow-xs'
         )}
       >
         {isBot ? (
           isCriticalEmergency ? (
             <AlertTriangle className="w-4 h-4 text-white animate-bounce" />
           ) : (
-            <Sparkles className="w-4 h-4 text-emerald-200" />
+            <img src={doctorAvatar} alt="Health AI Doctor" className="w-full h-full object-contain p-0.5" />
           )
         ) : (
           <UserIcon className="w-4 h-4 text-white" />
@@ -73,15 +86,15 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       </div>
 
       {/* Bubble Container */}
-      <div className="space-y-2 max-w-[88%]">
+      <div className="space-y-1.5 max-w-[88%]">
         <div
           className={clsx(
-            'p-3.5 sm:p-4 text-xs leading-relaxed shadow-2xs transition-all duration-200 relative overflow-hidden',
+            'p-3 sm:p-3.5 text-xs leading-relaxed transition-all duration-200 relative overflow-hidden',
             isBot
               ? isCriticalEmergency
-                ? 'bg-rose-50 text-rose-950 border border-rose-300 rounded-2xl rounded-tl-xs shadow-rose-100'
-                : 'bg-white text-[#111827] rounded-2xl rounded-tl-xs border border-[#E4E7EC] card-left-accent'
-              : 'bg-[#0B5A54] text-white rounded-2xl rounded-tr-xs font-medium shadow-2xs'
+                ? 'bg-rose-50 text-rose-950 border border-rose-300 rounded-2xl rounded-tl-xs shadow-rose-100 shadow-sm'
+                : 'bg-white text-[#111827] rounded-2xl rounded-tl-xs border border-[#E4E7EC] card-left-accent shadow-xs'
+              : 'bg-white text-black rounded-2xl rounded-tr-xs shadow-xs border border-slate-200 font-normal'
           )}
         >
           {isCriticalEmergency && (
@@ -91,35 +104,24 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </div>
           )}
 
-          <div className="space-y-1 text-slate-800 text-[12.5px] leading-relaxed">
-            {formatMessageText(text)}
+          <div
+            className={clsx(
+              'space-y-1 text-[13px] leading-relaxed',
+              isBot ? 'text-slate-800' : 'text-black'
+            )}
+          >
+            {formatMessageText(text, !isBot)}
           </div>
 
           <span
             className={clsx(
-              'block text-[10px] mt-2 font-medium',
-              isBot ? 'text-[#9CA3AF]' : 'text-teal-200'
+              'block text-[10px] mt-1 font-medium tracking-tight',
+              isBot ? 'text-[#9CA3AF]' : 'text-slate-400 text-right'
             )}
           >
             {timestamp}
           </span>
         </div>
-
-        {/* Embedded Quick Reply Chips */}
-        {isBot && quickReplyChips && quickReplyChips.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
-            {quickReplyChips.map((chip, idx) => (
-              <Chip
-                key={idx}
-                size="sm"
-                onClick={() => onChipClick && onChipClick(chip)}
-                className="bg-[#E3F3F1] border-[#0B5A54]/20 text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white shadow-2xs font-semibold active:scale-95 transition-all cursor-pointer text-[11px] py-1 px-2.5 rounded-full"
-              >
-                + {chip}
-              </Chip>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

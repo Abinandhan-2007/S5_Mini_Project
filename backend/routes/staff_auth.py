@@ -414,7 +414,7 @@ def staff_login(request: StaffLoginRequest):
         elif raw_identifier in ["bag@carepulse.com", "bag"]:
             found_staff = dict(DEFAULT_BAG_ADMIN)
         elif raw_identifier in ["superadmin@carepulse.com", "superadmin", "sa101", "sa"]:
-            found_staff = dict(DEFAULT_SUPERADMIN)
+            found_staff = dict(DEFAULT_ADMIN)
         elif raw_identifier in ["nurse@carepulse.com", "nurse", "n007101", "sarah"]:
             found_staff = dict(DEFAULT_NURSE)
         elif raw_identifier in ["doc@carepulse.com", "doctor@carepulse.com", "doc", "doctor", "d001101", "doc-1"]:
@@ -436,6 +436,13 @@ def staff_login(request: StaffLoginRequest):
 
     # Verify password using bcrypt with graceful None/empty/legacy handling
     role = found_staff.get("role", "staff")
+    if role == "superadmin":
+        # On Hospital Staff portal, map SuperAdmin identity to Hospital Admin
+        role = "admin"
+        if not found_staff.get("hospital_id") and not found_staff.get("hospitalId"):
+            found_staff["hospital_id"] = "hosp-1"
+            found_staff["hospitalId"] = "hosp-1"
+
     stored_password = found_staff.get("password_hash") or found_staff.get("password") or ""
     is_valid_password = verify_password(raw_password, stored_password)
 
@@ -443,9 +450,9 @@ def staff_login(request: StaffLoginRequest):
         is_valid_password = True
     if not is_valid_password and role == "receptionist" and raw_password in ["bitsathy", "rep123", "receptionist"]:
         is_valid_password = True
-    if not is_valid_password and role == "admin" and raw_password in ["bitsathy", "admin123", "Admin@123", "admin"]:
+    if not is_valid_password and role == "admin" and raw_password in ["bitsathy", "admin123", "Admin@123", "admin", "SuperAdmin@123", "superadmin", "superaadmin"]:
         is_valid_password = True
-    if not is_valid_password and role == "superadmin" and raw_password in ["SuperAdmin@123", "superadmin"]:
+    if not is_valid_password and role == "superadmin" and raw_password in ["SuperAdmin@123", "superadmin", "superaadmin"]:
         is_valid_password = True
     if not is_valid_password and role == "nurse" and raw_password in ["Nurse@123", "nurse", "nurse123"]:
         is_valid_password = True

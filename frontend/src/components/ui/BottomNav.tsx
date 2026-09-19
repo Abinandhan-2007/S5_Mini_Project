@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import doctorAvatar from '../../assets/doctor_avatar.png';
+import doctorAvatar from '../../assets/doctor_avatar_fullbody.png';
 import { Home, Building2, Activity, User } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from '../../lib/i18n';
@@ -63,7 +63,7 @@ export const BottomNav: React.FC = () => {
       <div className="relative w-full max-w-[340px] sm:max-w-[380px] md:max-w-[420px] pointer-events-auto">
         {/* Floating AI Doctor Mascot — Large transparent 3D character anchored directly above Profile button */}
         {!isHealthAiActive && (
-          <div className="absolute -top-[88px] sm:-top-[96px] right-2 sm:right-3 z-50 pointer-events-auto">
+          <div className="absolute -top-[94px] sm:-top-[102px] right-2 sm:right-3 z-50 pointer-events-auto">
             <button
               id="health-ai-avatar-btn"
               onClick={handleClickHealthAi}
@@ -77,7 +77,7 @@ export const BottomNav: React.FC = () => {
             >
               {/* Large Realistic 3D Doctor Character with transparent background */}
               <div className={clsx(
-                "relative w-[70px] h-[70px] sm:w-[80px] sm:h-[80px] flex items-center justify-center transition-all duration-300 ease-out",
+                "relative w-[76px] h-[78px] sm:w-[84px] sm:h-[86px] flex items-center justify-center transition-all duration-300 ease-out",
                 isTransitioning && "rotate-2 scale-105"
               )}>
                 <img

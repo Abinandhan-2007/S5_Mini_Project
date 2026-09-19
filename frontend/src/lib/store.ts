@@ -639,7 +639,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             sender: 'bot',
             text: replyText,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            quickReplyChips: aiData.quickReplyChips,
+            quickReplyChips: [],
             confidence: aiData.confidence_score ?? 88,
             riskLevel: aiData.risk_level ?? 'low',
             specialty: (aiData.suggested_specialties && aiData.suggested_specialties[0]) || 'General Medicine',
@@ -765,12 +765,14 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         plan: `1. Schedule clinical evaluation with ${specialty}.\n2. Monitor symptoms and seek emergency care if red flags develop.`
       };
 
+      void chips;
+
       const botMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'bot',
         text: botReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        quickReplyChips: chips,
+        quickReplyChips: [],
         confidence,
         riskLevel,
         specialty,
