@@ -497,15 +497,22 @@ def translate_medicine_info(
     """
     Translates clinical medicine information (purpose, indicationsAndUsage, summary,
     mainUses, howToTake, warnings, sideEffects) into the requested language (Tamil, Malayalam, Hindi, English).
-    Uses Mistral AI with in-memory caching.
+    Uses Mistral AI with deterministic in-memory caching and low token limits for fast response times.
     """
     lang_code = (target_lang or "en").lower().strip()
+    drug_name = (info_dict.get("drugName") or "").strip()
+
+    # English target fallback: check if we have pristine English in cache or return info_dict
     if lang_code in ("en", "english"):
+        if drug_name:
+            openfda_cached = _DRUG_INFO_CACHE.get(drug_name.lower())
+            if openfda_cached and openfda_cached.get("found"):
+                return openfda_cached
         return info_dict
 
     lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
-    # Check cache
-    cache_seed = f"{info_dict.get('drugName', '')}_{info_dict.get('purpose', '')[:40]}_{lang_code}"
+    # Check cache by drug name and target language
+    cache_seed = f"{drug_name.lower()}_{lang_code}" if drug_name else f"{info_dict.get('purpose', '')[:40]}_{lang_code}"
     cache_key = f"trans_{cache_seed}"
     if cache_key in _DRUG_INFO_CACHE:
         return _DRUG_INFO_CACHE[cache_key]
@@ -527,23 +534,23 @@ def translate_medicine_info(
             "Authorization": f"Bearer {mistral_key}",
             "Content-Type": "application/json"
         }
-        # Truncate very long fields to avoid sending more than the model can echo back
-        MAX_FIELD_LEN = 800
+        # Truncate fields to concise limits for fast generation
+        MAX_FIELD_LEN = 500
         extract_for_translation = {
             "purpose": (info_dict.get("purpose") or "")[:MAX_FIELD_LEN],
             "indicationsAndUsage": (info_dict.get("indicationsAndUsage") or "")[:MAX_FIELD_LEN],
             "summary": (info_dict.get("summary") or "")[:MAX_FIELD_LEN],
-            "mainUses": (info_dict.get("mainUses") or [])[:8],
-            "howToTake": (info_dict.get("howToTake") or [])[:6],
-            "warnings": (info_dict.get("warnings") or [])[:6],
-            "sideEffects": (info_dict.get("sideEffects") or [])[:8],
-            "disclaimer": (info_dict.get("disclaimer") or "Informational reference only. Consult your doctor or pharmacist.")[:200],
+            "mainUses": (info_dict.get("mainUses") or [])[:5],
+            "howToTake": (info_dict.get("howToTake") or [])[:4],
+            "warnings": (info_dict.get("warnings") or [])[:4],
+            "sideEffects": (info_dict.get("sideEffects") or [])[:5],
+            "disclaimer": (info_dict.get("disclaimer") or "Informational reference only. Consult your doctor or pharmacist.")[:150],
         }
 
         prompt = (
             f"You are a clinical healthcare translator. Accurately translate ALL fields in the following patient medicine instructions into {lang_name}.\n"
             f"Translate strings and every single item in lists ('mainUses', 'howToTake', 'warnings', 'sideEffects') into {lang_name}.\n"
-            f"Keep the meaning clear, medically safe, and easy for a patient to understand.\n"
+            f"Keep the meaning concise, clear, medically safe, and easy for a patient to understand.\n"
             f"Input JSON:\n{json.dumps(extract_for_translation, ensure_ascii=False)}\n\n"
             f"Return ONLY a JSON object with the exact same keys and structure, with all text and list items translated into {lang_name}."
         )
@@ -553,9 +560,9 @@ def translate_medicine_info(
             "messages": [{"role": "user", "content": prompt}],
             "response_format": {"type": "json_object"},
             "temperature": 0.1,
-            "max_tokens": 2000
+            "max_tokens": 800
         }
-        with httpx.Client(timeout=20.0) as client:
+        with httpx.Client(timeout=10.0) as client:
             res = client.post(url, headers=headers, json=payload)
             if res.status_code == 200:
                 data = res.json()

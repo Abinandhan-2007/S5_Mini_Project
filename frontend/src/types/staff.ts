@@ -140,9 +140,14 @@ export interface AnnouncementRecord {
   audience: 'All Patients' | 'All Staff' | 'Clinical Staff' | 'Front Desk Reception';
   department?: string;
   priority: 'Normal' | 'High' | 'Urgent';
-  isActive: boolean;
-  postedAt: string;
-  authorName: string;
+  isActive?: boolean;
+  postedAt?: string;
+  authorName?: string;
+  status?: 'Scheduled' | 'Sent' | string;
+  scheduledFor?: string;
+  sentAt?: string;
+  deliveredCount?: number;
+  readCount?: number;
 }
 
 export type SuperAdminHospitalLifecycle = 'Draft' | 'Pending Setup' | 'Active' | 'Suspended';

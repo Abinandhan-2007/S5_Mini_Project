@@ -19,3 +19,8 @@ Fatigue lasting longer than 2 weeks requires structured clinical inquiry rather 
 ## SECTION 2: ACUTE COUGH AND RESPIRATORY INFECTIONS
 - Acute Bronchitis: Cough lasting 1-3 weeks. Majority (>90%) are viral. Routine antibiotic administration is NOT recommended.
 - Community-Acquired Pneumonia (CAP) Red Flags: High fever (>102°F), purulent rusty sputum, pleuritic chest pain, tachypnea (>24 breaths/min), and pulse oximetry SpO2 < 92% on room air. Requires prompt chest radiography and targeted antibiotic coverage (e.g., Amoxicillin or Azithromycin).
+
+## SECTION 3: BRONCHIAL ASTHMA AND CHRONIC OBSTRUCTIVE PULMONARY DISEASE (COPD)
+- Asthma Diagnosis and Stepwise Management: Characterized by variable expiratory airflow limitation, episodic wheezing, shortness of breath, and cough triggered by allergens, cold air, or viral infections. First-line reliever: Low-dose Inhaled Corticosteroid (ICS) + Formoterol (SMART strategy) or SABA (Salbutamol 100-200mcg) as needed. Maintenance: Regular daily ICS (Budesonide or Fluticasone).
+- COPD Clinical Features: Persistent progressive dyspnea, chronic cough with sputum production, and history of tobacco smoke or biomass exposure. First-line: Long-acting bronchodilators (LAMA like Tiotropium or LABA like Formoterol/Salmeterol).
+
