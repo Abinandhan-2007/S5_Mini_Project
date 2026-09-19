@@ -12,12 +12,13 @@ import {
   Trash2,
   Activity,
   Layers,
+  Smartphone,
 } from 'lucide-react';
 import { superadminService } from '../../services/superadminService';
 import type { SuperAdminHospital, SuperAdminAdmin, SuperAdminStats } from '../../types/staff';
 
 interface SuperAdminDashboardProps {
-  onNavigateTab: (tab: 'hospitals' | 'admins') => void;
+  onNavigateTab: (tab: 'hospitals' | 'admins' | 'devices') => void;
   onOpenAddHospital: () => void;
   onOpenAddAdmin: (preselectedHospitalId?: string) => void;
 }
@@ -86,7 +87,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     return (
       <div className="flex flex-col items-center justify-center min-h-[440px]">
         <div className="w-10 h-10 border-2 border-slate-200 border-t-[#0B5A54] rounded-full animate-spin mb-4" />
-        <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">
+        <p className="text-xs font-sans text-slate-500 uppercase tracking-widest font-semibold">
           Aggregating global network telemetry...
         </p>
       </div>
@@ -100,10 +101,10 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-0.5 rounded font-mono text-[11px] font-bold tracking-wider bg-teal-50 text-[#0B5A54] border border-teal-200 uppercase">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide bg-teal-50 text-[#0B5A54] border border-teal-200 uppercase">
                 GLOBAL PLATFORM SCOPE // SA101
               </span>
-              <span className="text-slate-400 text-xs font-mono">Infrastructure Command</span>
+              <span className="text-slate-400 text-xs font-sans">Infrastructure Command</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-heading">
               Network Command Center
@@ -127,7 +128,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             <button
               type="button"
               onClick={onOpenAddHospital}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer font-mono"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-[#0B5A54]" />
               <span>+ NEW HOSPITAL</span>
@@ -135,8 +136,17 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
             <button
               type="button"
+              onClick={() => onNavigateTab('devices')}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>APP DEVICES</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => onOpenAddAdmin()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs transition-all shadow-sm cursor-pointer font-mono"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4 text-teal-200" />
               <span>APPOINT ADMIN</span>
@@ -149,20 +159,20 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span className="font-mono">{error}</span>
+            <span className="font-sans">{error}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {error.toLowerCase().includes('token') || error.toLowerCase().includes('authentication') ? (
               <a
-                href="/staff/superadmin"
-                className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold font-mono text-[11px] transition-colors shadow-2xs"
+                href="/staff/login"
+                className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs transition-colors shadow-2xs"
               >
                 Re-Authenticate &rarr;
               </a>
             ) : (
               <button
                 onClick={() => loadData()}
-                className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold font-mono text-[11px] transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs transition-colors"
               >
                 Retry Sync
               </button>
@@ -180,7 +190,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 border border-amber-300">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 border border-amber-300 font-sans">
                   GOVERNANCE COVERAGE GAP
                 </span>
                 <span className="text-xs font-bold text-amber-900">
@@ -190,7 +200,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               <h3 className="text-sm font-extrabold text-amber-950 mt-1 font-heading">
                 Administrative Coverage Gap Detected
               </h3>
-              <p className="text-xs text-amber-800 mt-1 leading-relaxed max-w-3xl">
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed max-w-3xl font-sans">
                 The following physical facilities currently lack an appointed administrator:{' '}
                 {hospitalsWithoutAdmin.map((h, i) => (
                   <span key={h.id} className="font-bold text-amber-950">
@@ -207,7 +217,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             <button
               type="button"
               onClick={() => onOpenAddAdmin(hospitalsWithoutAdmin[0]?.id)}
-              className="px-4 py-2.5 bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 font-mono whitespace-nowrap"
+              className="px-4 py-2.5 bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap font-sans"
             >
               <ShieldCheck className="w-4 h-4 text-amber-200" />
               <span>Assign Admin to {hospitalsWithoutAdmin[0]?.hospital_code}</span>
@@ -222,7 +232,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:border-[#0B5A54] transition-colors">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans">
                 Hospital Facilities
               </span>
               <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center">
@@ -230,7 +240,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-3xl font-black text-slate-900 font-heading tracking-tight">
                 {stats?.total_hospitals || 0}
               </span>
               <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -238,18 +248,18 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               </span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
-            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-[10px] font-sans">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
               {stats?.lifecycle_breakdown?.active ?? 0} Active
             </span>
-            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300 font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 font-bold">
               {stats?.lifecycle_breakdown?.pending_setup ?? 0} Pending
             </span>
-            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300 font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 font-bold">
               {stats?.lifecycle_breakdown?.draft ?? 0} Draft
             </span>
             {Boolean(stats?.lifecycle_breakdown?.suspended) && (
-              <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-300 font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 font-bold">
                 {stats?.lifecycle_breakdown?.suspended} Suspended
               </span>
             )}
@@ -260,7 +270,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:border-[#0B5A54] transition-colors">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans">
                 Admin Coverage
               </span>
               <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center">
@@ -268,10 +278,10 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-3xl font-black text-slate-900 font-heading tracking-tight">
                 {coveragePercent}%
               </span>
-              <span className="text-xs font-mono text-slate-500">
+              <span className="text-xs font-sans text-slate-500">
                 ({stats?.hospitals_with_admin || 0}/{stats?.total_hospitals || 0} Nodes)
               </span>
             </div>
@@ -286,7 +296,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                 style={{ width: `${coveragePercent}%` }}
               />
             </div>
-            <div className="text-[10px] text-slate-400 mt-1.5 font-mono">
+            <div className="text-[10px] text-slate-400 mt-1.5 font-sans">
               Strictly 1 admin per hospital node
             </div>
           </div>
@@ -296,7 +306,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:border-[#0B5A54] transition-colors">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans">
                 Clinical Force
               </span>
               <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center">
@@ -304,13 +314,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-3xl font-black text-slate-900 font-heading tracking-tight">
                 {(stats?.total_doctors || 0) + (stats?.total_receptionists || 0)}
               </span>
               <span className="text-xs font-medium text-slate-500">Total Staff</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-600">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans text-slate-600">
             <span>{stats?.total_doctors || 0} Doctors</span>
             <span className="text-slate-300">•</span>
             <span>{stats?.total_receptionists || 0} Front Desk</span>
@@ -321,7 +331,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:border-[#0B5A54] transition-colors">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans">
                 Network Patients
               </span>
               <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-100 flex items-center justify-center">
@@ -329,15 +339,15 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-3xl font-black text-slate-900 font-heading tracking-tight">
                 {stats?.total_patients || 0}
               </span>
-              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-mono">
+              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                 Global DB
               </span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-500">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-sans text-slate-500">
             <span className="flex items-center gap-1 text-emerald-700">
               <Activity className="w-3 h-3" />
               Cross-Hospital EMR
@@ -366,16 +376,16 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           <button
             type="button"
             onClick={() => onNavigateTab('hospitals')}
-            className="text-xs font-bold text-[#0B5A54] hover:text-[#084843] inline-flex items-center gap-1.5 font-mono cursor-pointer"
+            className="text-xs font-bold text-[#0B5A54] hover:text-[#084843] inline-flex items-center gap-1.5 cursor-pointer font-sans"
           >
-            <span>MANAGE ALL FACILITIES</span>
+            <span>Manage All Facilities</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-[11px] uppercase font-bold text-slate-500 font-mono border-b border-slate-200">
+            <thead className="bg-slate-50/80 text-[11px] uppercase font-bold text-slate-500 font-sans border-b border-slate-200">
               <tr>
                 <th className="px-5 py-3.5">Hospital Code</th>
                 <th className="px-5 py-3.5">Facility Name & Address</th>
@@ -389,7 +399,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             <tbody className="divide-y divide-slate-100">
               {hospitals.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400 text-xs font-mono">
+                  <td colSpan={7} className="text-center py-12 text-slate-400 text-xs font-sans">
                     No hospital facilities initialized yet. Click &quot;Add Hospital&quot; above.
                   </td>
                 </tr>
@@ -415,7 +425,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                       <td className="px-5 py-4 whitespace-nowrap">
                         {hosp.admin ? (
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center justify-center font-mono">
+                            <div className="w-7 h-7 rounded-lg bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center justify-center font-sans">
                               {hosp.admin.full_name?.charAt(0) || 'A'}
                             </div>
                             <div>
@@ -428,47 +438,47 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             <AlertTriangle className="w-3.5 h-3.5" />
-                            NO ADMIN ASSIGNED
+                            No Admin Assigned
                           </span>
                         )}
                       </td>
 
                       {/* Doctors Count */}
-                      <td className="px-5 py-4 text-center font-mono font-bold text-slate-700">
+                      <td className="px-5 py-4 text-center font-sans font-bold text-slate-700">
                         {hosp.doctor_count}
                       </td>
 
                       {/* Receptionist Count */}
-                      <td className="px-5 py-4 text-center font-mono font-bold text-slate-700">
+                      <td className="px-5 py-4 text-center font-sans font-bold text-slate-700">
                         {hosp.receptionist_count}
                       </td>
 
                       {/* Lifecycle Status Pill */}
                       <td className="px-5 py-4 text-center whitespace-nowrap">
                         {lifecycle === 'Active' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                            ACTIVE
+                            Active
                           </span>
                         )}
                         {lifecycle === 'Pending Setup' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-300">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                            PENDING SETUP
+                            Pending Setup
                           </span>
                         )}
                         {lifecycle === 'Draft' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-300">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                            DRAFT
+                            Draft
                           </span>
                         )}
                         {lifecycle === 'Suspended' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-rose-50 text-rose-800 border border-rose-300">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                            SUSPENDED
+                            Suspended
                           </span>
                         )}
                       </td>
@@ -480,7 +490,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenAddAdmin(hosp.id)}
-                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#0B5A54] hover:bg-[#084843] text-white font-mono transition-colors cursor-pointer shadow-2xs"
+                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#0B5A54] hover:bg-[#084843] text-white transition-colors cursor-pointer shadow-2xs"
                             >
                               + Appoint Admin
                             </button>
@@ -488,7 +498,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => onNavigateTab('admins')}
-                              className="px-3 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer font-mono"
+                              className="px-3 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                             >
                               View Admin
                             </button>
@@ -531,16 +541,16 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           <button
             type="button"
             onClick={() => onNavigateTab('admins')}
-            className="text-xs font-bold text-[#0B5A54] hover:text-[#084843] inline-flex items-center gap-1.5 font-mono cursor-pointer"
+            className="text-xs font-bold text-[#0B5A54] hover:text-[#084843] inline-flex items-center gap-1.5 cursor-pointer font-sans"
           >
-            <span>ALL ADMINISTRATORS ({admins.length})</span>
+            <span>All Administrators ({admins.length})</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-[11px] uppercase font-bold text-slate-500 font-mono border-b border-slate-200">
+            <thead className="bg-slate-50/80 text-[11px] uppercase font-bold text-slate-500 font-sans border-b border-slate-200">
               <tr>
                 <th className="px-5 py-3.5">Admin Code</th>
                 <th className="px-5 py-3.5">Administrator Name</th>
@@ -552,7 +562,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             <tbody className="divide-y divide-slate-100">
               {admins.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-slate-400 text-xs font-mono">
+                  <td colSpan={5} className="text-center py-8 text-slate-400 text-xs font-sans">
                     No administrators appointed yet.
                   </td>
                 </tr>
@@ -566,9 +576,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="font-bold text-slate-900 text-xs font-heading">{admin.full_name}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{admin.department}</div>
+                      <div className="text-[11px] text-slate-400 font-sans">{admin.department}</div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs font-mono">
+                    <td className="px-5 py-3.5 text-xs font-sans">
                       <div className="text-slate-700">{admin.email}</div>
                       <div className="text-slate-400 text-[11px]">{admin.phone || 'No phone'}</div>
                     </td>
@@ -578,13 +588,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                           admin.is_active
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
-                        {admin.is_active ? 'ACTIVE' : 'DEACTIVATED'}
+                        <span className={`w-1.5 h-1.5 rounded-full ${admin.is_active ? 'bg-emerald-600' : 'bg-slate-400'}`} />
+                        {admin.is_active ? 'Active' : 'Deactivated'}
                       </span>
                     </td>
                   </tr>
@@ -633,7 +644,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                 type="button"
                 onClick={() => setHospitalToDelete(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-mono"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -641,7 +652,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                 type="button"
                 onClick={handleDeleteHospital}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-2 font-mono"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-2"
               >
                 {isDeleting ? (
                   <>
@@ -649,7 +660,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                     <span>Purging Facility...</span>
                   </>
                 ) : (
-                  <span>CONFIRM CASCADE PURGE</span>
+                  <span>Confirm Cascade Purge</span>
                 )}
               </button>
             </div>

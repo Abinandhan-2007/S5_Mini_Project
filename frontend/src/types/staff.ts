@@ -116,6 +116,8 @@ export interface HospitalBranch {
   receptionDesksCount: number;
   logoUrl: string;
   isActive: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface DepartmentRecord {
@@ -138,11 +140,14 @@ export interface AnnouncementRecord {
   audience: 'All Patients' | 'All Staff' | 'Clinical Staff' | 'Front Desk Reception';
   department?: string;
   priority: 'Normal' | 'High' | 'Urgent';
-  scheduledFor: string;
-  sentAt: string;
-  deliveredCount: number;
-  readCount: number;
-  status: 'Sent' | 'Scheduled' | 'Draft';
+  isActive?: boolean;
+  postedAt?: string;
+  authorName?: string;
+  scheduledFor?: string;
+  sentAt?: string;
+  deliveredCount?: number;
+  readCount?: number;
+  status?: 'Sent' | 'Scheduled' | 'Draft';
 }
 
 export type SuperAdminHospitalLifecycle = 'Draft' | 'Pending Setup' | 'Active' | 'Suspended';
@@ -186,6 +191,8 @@ export interface SuperAdminHospital {
   has_active_admin: boolean;
   doctor_count: number;
   receptionist_count: number;
+  latitude?: number;
+  longitude?: number;
   admin?: {
     id: string;
     full_name: string;
@@ -235,3 +242,38 @@ export interface SuperAdminAuditEvent {
   after_state?: Record<string, any> | null;
   reason?: string | null;
 }
+
+export interface SuperAdminAppDevice {
+  id: string;
+  patient_id?: string;
+  patient_name: string;
+  patient_phone: string;
+  patient_email: string;
+  patient_code: string;
+  patient_avatar?: string;
+  device_id: string;
+  device_model: string;
+  manufacturer: string;
+  platform: 'android' | 'ios' | 'web';
+  os_version: string;
+  app_version: string;
+  latest_version?: string;
+  is_up_to_date?: boolean;
+  ip_address: string;
+  has_fcm: boolean;
+  is_active: boolean;
+  last_login: string | null;
+  created_at: string | null;
+}
+
+export interface SuperAdminAppDeviceStats {
+  total_devices: number;
+  android_count: number;
+  ios_count: number;
+  web_count: number;
+  active_24h: number;
+  latest_version?: string;
+  updated_devices_count?: number;
+  outdated_devices_count?: number;
+}
+

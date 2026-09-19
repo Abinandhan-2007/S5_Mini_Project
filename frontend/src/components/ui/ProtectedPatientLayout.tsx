@@ -16,6 +16,7 @@ interface ProtectedPatientLayoutProps {
 export const ProtectedPatientLayout: React.FC<ProtectedPatientLayoutProps> = ({ children }) => {
   const location = useLocation();
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
+  const isInitializing = useCarePulseStore((s) => s.isInitializing);
   const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
 
   const [isUnlockedThisSession, setIsUnlockedThisSession] = useState<boolean>(() => {
@@ -37,6 +38,11 @@ export const ProtectedPatientLayout: React.FC<ProtectedPatientLayoutProps> = ({ 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  // 0. While session is initializing from storage, wait before evaluating redirect
+  if (isInitializing) {
+    return null;
+  }
 
   // 1. Auth Guard
   if (!isAuthenticated) {

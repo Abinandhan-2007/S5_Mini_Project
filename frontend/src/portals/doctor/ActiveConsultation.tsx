@@ -27,12 +27,19 @@ import {
   Copy,
   Check,
   Microscope,
+  Sparkles,
+  Zap,
+  RotateCcw,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { PrescriptionMedicine, SoapNotes, PatientVitals, PatientEMRRecord, TriagePriority } from '../../types/doctor';
 import { staffConsultationService } from '../../services/consultationService';
 import { useStaffStore } from '../../store/staffStore';
 import { apiFetch } from '../../lib/apiFetch';
+import { MedicineAutocompleteInput } from '../../components/medicines/MedicineAutocompleteInput';
+import type { MedicineSearchResultItem } from '../../lib/types';
 
 export interface ActiveConsultationProps {
   patient: TokenQueueItem | null;
@@ -52,21 +59,224 @@ export interface ActiveConsultationProps {
 type ConsultationTab = 'soap' | 'rx' | 'summary';
 
 const COMMON_DRUG_PRESETS = [
-  { name: 'Paracetamol 650mg', dosage: '1 Tab', frequency: 'TDS (Thrice daily)', duration: '3 Days', instructions: 'Take after meals for fever/pain' },
-  { name: 'Amoxicillin + Clavulanic Acid 625mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '5 Days', instructions: 'Complete full course after meals' },
-  { name: 'Pantoprazole 40mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '7 Days', instructions: 'Take empty stomach in morning' },
-  { name: 'Cetirizine 10mg', dosage: '1 Tab', frequency: 'OD (Night)', duration: '5 Days', instructions: 'Take at bedtime for allergy/cold' },
-  { name: 'Telmisartan 40mg', dosage: '1 Tab', frequency: 'OD (Morning)', duration: '30 Days', instructions: 'Take daily after breakfast' },
-  { name: 'Metformin 500mg (SR)', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '30 Days', instructions: 'Take with major meals' },
-  { name: 'Azithromycin 500mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '3 Days', instructions: 'Take 1 hour before food' },
-  { name: 'Ibuprofen 400mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '3 Days', instructions: 'Take strictly with or after food' },
+  { name: 'Paracetamol 650mg', dosage: '1 Tab', frequency: 'TDS (Thrice daily)', duration: '3 Days', instructions: 'Take after meals for fever/pain', genericName: 'Paracetamol', category: 'Analgesic / Antipyretic' },
+  { name: 'Amoxicillin + Clavulanic Acid 625mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '5 Days', instructions: 'Complete full course after meals', genericName: 'Amoxicillin + Clavulanate', category: 'Antibiotic' },
+  { name: 'Pantoprazole 40mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '7 Days', instructions: 'Take empty stomach in morning', genericName: 'Pantoprazole', category: 'Antacid / PPI' },
+  { name: 'Cetirizine 10mg', dosage: '1 Tab', frequency: 'OD (Night)', duration: '5 Days', instructions: 'Take at bedtime for allergy/cold', genericName: 'Cetirizine', category: 'Antihistamine' },
+  { name: 'Telmisartan 40mg', dosage: '1 Tab', frequency: 'OD (Morning)', duration: '30 Days', instructions: 'Take daily after breakfast', genericName: 'Telmisartan', category: 'Antihypertensive' },
+  { name: 'Metformin 500mg (SR)', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '30 Days', instructions: 'Take with major meals', genericName: 'Metformin Hydrochloride', category: 'Antidiabetic' },
+  { name: 'Azithromycin 500mg', dosage: '1 Tab', frequency: 'OD (Once daily)', duration: '3 Days', instructions: 'Take 1 hour before food', genericName: 'Azithromycin', category: 'Antibiotic' },
+  { name: 'Ibuprofen 400mg', dosage: '1 Tab', frequency: 'BD (Twice daily)', duration: '3 Days', instructions: 'Take strictly with or after food', genericName: 'Ibuprofen', category: 'NSAID / Analgesic' },
 ];
+
+/**
+ * Intelligently infer prescription dosage, frequency, duration, and instructions
+ * from drug formulary metadata (dosage form, generic active ingredient, and therapeutic class).
+ */
+const inferPrescriptionDefaults = (item: MedicineSearchResultItem) => {
+  const form = (item.dosage_form || '').toLowerCase();
+  const cat = (item.category || '').toLowerCase();
+  const gen = (item.generic_name || '').toLowerCase();
+  const name = (item.name || '').toLowerCase();
+
+  // 1. Dosage Form Inference
+  let dosage = '1 Tab';
+  if (form.includes('capsule') || form.includes('cap')) {
+    dosage = '1 Cap';
+  } else if (form.includes('syrup') || form.includes('suspension') || form.includes('liquid') || form.includes('solution') || form.includes('oral')) {
+    dosage = '5 ml';
+  } else if (form.includes('injection') || form.includes('inj') || form.includes('vial') || form.includes('amp')) {
+    dosage = '1 Vial';
+  } else if (form.includes('inhal') || form.includes('rotacap') || form.includes('resp')) {
+    dosage = '1 Puff';
+  } else if (form.includes('drop') || form.includes('eye') || form.includes('ear') || form.includes('nasal')) {
+    dosage = '2 Drops';
+  } else if (form.includes('cream') || form.includes('ointment') || form.includes('gel')) {
+    dosage = 'Apply thin layer';
+  }
+
+  // 2. Frequency, Duration & Instructions Inference
+  let frequency = 'BD (Twice daily)';
+  let duration = '5 Days';
+  let instructions = 'Take after meals';
+
+  // PPI / Antacids / Gastro
+  if (
+    cat.includes('antacid') || cat.includes('gastro') || cat.includes('proton') || cat.includes('ulcer') ||
+    gen.includes('prazole') || gen.includes('antacid') || gen.includes('ranitidine') || gen.includes('famotidine') ||
+    name.includes('pan ') || name.includes('pantocid') || name.includes('rabekind') || name.includes('omez')
+  ) {
+    frequency = 'OD (Once daily)';
+    duration = '7 Days';
+    instructions = 'Take on empty stomach 30 mins before breakfast';
+  }
+  // Antibiotics & Anti-infectives
+  else if (
+    cat.includes('antibiotic') || cat.includes('anti-infective') || cat.includes('antibacterial') ||
+    gen.includes('cillin') || gen.includes('mycin') || gen.includes('floxacin') || gen.includes('cefix') || gen.includes('clav')
+  ) {
+    frequency = 'BD (Twice daily)';
+    duration = '5 Days';
+    instructions = 'Complete full course after meals';
+  }
+  // Antihistamines & Allergy / Cold
+  else if (
+    cat.includes('antihistamine') || cat.includes('allergy') || cat.includes('cold') ||
+    gen.includes('cetirizine') || gen.includes('montelukast') || gen.includes('pheniramine') || gen.includes('fexo')
+  ) {
+    frequency = 'OD (Night)';
+    duration = '5 Days';
+    instructions = 'Take at bedtime for allergy/cold';
+  }
+  // Analgesic / Antipyretic / NSAID
+  else if (
+    cat.includes('analgesic') || cat.includes('antipyretic') || cat.includes('nsaid') || cat.includes('pain') ||
+    gen.includes('paracetamol') || gen.includes('ibuprofen') || gen.includes('aceclofenac') || gen.includes('diclofenac') ||
+    name.includes('dolo') || name.includes('calpol') || name.includes('crocin')
+  ) {
+    frequency = 'TDS (Thrice daily)';
+    duration = '3 Days';
+    instructions = 'Take after meals for fever/pain';
+  }
+  // Hypertension / Cardiovascular
+  else if (
+    cat.includes('antihypertensive') || cat.includes('cardio') || cat.includes('blood pressure') ||
+    gen.includes('sartan') || gen.includes('dipine') || gen.includes('olol')
+  ) {
+    frequency = 'OD (Morning)';
+    duration = '30 Days';
+    instructions = 'Take daily after breakfast';
+  }
+  // Diabetes Mellitus
+  else if (
+    cat.includes('antidiabetic') || cat.includes('diabet') ||
+    gen.includes('metformin') || gen.includes('glimepiride') || gen.includes('gliptin')
+  ) {
+    frequency = 'BD (Twice daily)';
+    duration = '30 Days';
+    instructions = 'Take with major meals';
+  }
+  else if (item.purpose) {
+    instructions = `Take after meals (${item.purpose})`;
+  }
+
+  return { dosage, frequency, duration, instructions };
+};
 
 const CATEGORIZED_DIAGNOSES = [
   { category: 'Cardiology', items: ['Stage 1 Essential Hypertension', 'Chest Tightness Evaluation', 'Mild Sinus Tachycardia'] },
   { category: 'Respiratory', items: ['Acute Upper Respiratory Infection', 'Seasonal Allergic Rhinitis', 'Bronchial Asthma Follow-Up'] },
   { category: 'Gastroenterology', items: ['Acute Viral Gastroenteritis', 'Acid Peptic Disease / GERD', 'Functional Dyspepsia'] },
   { category: 'General / Metabolic', items: ['Type 2 Diabetes Mellitus Review', 'Routine Preventive Health Checkup', 'Musculoskeletal Lumbar Strain'] },
+];
+
+export interface SoapTemplate {
+  id: string;
+  name: string;
+  badge: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+}
+
+const SMART_SOAP_TEMPLATES: SoapTemplate[] = [
+  {
+    id: 'uri',
+    name: 'Common Cold / URI',
+    badge: 'Respiratory',
+    subjective: 'Patient reports sore throat, dry cough, clear rhinorrhea, and mild body aches for 2 days. No dyspnea or wheezing.',
+    objective: 'Pharynx mildly congested. Bilateral lung fields clear to auscultation with normal vesicular breath sounds. S1 S2 heard normal. Vitals stable.',
+    assessment: 'Acute Upper Respiratory Tract Infection (URI)',
+    plan: 'Steam inhalation twice daily. Warm saline gargles TDS. High oral fluid intake, rest. Review in 3 days if fever or symptoms persist.',
+  },
+  {
+    id: 'gerd',
+    name: 'Acid Peptic / GERD',
+    badge: 'Gastroenterology',
+    subjective: 'Complains of retrosternal burning, sour belching, postprandial epigastric discomfort, and nausea for 3 days.',
+    objective: 'Abdomen soft, mild epigastric tenderness, no organomegaly or guarding. Bowel sounds normal.',
+    assessment: 'Acid Peptic Disease / Gastroesophageal Reflux Disease (GERD)',
+    plan: 'Avoid spicy, oily foods, tea, coffee, and late-night meals. Eat small frequent meals. Elevate head end of bed. Review in 5 days.',
+  },
+  {
+    id: 'htn',
+    name: 'Hypertension Review',
+    badge: 'Cardiology',
+    subjective: 'Routine blood pressure review. Asymptomatic, denies headaches, dizziness, chest tightness, palpitations, or visual changes.',
+    objective: 'Cardiovascular exam S1 S2 normal, no murmurs. Bilateral lung fields clear. Peripheral pulses palpable, no pedal edema.',
+    assessment: 'Stage 1 Essential Hypertension (Follow-Up)',
+    plan: 'Maintain low-sodium diet (< 2g/day). 30 mins brisk walking 5 days/week. Daily morning BP charting. Review in 14 days.',
+  },
+  {
+    id: 't2dm',
+    name: 'Type 2 Diabetes Review',
+    badge: 'Metabolic',
+    subjective: 'Routine diabetes checkup. Compliant with prescribed medications. No polyuria, polydipsia, paresthesias, or foot sores.',
+    objective: 'Bilateral feet warm, sensation intact, peripheral pulses present. Blood pressure and vitals stable. No skin lesions.',
+    assessment: 'Type 2 Diabetes Mellitus (Under Glycemic Control)',
+    plan: 'Strict diabetic diet, zero refined sugars. Regular aerobic exercise. Fasting/PP blood sugar tracking. Order HbA1c test.',
+  },
+  {
+    id: 'lumbar',
+    name: 'Musculoskeletal Strain',
+    badge: 'Orthopedics',
+    subjective: 'Aching lower back pain aggravated by prolonged sitting and bending. No radiating pain to lower limbs, numbness, or weakness.',
+    objective: 'Lumbar paraspinal muscle tenderness and mild spasm noted. Straight Leg Raise (SLR) test negative bilaterally. Gait steady.',
+    assessment: 'Acute Musculoskeletal Lumbar Strain',
+    plan: 'Hot water fomentation TDS. Avoid forward bending and lifting heavy objects. Ergonomic seating posture. Gentle core stretches after 3 days.',
+  },
+  {
+    id: 'checkup',
+    name: 'Preventive Health Check',
+    badge: 'Wellness',
+    subjective: 'Patient reports for routine preventive health checkup. Denies any active constitutional symptoms or acute discomfort.',
+    objective: 'Alert, oriented, well-nourished. Vitals within normal limits. Systemic examination (CVS, RS, PA, CNS) unremarkable.',
+    assessment: 'Routine Preventive Health Evaluation (Satisfactory)',
+    plan: 'Balanced diet rich in fiber and vegetables. Maintain 7-8 hours restful sleep. Annual preventive screening recommended.',
+  },
+];
+
+const QUICK_SYMPTOMS = [
+  'Fever',
+  'Dry Cough',
+  'Productive Cough',
+  'Sore Throat',
+  'Runny Nose',
+  'Headache',
+  'Body Ache',
+  'Chest Tightness',
+  'Breathlessness',
+  'Nausea / Vomiting',
+  'Abdominal Pain',
+  'Loose Stools',
+  'Joint Pain',
+  'Fatigue',
+];
+
+const QUICK_EXAM_FINDINGS = [
+  'Vitals Stable',
+  'Throat Congested',
+  'B/L Lungs Clear',
+  'S1 S2 Normal',
+  'Abdomen Soft & Non-tender',
+  'No Pedal Edema',
+  'Pallor / Icterus Nil',
+  'Gait Normal',
+];
+
+const QUICK_PLANS = [
+  'Adequate Hydration & Rest',
+  'Warm Saline Gargles TDS',
+  'Steam Inhalation BD',
+  'Light Bland Diet',
+  'Low Salt & Low Oil Diet',
+  'Diabetic Diet Plan',
+  'Order Routine CBC',
+  'Review in 3 Days',
+  'Review in 1 Week',
+  'Review in 2 Weeks',
+  'SOS if symptoms worsen',
 ];
 
 export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
@@ -126,6 +336,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [rxValidationError, setRxValidationError] = useState<string | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(180);
   const [isCopiedPhone, setIsCopiedPhone] = useState(false);
 
@@ -220,8 +431,53 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     setTimeout(() => setIsCopiedPhone(false), 2000);
   };
 
+  // Helper to append quick chips cleanly to SOAP textareas
+  const handleAppendText = (field: keyof SoapNotes, textToAdd: string) => {
+    setSoap((prev) => {
+      const current = (prev[field] || '').trim();
+      if (!current) {
+        return { ...prev, [field]: textToAdd };
+      }
+      if (current.toLowerCase().includes(textToAdd.toLowerCase())) {
+        return prev;
+      }
+      const separator = current.endsWith('.') || current.endsWith(';') ? ' ' : ', ';
+      return { ...prev, [field]: `${current}${separator}${textToAdd}` };
+    });
+  };
+
+  // Helper to load 1-click clinical templates
+  const handleApplySoapTemplate = (template: SoapTemplate) => {
+    setSoap({
+      subjective: template.subjective,
+      objective: template.objective,
+      assessment: template.assessment,
+      plan: template.plan,
+    });
+    showToast(`Applied clinical template: ${template.name}`);
+  };
+
+  // Clear SOAP to blank slate
+  const handleClearSoap = () => {
+    setSoap({
+      subjective: '',
+      objective: '',
+      assessment: '',
+      plan: '',
+    });
+    showToast('Cleared SOAP notes');
+  };
+
+  // Insert live vitals summary into Objective notes
+  const handleInsertVitals = () => {
+    const vitalsStr = `Vitals Recorded: BP ${vitals.bpSys}/${vitals.bpDia} mmHg, HR ${vitals.heartRate} bpm, Temp ${vitals.temperature}°F, SpO2 ${vitals.spo2}%, Weight ${vitals.weight} kg.`;
+    handleAppendText('objective', vitalsStr);
+    showToast('Inserted vitals into Objective notes');
+  };
+
   // Add a medication row
   const handleAddMedication = () => {
+    setRxValidationError(null);
     setPrescriptions((prev) => [
       ...prev,
       {
@@ -236,6 +492,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   };
 
   const handleUpdateMed = (id: string, field: keyof PrescriptionMedicine, val: string) => {
+    setRxValidationError(null);
     setPrescriptions((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: val } : m))
     );
@@ -245,7 +502,29 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     setPrescriptions((prev) => prev.filter((m) => m.id !== id));
   };
 
+  const handleSelectMedicine = (id: string, item: MedicineSearchResultItem) => {
+    setRxValidationError(null);
+    const defaults = inferPrescriptionDefaults(item);
+    setPrescriptions((prev) =>
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        return {
+          ...m,
+          drugName: item.name,
+          dosage: defaults.dosage,
+          frequency: defaults.frequency,
+          duration: defaults.duration,
+          instructions: defaults.instructions,
+          genericName: item.generic_name || undefined,
+          category: item.category || undefined,
+        };
+      })
+    );
+    showToast(`Autofilled prescription for ${item.name}`);
+  };
+
   const handleApplyPresetDrug = (preset: typeof COMMON_DRUG_PRESETS[0]) => {
+    setRxValidationError(null);
     setPrescriptions((prev) => [
       ...prev.filter((p) => p.drugName.trim() !== ''),
       {
@@ -255,6 +534,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
         frequency: preset.frequency,
         duration: preset.duration,
         instructions: preset.instructions,
+        genericName: preset.genericName,
+        category: preset.category,
       },
     ]);
     showToast(`Added ${preset.name} to prescription`);
@@ -276,8 +557,25 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     }, 350);
   };
 
+  const hasValidMedication = () => prescriptions.some((m) => m.drugName.trim().length > 0);
+
+  const handleGoToSummary = () => {
+    if (!hasValidMedication()) {
+      setRxValidationError('Please add at least one medication before proceeding to the summary.');
+      showToast('⚠️ Please enter at least one medication before proceeding.');
+      return;
+    }
+    setRxValidationError(null);
+    setActiveTab('summary');
+  };
+
   // Print Prescription - Formal Hospital Letterhead Stationery (A4 / PDF)
   const handlePrintPrescription = () => {
+    if (!hasValidMedication()) {
+      setRxValidationError('Please add at least one medication before printing prescription.');
+      showToast('⚠️ Please enter at least one medication before printing.');
+      return;
+    }
     setActiveTab('summary');
     setTimeout(() => {
       const printFrame = document.createElement('iframe');
@@ -458,30 +756,39 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   <span class="rx-title">Prescription Order (Medications)</span>
                 </div>
 
-                <table class="rx-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 28px; text-align: center;">#</th>
-                      <th>Medication Name & Formulation</th>
-                      <th style="width: 70px;">Dosage</th>
-                      <th style="width: 135px;">Frequency (Timing)</th>
-                      <th style="width: 70px;">Duration</th>
-                      <th>Special Instructions & Diet Warning</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${prescriptions.filter(m => m.drugName.trim()).map((m, idx) => `
+                ${prescriptions.filter(m => m.drugName.trim()).length === 0 ? `
+                  <div style="padding: 18px; text-align: center; color: #64748b; font-size: 8.5pt; font-style: italic; border: 1px dashed #cbd5e1; border-radius: 8px; margin: 12px 0; background: #f8fafc;">
+                    No prescription added. Clinical consultation completed without medication orders.
+                  </div>
+                ` : `
+                  <table class="rx-table">
+                    <thead>
                       <tr>
-                        <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
-                        <td class="med-name">${m.drugName}</td>
-                        <td class="med-dosage">${m.dosage}</td>
-                        <td><span class="med-freq-badge">${m.frequency}</span></td>
-                        <td class="med-duration">${m.duration}</td>
-                        <td class="med-instructions">${m.instructions || 'Take as directed'}</td>
+                        <th style="width: 28px; text-align: center;">#</th>
+                        <th>Medication Name & Formulation</th>
+                        <th style="width: 70px;">Dosage</th>
+                        <th style="width: 135px;">Frequency (Timing)</th>
+                        <th style="width: 70px;">Duration</th>
+                        <th>Special Instructions & Diet Warning</th>
                       </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      ${prescriptions.filter(m => m.drugName.trim()).map((m, idx) => `
+                        <tr>
+                          <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
+                          <td class="med-name">
+                            <strong>${m.drugName}</strong>
+                            ${m.genericName ? `<div style="font-size: 7.5pt; color: #0b5a54; font-weight: 600; margin-top: 1px;">(Active: ${m.genericName})</div>` : ''}
+                          </td>
+                          <td class="med-dosage">${m.dosage}</td>
+                          <td><span class="med-freq-badge">${m.frequency}</span></td>
+                          <td class="med-duration">${m.duration}</td>
+                          <td class="med-instructions">${m.instructions || 'Take as directed'}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                `}
               </div>
 
               <div class="prescription-footer">
@@ -521,6 +828,12 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   // Finish Visit & Save to EMR
   const handleCompleteVisit = async () => {
     if (!patient) return;
+    if (!hasValidMedication()) {
+      setRxValidationError('Please add at least one medication before completing the visit.');
+      showToast('⚠️ Please enter at least one medication before completing the visit.');
+      setActiveTab('rx');
+      return;
+    }
     setIsFinishing(true);
 
     try {
@@ -1092,7 +1405,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
 
             <button
               type="button"
-              onClick={() => setActiveTab('summary')}
+              onClick={handleGoToSummary}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
                 activeTab === 'summary'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
@@ -1114,21 +1427,66 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
               transition={{ duration: 0.15 }}
               className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs p-5 sm:p-6 space-y-5"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              {/* Top Header with Clear & Status */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#0B5A54]" />
                   <h2 className="text-sm sm:text-base font-black text-slate-900 font-heading tracking-tight">Clinical SOAP Record</h2>
+                  <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                    4-Field Clinical Note
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
-                  Standard Clinical Record
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleClearSoap}
+                    className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-[11px] flex items-center gap-1 border border-slate-200 transition-colors cursor-pointer"
+                    title="Reset all fields to blank"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Clear All</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ⚡ 1-Click Smart Clinical Templates */}
+              <div className="p-3.5 bg-gradient-to-r from-teal-50/70 via-emerald-50/50 to-white rounded-2xl border border-teal-200/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-[#0B5A54] font-heading">
+                    <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                    <span>1-Click Smart Clinical Templates (Fills S, O, A, P Instantly)</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-500 hidden sm:inline">
+                    Tap to autofill complete standard notes
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {SMART_SOAP_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => handleApplySoapTemplate(tmpl)}
+                      className="px-2.5 py-1 rounded-xl bg-white hover:bg-teal-600 hover:text-white text-slate-700 text-[11px] font-bold border border-teal-300/80 shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer group"
+                    >
+                      <Sparkles className="w-3 h-3 text-teal-600 group-hover:text-white transition-colors" />
+                      <span>{tmpl.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Categorized Quick Diagnoses Shortcuts */}
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
-                  Quick Diagnosis Shortcuts by Specialty
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
+                    Quick Diagnosis Shortcuts by Specialty
+                  </span>
+                  {soap.assessment && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-xs">
+                      Active Dx: {soap.assessment}
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {CATEGORIZED_DIAGNOSES.map((cat) => (
                     <div key={cat.category} className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1.5">
@@ -1156,35 +1514,147 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 </div>
               </div>
 
-              {/* SOAP Fields with Distinct Color-Coded Left Accent Bars */}
+              {/* ══════════════════════════════════════════════════════
+                  SOAP FIELDS: ALL 4 FIELDS (S, O, A, P) FULLY DISPLAYED
+              ══════════════════════════════════════════════════════ */}
               <div className="space-y-4 pt-1">
-                {/* S - Subjective (Purple Left Accent Bar) */}
-                <div className="border-l-4 border-purple-500 pl-3.5 space-y-1">
-                  <label className="block text-xs font-bold text-slate-900">
-                    <span className="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-purple-200 text-[10px]">S</span>
-                    Subjective (Patient Symptoms & History of Present Illness)
-                  </label>
+                {/* ── S: SUBJECTIVE ── */}
+                <div className="border-l-4 border-purple-500 pl-3.5 space-y-2 bg-purple-50/20 p-2.5 rounded-r-2xl border border-purple-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-purple-300 text-[10px]">S</span>
+                      Subjective (Patient Symptoms & History of Present Illness)
+                    </label>
+                    <span className="text-[10px] font-semibold text-purple-700">Chief Complaints</span>
+                  </div>
+
+                  {/* Quick Symptom Chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_SYMPTOMS.map((sym) => (
+                      <button
+                        key={sym}
+                        type="button"
+                        onClick={() => handleAppendText('subjective', sym)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 transition-colors cursor-pointer"
+                        title={`Add ${sym} to symptoms`}
+                      >
+                        + {sym}
+                      </button>
+                    ))}
+                  </div>
+
                   <textarea
                     rows={3}
                     value={soap.subjective}
                     onChange={(e) => setSoap((s) => ({ ...s, subjective: e.target.value }))}
                     placeholder="Patient reports symptoms, duration, intensity, triggers, and aggravating factors..."
-                    className="w-full p-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+                    className="w-full p-3 bg-white border border-purple-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
                   />
                 </div>
 
-                {/* P - Plan (Emerald Left Accent Bar) */}
-                <div className="border-l-4 border-emerald-600 pl-3.5 space-y-1">
-                  <label className="block text-xs font-bold text-slate-900">
-                    <span className="text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-emerald-200 text-[10px]">P</span>
-                    Plan & Treatment Done (Therapeutic Regimen, Procedures, Diet/Lifestyle Advice)
-                  </label>
+                {/* ── O: OBJECTIVE ── */}
+                <div className="border-l-4 border-sky-500 pl-3.5 space-y-2 bg-sky-50/20 p-2.5 rounded-r-2xl border border-sky-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-sky-300 text-[10px]">O</span>
+                      Objective (Physical Examination & Clinical Findings)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleInsertVitals}
+                      className="text-[10.5px] font-bold px-2 py-0.5 rounded-lg bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 flex items-center gap-1 shadow-2xs transition-colors self-start sm:self-auto cursor-pointer"
+                    >
+                      <Activity className="w-3 h-3 text-sky-600" />
+                      <span>+ Insert Current Vitals ({vitals.bpSys}/{vitals.bpDia}, {vitals.heartRate} bpm)</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Exam Findings Chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_EXAM_FINDINGS.map((exam) => (
+                      <button
+                        key={exam}
+                        type="button"
+                        onClick={() => handleAppendText('objective', exam)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-sky-100 text-sky-900 border border-sky-200 transition-colors cursor-pointer"
+                        title={`Add ${exam} to exam findings`}
+                      >
+                        + {exam}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={soap.objective}
+                    onChange={(e) => setSoap((s) => ({ ...s, objective: e.target.value }))}
+                    placeholder="General appearance, vitals, auscultation (CVS / RS), abdominal palpation, neurological exam..."
+                    className="w-full p-3 bg-white border border-sky-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
+                  />
+                </div>
+
+                {/* ── A: ASSESSMENT (CLINICAL DIAGNOSIS) ── */}
+                <div className="border-l-4 border-amber-500 pl-3.5 space-y-2 bg-amber-50/20 p-2.5 rounded-r-2xl border border-amber-100">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-amber-300 text-[10px]">A</span>
+                      Assessment & Clinical Diagnosis
+                    </label>
+                    <span className="text-[10px] font-semibold text-amber-700">Primary Provisional Diagnosis</span>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={soap.assessment}
+                      onChange={(e) => setSoap((s) => ({ ...s, assessment: e.target.value }))}
+                      placeholder="Type provisional diagnosis or click any diagnosis shortcut above..."
+                      className="w-full p-3 pr-10 bg-white border border-amber-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                    />
+                    {soap.assessment && (
+                      <button
+                        type="button"
+                        onClick={() => setSoap((s) => ({ ...s, assessment: '' }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                        title="Clear diagnosis"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── P: PLAN & TREATMENT DONE ── */}
+                <div className="border-l-4 border-emerald-600 pl-3.5 space-y-2 bg-emerald-50/20 p-2.5 rounded-r-2xl border border-emerald-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="block text-xs font-bold text-slate-900">
+                      <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded font-mono font-bold mr-1.5 border border-emerald-300 text-[10px]">P</span>
+                      Plan & Treatment Done (Therapeutic Regimen, Procedures, Diet/Lifestyle Advice)
+                    </label>
+                    <span className="text-[10px] font-semibold text-emerald-700">Management & Advice</span>
+                  </div>
+
+                  {/* Quick Plan Chips */}
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_PLANS.map((pln) => (
+                      <button
+                        key={pln}
+                        type="button"
+                        onClick={() => handleAppendText('plan', pln)}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition-colors cursor-pointer"
+                        title={`Add ${pln} to plan`}
+                      >
+                        + {pln}
+                      </button>
+                    ))}
+                  </div>
+
                   <textarea
                     rows={3}
                     value={soap.plan}
                     onChange={(e) => setSoap((s) => ({ ...s, plan: e.target.value }))}
-                    placeholder="Therapeutic regimen, dietary instructions, diagnostic lab investigations, follow-up..."
-                    className="w-full p-3 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all font-medium"
+                    placeholder="Therapeutic regimen, dietary instructions, diagnostic lab investigations, follow-up advice..."
+                    className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all font-medium"
                   />
                 </div>
               </div>
@@ -1194,7 +1664,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('rx')}
-                  className="px-4 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center gap-1.5 border border-teal-200 transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <span>Proceed to Prescription (Rx)</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -1252,7 +1722,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 {prescriptions.map((med, index) => (
                   <div
                     key={med.id}
-                    className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2.5 transition-all shadow-2xs"
+                    className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2.5 transition-all shadow-2xs relative"
+                    style={{ zIndex: prescriptions.length - index + 10 }}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider font-mono">
@@ -1271,16 +1742,36 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                      {/* Drug Name */}
-                      <div className="sm:col-span-5">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5 font-mono">Drug Name</label>
-                        <input
-                          type="text"
+                      {/* Drug Name with Live Autocomplete & Autofill */}
+                      <div className="sm:col-span-5 relative">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                            Drug Name
+                          </label>
+                          {med.genericName && (
+                            <span className="text-[9px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+                              Autofilled
+                            </span>
+                          )}
+                        </div>
+                        <MedicineAutocompleteInput
                           value={med.drugName}
-                          onChange={(e) => handleUpdateMed(med.id, 'drugName', e.target.value)}
-                          placeholder="e.g. Paracetamol 650mg"
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                          onChange={(val) => handleUpdateMed(med.id, 'drugName', val)}
+                          onSelect={(item) => handleSelectMedicine(med.id, item)}
+                          placeholder="Type medicine (e.g. Dolo 650, Augmentin)..."
+                          compact={true}
                         />
+                        {med.genericName && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-[#0B5A54] font-medium bg-teal-50/80 px-2 py-1 rounded-lg border border-teal-200/80">
+                            <Sparkles className="w-3 h-3 text-teal-600 shrink-0" />
+                            <span className="truncate">
+                              <span className="font-bold">Active:</span> {med.genericName}
+                              {med.category && med.category !== 'General' && (
+                                <span className="text-slate-500 font-normal"> • {med.category}</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Dosage */}
@@ -1361,6 +1852,14 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 </div>
               </div>
 
+              {/* Medication Validation Warning Banner */}
+              {rxValidationError && (
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{rxValidationError}</span>
+                </div>
+              )}
+
               {/* Bottom Hop Button to Summary Tab */}
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <button
@@ -1373,7 +1872,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setActiveTab('summary')}
+                  onClick={handleGoToSummary}
                   className="px-4 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center gap-1.5 border border-teal-200 transition-all cursor-pointer"
                 >
                   <span>Review Visit Summary & Print</span>
@@ -1511,43 +2010,81 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   </p>
                 </div>
 
-                {/* 4. Prescription Table */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center gap-2 border-b border-[#0B5A54] pb-1.5">
-                    <span className="text-xl font-serif font-black text-[#0B5A54] leading-none">℞</span>
-                    <span className="text-xs font-bold text-[#0B5A54] uppercase tracking-wider font-mono">Prescription Order (Medications)</span>
+                {/* 4. Prescription Table or Empty State */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between border-b border-[#0B5A54] pb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-serif font-black text-[#0B5A54] leading-none">℞</span>
+                      <span className="text-xs font-bold text-[#0B5A54] uppercase tracking-wider font-mono">Prescription Order (Medications)</span>
+                    </div>
+                    {prescriptions.filter((m) => m.drugName.trim()).length > 0 && (
+                      <span className="text-[10px] font-mono font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        {prescriptions.filter((m) => m.drugName.trim()).length} Items Prescribed
+                      </span>
+                    )}
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
-                      <thead className="bg-slate-100/90 text-[10px] font-bold text-slate-700 uppercase tracking-wider font-mono">
-                        <tr className="divide-x divide-slate-200 border-b border-slate-200">
-                          <th className="p-2 w-8 text-center">#</th>
-                          <th className="p-2">Medication Name & Formulation</th>
-                          <th className="p-2 w-20">Dosage</th>
-                          <th className="p-2 w-32">Frequency</th>
-                          <th className="p-2 w-20">Duration</th>
-                          <th className="p-2">Special Instructions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {prescriptions.filter((m) => m.drugName.trim()).map((m, idx) => (
-                          <tr key={m.id} className={`divide-x divide-slate-100 ${idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}`}>
-                            <td className="p-2 text-center font-bold text-slate-500 font-mono">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{m.drugName}</td>
-                            <td className="p-2 font-semibold text-slate-700">{m.dosage}</td>
-                            <td className="p-2">
-                              <span className="font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 text-[10px]">
-                                {m.frequency}
-                              </span>
-                            </td>
-                            <td className="p-2 font-bold text-slate-800 font-mono">{m.duration}</td>
-                            <td className="p-2 text-slate-600 italic text-[11px]">{m.instructions || 'As directed'}</td>
+                  {prescriptions.filter((m) => m.drugName.trim()).length === 0 ? (
+                    <div className="p-6 sm:p-7 bg-slate-50/90 border border-dashed border-slate-200 rounded-2xl text-center space-y-3">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center mx-auto text-[#0B5A54] shadow-2xs">
+                        <Pill className="w-5 h-5 text-[#0B5A54]" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight font-heading">
+                          No Prescription Added
+                        </h4>
+                        <p className="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+                          This clinical consultation has been conducted without prescribed medications. Therapeutic advice, diagnostic assessments, and non-pharmacological care are recorded above.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('rx')}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Medication to Prescription</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                        <thead className="bg-slate-100/90 text-[10px] font-bold text-slate-700 uppercase tracking-wider font-mono">
+                          <tr className="divide-x divide-slate-200 border-b border-slate-200">
+                            <th className="p-2 w-8 text-center">#</th>
+                            <th className="p-2">Medication Name & Formulation</th>
+                            <th className="p-2 w-20">Dosage</th>
+                            <th className="p-2 w-32">Frequency</th>
+                            <th className="p-2 w-20">Duration</th>
+                            <th className="p-2">Special Instructions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {prescriptions.filter((m) => m.drugName.trim()).map((m, idx) => (
+                            <tr key={m.id} className={`divide-x divide-slate-100 ${idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}`}>
+                              <td className="p-2 text-center font-bold text-slate-500 font-mono">{idx + 1}</td>
+                              <td className="p-2">
+                                <p className="font-bold text-slate-900">{m.drugName}</p>
+                                {m.genericName && (
+                                  <p className="text-[10.5px] font-medium text-[#0B5A54] mt-0.5">
+                                    Active: <span className="font-semibold">{m.genericName}</span> {m.category && `• ${m.category}`}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="p-2 font-semibold text-slate-700">{m.dosage}</td>
+                              <td className="p-2">
+                                <span className="font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 text-[10px]">
+                                  {m.frequency}
+                                </span>
+                              </td>
+                              <td className="p-2 font-bold text-slate-800 font-mono">{m.duration}</td>
+                              <td className="p-2 text-slate-600 italic text-[11px]">{m.instructions || 'As directed'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* 5. Footer (Authentication Block) */}

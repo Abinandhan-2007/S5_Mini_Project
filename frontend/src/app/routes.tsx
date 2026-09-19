@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginScreen } from '../features/auth/LoginScreen';
 import { RegisterScreen } from '../features/auth/RegisterScreen';
-import { CompleteProfileScreen, shouldPromptProfileCompletion } from '../features/auth/CompleteProfileScreen';
+import { CompleteProfileScreen } from '../features/auth/CompleteProfileScreen';
 import { HomeScreen } from '../features/home/HomeScreen';
 import { HealthAIChatScreen } from '../features/health-ai/HealthAIChatScreen';
 import { EscalationNoticeScreen } from '../features/health-ai/EscalationNoticeScreen';
@@ -30,13 +30,13 @@ import { DoctorLayout } from '../portals/doctor/DoctorLayout';
 import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { AdminLayout } from '../portals/admin/AdminLayout';
 import { SuperAdminLayout } from '../portals/superadmin/SuperAdminLayout';
-import { SuperAdminLogin } from '../portals/superadmin/SuperAdminLogin';
 import { NurseLayout, NurseQueueDashboard, NurseLogin } from '../portals/nurse';
 import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
 import { SystemNavigationHandler } from '../components/ui/SystemNavigationHandler';
 import { SwipeNavigationHandler } from '../components/ui/SwipeNavigationHandler';
 import { useCarePulseStore } from '../lib/store';
+import { useStaffStore } from '../store/staffStore';
 
 import { Capacitor } from '@capacitor/core';
 
@@ -74,7 +74,24 @@ export const isStaffDomain = (): boolean => {
 
 export const AppRoutes: React.FC = () => {
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
-  const user = useCarePulseStore((s) => s.user);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+
+  const getStaffPortalRoute = (role?: string): string => {
+    switch (role) {
+      case 'doctor':
+        return '/doctor';
+      case 'receptionist':
+        return '/receptionist';
+      case 'admin':
+        return '/admin';
+      case 'nurse':
+        return '/nurse';
+      case 'superadmin':
+        return '/superadmin';
+      default:
+        return '/staff/login';
+    }
+  };
 
   return (
     <>
@@ -87,13 +104,13 @@ export const AppRoutes: React.FC = () => {
           element={
             <Navigate
               to={
-                isAuthenticated
-                  ? shouldPromptProfileCompletion(user)
-                    ? '/complete-profile'
-                    : '/home'
-                  : isStaffDomain()
-                    ? '/staff/login'
-                    : '/login'
+                currentStaff
+                  ? getStaffPortalRoute(currentStaff.role)
+                  : isAuthenticated
+                    ? '/home'
+                    : isStaffDomain()
+                      ? '/staff/login'
+                      : '/login'
               }
               replace
             />
@@ -102,17 +119,29 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/login"
           element={
-            <PageTransition>
-              <LoginScreen />
-            </PageTransition>
+            currentStaff ? (
+              <Navigate to={getStaffPortalRoute(currentStaff.role)} replace />
+            ) : isAuthenticated ? (
+              <Navigate to="/home" replace />
+            ) : (
+              <PageTransition>
+                <LoginScreen />
+              </PageTransition>
+            )
           }
         />
         <Route
           path="/register"
           element={
-            <PageTransition>
-              <RegisterScreen />
-            </PageTransition>
+            currentStaff ? (
+              <Navigate to={getStaffPortalRoute(currentStaff.role)} replace />
+            ) : isAuthenticated ? (
+              <Navigate to="/home" replace />
+            ) : (
+              <PageTransition>
+                <RegisterScreen />
+              </PageTransition>
+            )
           }
         />
 
@@ -185,6 +214,18 @@ export const AppRoutes: React.FC = () => {
                 <BookAppointmentScreen />
               </PageTransition>
             }
+          />
+          <Route
+            path="/book/:doctorId"
+            element={
+              <PageTransition>
+                <BookAppointmentScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/book"
+            element={<Navigate to="/hospitals" replace />}
           />
           <Route
             path="/appointment-detail"
@@ -290,6 +331,14 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/staff/receptionist"
+          element={
+            <PageTransition>
+              <ReceptionistLayout />
+            </PageTransition>
+          }
+        />
+        <Route
           path="/receptionist/login"
           element={<Navigate to="/staff/login" replace />}
         />
@@ -297,6 +346,14 @@ export const AppRoutes: React.FC = () => {
         {/* Doctor Portal Routes */}
         <Route
           path="/doctor"
+          element={
+            <PageTransition>
+              <DoctorLayout />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff/doctor"
           element={
             <PageTransition>
               <DoctorLayout />
@@ -323,19 +380,11 @@ export const AppRoutes: React.FC = () => {
         />
         <Route
           path="/superadmin/login"
-          element={
-            <PageTransition>
-              <SuperAdminLogin />
-            </PageTransition>
-          }
+          element={<Navigate to="/staff/login" replace />}
         />
         <Route
           path="/staff/superadmin"
-          element={
-            <PageTransition>
-              <SuperAdminLogin />
-            </PageTransition>
-          }
+          element={<Navigate to="/staff/login" replace />}
         />
 
         {/* Admin Portal Routes */}
@@ -375,6 +424,16 @@ export const AppRoutes: React.FC = () => {
           path="/staff/nurse"
           element={
             <PageTransition>
+              <NurseLayout>
+                <NurseQueueDashboard />
+              </NurseLayout>
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/staff/nurse/login"
+          element={
+            <PageTransition>
               <NurseLogin />
             </PageTransition>
           }
@@ -384,25 +443,37 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/staff"
           element={
-            <PageTransition>
-              <StaffPortalLogin />
-            </PageTransition>
+            currentStaff ? (
+              <Navigate to={getStaffPortalRoute(currentStaff.role)} replace />
+            ) : (
+              <PageTransition>
+                <StaffPortalLogin />
+              </PageTransition>
+            )
           }
         />
         <Route
           path="/staff/login"
           element={
-            <PageTransition>
-              <StaffPortalLogin />
-            </PageTransition>
+            currentStaff ? (
+              <Navigate to={getStaffPortalRoute(currentStaff.role)} replace />
+            ) : (
+              <PageTransition>
+                <StaffPortalLogin />
+              </PageTransition>
+            )
           }
         />
         <Route
           path="/staff-login"
           element={
-            <PageTransition>
-              <StaffPortalLogin />
-            </PageTransition>
+            currentStaff ? (
+              <Navigate to={getStaffPortalRoute(currentStaff.role)} replace />
+            ) : (
+              <PageTransition>
+                <StaffPortalLogin />
+              </PageTransition>
+            )
           }
         />
 

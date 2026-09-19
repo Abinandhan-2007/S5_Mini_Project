@@ -51,7 +51,7 @@ const INITIAL_TOKENS: TokenQueueItem[] = [];
 
 const getStoredStaff = (): Staff | null => {
   try {
-    const raw = localStorage.getItem('carepulse_staff');
+    const raw = localStorage.getItem('carepulse_staff') || sessionStorage.getItem('carepulse_staff');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -290,7 +290,15 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   error: null,
 
   setStaffAuth: (staff, token) => {
-    if (token) localStorage.setItem('staff_token', token);
+    if (token) {
+      localStorage.setItem('staff_token', token);
+      sessionStorage.setItem('active_staff_token', token);
+      if (staff?.role) {
+        localStorage.setItem(`${staff.role}_token`, token);
+        sessionStorage.setItem(`${staff.role}_token`, token);
+        sessionStorage.setItem('active_staff_role', staff.role);
+      }
+    }
     if (staff) {
       const hospId = staff.hospitalId || staff.hospital_id;
       const hospName = staff.hospitalName || staff.hospital_name || 'CarePulse Medical Center';
@@ -302,6 +310,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
         hospital_name: hospName,
       };
       localStorage.setItem('carepulse_staff', JSON.stringify(updatedStaff));
+      sessionStorage.setItem('carepulse_staff', JSON.stringify(updatedStaff));
 
       set((state) => ({
         hospitalSettings: {
@@ -346,13 +355,24 @@ export const useStaffStore = create<StaffState>((set, get) => ({
           },
         }));
       }
+
+      set({ currentStaff: updatedStaff });
+    } else {
+      set({ currentStaff: null });
     }
-    set({ currentStaff: staff });
   },
 
   logoutStaff: () => {
     localStorage.removeItem('staff_token');
     localStorage.removeItem('carepulse_staff');
+    sessionStorage.removeItem('active_staff_token');
+    sessionStorage.removeItem('active_staff_role');
+    sessionStorage.removeItem('carepulse_staff');
+    sessionStorage.removeItem('superadmin_token');
+    sessionStorage.removeItem('nurse_token');
+    sessionStorage.removeItem('doctor_token');
+    sessionStorage.removeItem('receptionist_token');
+    sessionStorage.removeItem('admin_token');
     set({ currentStaff: null });
   },
 
@@ -643,7 +663,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       // Optimistically update bookings and tokens
       set((state) => ({
         bookings: state.bookings.map((b) =>
-          b.id === appointmentId || b.ticketNumber === appointmentId
+          b.id === appointmentId
             ? {
                 ...b,
                 isCheckedIn: true,
@@ -654,6 +674,19 @@ export const useStaffStore = create<StaffState>((set, get) => ({
                 effectiveQueueTime: res?.effectiveQueueTime || nowTimeStr,
               }
             : b
+        ),
+        tokens: state.tokens.map((t) =>
+          t.id === appointmentId
+            ? {
+                ...t,
+                isCheckedIn: true,
+                status: 'Checked In',
+                checkedInAt: res?.checkedInAt || now.toISOString(),
+                checkInTime: nowTimeStr,
+                effectiveQueuePosition: res?.effectiveQueuePosition,
+                effectiveQueueTime: res?.effectiveQueueTime || nowTimeStr,
+              }
+            : t
         ),
       }));
 

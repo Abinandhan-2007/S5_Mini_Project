@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from '../../i18n';
 
 interface SmartMedicineLensCardProps {
   onScan?: () => void;
@@ -11,6 +12,7 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
   className = '',
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleLaunchScanner = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,10 +142,10 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
       {/* Top Header Row */}
       <div className="relative z-10 space-y-0.5 text-left max-w-[70%] sm:max-w-[75%]">
         <h3 className="text-base sm:text-lg md:text-[19px] font-black font-heading text-white tracking-tight leading-snug">
-          Smart Medicine Lens
+          {t('home.smartMedicineLens', 'Smart Medicine Lens')}
         </h3>
         <p className="text-xs sm:text-[12.5px] text-white/80 font-medium leading-tight">
-          Scan any medicine — get instant info
+          {t('home.smartMedicineLensSubtitle', 'Scan any medicine — get instant info')}
         </p>
       </div>
 
@@ -162,7 +164,7 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
             transition-all duration-200 cursor-pointer
           "
         >
-          <span className="font-heading">Open</span>
+          <span className="font-heading">{t('home.openLens', 'Open')}</span>
         </button>
       </div>
     </div>

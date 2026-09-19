@@ -47,17 +47,28 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     const pat = patientData.patient;
     if (!pat) return;
 
-    // 1. Try matching with active token in queue or scheduled appointments
-    const matched = allAvailableAppointments.find(
+    // 1. Find all matching appointments for this patient
+    const patientMatches = allAvailableAppointments.filter(
       (t) =>
         t.patientName.toLowerCase() === pat.fullName.toLowerCase() ||
         (pat.phone && t.patientPhone && t.patientPhone.includes(pat.phone)) ||
         (pat.patientCode && t.tokenNumber.toLowerCase().includes(pat.patientCode.toLowerCase()))
     );
 
-    if (matched) {
-      handleSelectPatient(matched);
-      onShowToast?.(`Matched active booking for ${pat.fullName} (${matched.tokenNumber})`);
+    const pendingMatches = patientMatches.filter(
+      (t) => !t.isCheckedIn && t.status !== 'Checked In' && t.status !== 'Completed' && t.status !== 'Cancelled'
+    );
+
+    if (pendingMatches.length === 1) {
+      handleSelectPatient(pendingMatches[0]);
+      onShowToast?.(`Matched active booking for ${pat.fullName} (${pendingMatches[0].timeSlot})`);
+    } else if (pendingMatches.length > 1) {
+      // Multiple pending slots for same patient: let receptionist pick the intended slot
+      setSearchQuery(pat.fullName);
+      onShowToast?.(`Patient ${pat.fullName} has ${pendingMatches.length} slots today. Select the slot to check in.`);
+    } else if (patientMatches.length > 0) {
+      handleSelectPatient(patientMatches[0]);
+      onShowToast?.(`Loaded booking for ${pat.fullName} (${patientMatches[0].tokenNumber})`);
     } else {
       setSearchQuery(pat.fullName);
       setIntakeNotes(`Patient ${pat.fullName} (${pat.patientCode}) presented via QR code check-in.`);

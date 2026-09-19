@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useCarePulseStore } from '../../lib/store';
+import { useStaffStore } from '../../store/staffStore';
 import {
   authenticateWithBackend,
   GOOGLE_CLIENT_ID,
@@ -38,17 +39,23 @@ export const LoginScreen: React.FC = () => {
 
   const isAuthenticated = useCarePulseStore((s) => s.isAuthenticated);
   const user = useCarePulseStore((s) => s.user);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
 
-  // If already authenticated, redirect to /home immediately
+  // If already authenticated as patient or staff, redirect to appropriate portal immediately
   useEffect(() => {
-    if (isAuthenticated && user) {
-      if (shouldPromptProfileCompletion(user)) {
-        navigate('/complete-profile', { replace: true });
-      } else {
-        navigate('/home', { replace: true });
-      }
+    if (currentStaff) {
+      if (currentStaff.role === 'doctor') navigate('/doctor', { replace: true });
+      else if (currentStaff.role === 'receptionist') navigate('/receptionist', { replace: true });
+      else if (currentStaff.role === 'admin') navigate('/admin', { replace: true });
+      else if (currentStaff.role === 'nurse') navigate('/nurse', { replace: true });
+      else if (currentStaff.role === 'superadmin') navigate('/superadmin', { replace: true });
+      return;
     }
-  }, [isAuthenticated, user, navigate]);
+
+    if (isAuthenticated && user) {
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, user, currentStaff, navigate]);
 
   // Handle redirect messages (e.g. "Please log in to continue")
   useEffect(() => {
@@ -344,19 +351,62 @@ export const LoginScreen: React.FC = () => {
 
       // Fallback check: 2. Staff roles entered on Patient Login
       if (inputLower === 'admin' && (passVal === 'Admin@123' || passVal === 'admin123' || passVal === 'admin')) {
-        useCarePulseStore.setState({ isAuthenticated: true });
+        useStaffStore.getState().setStaffAuth(
+          {
+            id: 'admin-1',
+            name: 'Hospital Administrator',
+            email: 'admin@carepulse.com',
+            role: 'admin',
+            department: 'Chief Medical Administration',
+            hospitalId: 'hosp-bag',
+            hospital_id: 'hosp-bag',
+          },
+          'token-admin-session'
+        );
+        setIsLoading(false);
         navigate('/admin');
         return;
       }
 
       if (inputLower === 'doc' && passVal === 'doc123') {
-        useCarePulseStore.setState({ isAuthenticated: true });
+        useStaffStore.getState().setStaffAuth(
+          {
+            id: 'doc-1',
+            name: 'Dr. Olivia Wilson',
+            email: 'doc@carepulse.com',
+            role: 'doctor',
+            department: 'Cardiology',
+            avatarUrl: '/doctor_default.jpg',
+            hospitalId: 'hosp-bag',
+            hospital_id: 'hosp-bag',
+            doctorId: 'doc-1',
+            doctor_id: 'doc-1',
+            staff_code: 'D001101',
+            staffCode: 'D001101',
+          },
+          'token-doctor-doc-1'
+        );
+        setIsLoading(false);
         navigate('/doctor');
         return;
       }
 
       if (inputLower === 'rec' && passVal === 'rec123') {
-        useCarePulseStore.setState({ isAuthenticated: true });
+        useStaffStore.getState().setStaffAuth(
+          {
+            id: 'rec-1',
+            name: 'Front Desk Receptionist',
+            email: 'rec@carepulse.com',
+            role: 'receptionist',
+            department: 'Front Desk & Registrations',
+            hospitalId: 'hosp-bag',
+            hospital_id: 'hosp-bag',
+            staff_code: 'R001101',
+            staffCode: 'R001101',
+          },
+          'token-receptionist-rec-1'
+        );
+        setIsLoading(false);
         navigate('/receptionist');
         return;
       }

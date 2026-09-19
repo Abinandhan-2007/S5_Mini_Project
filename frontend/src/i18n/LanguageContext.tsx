@@ -19,6 +19,8 @@ interface LanguageContextType {
   setLanguage: (lang: SupportedLanguage) => void;
   languages: LanguageInfo[];
   currentLanguageInfo: LanguageInfo;
+  currentOption: LanguageInfo;
+  options: LanguageInfo[];
   t: (path: string, fallbackOrParams?: string | Record<string, any>, params?: Record<string, any>) => string;
 }
 
@@ -77,8 +79,18 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
     };
+    const handleLangChange = (e: Event) => {
+      const custom = e as CustomEvent<{ language: SupportedLanguage }>;
+      if (custom.detail?.language && ['en', 'ta', 'ml', 'hi'].includes(custom.detail.language)) {
+        setLanguageState(custom.detail.language);
+      }
+    };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('carepulse:language_changed', handleLangChange);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('carepulse:language_changed', handleLangChange);
+    };
   }, []);
 
   const currentLanguageInfo = useMemo(() => {
@@ -112,6 +124,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setLanguage,
       languages: SUPPORTED_LANGUAGES,
       currentLanguageInfo,
+      currentOption: currentLanguageInfo,
+      options: SUPPORTED_LANGUAGES,
       t,
     }),
     [language, setLanguage, currentLanguageInfo, t]
@@ -129,6 +143,8 @@ export function useTranslation(): LanguageContextType {
       setLanguage: () => {},
       languages: SUPPORTED_LANGUAGES,
       currentLanguageInfo: SUPPORTED_LANGUAGES[0],
+      currentOption: SUPPORTED_LANGUAGES[0],
+      options: SUPPORTED_LANGUAGES,
       t: (path, fallbackOrParams, params) => {
         let fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : undefined;
         let p = typeof fallbackOrParams === 'object' ? fallbackOrParams : params;

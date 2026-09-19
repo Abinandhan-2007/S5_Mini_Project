@@ -177,30 +177,160 @@ export const snoozeDoseFor30Minutes = async (
 };
 
 /**
- * Triggers the interactive In-App Intake Modal.
+ * Immediately display a notification with interactive "Taken" and "Snooze 30 min" action buttons.
+ * Supports both Native Mobile (Capacitor LocalNotifications) and Web Browser (Service Worker Notifications).
+ * The prompt is presented directly inside the notification shade/banner, never as an in-app popup modal.
  */
-export const triggerIntakePrompt = (item: DosePromptItem, force = false) => {
+export const showInteractiveMedicationNotification = async (item: DosePromptItem) => {
   const isEnabled = localStorage.getItem('carepulse_med_reminders_enabled') !== 'false';
-  if (!isEnabled && !force) {
-    return;
+  if (!isEnabled) return;
+
+  const title = `💊 Medication Reminder: ${item.drugName}`;
+  const body = `Time to take your ${item.dosage} (${item.timingCategory || 'Prescription Dose'}). Have you taken it?`;
+
+  // 1. Native Mobile (Android / iOS via Capacitor)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const notifId = hashStringToId(`prompt-${item.medId}-${item.slotId}-${Date.now() % 100000}`);
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notifId,
+            title,
+            body,
+            sound: 'default',
+            actionTypeId: 'MEDICINE_INTAKE_PROMPT',
+            extra: {
+              medId: item.medId,
+              slotId: item.slotId,
+              drugName: item.drugName,
+              dosage: item.dosage,
+              timingCategory: item.timingCategory || 'Prescription',
+            },
+          },
+        ],
+      });
+      return;
+    } catch (e) {
+      console.warn('Could not schedule interactive local notification:', e);
+    }
   }
-  window.dispatchEvent(
-    new CustomEvent('carepulse:show_intake_modal', {
-      detail: { item },
-    })
-  );
+
+  // 2. Web Browser Notification (Desktop / Mobile Web / PWA)
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    try {
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+
+      if (Notification.permission === 'granted') {
+        // Use Service Worker if available to present interactive action buttons
+        if ('serviceWorker' in navigator) {
+          try {
+            let reg = await navigator.serviceWorker.getRegistration();
+            if (!reg) {
+              reg = await navigator.serviceWorker.register('/sw.js');
+            }
+            if (reg && 'showNotification' in reg) {
+              await reg.showNotification(title, {
+                body,
+                icon: '/favicon.png',
+                badge: '/favicon.png',
+                tag: `med-${item.medId}-${item.slotId}`,
+                renotify: true,
+                requireInteraction: true,
+                actions: [
+                  { action: 'take', title: '✅ Taken' },
+                  { action: 'snooze', title: '⏰ Snooze 30m' },
+                ],
+                data: {
+                  medId: item.medId,
+                  slotId: item.slotId,
+                  drugName: item.drugName,
+                  dosage: item.dosage,
+                  timingCategory: item.timingCategory,
+                  item,
+                },
+              } as NotificationOptions);
+              return;
+            }
+          } catch (swErr) {
+            console.warn('SW notification failed, falling back to window Notification:', swErr);
+          }
+        }
+
+        // Fallback for browsers without Service Worker actions: clicking notification marks dose taken
+        const notif = new Notification(title, {
+          body: `${body} (Click to mark taken)`,
+          icon: '/favicon.png',
+          tag: `med-${item.medId}-${item.slotId}`,
+        });
+        notif.onclick = () => {
+          window.focus();
+          markDoseAsAte(item.medId, item.slotId, item.drugName);
+          notif.close();
+        };
+      }
+    } catch (notifErr) {
+      console.warn('Browser Notification error:', notifErr);
+    }
+  }
+};
+
+export const showLocalMedicationReminder = showInteractiveMedicationNotification;
+
+/**
+ * Triggers medication reminder notification directly in the system notification.
+ * Asks Taken or Snooze inside the notification itself, NOT inside app as a popup modal.
+ */
+export const triggerIntakePrompt = (item: DosePromptItem, _force = false) => {
+  showInteractiveMedicationNotification(item).catch(() => {});
 };
 
 /**
  * Initialize action types and background check timers.
  */
 export const initMedicationNotificationService = async () => {
+  // Register Service Worker on Web for notification action buttons ("Taken" vs "Snooze")
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+
+      // Listen for notification action clicks forwarded from service worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const data = event.data;
+        if (data?.type === 'CAREPULSE_MED_ACTION') {
+          const medData = data.data || {};
+          if (data.action === 'TAKE_MED' && medData.medId && medData.slotId) {
+            markDoseAsAte(medData.medId, medData.slotId, medData.drugName);
+          } else if (data.action === 'SNOOZE_30' && medData.medId && medData.slotId) {
+            snoozeDoseFor30Minutes(
+              medData.item || {
+                id: `${medData.medId}-${medData.slotId}`,
+                medId: medData.medId,
+                slotId: medData.slotId,
+                drugName: medData.drugName || 'Prescription',
+                dosage: medData.dosage || '1 dose',
+                timeLabel: 'Snoozed',
+                timingCategory: medData.timingCategory || 'Medicine Time',
+              },
+              30
+            );
+          }
+        }
+      });
+    } catch (swErr) {
+      console.warn('Service worker registration note:', swErr);
+    }
+  }
+
+  // Native Mobile Local Notification Actions
   if (Capacitor.isNativePlatform()) {
     try {
       await LocalNotifications.requestPermissions();
 
-      // Register interactive action buttons for Android notifications:
-      // "Yes, I Ate It" and "No, 30 Min Later"
+      // Register interactive action buttons for Android/iOS notifications:
+      // "Taken" and "Snooze 30 min"
       await LocalNotifications.registerActionTypes({
         types: [
           {
@@ -208,12 +338,12 @@ export const initMedicationNotificationService = async () => {
             actions: [
               {
                 id: 'TAKE_MED',
-                title: '✅ Yes, I Ate It',
+                title: '✅ Taken',
                 foreground: false,
               },
               {
                 id: 'SNOOZE_30',
-                title: '⏰ No (30m Later)',
+                title: '⏰ Snooze 30 min',
                 foreground: false,
               },
             ],
@@ -232,26 +362,21 @@ export const initMedicationNotificationService = async () => {
         if (actionId === 'TAKE_MED' && medId && slotId) {
           markDoseAsAte(medId, slotId, drugName);
         } else if (actionId === 'SNOOZE_30' && medId && slotId) {
-          snoozeDoseFor30Minutes({
-            id: `${medId}-${slotId}`,
-            medId,
-            slotId,
-            drugName: drugName || 'Prescription',
-            dosage: extra.dosage || '1 dose',
-            timeLabel: 'Snoozed',
-            timingCategory: extra.timingCategory || 'Medicine Time',
-          }, 30);
+          snoozeDoseFor30Minutes(
+            {
+              id: `${medId}-${slotId}`,
+              medId,
+              slotId,
+              drugName: drugName || 'Prescription',
+              dosage: extra.dosage || '1 dose',
+              timeLabel: 'Snoozed',
+              timingCategory: extra.timingCategory || 'Medicine Time',
+            },
+            30
+          );
         } else if (medId && slotId) {
-          // Tapped notification body -> open prompt modal in app
-          triggerIntakePrompt({
-            id: `${medId}-${slotId}`,
-            medId,
-            slotId,
-            drugName: drugName || 'Prescription',
-            dosage: extra.dosage || '1 dose',
-            timeLabel: 'Scheduled Time',
-            timingCategory: extra.timingCategory || 'Medicine Time',
-          });
+          // Tapped notification body -> navigate to reminders screen without opening popup modal
+          window.dispatchEvent(new CustomEvent('carepulse:notification_navigate', { detail: { screen: '/reminders' } }));
         }
       });
     } catch (e) {
@@ -278,25 +403,30 @@ export const checkSnoozedAndEatingTimes = () => {
   const now = Date.now();
   const snoozed = getSnoozedDoses();
 
-  // 1. Check snoozed doses
+  let hasChanges = false;
+
+  // 1. Check snoozed doses for each tablet
   for (const [key, record] of Object.entries(snoozed)) {
     if (now >= record.snoozeUntil) {
       // Check if already taken
       if (!isDoseAlreadyTaken(record.item.medId, record.item.slotId)) {
         // Remove from snoozed list so it doesn't trigger multiple times
         delete snoozed[key];
-        saveSnoozedDoses(snoozed);
+        hasChanges = true;
 
-        // Trigger in-app modal prompt!
-        triggerIntakePrompt({
+        // Ask directly in notification for this tablet (NOT inside app as popup modal)
+        showInteractiveMedicationNotification({
           ...record.item,
           isSnoozed: true,
         });
-        return;
       } else {
         delete snoozed[key];
-        saveSnoozedDoses(snoozed);
+        hasChanges = true;
       }
     }
+  }
+
+  if (hasChanges) {
+    saveSnoozedDoses(snoozed);
   }
 };

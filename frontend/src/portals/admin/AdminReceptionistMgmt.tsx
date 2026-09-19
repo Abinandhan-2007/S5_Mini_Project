@@ -303,7 +303,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                         <div className="flex items-center gap-1.5">
                           <span className="text-slate-400 text-[10px]">Pass:</span>
                           <span className="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-bold border border-slate-200/70">
-                            {showPasswords[rec.id] ? (rec.password || '—') : '••••••••'}
+                            {showPasswords[rec.id] ? (rec.password || (rec.email?.toLowerCase().includes('kmch') ? '123456' : 'password123')) : '••••••••'}
                           </span>
                           <button
                             type="button"
@@ -421,7 +421,7 @@ export const AdminReceptionistMgmt: React.FC<AdminReceptionistMgmtProps> = ({
                     <span className="text-[10px] text-slate-400 font-bold uppercase block">Station Password</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-teal-200">
-                        {showPasswords[selectedRec.id] ? (selectedRec.password || '—') : '••••••••'}
+                        {showPasswords[selectedRec.id] ? (selectedRec.password || (selectedRec.email?.toLowerCase().includes('kmch') ? '123456' : 'password123')) : '••••••••'}
                       </span>
                       <button
                         type="button"

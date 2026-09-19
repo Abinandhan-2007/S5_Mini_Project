@@ -9,6 +9,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation, useLocalizedEntities } from '../../i18n';
+import { markDoseAsAte } from '../../services/medicationNotificationService';
 
 export interface MedicationItem {
   id: string;
@@ -254,23 +256,54 @@ const getDoseSlotsForMed = (frequencyStr = '', dosageStr = ''): DoseSlot[] => {
   ];
 };
 
-// Default prescribed course lengths per medication index
+/** Parse duration string like "4 Days", "7 Day Course", "2 Weeks" → number of days */
+const parseDurationDays = (duration: string): number => {
+  if (!duration) return 7;
+  const s = duration.toLowerCase();
+  const dayMatch = s.match(/(\d+)\s*(?:day|d\b)/);
+  if (dayMatch) return parseInt(dayMatch[1], 10);
+  const weekMatch = s.match(/(\d+)\s*week/);
+  if (weekMatch) return parseInt(weekMatch[1], 10) * 7;
+  const numMatch = s.match(/(\d+)/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+  return 7;
+};
+
+/** Compute how many days have elapsed since prescription was created */
+const computeDaysCompleted = (createdAt: string | undefined, totalDays: number): number => {
+  if (!createdAt) return 0;
+  try {
+    const datePart = createdAt.slice(0, 10);
+    const start = new Date(datePart);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    const elapsed = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
+    return Math.max(0, Math.min(elapsed, totalDays));
+  } catch {
+    return 0;
+  }
+};
+
+// Default prescribed course lengths — only used when duration string is missing
 const DEFAULT_COURSE_DAYS = [
-  { total: 10, completed: 4 },
-  { total: 14, completed: 11 },
-  { total: 30, completed: 18 },
-  { total: 7, completed: 5 },
-  { total: 14, completed: 8 },
-  { total: 5, completed: 3 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
 ];
 
 export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   prescriptions = [],
-  title = 'ACTIVE PRESCRIPTIONS',
+  title,
   onViewAll,
   onSelectMedication,
   onMarkTaken,
 }) => {
+  const { t } = useTranslation();
+  const { formatDoctorName, formatHospitalName } = useLocalizedEntities();
   const [activeIndex, setActiveIndex] = useState(0);
   const [takenSlotsMap, setTakenSlotsMap] = useState<
     Record<string, { date: string; slots: Record<string, string> }>
@@ -301,6 +334,17 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : [];
     return sourceList.map((p, idx) => {
       const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
+      // Derive totalDays: prefer explicit backend field, then parse duration string, then fallback
+      const resolvedTotal: number =
+        p.totalDays ??
+        ((p as any).duration ? parseDurationDays((p as any).duration as string) : courseDefaults.total);
+      // Derive daysCompleted: prefer explicit backend field, then compute from createdAt, then 0
+      const resolvedCompleted: number =
+        p.daysCompleted !== undefined
+          ? p.daysCompleted
+          : ((p as any).createdAt
+              ? computeDaysCompleted((p as any).createdAt as string, resolvedTotal)
+              : 0);
       return {
         id: p.id || `rx-${idx}`,
         drugName: (p.drugName || 'Prescription Medication')
@@ -313,8 +357,8 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
         status: p.status || (idx === 4 ? 'Refill Soon' : 'Active'),
         iconType: p.iconType || 'pill',
         nextDose: p.nextDose || (idx === 0 ? 'Today at 8:00 PM' : 'Tomorrow 9:00 AM'),
-        totalDays: p.totalDays || courseDefaults.total,
-        daysCompleted: p.daysCompleted !== undefined ? p.daysCompleted : courseDefaults.completed,
+        totalDays: resolvedTotal,
+        daysCompleted: resolvedCompleted,
       };
     });
   }, [prescriptions]);
@@ -380,7 +424,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     return () => window.removeEventListener('carepulse:dose_taken', handleDoseTakenEvent);
   }, []);
 
-  // Handle toggling a dose slot
+  // Handle recording a dose slot (one-way: once taken, it cannot be unmarked)
   const handleTakeSlotDose = (med: MedicationItem, slotId: string) => {
     const today = getTodayDateKey();
     const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -389,16 +433,15 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       const currentMedEntry = prev[med.id]?.date === today ? prev[med.id] : { date: today, slots: {} };
       const isAlreadyTaken = Boolean(currentMedEntry.slots[slotId]);
 
-      let updatedSlots: Record<string, string>;
+      // If already recorded as taken, permanently keep it taken (cannot be unmarked)
       if (isAlreadyTaken) {
-        updatedSlots = { ...currentMedEntry.slots };
-        delete updatedSlots[slotId];
-      } else {
-        updatedSlots = {
-          ...currentMedEntry.slots,
-          [slotId]: nowTimeStr,
-        };
+        return prev;
       }
+
+      const updatedSlots = {
+        ...currentMedEntry.slots,
+        [slotId]: nowTimeStr,
+      };
 
       const updatedRecord = { date: today, slots: updatedSlots };
       try {
@@ -412,6 +455,9 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
         [med.id]: updatedRecord,
       };
     });
+
+    // Also call markDoseAsAte to cancel active snoozes/notifications and broadcast across the app
+    markDoseAsAte(med.id, slotId, med.drugName);
 
     if (onMarkTaken) {
       onMarkTaken(med, true);
@@ -485,7 +531,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       {/* 1. HEADER ROW */}
       <div className="flex justify-between items-center px-1 pb-1">
         <h3 className="text-xs sm:text-sm font-black text-[#0B5A54] uppercase tracking-widest font-heading">
-          {title}
+          {title || t('home.activePrescriptionsHeader', 'ACTIVE PRESCRIPTIONS')}
         </h3>
 
         {hasPrescriptions && (
@@ -496,7 +542,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                 onClick={onViewAll}
                 className="text-xs sm:text-sm font-bold text-[#0B5A54] hover:underline flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                <span>View All</span>
+                <span>{t('common.viewAll', 'View All')}</span>
                 <span className="bg-[#E3F3F1] text-[#0B5A54] text-[11px] font-black px-2 py-0.5 rounded-full border border-[#14B8A6]/30">
                   {totalCards}
                 </span>
@@ -504,7 +550,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
               </button>
             ) : (
               <span className="bg-[#E3F3F1] text-[#0B5A54] text-[11px] font-black px-2 py-0.5 rounded-full border border-[#14B8A6]/30">
-                {totalCards} {totalCards === 1 ? 'Prescription' : 'Prescriptions'}
+                {totalCards} {t('prescriptions.title', 'Prescriptions')}
               </span>
             )}
           </div>
@@ -526,14 +572,14 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2">
               <h4 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
-                No Active Medications
+                {t('home.noActiveMedications', 'No Active Medications')}
               </h4>
               <span className="bg-[#0B5A54]/10 text-[#0B5A54] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                Wallet Empty
+                {t('home.walletEmpty', 'Wallet Empty')}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Active prescriptions and dosage schedules prescribed by your doctors will stack here automatically.
+              {t('home.noActiveMedicationsDesc', 'Active prescriptions and dosage schedules prescribed by your doctors will stack here automatically.')}
             </p>
           </div>
         </motion.div>
@@ -651,7 +697,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
                     <div className="shrink-0 flex items-center gap-1.5 pt-0.5">
                       <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                        {completedSlotsCount}/{doseSlots.length} doses
+                        {completedSlotsCount}/{doseSlots.length} {t('prescriptions.doses', 'doses')}
                       </span>
                     </div>
                   </div>
@@ -668,10 +714,10 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <div className="flex items-center justify-between text-xs sm:text-[13.5px] mb-2">
                         <div className="flex items-center gap-1.5 text-slate-800 font-extrabold">
                           <Calendar className={clsx('w-4 h-4', theme.accentColor)} />
-                          <span>Day {effectiveCompleted} of {baseTotal} Days Prescribed</span>
+                          <span>{t('prescriptions.dayOfDays', `Day ${effectiveCompleted} of ${baseTotal} Days Prescribed`, { day: effectiveCompleted, total: baseTotal })}</span>
                         </div>
                         <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                          {progressPercent}% Done
+                          {progressPercent}% {t('prescriptions.done', 'Done')}
                         </span>
                       </div>
 
@@ -688,10 +734,10 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <div className="flex items-center justify-between text-xs sm:text-[13px] mb-2">
                         <span className="font-bold text-slate-700 flex items-center gap-1.5">
                           <Clock className={clsx('w-4 h-4', theme.accentColor)} />
-                          <span>Today's Dosage Schedule:</span>
+                          <span>{t('home.todaySchedule', "Today's Dosage Schedule:")}</span>
                         </span>
                         <span className={clsx('text-[11px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
-                          {allDosesTakenToday ? 'All doses taken today' : `${completedSlotsCount} of ${doseSlots.length} taken`}
+                          {allDosesTakenToday ? t('prescriptions.allDosesTaken', 'All doses taken today') : t('prescriptions.dosesTakenOf', `${completedSlotsCount} of ${doseSlots.length} taken`, { count: completedSlotsCount, total: doseSlots.length })}
                         </span>
                       </div>
 
@@ -705,20 +751,22 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                             <button
                               key={slot.id}
                               type="button"
-                              disabled={isCourseFinished}
+                              disabled={isCourseFinished || isSlotTaken}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleTakeSlotDose(med, slot.id);
+                                if (!isSlotTaken && !isCourseFinished) {
+                                  handleTakeSlotDose(med, slot.id);
+                                }
                               }}
                               className={clsx(
-                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold active:scale-95 cursor-pointer',
+                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold',
                                 isCourseFinished
                                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
                                   : isSlotTaken
-                                    ? slotTheme.taken
-                                    : slotTheme.unrecorded
+                                    ? clsx(slotTheme.taken, 'cursor-default opacity-95')
+                                    : clsx(slotTheme.unrecorded, 'cursor-pointer active:scale-95')
                               )}
-                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Click to unmark)` : `Click to record ${slotTheme.label} dose`}
+                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Completed)` : `Click to record ${slotTheme.label} dose`}
                             >
                               <span className="text-base sm:text-lg leading-none shrink-0 select-none" role="img" aria-label={slotTheme.label}>
                                 {slotTheme.emoji}
@@ -739,12 +787,12 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                     <div className={clsx('pt-2 border-t flex items-center justify-between gap-2 text-xs sm:text-[12.5px] font-medium', theme.footerBorder, theme.footerText)}>
                       <div className="flex items-center gap-1.5 truncate">
                         <Building2 className={clsx('w-4 h-4 shrink-0', theme.accentColor)} />
-                        <span className="truncate font-bold text-slate-700">{med.hospitalName}</span>
+                        <span className="truncate font-bold text-slate-700">{formatHospitalName(med.hospitalName)}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 truncate text-xs">
                         <UserIcon className={clsx('w-3.5 h-3.5 shrink-0', theme.accentColor)} />
-                        <span className="truncate font-semibold text-slate-700">{med.prescriber}</span>
+                        <span className="truncate font-semibold text-slate-700">{formatDoctorName(med.prescriber)}</span>
                       </div>
                     </div>
                   </div>

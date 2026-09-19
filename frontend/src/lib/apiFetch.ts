@@ -83,10 +83,44 @@ export async function apiFetch(
       const existingHeaders = (options.headers as Record<string, string> | undefined) || {};
       let authHeader = existingHeaders.Authorization || existingHeaders.authorization;
       if (!authHeader) {
-        const token =
-          localStorage.getItem('staff_token') ||
-          localStorage.getItem('carepulse_token') ||
-          localStorage.getItem('auth_token');
+        let token: string | null = null;
+
+        // 1. Role-aware path isolation: prevent cross-portal token contamination when multiple staff tabs are open
+        if (cleanPath.startsWith('/superadmin')) {
+          token =
+            sessionStorage.getItem('superadmin_token') ||
+            localStorage.getItem('superadmin_token');
+        } else if (cleanPath.startsWith('/nurse') || cleanPath.startsWith('/staff/nurse')) {
+          token =
+            sessionStorage.getItem('nurse_token') ||
+            localStorage.getItem('nurse_token');
+        } else if (cleanPath.startsWith('/doctor') || cleanPath.startsWith('/staff/doctor')) {
+          token =
+            sessionStorage.getItem('doctor_token') ||
+            localStorage.getItem('doctor_token');
+        } else if (cleanPath.startsWith('/receptionist') || cleanPath.startsWith('/staff/receptionist')) {
+          token =
+            sessionStorage.getItem('receptionist_token') ||
+            localStorage.getItem('receptionist_token');
+        } else if (cleanPath.startsWith('/admin') || cleanPath.startsWith('/staff/admin')) {
+          token =
+            sessionStorage.getItem('admin_token') ||
+            localStorage.getItem('admin_token');
+        }
+
+        // 2. Tab-specific active session (isolated per browser tab)
+        if (!token) {
+          token = sessionStorage.getItem('active_staff_token');
+        }
+
+        // 3. Fallback to generic shared storage
+        if (!token) {
+          token =
+            localStorage.getItem('staff_token') ||
+            localStorage.getItem('carepulse_token') ||
+            localStorage.getItem('auth_token');
+        }
+
         if (token) {
           authHeader = `Bearer ${token}`;
         }

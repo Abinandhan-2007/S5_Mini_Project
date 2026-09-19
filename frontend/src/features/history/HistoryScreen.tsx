@@ -23,7 +23,7 @@ import {
 import { clsx } from 'clsx';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { useCarePulseStore } from '../../lib/store';
-import { useTranslation } from '../../i18n';
+import { useLocalizedEntities } from '../../i18n';
 
 export type VisitType = 'In-Person' | 'Video Consult' | 'Follow-up';
 export type VisitStatus = 'Completed' | 'Cancelled' | 'No-Show';
@@ -56,7 +56,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   isLoading: propLoading = false,
 }) => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, formatDoctorName, formatSpecialty, formatHospitalName } = useLocalizedEntities();
   const user = useCarePulseStore((s) => s.user);
   const storeAppointments = useCarePulseStore((s) => s.appointments);
   const storeHistory = useCarePulseStore((s) => s.history);
@@ -495,7 +495,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             >
               <SlidersHorizontal className={clsx('w-3.5 h-3.5', selectedSpecialty !== 'All' ? 'text-[#0B5A54]' : 'text-slate-500')} />
               <span className="max-w-[100px] sm:max-w-[140px] truncate">
-                {selectedSpecialty === 'All' ? t('history.allSpecialties', 'All Specialties') : selectedSpecialty}
+                {selectedSpecialty === 'All' ? t('history.allSpecialties', 'All Specialties') : formatSpecialty(selectedSpecialty)}
               </span>
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform text-slate-400', isSpecialtyMenuOpen && 'rotate-180')} />
             </button>
@@ -539,7 +539,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                           selectedSpecialty === spec ? 'text-[#0B5A54] font-black bg-teal-50/70' : 'text-slate-700'
                         )}
                       >
-                        <span className="truncate">{spec}</span>
+                        <span className="truncate">{spec === 'All' ? t('history.allSpecialties', 'All Specialties') : formatSpecialty(spec)}</span>
                         {selectedSpecialty === spec && <CheckCircle2 className="w-3.5 h-3.5 text-[#0B5A54]" />}
                       </button>
                     ))}
@@ -679,12 +679,12 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                               {/* Doctor Details */}
                               <div className="min-w-0 space-y-0.5">
                                 <h4 className="text-sm sm:text-base font-black text-slate-900 truncate tracking-tight">
-                                  {highlightMatch(visit.doctorName, searchQuery)}
+                                  {highlightMatch(formatDoctorName(visit.doctorName), searchQuery)}
                                 </h4>
                                 <p className="text-xs text-slate-500 font-semibold truncate flex items-center gap-1.5">
-                                  <span className="text-[#0B5A54] font-extrabold">{visit.doctorSpecialty}</span>
+                                  <span className="text-[#0B5A54] font-extrabold">{formatSpecialty(visit.doctorSpecialty)}</span>
                                   <span>•</span>
-                                  <span className="truncate">{highlightMatch(visit.hospitalName, searchQuery)}</span>
+                                  <span className="truncate">{highlightMatch(formatHospitalName(visit.hospitalName), searchQuery)}</span>
                                 </p>
                               </div>
                             </div>

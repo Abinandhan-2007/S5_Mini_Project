@@ -27,7 +27,26 @@ export const MedicineIntakePromptModal: React.FC = () => {
     };
 
     window.addEventListener('carepulse:show_intake_modal', handleShowModal);
+
+    // Also check if an intake prompt was queued from a push notification tap/cold start
+    const checkPending = () => {
+      try {
+        const pendingRaw = sessionStorage.getItem('carepulse_pending_intake_prompt');
+        if (pendingRaw) {
+          const item = JSON.parse(pendingRaw);
+          sessionStorage.removeItem('carepulse_pending_intake_prompt');
+          if (!isDoseAlreadyTaken(item.medId, item.slotId)) {
+            setActiveItem(item);
+            setIsSuccess(false);
+          }
+        }
+      } catch (_) {}
+    };
+    checkPending();
+    const timer = setTimeout(checkPending, 800);
+
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('carepulse:show_intake_modal', handleShowModal);
     };
   }, []);
@@ -172,16 +191,16 @@ export const MedicineIntakePromptModal: React.FC = () => {
                       className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-700/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Yes, I Ate It</span>
+                      <span>✅ Yes, I Took It (Mark Taken)</span>
                     </button>
 
                     {/* NO BUTTON (30 Min Snooze) */}
                     <button
                       onClick={() => handleNoSnooze(30)}
-                      className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3.5 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-extrabold text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Clock className="w-4 h-4 text-slate-500" />
-                      <span>No, Remind Me in 30 Min</span>
+                      <Clock className="w-4 h-4 text-amber-700" />
+                      <span>⏰ Snooze for 30 Minutes</span>
                     </button>
 
                     {/* Quick Demo Option for Immediate Testing */}

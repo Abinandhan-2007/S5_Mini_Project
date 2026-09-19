@@ -378,10 +378,10 @@ export const ProfileScreen: React.FC = () => {
               </div>
               <div className="min-w-0 text-left">
                 <h4 className="text-xs font-black text-slate-900 font-heading tracking-tight">
-                  Medical Profile Incomplete
+                  {t('profile.incompleteTitle', 'Medical Profile Incomplete')}
                 </h4>
                 <p className="text-[10.5px] text-slate-600 font-medium">
-                  Add your contact and emergency details to enable appointment bookings.
+                  {t('profile.incompleteDesc', 'Add your contact and emergency details to enable appointment bookings.')}
                 </p>
               </div>
             </div>
@@ -391,7 +391,7 @@ export const ProfileScreen: React.FC = () => {
               onClick={() => navigate('/complete-profile')}
               className="px-3.5 py-1.5 bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
             >
-              Complete Now →
+              {t('profile.completeNow', 'Complete Now →')}
             </button>
           </div>
         )}
@@ -400,7 +400,7 @@ export const ProfileScreen: React.FC = () => {
         <div className="space-y-2">
           <div className="flex justify-between items-center px-1">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
-              VITAL MEDICAL STATS
+              {t('profile.vitalStats', 'VITAL MEDICAL STATS')}
             </h3>
           </div>
 
@@ -424,19 +424,19 @@ export const ProfileScreen: React.FC = () => {
                     {patientDisplayCode}
                   </p>
                   <p className="text-[10.5px] text-slate-500 font-medium">
-                    Show or read this ID at reception, doctor consultation, and emergency check-in
+                    {t('profile.patientIdDesc', 'Show or read this ID at reception, doctor consultation, and emergency check-in')}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(patientDisplayCode);
-                    alert(`Patient ID ${patientDisplayCode} copied to clipboard!`);
+                    alert(t('profile.copiedToast', `Patient ID ${patientDisplayCode} copied to clipboard!`));
                   }}
                   className="px-3 py-1.5 text-xs font-bold bg-white hover:bg-teal-50 text-[#0B5A54] border border-teal-200 rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
                   title="Copy Patient ID"
                 >
-                  Copy
+                  {t('common.copy', 'Copy')}
                 </button>
               </div>
             </Card>
@@ -448,10 +448,10 @@ export const ProfileScreen: React.FC = () => {
                 <span>{t('profile.dob', 'DATE OF BIRTH')}</span>
               </div>
               <div className="flex items-center gap-1.5 pl-0.5">
-                <p className="text-xs font-extrabold font-heading text-slate-900">{user.dob || 'Not set'}</p>
+                <p className="text-xs font-extrabold font-heading text-slate-900">{user.dob || t('common.notSet', 'Not set')}</p>
                 {userAge !== null && (
                   <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded-md">
-                    {userAge} yrs
+                    {userAge} {t('common.yrs', 'yrs')}
                   </span>
                 )}
               </div>
@@ -464,7 +464,7 @@ export const ProfileScreen: React.FC = () => {
                 </div>
                 <span>{t('profile.gender', 'GENDER')}</span>
               </div>
-              <p className="text-xs font-extrabold font-heading text-slate-900 pl-0.5">{user.gender || 'Not set'}</p>
+              <p className="text-xs font-extrabold font-heading text-slate-900 pl-0.5">{user.gender || t('common.notSet', 'Not set')}</p>
             </Card>
 
             <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
@@ -485,7 +485,7 @@ export const ProfileScreen: React.FC = () => {
                 <span>{t('profile.emergency', 'EMERGENCY')}</span>
               </div>
               <p className="text-[11px] font-extrabold font-heading text-slate-900 truncate pl-0.5">
-                {user.emergencyContact?.name || 'Contact set'} ({user.emergencyContact?.relationship || 'Primary'})
+                {user.emergencyContact?.name || t('profile.contactSet', 'Contact set')} ({user.emergencyContact?.relationship || t('profile.primary', 'Primary')})
               </p>
             </Card>
           </div>
@@ -816,7 +816,7 @@ export const ProfileScreen: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
           <div className="bg-white w-full max-w-xs rounded-3xl p-5 space-y-4 text-center shadow-2xl animate-in zoom-in-95 border border-slate-100">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
-              <h3 className="text-xs font-extrabold text-[#0B5A54] uppercase tracking-wider font-heading">Medical Health ID</h3>
+              <h3 className="text-xs font-extrabold text-[#0B5A54] uppercase tracking-wider font-heading">{t('profile.medicalHealthId', 'Medical Health ID')}</h3>
               <button onClick={() => setIsQrModalOpen(false)} className="p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
@@ -835,7 +835,7 @@ export const ProfileScreen: React.FC = () => {
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[#0B5A54] text-xs font-black font-mono">
                 <span>Patient ID: {patientDisplayCode}</span>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium pt-0.5">CarePulse Quick Desk & OPD Check-in</p>
+              <p className="text-[10px] text-slate-500 font-medium pt-0.5">{t('profile.qrCheckinDesc', 'CarePulse Quick Desk & OPD Check-in')}</p>
             </div>
 
             <Button
@@ -845,7 +845,7 @@ export const ProfileScreen: React.FC = () => {
               className="rounded-xl text-xs font-bold"
               onClick={() => setIsQrModalOpen(false)}
             >
-              Close QR Code
+              {t('profile.closeQr', 'Close QR Code')}
             </Button>
           </div>
         </div>

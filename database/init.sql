@@ -82,6 +82,8 @@ ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS facility_type VARCHAR(100) DEFAUL
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS distance_miles DECIMAL(4, 1) DEFAULT 1.0;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 6);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 6);
 
 -- Trigger Function for Auto-Generating Hospital Display Codes (H001, H002, H003...)
 CREATE OR REPLACE FUNCTION generate_hospital_code()
@@ -607,3 +609,23 @@ CREATE TABLE IF NOT EXISTS lab_tests (
 );
 CREATE INDEX IF NOT EXISTS idx_lab_tests_appointment_id ON lab_tests(appointment_id);
 CREATE INDEX IF NOT EXISTS idx_lab_tests_patient_id ON lab_tests(patient_id);
+
+-- Patient Devices & Login Sessions Table
+CREATE TABLE IF NOT EXISTS patient_devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+    device_id VARCHAR(255),
+    device_model VARCHAR(255) DEFAULT 'Unknown Device',
+    manufacturer VARCHAR(100) DEFAULT 'Unknown',
+    platform VARCHAR(50) DEFAULT 'android',
+    os_version VARCHAR(50) DEFAULT '',
+    app_version VARCHAR(50) DEFAULT '1.0.0',
+    ip_address VARCHAR(100) DEFAULT '',
+    fcm_token TEXT DEFAULT '',
+    is_active BOOLEAN DEFAULT true,
+    last_login TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_patient_devices_patient_id ON patient_devices(patient_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_devices_pat_dev ON patient_devices(patient_id, device_id);
+

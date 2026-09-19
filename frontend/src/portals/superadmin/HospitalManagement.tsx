@@ -68,6 +68,45 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
   const [email, setEmail] = useState('');
   const [facilityType, setFacilityType] = useState('General Hospital');
   const [specialtiesInput, setSpecialtiesInput] = useState('Cardiology, General Medicine, Pediatrics, Emergency Care');
+  const [latitude, setLatitude] = useState<string>('');
+  const [longitude, setLongitude] = useState<string>('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  const handleDetectGps = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLatitude(pos.coords.latitude.toFixed(6));
+          setLongitude(pos.coords.longitude.toFixed(6));
+        },
+        (err) => alert(`Could not detect GPS: ${err.message}`)
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  const handleGeocodeAddress = async () => {
+    if (!address.trim()) {
+      alert('Please enter a street address first.');
+      return;
+    }
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setLatitude(parseFloat(data[0].lat).toFixed(6));
+        setLongitude(parseFloat(data[0].lon).toFixed(6));
+      } else {
+        alert('Could not resolve GPS for this address. Please enter coordinates manually or use Current GPS button.');
+      }
+    } catch {
+      alert('Error connecting to map geocoder.');
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   const loadHospitals = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -115,6 +154,8 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
         email: email.trim() || undefined,
         facility_type: facilityType,
         specialties: specs.length > 0 ? specs : ['General Medicine'],
+        latitude: latitude ? parseFloat(latitude) : undefined,
+        longitude: longitude ? parseFloat(longitude) : undefined,
       });
 
       setCreatedSuccess(
@@ -124,6 +165,8 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
       setAddress('');
       setPhone('');
       setEmail('');
+      setLatitude('');
+      setLongitude('');
       await loadHospitals(true);
       setTimeout(() => {
         setIsAddModalOpen(false);
@@ -189,35 +232,35 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
     switch (state) {
       case 'Active':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 font-sans">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            ACTIVE
+            Active
           </span>
         );
       case 'Pending Setup':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 font-sans">
             <Clock className="w-3 h-3 text-amber-600" />
-            PENDING SETUP
+            Pending Setup
           </span>
         );
       case 'Draft':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-300 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 font-sans">
             <FileText className="w-3 h-3 text-slate-500" />
-            DRAFT
+            Draft
           </span>
         );
       case 'Suspended':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono bg-rose-50 text-rose-800 border border-rose-300 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 font-sans">
             <Ban className="w-3 h-3 text-rose-600" />
-            SUSPENDED
+            Suspended
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 font-sans">
             {state}
           </span>
         );
@@ -249,15 +292,15 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
       <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-2xs relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded font-mono text-[11px] font-bold bg-teal-50 text-[#0B5A54] border border-teal-200 mb-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-[#0B5A54] border border-teal-200 mb-2 font-sans">
               <Building2 className="w-3.5 h-3.5" />
-              <span>HEALTHCARE FACILITY DIRECTORY</span>
+              <span>Healthcare Facility Directory</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-heading">
               Hospital Facilities
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl font-sans">
-              Provision physical hospital nodes, monitor 4-stage lifecycle states (<span className="font-mono font-bold text-slate-700">Draft &rarr; Pending Setup &rarr; Active &rarr; Suspended</span>), and govern facility staffing.
+              Provision physical hospital nodes, monitor 4-stage lifecycle states (<span className="font-semibold text-slate-700">Draft &rarr; Pending Setup &rarr; Active &rarr; Suspended</span>), and govern facility staffing.
             </p>
           </div>
 
@@ -275,10 +318,10 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs transition-all shadow-sm cursor-pointer font-mono"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs transition-all shadow-sm cursor-pointer font-sans"
             >
               <Plus className="w-4 h-4" />
-              <span>+ NEW HOSPITAL FACILITY</span>
+              <span>+ New Hospital Facility</span>
             </button>
           </div>
         </div>
@@ -288,20 +331,20 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span className="font-mono">{error}</span>
+            <span className="font-sans">{error}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {error.toLowerCase().includes('token') || error.toLowerCase().includes('authentication') ? (
               <a
-                href="/staff/superadmin"
-                className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold font-mono text-[11px] transition-colors shadow-2xs"
+                href="/staff/login"
+                className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold font-sans text-xs transition-colors shadow-2xs"
               >
                 Re-Authenticate &rarr;
               </a>
             ) : (
               <button
                 onClick={() => loadHospitals()}
-                className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold font-mono text-[11px] transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold font-sans text-xs transition-colors"
               >
                 Retry
               </button>
@@ -325,19 +368,19 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
 
         <div className="flex items-center gap-2 w-full md:w-auto">
           <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Filter:</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider font-sans">Filter:</span>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-mono cursor-pointer"
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-sans cursor-pointer"
           >
-            <option value="all">ALL FACILITIES ({hospitals.length})</option>
-            <option value="Active">STATE: ACTIVE</option>
-            <option value="Pending Setup">STATE: PENDING SETUP</option>
-            <option value="Draft">STATE: DRAFT</option>
-            <option value="Suspended">STATE: SUSPENDED</option>
-            <option value="with_admin">WITH ACTIVE ADMIN</option>
-            <option value="without_admin">ADMIN COVERAGE GAPS</option>
+            <option value="all">All Facilities ({hospitals.length})</option>
+            <option value="Active">State: Active</option>
+            <option value="Pending Setup">State: Pending Setup</option>
+            <option value="Draft">State: Draft</option>
+            <option value="Suspended">State: Suspended</option>
+            <option value="with_admin">With Active Admin</option>
+            <option value="without_admin">Admin Coverage Gaps</option>
           </select>
         </div>
       </div>
@@ -347,12 +390,12 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
         {isLoading && hospitals.length === 0 ? (
           <div className="col-span-full py-16 text-center">
             <div className="w-8 h-8 border-2 border-slate-200 border-t-[#0B5A54] rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">
+            <p className="text-xs font-sans text-slate-500 uppercase tracking-widest">
               Loading hospital network directory...
             </p>
           </div>
         ) : filteredHospitals.length === 0 ? (
-          <div className="col-span-full bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs font-mono">
+          <div className="col-span-full bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs font-sans">
             No hospital facilities match your search criteria.
           </div>
         ) : (
@@ -369,7 +412,7 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                 <div className="p-5">
                   {/* Facility Code & Lifecycle Status Top Bar */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded-md bg-teal-50 text-[#0B5A54] border border-teal-200 font-mono text-xs font-bold">
+                    <span className="px-2.5 py-0.5 rounded-md bg-teal-50 text-[#0B5A54] border border-teal-200 text-xs font-bold font-mono">
                       {hosp.hospital_code}
                     </span>
                     {getLifecycleBadge(hosp.lifecycle_state, hosp.is_suspended)}
@@ -377,11 +420,11 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
 
                   {/* Facility Name & Classification */}
                   <h3 className="text-lg font-bold text-slate-900 leading-snug font-heading">{hosp.name}</h3>
-                  <div className="text-xs text-[#0B5A54] font-semibold mt-0.5 font-mono">
+                  <div className="text-xs text-teal-700 font-medium mt-0.5 font-sans">
                     {hosp.facility_type || 'General Hospital'}
                   </div>
 
-                  <div className="mt-3 flex items-start gap-2 text-xs text-slate-500">
+                  <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 font-sans">
                     <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400 mt-0.5" />
                     <span className="line-clamp-2">{hosp.address}</span>
                   </div>
@@ -389,7 +432,7 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                   {/* Suspension Justification Alert (if suspended) */}
                   {isSuspended && hosp.suspension_reason && (
                     <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 font-sans">
-                      <div className="font-bold flex items-center gap-1 font-mono text-[11px] text-rose-800 uppercase tracking-wide">
+                      <div className="font-bold flex items-center gap-1 font-sans text-xs text-rose-800 uppercase tracking-wide">
                         <Ban className="w-3.5 h-3.5 text-rose-600" />
                         Suspension Reason:
                       </div>
@@ -398,7 +441,7 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                   )}
 
                   {/* Staff Telemetry Counts */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-mono">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-sans">
                     <div className="flex items-center gap-1.5">
                       <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
                       <span>{hosp.doctor_count} Physicians</span>
@@ -410,8 +453,8 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                   </div>
 
                   {/* Administrator Assignment Sub-Panel */}
-                  <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono flex items-center justify-between">
+                  <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 font-sans">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
                       <span>Assigned Administrator</span>
                       <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
                     </div>
@@ -421,25 +464,25 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                           <div className="text-xs font-bold text-slate-900 font-heading">
                             {hosp.admin.full_name}
                           </div>
-                          <div className="text-[11px] font-mono text-[#0B5A54] font-bold">
+                          <div className="text-xs text-[#0B5A54] font-medium">
                             {hosp.admin.staff_code}
                           </div>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold font-mono bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          ACTIVE
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Active
                         </span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-rose-700 font-bold font-mono inline-flex items-center gap-1">
+                        <span className="text-xs text-rose-700 font-semibold inline-flex items-center gap-1">
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          UNASSIGNED (DRAFT)
+                          Unassigned (Draft)
                         </span>
                         <button
                           type="button"
                           onClick={() => onOpenAddAdminForHospital(hosp.id)}
-                          className="px-2.5 py-1 text-[11px] font-bold bg-[#0B5A54] hover:bg-[#084843] text-white font-mono rounded-lg transition-colors cursor-pointer shadow-2xs"
+                          className="px-3 py-1.5 text-xs font-bold bg-[#0B5A54] hover:bg-[#084843] text-white rounded-xl transition-colors cursor-pointer shadow-xs"
                         >
                           + Appoint
                         </button>
@@ -449,8 +492,8 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                 </div>
 
                 {/* Card Footer with Lifecycle & Delete Controls */}
-                <div className="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                  <span className="flex items-center gap-1 text-slate-500">
+                <div className="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-sans">
+                  <span className="flex items-center gap-1.5 text-slate-500 font-medium">
                     <Layers className="w-3.5 h-3.5 text-slate-400" />
                     {hosp.specialties?.length || 0} Depts
                   </span>
@@ -462,11 +505,11 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                         type="button"
                         onClick={() => handleResumeFacility(hosp)}
                         disabled={isResumingId === hosp.id}
-                        className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-900 font-bold px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-900 font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
                         title="Resume Facility Operations"
                       >
                         <PlayCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{isResumingId === hosp.id ? 'Resuming...' : 'RESUME'}</span>
+                        <span>{isResumingId === hosp.id ? 'Resuming...' : 'Resume'}</span>
                       </button>
                     ) : (
                       <button
@@ -476,25 +519,25 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                           setSuspensionReason('');
                           setSuspendError(null);
                         }}
-                        className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-bold px-2 py-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-bold px-2.5 py-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
                         title="Suspend Facility"
                       >
                         <PauseCircle className="w-3.5 h-3.5 text-amber-600" />
-                        <span>SUSPEND</span>
+                        <span>Suspend</span>
                       </button>
                     )}
 
-                    <span className="text-slate-300">|</span>
+                    <span className="text-slate-200">|</span>
 
                     {/* Delete */}
                     <button
                       type="button"
                       onClick={() => setHospitalToDelete(hosp)}
-                      className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer font-mono"
+                      className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-bold px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                       title="Cascade Delete Hospital"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>DELETE</span>
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>
@@ -515,7 +558,7 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 font-heading">Provision New Hospital</h3>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  <p className="text-xs text-slate-500 font-sans mt-0.5">
                     Initial state will be <strong className="text-slate-700">Draft</strong> until an administrator is appointed.
                   </p>
                 </div>
@@ -530,22 +573,22 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
             </div>
 
             {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-mono">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-sans">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
 
             {createdSuccess && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 font-mono">
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 font-sans">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{createdSuccess}</span>
               </div>
             )}
 
-            <form onSubmit={handleCreateHospital} className="space-y-4">
+            <form onSubmit={handleCreateHospital} className="space-y-4 font-sans">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
                   Hospital Facility Name *
                 </label>
                 <input
@@ -559,7 +602,7 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
                   Facility Classification
                 </label>
                 <select
@@ -576,9 +619,19 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
-                  Full Street Address *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-sans">
+                    Full Street Address *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGeocodeAddress}
+                    disabled={isGeocoding}
+                    className="text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{isGeocoding ? 'Locating...' : '🔍 Auto-Find GPS from Address'}</span>
+                  </button>
+                </div>
                 <textarea
                   required
                   rows={2}
@@ -589,9 +642,51 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                 />
               </div>
 
+              {/* Precise GPS Coordinates for Route Navigation */}
+              <div className="p-3 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 font-mono uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5 text-[#0B5A54]" />
+                    Exact GPS Coordinates (Map Navigation)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDetectGps}
+                    className="text-[10.5px] font-bold px-2 py-0.5 rounded-lg bg-white hover:bg-teal-100 text-[#0B5A54] border border-teal-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    📍 Use Current Device GPS
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 11.0505"
+                      value={latitude}
+                      onChange={(e) => setLatitude(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 77.0373"
+                      value={longitude}
+                      onChange={(e) => setLongitude(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
                     Contact Phone
                   </label>
                   <input
@@ -599,11 +694,11 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                     placeholder="+1-800-555-0199"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-mono"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-sans"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
                     Official Email
                   </label>
                   <input
@@ -611,13 +706,13 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                     placeholder="desk@hospital.org"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-mono"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-sans"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
                   Specialties / Clinical Departments (comma-separated)
                 </label>
                 <input
@@ -633,16 +728,16 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-mono"
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-sans"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer font-mono"
+                  className="px-5 py-2.5 bg-[#0B5A54] hover:bg-[#084843] text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer font-sans"
                 >
-                  {isSubmitting ? 'Provisioning...' : 'CONFIRM PROVISIONING'}
+                  {isSubmitting ? 'Provisioning...' : 'Confirm Provisioning'}
                 </button>
               </div>
             </form>
@@ -650,78 +745,66 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
         </div>
       )}
 
-      {/* Suspend Facility Modal (Mandatory Justification Reason) */}
+      {/* Suspend Hospital Modal */}
       {hospitalToSuspend && (
         <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 text-amber-600 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                <PauseCircle className="w-5 h-5 text-amber-600" />
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200 font-sans">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+                <PauseCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 font-heading">Suspend Facility Operations</h3>
-                <p className="text-xs text-amber-700 font-mono font-bold">{hospitalToSuspend.hospital_code}</p>
+                <h3 className="text-base font-bold text-slate-900 font-heading">Suspend Facility Operations</h3>
+                <p className="text-xs text-amber-700 font-medium">{hospitalToSuspend.name} ({hospitalToSuspend.hospital_code})</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-700 mb-3 leading-relaxed">
-              You are about to suspend <strong className="text-slate-900 font-bold">{hospitalToSuspend.name}</strong>. This will pause patient appointments and flag the node in the platform governance logs.
-            </p>
-
             {suspendError && (
-              <div className="mb-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-mono">
+              <div className="mb-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-sans">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{suspendError}</span>
               </div>
             )}
 
-            <form onSubmit={handleSuspendFacility} className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 font-mono">
-                  Governance Justification Reason *
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
+                  Mandatory Governance Justification *
                 </label>
                 <textarea
                   required
                   rows={3}
-                  placeholder="e.g. Scheduled infrastructure migration, regulatory safety review, or licensing inspection..."
+                  placeholder="e.g. Temporary suspension for clinical compliance review and department re-accreditation."
                   value={suspensionReason}
                   onChange={(e) => setSuspensionReason(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-sans"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-sans"
                 />
-                <p className="text-[11px] text-slate-500 mt-1 font-mono">
-                  Reason will be immutably recorded in the platform audit trail.
+                <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                  Reason will be permanently recorded in the immutable platform audit ledger.
                 </p>
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHospitalToSuspend(null);
-                    setSuspensionReason('');
-                    setSuspendError(null);
-                  }}
-                  disabled={isSuspending}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-mono"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSuspending}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-2 font-mono"
-                >
-                  {isSuspending ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Suspending...</span>
-                    </>
-                  ) : (
-                    <span>CONFIRM SUSPENSION</span>
-                  )}
-                </button>
-              </div>
-            </form>
+            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setHospitalToSuspend(null);
+                  setSuspensionReason('');
+                }}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-sans"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSuspendFacility}
+                disabled={isSuspending || !suspensionReason.trim()}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-2 font-sans"
+              >
+                {isSuspending ? 'Suspending...' : 'Confirm Suspension'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -729,40 +812,37 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
       {/* Delete Confirmation Modal */}
       {hospitalToDelete && (
         <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 text-rose-600 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-rose-600" />
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200 font-sans">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 font-heading">Delete Hospital Facility</h3>
-                <p className="text-xs text-rose-700 font-mono font-bold">{hospitalToDelete.hospital_code}</p>
+                <h3 className="text-base font-bold text-slate-900 font-heading">Deprovision Facility</h3>
+                <p className="text-xs text-rose-700 font-medium">{hospitalToDelete.name} ({hospitalToDelete.hospital_code})</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-700 mb-4 leading-relaxed">
-              Are you sure you want to permanently delete{' '}
-              <strong className="text-slate-900 font-bold">{hospitalToDelete.name}</strong>?
-            </p>
-
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 mb-6 space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-rose-900">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>Permanent Cascade Warning:</span>
+            <div className="space-y-3 text-xs text-slate-600 leading-relaxed font-sans">
+              <p>
+                Are you sure you want to permanently delete <strong className="text-slate-900">{hospitalToDelete.name}</strong>?
+              </p>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-rose-800">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Cascading Deletion Impact:
+                </div>
+                <p className="text-[11px] text-rose-700">
+                  All doctors, receptionists, front-desk queues, and historical appointment records linked to this facility will be permanently removed.
+                </p>
               </div>
-              <ul className="list-disc list-inside space-y-0.5 text-rose-800 pl-1">
-                <li>Associated administrator account will be deleted</li>
-                <li>All assigned doctors &amp; receptionists will be unlinked</li>
-                <li>All pending appointments for this facility will be removed</li>
-              </ul>
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setHospitalToDelete(null)}
-                disabled={isDeleting}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-mono"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer font-sans"
               >
                 Cancel
               </button>
@@ -770,16 +850,10 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                 type="button"
                 onClick={handleDeleteHospital}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-2 font-mono"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-2 font-sans"
               >
-                {isDeleting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>YES, DELETE FACILITY</span>
-                )}
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Confirm Delete'}</span>
               </button>
             </div>
           </div>

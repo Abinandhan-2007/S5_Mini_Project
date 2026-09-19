@@ -288,6 +288,63 @@ def test_fallback_warning_and_date_guard():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SCENARIO 6: Same hospital, same patient, two different slots checkin isolation
+# ─────────────────────────────────────────────────────────────────────────────
+def test_same_hospital_different_slots_checkin_isolation():
+    """
+    SCENARIO 6: Same patient, SAME hospital, TWO different slots/doctors.
+    Calling checkin_appointment on Slot A MUST check in ONLY Slot A.
+    Slot B must strictly remain Upcoming and is_checked_in = FALSE.
+    """
+    if not database.use_pg:
+        print("[SKIP] test_same_hospital_different_slots_checkin_isolation — PostgreSQL not active")
+        return
+
+    from routes.receptionist_routes import checkin_appointment
+    from routes.staff_auth import create_jwt
+
+    pid, d1, a1, a2 = _make_ids()
+    d2 = str(uuid.uuid4())
+    doc1_name = "Dr. Cardiology HospIsolation"
+    doc2_name = "Dr. Dermatology HospIsolation"
+
+    staff_jwt = create_jwt({
+        "sub": "rec-iso-test",
+        "type": "staff",
+        "role": "receptionist",
+        "email": "rec@carepulse.test",
+        "hospital_id": HOSPITAL_ID,
+    })
+    auth_header = f"Bearer {staff_jwt}"
+
+    with database.get_pg_connection() as conn:
+        with conn.cursor() as cur:
+            _insert_patient(cur, pid)
+            _insert_doctor(cur, d1, doc1_name)
+            _insert_doctor(cur, d2, doc2_name)
+            _insert_appointment(cur, a1, pid, d1, doc1_name, "2026-09-18", "10:00 AM", "TK-H01")
+            _insert_appointment(cur, a2, pid, d2, doc2_name, "2026-09-18", "02:00 PM", "TK-H02")
+        conn.commit()
+
+        # Check in ONLY Slot A
+        checkin_appointment(appointment_id=a1, authorization=auth_header)
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT status, is_checked_in FROM appointments WHERE id::text = %s", (a1,))
+            r1 = cur.fetchone()
+            cur.execute("SELECT status, is_checked_in FROM appointments WHERE id::text = %s", (a2,))
+            r2 = cur.fetchone()
+
+        _cleanup(conn, a1, a2, patient_ids=[pid], doctor_ids=[d1, d2])
+
+    assert r1["status"] == "Checked In", f"FAIL: Slot A should be Checked In, got {r1['status']}"
+    assert r1["is_checked_in"] is True, f"FAIL: Slot A is_checked_in should be True"
+    assert r2["status"] == "Upcoming", f"FAIL: Slot B in same hospital MUST remain Upcoming, got {r2['status']}"
+    assert r2["is_checked_in"] is False, f"FAIL: Slot B is_checked_in MUST remain False, got {r2['is_checked_in']}"
+    print("[PASS] test_same_hospital_different_slots_checkin_isolation: Slot A=Checked In, Slot B (same hospital)=Upcoming")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("\n=== Appointment Isolation Regression Tests ===\n")
     test_completion_isolation()
@@ -295,4 +352,5 @@ if __name__ == "__main__":
     test_token_status_isolation()
     test_cancellation_isolation()
     test_fallback_warning_and_date_guard()
+    test_same_hospital_different_slots_checkin_isolation()
     print("\n=== ALL ISOLATION TESTS PASSED ===\n")

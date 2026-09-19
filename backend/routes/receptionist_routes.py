@@ -1177,6 +1177,119 @@ def compute_effective_queue_position(
     return max(scheduled_dt, actual_arrival)
 
 
+def clean_expired_unvisited_appointments(hospital_id: Optional[str] = None) -> List[str]:
+    """
+    Automatically deletes appointments/slots from the database where the patient has not visited
+    (not checked in and not in consultation/completed) after 24 hours from the scheduled appointment date/time.
+    Deletes records across both PostgreSQL and database.json fallback to prevent ghost slots and free up doctor capacity.
+    """
+    deleted_ids = []
+    now = datetime.now()
+    cutoff_threshold = timedelta(hours=24)
+
+    # 1. PostgreSQL Cleanup
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = """
+                        SELECT id, date, time_slot, status, is_checked_in, hospital_id, created_at
+                        FROM appointments
+                        WHERE (is_checked_in IS NOT TRUE)
+                          AND (status IS NULL OR status NOT IN ('Checked In', 'In Consultation', 'Completed'))
+                    """
+                    params = []
+                    if hospital_id:
+                        query += " AND hospital_id = %s"
+                        params.append(hospital_id)
+                    cur.execute(query, tuple(params))
+                    rows = cur.fetchall()
+
+                    to_delete = []
+                    for r in rows:
+                        app_date = r.get("date")
+                        time_slot = r.get("time_slot")
+                        created_at = r.get("created_at")
+                        scheduled_dt = parse_appointment_scheduled_datetime(app_date, time_slot)
+                        if not scheduled_dt and created_at and isinstance(created_at, datetime):
+                            scheduled_dt = created_at
+                        
+                        if scheduled_dt:
+                            if hasattr(scheduled_dt, "tzinfo") and scheduled_dt.tzinfo:
+                                scheduled_dt = scheduled_dt.replace(tzinfo=None)
+                            if (now - scheduled_dt) > cutoff_threshold:
+                                to_delete.append(str(r["id"]))
+
+                    if to_delete:
+                        # Cascade delete related dependent records first for safety
+                        cur.execute("DELETE FROM lab_tests WHERE appointment_id = ANY(%s::uuid[])", (to_delete,))
+                        cur.execute("DELETE FROM vitals WHERE appointment_id = ANY(%s::uuid[])", (to_delete,))
+                        cur.execute("DELETE FROM appointments WHERE id = ANY(%s::uuid[])", (to_delete,))
+                        conn.commit()
+                        deleted_ids.extend(to_delete)
+                        logger.info(f"🧹 [AUTO-PURGE] Deleted {len(to_delete)} unvisited appointments older than 24 hours from PostgreSQL: {to_delete}")
+        except Exception as e:
+            logger.error(f"Error purging unvisited appointments from PostgreSQL: {e}")
+
+    # 2. JSON DB Cleanup
+    try:
+        db = database.read_json_db()
+        raw_apps = db.get("appointments", [])
+        retained_apps = []
+        json_deleted = set(deleted_ids)
+
+        for app in raw_apps:
+            app_id = str(app.get("id"))
+            if app_id in json_deleted:
+                continue
+
+            app_hosp = app.get("hospital_id") or app.get("hospitalId")
+            if hospital_id and app_hosp and app_hosp != hospital_id:
+                retained_apps.append(app)
+                continue
+
+            is_checked = bool(app.get("is_checked_in", False))
+            status_val = str(app.get("status") or "")
+            visited = is_checked or status_val in ["Checked In", "In Consultation", "Completed"]
+
+            if not visited:
+                app_date = app.get("date")
+                time_slot = app.get("time_slot") or app.get("timeSlot")
+                scheduled_dt = parse_appointment_scheduled_datetime(app_date, time_slot)
+                if not scheduled_dt:
+                    created_val = app.get("created_at") or app.get("createdAt")
+                    if created_val and isinstance(created_val, str):
+                        try:
+                            scheduled_dt = datetime.fromisoformat(created_val.replace("Z", "+00:00")).replace(tzinfo=None)
+                        except Exception:
+                            pass
+
+                if scheduled_dt:
+                    if hasattr(scheduled_dt, "tzinfo") and scheduled_dt.tzinfo:
+                        scheduled_dt = scheduled_dt.replace(tzinfo=None)
+                    if (now - scheduled_dt) > cutoff_threshold:
+                        json_deleted.add(app_id)
+                        continue
+
+            retained_apps.append(app)
+
+        if json_deleted:
+            db["appointments"] = [a for a in db.get("appointments", []) if str(a.get("id")) not in json_deleted]
+            if "vitals" in db:
+                db["vitals"] = [v for v in db["vitals"] if str(v.get("appointment_id")) not in json_deleted]
+            if "lab_tests" in db:
+                db["lab_tests"] = [lt for lt in db["lab_tests"] if str(lt.get("appointment_id")) not in json_deleted]
+            database.write_json_db(db)
+            for jid in json_deleted:
+                if jid not in deleted_ids:
+                    deleted_ids.append(jid)
+            logger.info(f"🧹 [AUTO-PURGE] Cleaned {len(json_deleted)} unvisited appointments older than 24 hours from JSON DB: {list(json_deleted)}")
+    except Exception as e:
+        logger.error(f"Error purging unvisited appointments from JSON DB: {e}")
+
+    return deleted_ids
+
+
 def fetch_all_tokens_from_db(
     doctor_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
@@ -1222,6 +1335,12 @@ def fetch_all_tokens_from_db(
     if not is_superadmin and not effective_hosp_id:
         logger.warning("Unscoped token query rejected: no valid hospital context provided.")
         return []
+
+    # Auto-purge expired unvisited appointments (> 24 hours) from DB so slots are freed automatically
+    try:
+        clean_expired_unvisited_appointments(hospital_id=effective_hosp_id)
+    except Exception as e:
+        logger.warning(f"Notice on auto-cleaning expired unvisited appointments: {e}")
 
     tokens = []
     seen_ids = set()
@@ -1276,6 +1395,8 @@ def fetch_all_tokens_from_db(
                         query += " AND a.doctor_id = %s"
                         params.append(doctor_id)
 
+                    query += " AND a.status != 'Cancelled'"
+
                     if checked_in_only:
                         query += " AND (a.is_checked_in = TRUE OR a.status IN ('Checked In', 'In Consultation', 'Completed'))"
 
@@ -1301,7 +1422,19 @@ def fetch_all_tokens_from_db(
                         j_app = json_apps_map.get(app_id, {})
 
                         raw_status = app_dict.get("status") or "Waiting"
-                        token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed", "Checked In"] else raw_status
+                        if raw_status == "Cancelled":
+                            continue
+
+                        is_checked = bool(app_dict.get("is_checked_in", False))
+                        # Priority: explicit terminal/active statuses always win over is_checked_in flag
+                        if raw_status in ["Completed", "In Consultation"]:
+                            token_status = raw_status
+                        elif is_checked or raw_status == "Checked In":
+                            token_status = "Checked In"
+                        elif raw_status in ["Upcoming", "Waiting", "Confirmed"]:
+                            token_status = "Waiting"
+                        else:
+                            token_status = raw_status
 
                         p_name = app_dict.get("patient_name") or app_dict.get("patient_full_name") or "Patient"
                         p_phone = app_dict.get("patient_phone_db") or app_dict.get("patient_phone") or "+91 98765 43210"
@@ -1453,8 +1586,12 @@ def fetch_all_tokens_from_db(
                 if doctor_id and app_doc_id != doctor_id:
                     continue
 
+                raw_status = app_dict.get("status") or "Waiting"
+                if raw_status == "Cancelled":
+                    continue
+
                 is_checked = app_dict.get("is_checked_in") is True
-                is_active_or_done = app_dict.get("status") in ["Checked In", "In Consultation", "Completed"]
+                is_active_or_done = raw_status in ["Checked In", "In Consultation", "Completed"]
                 if checked_in_only and not (is_checked or is_active_or_done):
                     continue
 
@@ -1464,8 +1601,15 @@ def fetch_all_tokens_from_db(
                 p_name = app_dict.get("patient_name") or app_dict.get("patientName") or p_obj.get("full_name") or "Patient"
                 p_phone = app_dict.get("patient_phone") or app_dict.get("patientPhone") or p_obj.get("phone") or "+91 98765 43210"
 
-                raw_status = app_dict.get("status") or "Waiting"
-                token_status = "Waiting" if raw_status in ["Upcoming", "Waiting", "Confirmed", "Checked In"] else raw_status
+                # Priority: explicit terminal/active statuses always win over is_checked_in flag
+                if raw_status in ["Completed", "In Consultation"]:
+                    token_status = raw_status
+                elif is_checked or raw_status == "Checked In":
+                    token_status = "Checked In"
+                elif raw_status in ["Upcoming", "Waiting", "Confirmed"]:
+                    token_status = "Waiting"
+                else:
+                    token_status = raw_status
 
                 checked_in_at_val = app_dict.get("checked_in_at")
                 created_at_val = app_dict.get("created_at") or app_dict.get("createdAt")
@@ -1677,19 +1821,42 @@ def checkin_appointment(
 
     now_dt = datetime.now()
     updated_record = None
+    clean_app_id = str(appointment_id).strip()
+
+    is_uuid = False
+    try:
+        uuid.UUID(clean_app_id)
+        is_uuid = True
+    except Exception:
+        is_uuid = False
 
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("""
-                        UPDATE appointments
-                        SET is_checked_in = TRUE,
-                            checked_in_at = %s,
-                            status = 'Checked In'
-                        WHERE id::text = %s OR ticket_number = %s
-                        RETURNING *
-                    """, (now_dt, appointment_id, appointment_id))
+                    if is_uuid:
+                        cur.execute("""
+                            UPDATE appointments
+                            SET is_checked_in = TRUE,
+                                checked_in_at = %s,
+                                status = 'Checked In'
+                            WHERE id::text = %s
+                            RETURNING *
+                        """, (now_dt, clean_app_id))
+                    else:
+                        cur.execute("""
+                            UPDATE appointments
+                            SET is_checked_in = TRUE,
+                                checked_in_at = %s,
+                                status = 'Checked In'
+                            WHERE id = (
+                                SELECT id FROM appointments
+                                WHERE ticket_number = %s
+                                ORDER BY (is_checked_in IS TRUE) ASC, date ASC, time_slot ASC
+                                LIMIT 1
+                            )
+                            RETURNING *
+                        """, (now_dt, clean_app_id))
                     row = cur.fetchone()
                     conn.commit()
                     if row:
@@ -1700,7 +1867,12 @@ def checkin_appointment(
     try:
         db = database.read_json_db()
         for app in db.get("appointments", []):
-            if str(app.get("id")) == appointment_id or str(app.get("ticket_number")) == appointment_id or str(app.get("ticketNumber")) == appointment_id:
+            match = False
+            if is_uuid:
+                match = (str(app.get("id")) == clean_app_id)
+            else:
+                match = (str(app.get("id")) == clean_app_id or str(app.get("ticket_number")) == clean_app_id or str(app.get("ticketNumber")) == clean_app_id)
+            if match:
                 app["is_checked_in"] = True
                 app["checked_in_at"] = now_dt.isoformat()
                 app["status"] = "Checked In"
@@ -1738,6 +1910,25 @@ def checkin_appointment(
         "message": "Patient successfully checked in and joined the live queue."
     }
 
+
+@router.post("/appointments/cleanup-unvisited")
+def trigger_cleanup_unvisited(authorization: Optional[str] = Header(None)):
+    """
+    Explicit receptionist/staff endpoint to purge appointments from the database
+    where the patient has not visited within 24 hours of their scheduled appointment time.
+    """
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    hosp_id = staff_ctx.get("hospital_id") if staff_ctx else None
+    deleted = clean_expired_unvisited_appointments(hospital_id=hosp_id)
+    return {
+        "success": True,
+        "deletedCount": len(deleted),
+        "deletedIds": deleted,
+        "message": f"Successfully deleted {len(deleted)} unvisited slot(s) older than 24 hours from database."
+    }
+
+
 @router.patch("/tokens/{token_id}/status")
 def update_token_status(
     token_id: str,
@@ -1748,21 +1939,47 @@ def update_token_status(
     now = datetime.now()
     now_time_str = now.strftime("%I:%M %p")
     effective_check_in_time = payload.check_in_time or payload.checkInTime or (now_time_str if payload.status == "Checked In" else None)
+    clean_token_id = str(token_id).strip()
+
+    is_uuid = False
+    try:
+        uuid.UUID(clean_token_id)
+        is_uuid = True
+    except Exception:
+        is_uuid = False
+
+    is_checking_in = (payload.status == "Checked In")
 
     if database.use_pg:
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    update_fields = ["status = %s"]
+                    params = [payload.status]
                     if effective_check_in_time:
-                        cur.execute(
-                            "UPDATE appointments SET status = %s, check_in_time = %s WHERE id::text = %s OR ticket_number = %s",
-                            (payload.status, effective_check_in_time, token_id, token_id)
-                        )
+                        update_fields.append("check_in_time = %s")
+                        params.append(effective_check_in_time)
+                    if is_checking_in:
+                        update_fields.append("is_checked_in = TRUE")
+                        update_fields.append("checked_in_at = COALESCE(checked_in_at, %s)")
+                        params.append(now)
+
+                    set_clause = ", ".join(update_fields)
+                    if is_uuid:
+                        sql = f"UPDATE appointments SET {set_clause} WHERE id::text = %s"
+                        params.append(clean_token_id)
                     else:
-                        cur.execute(
-                            "UPDATE appointments SET status = %s WHERE id::text = %s OR ticket_number = %s",
-                            (payload.status, token_id, token_id)
-                        )
+                        sql = f"""
+                            UPDATE appointments SET {set_clause}
+                            WHERE id = (
+                                SELECT id FROM appointments
+                                WHERE ticket_number = %s
+                                ORDER BY date ASC, time_slot ASC
+                                LIMIT 1
+                            )
+                        """
+                        params.append(clean_token_id)
+                    cur.execute(sql, tuple(params))
                 conn.commit()
         except Exception as e:
             logger.warning(f"DB update status note: {e}")
@@ -1770,11 +1987,20 @@ def update_token_status(
     try:
         db = database.read_json_db()
         for app in db.get("appointments", []):
-            if str(app.get("id")) == token_id or app.get("ticket_number") == token_id or app.get("ticketNumber") == token_id:
+            match = False
+            if is_uuid:
+                match = (str(app.get("id")) == clean_token_id)
+            else:
+                match = (str(app.get("id")) == clean_token_id or app.get("ticket_number") == clean_token_id or app.get("ticketNumber") == clean_token_id)
+            if match:
                 app["status"] = payload.status
                 if effective_check_in_time:
                     app["check_in_time"] = effective_check_in_time
                     app["checkInTime"] = effective_check_in_time
+                if is_checking_in:
+                    app["is_checked_in"] = True
+                    if not app.get("checked_in_at"):
+                        app["checked_in_at"] = now.isoformat()
                 break
         database.write_json_db(db)
     except Exception as e:

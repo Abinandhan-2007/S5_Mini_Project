@@ -125,12 +125,14 @@ export const HealthAIChatScreen: React.FC = () => {
 
             {msg.sender === 'bot' && (
               <div className="pl-2 pt-0.5 flex items-center gap-2 flex-wrap">
-                <ConfidenceBadge
-                  confidence={msg.confidence ?? 88}
-                  riskLevel={msg.riskLevel ?? 'low'}
-                  size="sm"
-                />
-                {msg.specialty && (
+                {msg.confidence !== undefined && msg.confidence > 0 && (
+                  <ConfidenceBadge
+                    confidence={msg.confidence}
+                    riskLevel={msg.riskLevel ?? 'low'}
+                    size="sm"
+                  />
+                )}
+                {msg.specialty && msg.confidence !== undefined && msg.confidence > 0 && (
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-full">
                     Routing: {msg.specialty}
                   </span>

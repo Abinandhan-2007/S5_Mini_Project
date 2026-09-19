@@ -7,31 +7,6 @@ import { OfflineBanner } from './components/ui/OfflineBanner';
 
 import { Capacitor } from '@capacitor/core';
 
-// Helper to determine if current URL is a staff portal
-const isStaffLanding = (): boolean => {
-  if (typeof window === 'undefined') return false;
-
-  const path = window.location.pathname.toLowerCase();
-  const isStaffPath =
-    path.startsWith('/receptionist') ||
-    path.startsWith('/doctor') ||
-    path.startsWith('/admin') ||
-    path.startsWith('/staff');
-
-  if (isStaffPath) return true;
-
-  if (!Capacitor.isNativePlatform()) {
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
-    const isMobileBrowser =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
-      (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
-
-    const hasPatientSession = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
-    if (!isMobileBrowser && path === '/' && !hasPatientSession) return true;
-  }
-
-  return false;
-};
 
 /**
  * Handles push notification taps and deep-link routing inside React Router.
@@ -70,7 +45,6 @@ const NotificationNavigationListener: React.FC = () => {
 import { checkForAppUpdate, type AppVersionInfo } from './lib/versionChecker';
 import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal';
 import { registerPushNotifications } from './lib/pushNotifications';
-import { MedicineIntakePromptModal } from './components/prescriptions/MedicineIntakePromptModal';
 import { initMedicationNotificationService } from './services/medicationNotificationService';
 import { LanguageProvider } from './i18n';
 import { TtsFallbackToast } from './components/ui/TtsFallbackToast';
@@ -124,15 +98,51 @@ const AppResumeUpdateChecker: React.FC = () => {
 };
 
 export const App: React.FC = () => {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        if (
+          sessionStorage.getItem('carepulse_skip_splash') === 'true' ||
+          localStorage.getItem('carepulse_skip_splash') === 'true' ||
+          window.navigator.webdriver
+        ) {
+          return false;
+        }
+
+        // On desktop web, if user has an active session, skip splash on reload
+        if (!Capacitor.isNativePlatform()) {
+          const path = window.location.pathname.toLowerCase();
+          const hasStaff = !!localStorage.getItem('carepulse_staff') || !!sessionStorage.getItem('carepulse_staff');
+          const hasPatient = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
+          const isStaffRoute =
+            path.startsWith('/receptionist') ||
+            path.startsWith('/doctor') ||
+            path.startsWith('/admin') ||
+            path.startsWith('/staff') ||
+            path.startsWith('/superadmin') ||
+            path.startsWith('/nurse');
+
+          if (hasStaff || hasPatient || isStaffRoute) {
+            sessionStorage.setItem('carepulse_skip_splash', 'true');
+            return false;
+          }
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [startupUpdateInfo, setStartupUpdateInfo] = useState<AppVersionInfo | null>(null);
   const checkAuthSession = useCarePulseStore((s) => s.checkAuthSession);
 
-  // Restore session
   useEffect(() => {
-    if (isStaffLanding()) {
-      checkAuthSession();
+    if (!showSplash) {
+      useCarePulseStore.setState({ isInitializing: false });
     }
+  }, [showSplash]);
+
+  // Restore session on app mount
+  useEffect(() => {
+    checkAuthSession();
   }, [checkAuthSession]);
 
   // Automatically register device for push notifications and initialize medication eating alerts
@@ -144,6 +154,9 @@ export const App: React.FC = () => {
   }, []);
 
   const handleSplashComplete = (updateInfo?: AppVersionInfo | null) => {
+    try {
+      sessionStorage.setItem('carepulse_skip_splash', 'true');
+    } catch {}
     setShowSplash(false);
     if (updateInfo && updateInfo.isUpdateAvailable) {
       // Prompt user FIRST with update modal before mounting routes, login screen, or biometric lock
@@ -182,7 +195,6 @@ export const App: React.FC = () => {
         <NotificationNavigationListener />
         <AppResumeUpdateChecker />
         <OfflineBanner />
-        <MedicineIntakePromptModal />
         <TtsFallbackToast />
         <div className="min-h-screen min-h-[100dvh] bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col items-stretch overflow-x-hidden">
           <AppRoutes />

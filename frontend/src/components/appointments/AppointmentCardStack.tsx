@@ -11,6 +11,7 @@ import {
 import { clsx } from 'clsx';
 import { Avatar } from '../ui/Avatar';
 import type { Appointment } from '../../lib/types';
+import { useLocalizedEntities } from '../../i18n';
 
 export interface AppointmentCardStackProps {
   appointments: Appointment[];
@@ -23,6 +24,7 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
   onViewDetails,
   onScheduleNew,
 }) => {
+  const { t, formatDoctorName, formatSpecialty, formatHospitalName } = useLocalizedEntities();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
 
@@ -45,10 +47,10 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#0B5A54]">
             <Ticket className="w-4 h-4 text-[#14B8A6]" />
-            <span>APPOINTMENT TOKEN</span>
+            <span>{t('home.appointmentToken', 'APPOINTMENT TOKEN')}</span>
           </div>
           <span className="bg-slate-100 text-slate-500 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold">
-            NO ACTIVE TOKEN
+            {t('home.noActiveToken', 'NO ACTIVE TOKEN')}
           </span>
         </div>
         <div className="flex items-center gap-3.5 pt-1">
@@ -56,9 +58,9 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
             <CalendarIcon className="w-6 h-6 text-[#0B5A54]" />
           </div>
           <div>
-            <h4 className="text-sm font-black text-[#111827]">No Appointments Scheduled</h4>
+            <h4 className="text-sm font-black text-[#111827]">{t('home.noAppointmentsScheduled', 'No Appointments Scheduled')}</h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              Book a consultation with verified doctors to get your digital queue token.
+              {t('home.noAppointmentsScheduledDesc', 'Book a consultation with verified doctors to get your digital queue token.')}
             </p>
           </div>
         </div>
@@ -70,7 +72,7 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
           }}
           className="w-full py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
-          <span>Book Doctor Consultation →</span>
+          <span>{t('home.bookDoctorConsultation', 'Book Doctor Consultation →')}</span>
         </button>
       </div>
     );
@@ -183,7 +185,7 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
             <div className="bg-white border-b border-[#E4E7EC] px-4 py-2 flex justify-between items-center relative z-20">
               <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#0B5A54]">
                 <Ticket className="w-4 h-4 text-[#14B8A6]" />
-                <span>APPOINTMENT TOKEN</span>
+                <span>{t('home.appointmentToken', 'APPOINTMENT TOKEN')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="bg-[#E3F3F1] text-[#0B5A54] font-mono text-xs px-2.5 py-0.5 rounded-pill font-bold shadow-2xs">
@@ -197,7 +199,7 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
               <div className="grid grid-cols-2 gap-3 pb-1">
                 <div>
                   <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider flex items-center gap-1">
-                    <UserIcon className="w-3 h-3" /> PATIENT
+                    <UserIcon className="w-3 h-3" /> {t('home.patientLabel', 'PATIENT')}
                   </span>
                   <p className="text-xs font-bold text-[#111827] mt-0.5 truncate">
                     {activeApp.patientName || 'Patient'}
@@ -205,10 +207,10 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider flex items-center gap-1">
-                    <Building2 className="w-3 h-3" /> HOSPITAL
+                    <Building2 className="w-3 h-3" /> {t('nav.hospitals', 'HOSPITAL')}
                   </span>
                   <p className="text-xs font-bold text-[#111827] mt-0.5 truncate">
-                    {activeApp.hospitalName || 'CarePulse Hospital'}
+                    {formatHospitalName(activeApp.hospitalName || 'CarePulse Hospital')}
                   </p>
                 </div>
               </div>
@@ -219,8 +221,8 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
                 <div className="flex items-center gap-3">
                   <Avatar src={activeApp.doctorPhoto} size="md" />
                   <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-[#111827]">{activeApp.doctorName}</h4>
-                    <p className="text-xs font-semibold text-[#0B5A54]">{activeApp.doctorSpecialty}</p>
+                    <h4 className="text-xs sm:text-sm font-bold text-[#111827]">{formatDoctorName(activeApp.doctorName)}</h4>
+                    <p className="text-xs font-semibold text-[#0B5A54]">{formatSpecialty(activeApp.doctorSpecialty)}</p>
                   </div>
                 </div>
 
@@ -237,7 +239,7 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
 
               <div className="pt-1 flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  STATUS:{' '}
+                  {t('common.status', 'STATUS')}:{' '}
                   <strong className="text-[#0B5A54] font-black">
                     {activeApp.status || 'Upcoming'}
                   </strong>
@@ -250,7 +252,7 @@ export const AppointmentCardStack: React.FC<AppointmentCardStackProps> = ({
                   }}
                   className="bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white px-3.5 py-1.5 rounded-pill text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
                 >
-                  View Details →
+                  {t('home.viewDetails', 'View Details →')}
                 </button>
               </div>
             </div>

@@ -37,7 +37,7 @@ import urllib.parse
 import random
 import time
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import config
 import database
 from database import init_db, get_pg_connection, read_json_db, write_json_db, cosine_similarity
@@ -63,12 +63,14 @@ from schemas import (
     DoctorResponse,
     DoctorAvailabilityUpdate,
     DeviceTokenRequest,
+    DeviceInfoRequest,
     AppointmentCancelRequest,
     TokenStatusUpdate,
     ScanMatchRequest,
     ScanMatchResponse,
     PrescriptionMatchedItem,
     DrugInfoSchema,
+    MedicineTranslateRequest,
     MedicineInfoLookupRequest,
     MedicineInfoLookupResponse,
     MedicineSearchResultItem,
@@ -78,7 +80,7 @@ from auth import verify_google_token, process_google_login, generate_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
 from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr, scan_medicine_packaging_vision
-from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary
+from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary, translate_medicine_info
 from services.medicine_search_service import search_medicines
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
@@ -280,7 +282,7 @@ def health_check():
         "status": "healthy" if is_healthy else "degraded",
         "service": "CarePulse FastAPI Backend",
         "storage_mode": "postgresql" if database.use_pg else "json_fallback",
-        "database": "PostgreSQL (pgvector)" if database.use_pg else "JSON File Fallback",
+        "database": f"PostgreSQL ({'pgvector' if getattr(database, 'has_pgvector', False) else 'standard relational'})" if database.use_pg else "JSON File Fallback",
         "db_connected": database.use_pg and db_status == "connected",
         "db_latency_ms": ping_latency_ms,
         "allow_json_fallback": database.ALLOW_JSON_FALLBACK
@@ -2024,6 +2026,162 @@ def save_patient_device_token(req: DeviceTokenRequest):
     return {"success": True, "message": "Device token registered successfully"}
 
 
+@app.post("/api/patient/device-info")
+@app.post("/patient/device-info")
+def save_patient_device_info(req: DeviceInfoRequest, request: Request):
+    """
+    Register or update patient mobile/web device specifications upon login or active session.
+    Logs Phone Model, Manufacturer, OS Version, App Version, Client IP, and Last Login Time.
+    """
+    client_ip = request.headers.get("x-forwarded-for", "")
+    if client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    elif request.client and request.client.host:
+        client_ip = request.client.host
+    else:
+        client_ip = ""
+
+    dev_id = (req.device_id or "").strip()
+    if not dev_id:
+        dev_id = str(uuid.uuid4())
+
+    p_id = (req.patient_id or "").strip()
+    p_id_sql = None
+    if p_id:
+        try:
+            p_id_sql = str(uuid.UUID(p_id))
+        except (ValueError, TypeError):
+            p_id_sql = None
+
+    # Handle PostgreSQL
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # Self-heal table if not present
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS patient_devices (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+                            device_id VARCHAR(255),
+                            device_model VARCHAR(255) DEFAULT 'Unknown Device',
+                            manufacturer VARCHAR(100) DEFAULT 'Unknown',
+                            platform VARCHAR(50) DEFAULT 'android',
+                            os_version VARCHAR(50) DEFAULT '',
+                            app_version VARCHAR(50) DEFAULT '1.0.0',
+                            ip_address VARCHAR(100) DEFAULT '',
+                            fcm_token TEXT DEFAULT '',
+                            is_active BOOLEAN DEFAULT true,
+                            last_login TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_patient_devices_patient_id ON patient_devices(patient_id);
+                        """
+                    )
+                    # Check for existing device record
+                    if p_id_sql:
+                        cur.execute(
+                            "SELECT id FROM patient_devices WHERE patient_id = %s AND (device_id = %s OR (device_id IS NULL AND device_model = %s)) LIMIT 1",
+                            (p_id_sql, dev_id, req.device_model or "Unknown Device")
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            cur.execute(
+                                """
+                                UPDATE patient_devices
+                                SET device_id = %s,
+                                    device_model = %s,
+                                    manufacturer = %s,
+                                    platform = %s,
+                                    os_version = %s,
+                                    app_version = %s,
+                                    ip_address = %s,
+                                    fcm_token = CASE WHEN %s != '' THEN %s ELSE fcm_token END,
+                                    is_active = true,
+                                    last_login = CURRENT_TIMESTAMP
+                                WHERE id = %s
+                                """,
+                                (
+                                    dev_id,
+                                    req.device_model or "Unknown Device",
+                                    req.manufacturer or "Unknown",
+                                    req.platform or "android",
+                                    req.os_version or "",
+                                    req.app_version or "1.0.0",
+                                    client_ip,
+                                    req.fcm_token or "",
+                                    req.fcm_token or "",
+                                    row["id"]
+                                )
+                            )
+                        else:
+                            cur.execute(
+                                """
+                                INSERT INTO patient_devices (
+                                    patient_id, device_id, device_model, manufacturer,
+                                    platform, os_version, app_version, ip_address, fcm_token, is_active, last_login
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, true, CURRENT_TIMESTAMP)
+                                """,
+                                (
+                                    p_id_sql,
+                                    dev_id,
+                                    req.device_model or "Unknown Device",
+                                    req.manufacturer or "Unknown",
+                                    req.platform or "android",
+                                    req.os_version or "",
+                                    req.app_version or "1.0.0",
+                                    client_ip,
+                                    req.fcm_token or ""
+                                )
+                            )
+                        conn.commit()
+                        logger.info(f"📱 Recorded device info for patient {p_id_sql}: {req.device_model} ({req.platform} {req.os_version})")
+                        return {"success": True, "device_id": dev_id}
+        except Exception as e:
+            logger.warning(f"Note recording patient_devices in PostgreSQL: {e}")
+
+    # Fallback to local database.json
+    db = read_json_db()
+    devices = db.setdefault("patient_devices", [])
+    now_iso = datetime.now(timezone.utc).isoformat()
+    matched = False
+    for d in devices:
+        if (p_id and d.get("patient_id") == p_id) and (d.get("device_id") == dev_id or d.get("device_model") == req.device_model):
+            d["device_id"] = dev_id
+            d["device_model"] = req.device_model or d.get("device_model") or "Unknown Device"
+            d["manufacturer"] = req.manufacturer or d.get("manufacturer") or "Unknown"
+            d["platform"] = req.platform or d.get("platform") or "android"
+            d["os_version"] = req.os_version or d.get("os_version") or ""
+            d["app_version"] = req.app_version or d.get("app_version") or "1.0.0"
+            d["ip_address"] = client_ip or d.get("ip_address") or ""
+            if req.fcm_token:
+                d["fcm_token"] = req.fcm_token
+            d["is_active"] = True
+            d["last_login"] = now_iso
+            matched = True
+            break
+    if not matched:
+        devices.append({
+            "id": str(uuid.uuid4()),
+            "patient_id": p_id,
+            "device_id": dev_id,
+            "device_model": req.device_model or "Unknown Device",
+            "manufacturer": req.manufacturer or "Unknown",
+            "platform": req.platform or "android",
+            "os_version": req.os_version or "",
+            "app_version": req.app_version or "1.0.0",
+            "ip_address": client_ip,
+            "fcm_token": req.fcm_token or "",
+            "is_active": True,
+            "last_login": now_iso,
+            "created_at": now_iso
+        })
+    write_json_db(db)
+    logger.info(f"📱 Recorded device info in JSON DB for patient {p_id}: {req.device_model}")
+    return {"success": True, "device_id": dev_id}
+
+
 @app.put("/api/appointments/{appointment_id}/cancel")
 @app.post("/api/appointments/{appointment_id}/cancel")
 def cancel_appointment(appointment_id: str, cancel_req: Optional[AppointmentCancelRequest] = None):
@@ -2177,6 +2335,39 @@ def get_patient_prescriptions(patient_id: str):
     result = []
     seen_drugs = set()
 
+    def parse_duration_days(duration_str: str) -> int:
+        """Parse duration string like '4 Days', '7 Day Course', '2 weeks' into integer days."""
+        if not duration_str:
+            return 7
+        s = str(duration_str).lower().strip()
+        import re
+        m = re.search(r'(\d+)\s*(?:day|d\b)', s)
+        if m:
+            return int(m.group(1))
+        m = re.search(r'(\d+)\s*week', s)
+        if m:
+            return int(m.group(1)) * 7
+        m = re.search(r'(\d+)', s)
+        if m:
+            return int(m.group(1))
+        return 7
+
+    def compute_days_completed(created_at_str: str, total_days: int) -> int:
+        """Compute how many days have elapsed since the prescription was created."""
+        from datetime import date as date_cls
+        today = date_cls.today()
+        if not created_at_str:
+            return 0
+        try:
+            # Handle ISO datetime strings and plain date strings
+            date_part = str(created_at_str)[:10]  # 'YYYY-MM-DD'
+            start = date_cls.fromisoformat(date_part)
+            elapsed = (today - start).days
+            return max(0, min(elapsed, total_days))
+        except Exception:
+            return 0
+
+
     # 1. PostgreSQL Prescriptions Table
     if database.use_pg:
         try:
@@ -2198,6 +2389,9 @@ def get_patient_prescriptions(patient_id: str):
                         k = d_name.lower().strip()
                         if k not in seen_drugs:
                             seen_drugs.add(k)
+                            _dur_str = "5 Days"
+                            _total = parse_duration_days(_dur_str)
+                            _created = str(r.get("created_at") or "")
                             result.append({
                                 "id": str(r["id"]),
                                 "patientId": str(r["patient_id"]),
@@ -2206,11 +2400,13 @@ def get_patient_prescriptions(patient_id: str):
                                 "frequency": r.get("frequency") or "Twice daily",
                                 "mealTiming": r.get("meal_timing") or "As directed",
                                 "instructions": r.get("meal_timing") or "Take as directed by doctor",
-                                "duration": "5 Days",
+                                "duration": _dur_str,
+                                "totalDays": _total,
+                                "daysCompleted": compute_days_completed(_created, _total),
                                 "prescriber": r.get("prescriber") or "Treating Physician",
                                 "iconType": r.get("icon_type") or "pill",
                                 "status": r.get("status") or "Active",
-                                "createdAt": str(r.get("created_at") or "")
+                                "createdAt": _created
                             })
 
                     # Also extract any prescriptions inside consultations.soap_data
@@ -2237,6 +2433,9 @@ def get_patient_prescriptions(patient_id: str):
                                 k = m_name.lower().strip()
                                 if k not in seen_drugs:
                                     seen_drugs.add(k)
+                                    _dur_str = med.get("duration") or "3 Days"
+                                    _total = parse_duration_days(_dur_str)
+                                    _created = c_date
                                     result.append({
                                         "id": f"rx-cons-{c['id']}-{m_idx}",
                                         "patientId": target_pid,
@@ -2245,11 +2444,13 @@ def get_patient_prescriptions(patient_id: str):
                                         "frequency": med.get("frequency") or "Twice daily",
                                         "mealTiming": med.get("instructions") or med.get("mealTiming") or "After Food",
                                         "instructions": med.get("instructions") or "Follow doctor advice",
-                                        "duration": med.get("duration") or "3 Days",
+                                        "duration": _dur_str,
+                                        "totalDays": _total,
+                                        "daysCompleted": compute_days_completed(_created, _total),
                                         "prescriber": c_doc,
                                         "iconType": "pill",
                                         "status": "Active",
-                                        "createdAt": c_date
+                                        "createdAt": _created
                                     })
         except Exception as e:
             logger.warning(f"Error fetching PG prescriptions: {e}")
@@ -2266,6 +2467,9 @@ def get_patient_prescriptions(patient_id: str):
                 k = d_name.lower().strip()
                 if k not in seen_drugs:
                     seen_drugs.add(k)
+                    _dur_str = r.get("duration") or "3 Days"
+                    _total = parse_duration_days(_dur_str)
+                    _created = str(r.get("created_at") or "")
                     result.append({
                         "id": str(r.get("id")),
                         "patientId": target_pid,
@@ -2274,11 +2478,13 @@ def get_patient_prescriptions(patient_id: str):
                         "frequency": r.get("frequency") or "Twice daily",
                         "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
                         "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
-                        "duration": r.get("duration") or "3 Days",
+                        "duration": _dur_str,
+                        "totalDays": _total,
+                        "daysCompleted": compute_days_completed(_created, _total),
                         "prescriber": r.get("prescriber") or "Treating Physician",
                         "iconType": r.get("icon_type") or r.get("iconType") or "pill",
                         "status": r.get("status") or "Active",
-                        "createdAt": str(r.get("created_at") or "")
+                        "createdAt": _created
                     })
 
         for c in db.get("consultations", []):
@@ -2296,6 +2502,9 @@ def get_patient_prescriptions(patient_id: str):
                         k = m_name.lower().strip()
                         if k not in seen_drugs:
                             seen_drugs.add(k)
+                            _dur_str = med.get("duration") or "3 Days"
+                            _total = parse_duration_days(_dur_str)
+                            _created = c_date
                             result.append({
                                 "id": f"rx-json-{c.get('id')}-{m_idx}",
                                 "patientId": target_pid,
@@ -2304,11 +2513,13 @@ def get_patient_prescriptions(patient_id: str):
                                 "frequency": med.get("frequency") or "Twice daily",
                                 "mealTiming": med.get("instructions") or med.get("mealTiming") or "After Food",
                                 "instructions": med.get("instructions") or "Follow doctor advice",
-                                "duration": med.get("duration") or "3 Days",
+                                "duration": _dur_str,
+                                "totalDays": _total,
+                                "daysCompleted": compute_days_completed(_created, _total),
                                 "prescriber": c_doc,
                                 "iconType": "pill",
                                 "status": "Active",
-                                "createdAt": c_date
+                                "createdAt": _created
                             })
     except Exception as e:
         logger.warning(f"Error reading JSON prescriptions: {e}")
@@ -2399,13 +2610,14 @@ def scan_and_match_prescription(
         )
 
     # 3. Vision AI Packaging Analysis / OCR Text Extraction
+    target_lang = (req.lang or "en").lower().strip()
     extracted_text = ""
     candidate_drug = None
     candidate_generic = None
     if req.ocrText or req.ocr_text:
         extracted_text = (req.ocrText or req.ocr_text).strip()
     elif req.image:
-        vision_res = scan_medicine_packaging_vision(req.image)
+        vision_res = scan_medicine_packaging_vision(req.image, lang=target_lang)
         candidate_drug = vision_res.get("drug_name", "")
         candidate_generic = vision_res.get("generic_name", "")
         all_text = vision_res.get("all_text", "")
@@ -2429,6 +2641,8 @@ def scan_and_match_prescription(
         matched_drug = match_result["match"]["drugName"]
         try:
             drug_info_data = get_drug_info(matched_drug)
+            if drug_info_data and target_lang not in ("en", "english"):
+                drug_info_data = translate_medicine_info(drug_info_data, target_lang=target_lang)
             match_result["match"]["drugInfo"] = drug_info_data
         except Exception as e:
             logger.warning(f"Error fetching OpenFDA drug info: {e}")
@@ -2474,7 +2688,9 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
     Google Lens-style Medicine Purpose Lookup via Multimodal Vision AI & OpenFDA.
     Scans ANY medicine packaging (strip, box, bottle) or accepts a drug name, extracting
     brand name, active chemical formula, and verified clinical indications/usage.
+    Supports multilingual results (English, Tamil, Malayalam, Hindi).
     """
+    target_lang = (req.lang or "en").lower().strip()
     extracted_text = ""
     candidate_name = None
     generic_name = (req.genericName or req.generic_name or "").strip() or None
@@ -2487,7 +2703,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         extracted_text = (req.ocrText or req.ocr_text).strip()
         candidate_name = extract_drug_candidate_from_ocr(extracted_text)
     elif req.image:
-        vision_res = scan_medicine_packaging_vision(req.image)
+        vision_res = scan_medicine_packaging_vision(req.image, lang=target_lang)
         candidate_name = (
             vision_res.get("drug_name") or
             extract_drug_candidate_from_ocr(vision_res.get("all_text", ""))
@@ -2506,7 +2722,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             purpose="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
             indicationsAndUsage="",
             summary="Could not clearly identify a medicine name from the packaging. Please ensure good lighting and that the medicine name is clearly visible in the frame.",
-            source="None"
+            source="None",
+            lang=target_lang
         )
 
     # 2.5 Fast-path: Single-shot Vision AI already extracted verified clinical purpose & instructions
@@ -2525,6 +2742,7 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=vision_res.get("warnings") if vision_res.get("warnings") else None,
             sideEffects=vision_res.get("side_effects") if vision_res.get("side_effects") else None,
             boxedWarning=None,
+            lang=target_lang
         )
 
     # 3. Resolve generic active ingredient for OpenFDA if not explicitly provided
@@ -2544,13 +2762,16 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         info = get_drug_info(candidate_name)
 
     if info.get("found"):
+        if target_lang not in ("en", "english"):
+            info = translate_medicine_info(info, target_lang=target_lang)
+
         return MedicineInfoLookupResponse(
             status="FOUND",
             drugName=candidate_name,
             genericName=generic_name,
             extractedText=extracted_text,
             purpose=info.get("purpose"),
-            indicationsAndUsage=info.get("indications_and_usage") or info.get("summary") or "",
+            indicationsAndUsage=info.get("indications_and_usage") or info.get("indicationsAndUsage") or info.get("summary") or "",
             summary=info.get("summary") or "General therapeutic medication.",
             source=info.get("source") or "OpenFDA",
             mainUses=info.get("mainUses"),
@@ -2558,43 +2779,84 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=info.get("warnings"),
             sideEffects=info.get("sideEffects"),
             boxedWarning=info.get("boxedWarning"),
+            lang=target_lang
         )
     else:
         # 5. Attempt Clinical AI knowledge synthesis when packaging scan finds a real brand not in OpenFDA
         if req.image and candidate_name:
-            ai_info = get_clinical_ai_medicine_summary(candidate_name, generic_name)
+            ai_info = get_clinical_ai_medicine_summary(candidate_name, generic_name, lang=target_lang)
             if ai_info.get("found"):
                 return MedicineInfoLookupResponse(
-                status="FOUND",
-                drugName=candidate_name,
-                genericName=generic_name,
-                extractedText=extracted_text,
-                purpose=ai_info.get("purpose"),
-                indicationsAndUsage=ai_info.get("indications_and_usage") or "",
-                summary=ai_info.get("summary") or "General therapeutic clinical medication.",
-                source=ai_info.get("source") or "CarePulse Clinical AI (Packaging Vision)",
-                mainUses=[ai_info.get("indications_and_usage")] if ai_info.get("indications_and_usage") else None,
-                howToTake=ai_info.get("howToTake"),
-                warnings=ai_info.get("warnings"),
-                sideEffects=ai_info.get("sideEffects"),
-                boxedWarning=None,
-            )
-        else:
-            return MedicineInfoLookupResponse(
-                status="NO_INFO_AVAILABLE",
-                drugName=candidate_name,
-                genericName=generic_name,
-                extractedText=extracted_text,
-                purpose=None,
-                indicationsAndUsage="",
-                summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
-                source="Fallback",
-                mainUses=None,
-                howToTake=None,
-                warnings=None,
-                sideEffects=None,
-                boxedWarning=None,
-            )
+                    status="FOUND",
+                    drugName=candidate_name,
+                    genericName=generic_name,
+                    extractedText=extracted_text,
+                    purpose=ai_info.get("purpose"),
+                    indicationsAndUsage=ai_info.get("indications_and_usage") or "",
+                    summary=ai_info.get("summary") or "General therapeutic clinical medication.",
+                    source=ai_info.get("source") or "CarePulse Clinical AI (Packaging Vision)",
+                    mainUses=[ai_info.get("indications_and_usage")] if ai_info.get("indications_and_usage") else None,
+                    howToTake=ai_info.get("howToTake"),
+                    warnings=ai_info.get("warnings"),
+                    sideEffects=ai_info.get("sideEffects"),
+                    boxedWarning=None,
+                    lang=target_lang
+                )
+        return MedicineInfoLookupResponse(
+            status="NO_INFO_AVAILABLE",
+            drugName=candidate_name,
+            genericName=generic_name,
+            extractedText=extracted_text,
+            purpose=None,
+            indicationsAndUsage="",
+            summary=info.get("summary") or "General information not available for this medication — please consult your doctor or pharmacist.",
+            source="Fallback",
+            mainUses=None,
+            howToTake=None,
+            warnings=None,
+            sideEffects=None,
+            boxedWarning=None,
+            lang=target_lang
+        )
+
+
+@app.post("/api/medicine/translate-info", response_model=MedicineInfoLookupResponse)
+def translate_medicine_info_endpoint(req: MedicineTranslateRequest):
+    """
+    Instantly translates medical scan / lookup details into Tamil, Malayalam, Hindi, or English.
+    Enables single-tap language switching for patients on the medicine scan results screen.
+    """
+    target_lang = (req.targetLang or req.target_lang or "en").lower().strip()
+    data_dict = {
+        "drugName": req.drugName or "",
+        "genericName": req.genericName or "",
+        "purpose": req.purpose or "",
+        "indicationsAndUsage": req.indicationsAndUsage or "",
+        "summary": req.summary or "",
+        "mainUses": req.mainUses or [],
+        "howToTake": req.howToTake or [],
+        "warnings": req.warnings or [],
+        "sideEffects": req.sideEffects or [],
+        "disclaimer": req.disclaimer or "Informational reference only. Consult your doctor or pharmacist.",
+    }
+    translated = translate_medicine_info(data_dict, target_lang=target_lang)
+    return MedicineInfoLookupResponse(
+        status="FOUND",
+        drugName=req.drugName or "",
+        genericName=req.genericName or None,
+        extractedText="",
+        purpose=translated.get("purpose"),
+        indicationsAndUsage=translated.get("indicationsAndUsage") or "",
+        summary=translated.get("summary") or "",
+        source=f"CarePulse Medical Translation ({target_lang.upper()})",
+        mainUses=translated.get("mainUses"),
+        howToTake=translated.get("howToTake"),
+        warnings=translated.get("warnings"),
+        sideEffects=translated.get("sideEffects"),
+        boxedWarning=None,
+        lang=target_lang,
+        disclaimer=translated.get("disclaimer"),
+    )
 
 
 
@@ -2791,6 +3053,8 @@ def format_hospital(h: dict) -> HospitalResponse:
     image = h.get("image_url") or h.get("imageUrl") or "/hospital_default.jpg"
     fac_type = h.get("facility_type") or h.get("facilityType") or "General"
     h_code = h.get("hospital_code") or h.get("hospitalCode")
+    lat = float(h["latitude"]) if h.get("latitude") is not None else None
+    lng = float(h["longitude"]) if h.get("longitude") is not None else None
 
     return HospitalResponse(
         id=str(h["id"]),
@@ -2810,7 +3074,9 @@ def format_hospital(h: dict) -> HospitalResponse:
         facilityType=fac_type,
         facility_type=fac_type,
         distanceMiles=dist,
-        distance_miles=dist
+        distance_miles=dist,
+        latitude=lat,
+        longitude=lng
     )
 
 def format_doctor(d: dict) -> DoctorResponse:

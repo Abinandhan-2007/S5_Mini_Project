@@ -13,11 +13,12 @@ import {
   Star,
   Award,
   ShieldCheck,
-  ExternalLink,
+  Navigation,
 } from 'lucide-react';
 import { BottomNav } from '../../components/ui/BottomNav';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
+import { HospitalRouteModal } from '../../components/hospitals/HospitalRouteModal';
 
 export interface ActivityDetailState {
   id?: string;
@@ -106,6 +107,7 @@ export const AppointmentDetailScreen: React.FC = () => {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('Schedule Conflict');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const availableSlots = [
@@ -310,19 +312,19 @@ export const AppointmentDetailScreen: React.FC = () => {
               <span className="text-[10px] font-bold text-teal-700 uppercase group-hover:underline">Call Direct</span>
             </a>
 
-            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
               <div className="flex items-center gap-2.5 min-w-0">
                 <MapPin className="w-4 h-4 text-[#0B5A54] shrink-0" />
-                <span className="truncate">{appointmentData.facilityAddress}</span>
+                <span className="truncate text-slate-800 font-semibold">{appointmentData.facilityAddress}</span>
               </div>
-              <a
-                href={`https://maps.google.com/?q=${encodeURIComponent(appointmentData.facilityAddress || '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] font-bold text-teal-700 uppercase hover:underline shrink-0 ml-2 inline-flex items-center gap-0.5"
+              <button
+                type="button"
+                onClick={() => setIsRouteModalOpen(true)}
+                className="text-[10px] font-extrabold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 px-2.5 py-1 rounded-lg uppercase shrink-0 ml-2 inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
               >
-                Directions <ExternalLink className="w-2.5 h-2.5" />
-              </a>
+                <Navigation className="w-3 h-3 text-[#0B5A54]" />
+                <span>Find Route & Map</span>
+              </button>
             </div>
           </div>
         </section>
@@ -467,6 +469,16 @@ export const AppointmentDetailScreen: React.FC = () => {
         </div>
 
       </main>
+
+      {/* Hospital Route & Navigation Map Dialog */}
+      <HospitalRouteModal
+        isOpen={isRouteModalOpen}
+        onClose={() => setIsRouteModalOpen(false)}
+        hospitalName={appointmentData.facilityName || 'CarePulse Partner Hospital'}
+        facilityAddress={appointmentData.facilityAddress || 'Main OPD Block, Wing A'}
+        facilityPhone={appointmentData.facilityPhone}
+        department={appointmentData.doctorSpecialty}
+      />
 
       <BottomNav />
     </div>

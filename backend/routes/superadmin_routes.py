@@ -4,6 +4,7 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from pydantic import BaseModel, EmailStr, Field
@@ -39,6 +40,8 @@ class CreateHospitalRequest(BaseModel):
     rating: Optional[float] = 4.8
     reviews_count: Optional[int] = 0
     image_url: Optional[str] = "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800&auto=format&fit=crop&q=80"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class UpdateHospitalRequest(BaseModel):
@@ -49,6 +52,8 @@ class UpdateHospitalRequest(BaseModel):
     facility_type: Optional[str] = None
     emergency_available: Optional[bool] = None
     is_active: Optional[bool] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class HospitalLifecycleRequest(BaseModel):
@@ -529,11 +534,13 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
                         INSERT INTO hospitals (
                             id, name, address, phone, email, facility_type, 
                             rating, reviews_count, emergency_available, 
-                            image_url, specialties, distance_miles, is_active
+                            image_url, specialties, distance_miles, is_active,
+                            latitude, longitude
                         ) VALUES (
                             %s, %s, %s, %s, %s, %s, 
                             %s, %s, %s, 
-                            %s, %s, 1.0, true
+                            %s, %s, 1.0, true,
+                            %s, %s
                         )
                         RETURNING id, hospital_code, name, address, phone, email, is_active, created_at;
                         """,
@@ -548,7 +555,9 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
                             payload.reviews_count or 0,
                             payload.emergency_available if payload.emergency_available is not None else True,
                             payload.image_url or "",
-                            payload.specialties or ["General Medicine", "Emergency Care"]
+                            payload.specialties or ["General Medicine", "Emergency Care"],
+                            payload.latitude,
+                            payload.longitude
                         )
                     )
                     row = cur.fetchone()
@@ -584,7 +593,9 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
             "is_active": True,
             "is_suspended": False,
             "lifecycle_state": "Draft",
-            "distance_miles": 1.0
+            "distance_miles": 1.0,
+            "latitude": payload.latitude,
+            "longitude": payload.longitude
         }
         h_list.append(new_hosp_entry)
         db["hospitals"] = h_list
@@ -1199,3 +1210,295 @@ def get_audit_logs(
         "count": len(filtered),
         "audit_logs": filtered
     }
+
+
+# ---------------------------------------------------------
+# Patient App Devices & Login Sessions (SuperAdmin Scope)
+# ---------------------------------------------------------
+@router.get("/devices")
+def list_patient_devices(
+    platform: Optional[str] = Query(None, description="Filter by platform: android, ios, web"),
+    search: Optional[str] = Query(None, description="Search by patient name, phone, email, device model, or IP"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    current_user: Dict[str, Any] = Depends(require_superadmin)
+):
+    """
+    List all patient mobile/web devices that have logged in,
+    enriched with patient name, phone, email, and device specs.
+    """
+    clean_search = (search or "").strip().lower()
+    clean_platform = (platform or "").strip().lower()
+    if clean_platform == "all":
+        clean_platform = ""
+
+    # Read latest published app release version from app_version.json
+    version_file = Path(__file__).resolve().parent.parent / "app_version.json"
+    latest_app_ver = "1.0.0"
+    if version_file.exists():
+        try:
+            with open(version_file, "r", encoding="utf-8") as vf:
+                v_data = json.load(vf)
+                latest_app_ver = str(v_data.get("version") or "1.0.0").strip()
+        except Exception:
+            latest_app_ver = "1.0.0"
+
+    device_list = []
+    stats = {
+        "total_devices": 0,
+        "android_count": 0,
+        "ios_count": 0,
+        "web_count": 0,
+        "active_24h": 0,
+        "latest_version": latest_app_ver,
+        "updated_devices_count": 0,
+        "outdated_devices_count": 0,
+    }
+
+    def check_is_updated(dev_ver_str: str) -> bool:
+        if not dev_ver_str:
+            return False
+        clean_dev = dev_ver_str.strip().lstrip("v").lower()
+        clean_latest = latest_app_ver.strip().lstrip("v").lower()
+        return clean_dev == clean_latest
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # Self-heal table if not present
+                    cur.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS patient_devices (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+                            device_id VARCHAR(255),
+                            device_model VARCHAR(255) DEFAULT 'Unknown Device',
+                            manufacturer VARCHAR(100) DEFAULT 'Unknown',
+                            platform VARCHAR(50) DEFAULT 'android',
+                            os_version VARCHAR(50) DEFAULT '',
+                            app_version VARCHAR(50) DEFAULT '1.0.0',
+                            ip_address VARCHAR(100) DEFAULT '',
+                            fcm_token TEXT DEFAULT '',
+                            is_active BOOLEAN DEFAULT true,
+                            last_login TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        );
+                        """
+                    )
+                    conn.commit()
+
+                    query = """
+                        SELECT 
+                            d.id,
+                            d.patient_id,
+                            d.device_id,
+                            d.device_model,
+                            d.manufacturer,
+                            d.platform,
+                            d.os_version,
+                            d.app_version,
+                            d.ip_address,
+                            d.fcm_token,
+                            d.is_active,
+                            d.last_login,
+                            d.created_at,
+                            p.full_name AS patient_name,
+                            p.phone AS patient_phone,
+                            p.email AS patient_email,
+                            p.patient_code,
+                            p.avatar_url AS patient_avatar
+                        FROM patient_devices d
+                        LEFT JOIN patients p ON d.patient_id = p.id
+                        ORDER BY d.last_login DESC NULLS LAST
+                    """
+                    cur.execute(query)
+                    rows = cur.fetchall()
+
+                    now_utc = datetime.now(timezone.utc)
+                    for r in rows:
+                        row_plat = (r.get("platform") or "android").lower()
+                        dev_ver = r.get("app_version") or "1.0.0"
+                        is_updated = check_is_updated(dev_ver)
+
+                        # Stats aggregation
+                        stats["total_devices"] += 1
+                        if "android" in row_plat:
+                            stats["android_count"] += 1
+                        elif "ios" in row_plat:
+                            stats["ios_count"] += 1
+                        else:
+                            stats["web_count"] += 1
+
+                        if is_updated:
+                            stats["updated_devices_count"] += 1
+                        else:
+                            stats["outdated_devices_count"] += 1
+
+                        last_log = r.get("last_login")
+                        if last_log:
+                            if hasattr(last_log, "timestamp"):
+                                diff_hours = (now_utc.timestamp() - last_log.timestamp()) / 3600.0
+                                if diff_hours <= 24.0:
+                                    stats["active_24h"] += 1
+
+                        # Filters
+                        if clean_platform and clean_platform not in row_plat:
+                            continue
+
+                        p_name = r.get("patient_name") or ""
+                        p_phone = r.get("patient_phone") or ""
+                        p_email = r.get("patient_email") or ""
+                        p_code = r.get("patient_code") or ""
+                        dev_model = r.get("device_model") or ""
+                        dev_manuf = r.get("manufacturer") or ""
+                        dev_ip = r.get("ip_address") or ""
+
+                        if clean_search:
+                            search_target = f"{p_name} {p_phone} {p_email} {p_code} {dev_model} {dev_manuf} {dev_ip} {dev_ver}".lower()
+                            if clean_search not in search_target:
+                                continue
+
+                        device_list.append({
+                            "id": str(r.get("id")),
+                            "patient_id": str(r.get("patient_id")) if r.get("patient_id") else None,
+                            "patient_name": p_name or "Guest Patient",
+                            "patient_phone": p_phone,
+                            "patient_email": p_email,
+                            "patient_code": p_code or "N/A",
+                            "patient_avatar": r.get("patient_avatar") or "",
+                            "device_id": r.get("device_id") or "",
+                            "device_model": dev_model or "Unknown Phone",
+                            "manufacturer": dev_manuf or "Unknown",
+                            "platform": row_plat,
+                            "os_version": r.get("os_version") or "",
+                            "app_version": dev_ver,
+                            "latest_version": latest_app_ver,
+                            "is_up_to_date": is_updated,
+                            "ip_address": dev_ip,
+                            "has_fcm": bool(r.get("fcm_token")),
+                            "is_active": bool(r.get("is_active", True)),
+                            "last_login": r.get("last_login").isoformat() if r.get("last_login") else None,
+                            "created_at": r.get("created_at").isoformat() if r.get("created_at") else None,
+                        })
+
+            return {
+                "success": True,
+                "count": len(device_list),
+                "stats": stats,
+                "devices": device_list[offset : offset + limit]
+            }
+        except Exception as e:
+            logger.warning(f"Error listing patient devices from PostgreSQL: {e}")
+
+    # Fallback to local JSON DB
+    db = read_json_db()
+    raw_devices = db.get("patient_devices", [])
+    patients_map = {str(p.get("id")): p for p in db.get("patients", [])}
+
+    now_utc = datetime.now(timezone.utc)
+    for r in raw_devices:
+        row_plat = (r.get("platform") or "android").lower()
+        dev_ver = r.get("app_version") or "1.0.0"
+        is_updated = check_is_updated(dev_ver)
+
+        stats["total_devices"] += 1
+        if "android" in row_plat:
+            stats["android_count"] += 1
+        elif "ios" in row_plat:
+            stats["ios_count"] += 1
+        else:
+            stats["web_count"] += 1
+
+        if is_updated:
+            stats["updated_devices_count"] += 1
+        else:
+            stats["outdated_devices_count"] += 1
+
+        last_log_str = r.get("last_login")
+        if last_log_str:
+            try:
+                ll_dt = datetime.fromisoformat(last_log_str.replace("Z", "+00:00"))
+                diff_hours = (now_utc.timestamp() - ll_dt.timestamp()) / 3600.0
+                if diff_hours <= 24.0:
+                    stats["active_24h"] += 1
+            except Exception:
+                pass
+
+        if clean_platform and clean_platform not in row_plat:
+            continue
+
+        p_id = str(r.get("patient_id") or "")
+        patient_info = patients_map.get(p_id, {})
+
+        p_name = patient_info.get("full_name") or patient_info.get("name") or "Patient"
+        p_phone = patient_info.get("phone") or ""
+        p_email = patient_info.get("email") or ""
+        p_code = patient_info.get("patient_code") or ""
+        dev_model = r.get("device_model") or ""
+        dev_manuf = r.get("manufacturer") or ""
+        dev_ip = r.get("ip_address") or ""
+
+        if clean_search:
+            search_target = f"{p_name} {p_phone} {p_email} {p_code} {dev_model} {dev_manuf} {dev_ip} {dev_ver}".lower()
+            if clean_search not in search_target:
+                continue
+
+        device_list.append({
+            "id": r.get("id"),
+            "patient_id": p_id,
+            "patient_name": p_name,
+            "patient_phone": p_phone,
+            "patient_email": p_email,
+            "patient_code": p_code or "N/A",
+            "patient_avatar": patient_info.get("avatar_url") or "",
+            "device_id": r.get("device_id") or "",
+            "device_model": dev_model or "Unknown Phone",
+            "manufacturer": dev_manuf or "Unknown",
+            "platform": row_plat,
+            "os_version": r.get("os_version") or "",
+            "app_version": dev_ver,
+            "latest_version": latest_app_ver,
+            "is_up_to_date": is_updated,
+            "ip_address": dev_ip,
+            "has_fcm": bool(r.get("fcm_token")),
+            "is_active": bool(r.get("is_active", True)),
+            "last_login": r.get("last_login"),
+            "created_at": r.get("created_at"),
+        })
+
+    # Sort by last_login descending
+    device_list.sort(key=lambda x: x.get("last_login") or "", reverse=True)
+
+    return {
+        "success": True,
+        "count": len(device_list),
+        "stats": stats,
+        "devices": device_list[offset : offset + limit]
+    }
+
+
+@router.delete("/devices/{device_id}")
+def delete_patient_device(
+    device_id: str,
+    current_user: Dict[str, Any] = Depends(require_superadmin)
+):
+    """SuperAdmin revoke or remove a registered mobile app device."""
+    target_id = str(device_id).strip()
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM patient_devices WHERE id::text = %s OR device_id = %s", (target_id, target_id))
+                    conn.commit()
+            return {"success": True, "message": f"Device session {target_id} revoked"}
+        except Exception as e:
+            logger.warning(f"Error deleting device in PostgreSQL: {e}")
+
+    db = read_json_db()
+    devices = db.get("patient_devices", [])
+    filtered = [d for d in devices if d.get("id") != target_id and d.get("device_id") != target_id]
+    db["patient_devices"] = filtered
+    write_json_db(db)
+    return {"success": True, "message": f"Device session {target_id} revoked"}
+

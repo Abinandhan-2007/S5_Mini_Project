@@ -225,18 +225,32 @@ async def check_medication_reminders():
             if diff_minutes <= 15.0:
                 dedup_type = f"med_reminder_{hr:02d}{mn:02d}_{today_str}"
                 if not is_notification_already_sent(p_id, dedup_type, rx_id):
-                    title = "Medication Reminder"
-                    body = f"Time to take your {drug_name} ({dosage})" if dosage else f"Time to take your {drug_name}"
+                    title = "💊 Medication Reminder"
+                    dosage_str = f" ({dosage})" if dosage else ""
+                    body = f"Time to take your {drug_name}{dosage_str} • Tap to mark Taken or Snooze 30 min"
                     data = {
                         "type": "medication_reminder",
-                        "screen": "/history",
-                        "prescription_id": rx_id,
-                        "patient_id": p_id,
-                        "drug_name": drug_name
+                        "screen": "/reminders",
+                        "prescription_id": str(rx_id),
+                        "patient_id": str(p_id),
+                        "drug_name": str(drug_name),
+                        "dosage": str(dosage or "1 dose"),
+                        "action": "prompt_intake"
                     }
                     send_push_notification(p_id, title, body, data)
                     log_notification(p_id, dedup_type, rx_id)
-                    logger.info(f"📢 Dispatched medication reminder to patient {p_id} for {drug_name}")
+                    logger.info(f"📢 Dispatched interactive medication reminder to patient {p_id} for {drug_name}")
+
+
+def check_and_purge_expired_unvisited_slots():
+    """Background cron job to auto-delete unvisited appointment slots older than 24 hours."""
+    try:
+        from routes.receptionist_routes import clean_expired_unvisited_appointments
+        deleted = clean_expired_unvisited_appointments()
+        if deleted:
+            logger.info(f"⏰ [SCHEDULER] Auto-deleted {len(deleted)} unvisited expired slots from DB: {deleted}")
+    except Exception as e:
+        logger.error(f"Error in scheduler check_and_purge_expired_unvisited_slots: {e}")
 
 
 def start_scheduler():
@@ -256,8 +270,15 @@ def start_scheduler():
             id="medication_reminders_job",
             replace_existing=True
         )
+        scheduler.add_job(
+            check_and_purge_expired_unvisited_slots,
+            "interval",
+            minutes=10,
+            id="purge_unvisited_slots_job",
+            replace_existing=True
+        )
         scheduler.start()
-        logger.info("🚀 APScheduler started successfully with appointment & medication reminder jobs.")
+        logger.info("🚀 APScheduler started successfully with appointment, medication reminder & unvisited slot purge jobs.")
 
 
 def shutdown_scheduler():

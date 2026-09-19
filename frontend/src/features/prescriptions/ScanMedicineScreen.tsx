@@ -19,6 +19,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   AlertOctagon,
+  Languages,
+  Check,
 } from 'lucide-react';
 import { useCarePulseStore } from '../../lib/store';
 import { apiFetch } from '../../lib/apiFetch';
@@ -30,10 +32,11 @@ import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { useTranslation } from '../../i18n';
+import { SCAN_LANGUAGES } from './MedicineInfoLookupScreen';
 
 export const ScanMedicineScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const prescriptions = useCarePulseStore((s) => s.prescriptions);
   const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
@@ -49,6 +52,68 @@ export const ScanMedicineScreen: React.FC = () => {
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [editableQuery, setEditableQuery] = useState('');
   const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
+  const [scanLanguage, setScanLanguage] = useState<string>(language || 'en');
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  // Fast translation when patient toggles language
+  const handleSwitchLanguage = async (newLang: string) => {
+    setScanLanguage(newLang);
+    if (!scanResult) return;
+    const currentDrugInfo = scanResult.match?.drugInfo || candidateDrugInfo;
+    if (!currentDrugInfo) return;
+
+    setIsTranslating(true);
+    try {
+      const res = await apiFetch('/medicine/translate-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetLang: newLang,
+          drugName: currentDrugInfo.drug_name,
+          purpose: currentDrugInfo.purpose,
+          indicationsAndUsage: currentDrugInfo.indications_and_usage,
+          summary: currentDrugInfo.summary,
+          mainUses: currentDrugInfo.mainUses,
+          howToTake: currentDrugInfo.howToTake,
+          warnings: currentDrugInfo.warnings,
+          sideEffects: currentDrugInfo.sideEffects,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const updatedDrugInfo: DrugInfoData = {
+          drug_name: currentDrugInfo.drug_name,
+          found: true,
+          purpose: data.purpose,
+          indications_and_usage: data.indicationsAndUsage,
+          summary: data.summary,
+          source: data.source || 'CarePulse Medical Translation',
+          mainUses: data.mainUses,
+          howToTake: data.howToTake,
+          warnings: data.warnings,
+          sideEffects: data.sideEffects,
+        };
+
+        if (scanResult.match) {
+          setScanResult({
+            ...scanResult,
+            match: {
+              ...scanResult.match,
+              drugInfo: updatedDrugInfo,
+            },
+          });
+        }
+        if (candidateDrugInfo) {
+          setCandidateDrugInfo(updatedDrugInfo);
+        }
+      }
+    } catch (err) {
+      console.warn('Scan translation error:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Sync prescriptions on mount
   React.useEffect(() => {
@@ -204,6 +269,7 @@ export const ScanMedicineScreen: React.FC = () => {
         body: JSON.stringify({
           image: base64Image,
           patientId: patientId,
+          lang: scanLanguage,
         }),
       });
 
@@ -531,6 +597,44 @@ export const ScanMedicineScreen: React.FC = () => {
         {/* STATE 3: SCAN RESULTS DISPLAY */}
         {!isAnalyzing && scanResult && (
           <div className="space-y-4">
+            {/* Multilingual Scan Selector Pill Bar */}
+            <div className="space-y-2">
+              <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs flex items-center justify-between gap-3 overflow-x-auto">
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 shrink-0">
+                  <Languages className="w-4 h-4 text-teal-700" />
+                  <span>Language / மொழி:</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {SCAN_LANGUAGES.map((item) => (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => handleSwitchLanguage(item.code)}
+                      disabled={isTranslating}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                        scanLanguage === item.code
+                          ? 'bg-[#0B5A54] text-white shadow-xs scale-102'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                      } ${isTranslating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span>{item.native}</span>
+                      {scanLanguage === item.code && <Check className="w-3 h-3 stroke-[3]" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {isTranslating && (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 text-center text-xs font-bold text-teal-800 animate-pulse flex items-center justify-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-700" />
+                  <span>
+                    Translating clinical information into{' '}
+                    {SCAN_LANGUAGES.find((l) => l.code === scanLanguage)?.native}...
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* 3A: HIGH CONFIDENCE MATCH VIEW */}
             {scanResult.matchType === 'HIGH_CONFIDENCE' && scanResult.match && (
               <div className="space-y-4">

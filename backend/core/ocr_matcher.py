@@ -34,7 +34,15 @@ UNREADABLE_MESSAGE = (
 )
 
 
-def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, Any]:
+LANGUAGE_NAMES = {
+    "ta": "Tamil (தமிழ்)",
+    "ml": "Malayalam (മലയാളം)",
+    "hi": "Hindi (हिंदी)",
+    "en": "English",
+}
+
+
+def scan_medicine_packaging_vision(image_input: Union[bytes, str], lang: str = "en") -> Dict[str, Any]:
     """
     Google Lens-style Multimodal Vision AI analysis for medicine packaging (boxes, blister strips, bottles).
     Extracts:
@@ -44,6 +52,7 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
     - dosage_form: form factor (e.g. "Tablet", "Capsule", "Oral Liquid", "Suspension")
     - all_text: complete legible text on the packaging
     - engine: the AI recognition engine used
+    - purpose, main_uses, how_to_take, warnings, side_effects in the requested language
     """
     empty_res = {
         "drug_name": "",
@@ -100,6 +109,17 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
 
     data_uri = f"data:{mime_type};base64,{raw_b64}"
 
+    target_lang_code = (lang or "en").lower().strip()
+    target_lang_name = LANGUAGE_NAMES.get(target_lang_code, "English")
+    lang_instruction = ""
+    if target_lang_code not in ("en", "english"):
+        lang_instruction = (
+            f"\n\nCRITICAL LANGUAGE INSTRUCTION:\n"
+            f"The patient's language is {target_lang_name}.\n"
+            f"You MUST write the values for 'purpose', 'main_uses', 'how_to_take', 'warnings', and 'side_effects' strictly in {target_lang_name}.\n"
+            f"Keep 'drug_name', 'generic_name', 'strength', and 'dosage_form' in their standard English pharmaceutical terms so the doctor and patient have exact brand verification.\n"
+        )
+
     system_prompt = (
         "You are an expert clinical medicine packaging scanner like Google Lens. Carefully analyze this photo of a medicine box, blister strip, bottle, or tube.\n"
         "Identify the medicine and extract:\n"
@@ -113,6 +133,7 @@ def scan_medicine_packaging_vision(image_input: Union[bytes, str]) -> Dict[str, 
         '8. "how_to_take": List of 1 to 2 clear instructions on how to take it (e.g. after food with water).\n'
         '9. "warnings": List of 1 to 3 important precautions or contraindications.\n'
         '10. "side_effects": List of 2 to 4 common mild side effects.\n\n'
+        f"{lang_instruction}"
         "Return ONLY a valid JSON object matching:\n"
         "{\n"
         '  "drug_name": "...",\n'

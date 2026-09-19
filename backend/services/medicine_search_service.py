@@ -115,8 +115,15 @@ def search_medicines_fallback(cleaned_q: str, limit: int = 8) -> Dict[str, Any]:
                 "similarity_score": round(score, 3)
             })
 
-    # Sort descending by score, then alphabetically
-    scored_matches.sort(key=lambda x: (x["similarity_score"], -len(x["name"])), reverse=True)
+    # Sort descending by score, prioritizing standard formulary, then shorter name
+    scored_matches.sort(
+        key=lambda x: (
+            x["similarity_score"],
+            1 if x.get("category") != "Global Medicine" else 0,
+            -len(x["name"])
+        ),
+        reverse=True
+    )
     results = scored_matches[:limit]
 
     # If no exact/prefix match or zero matches, enrich with global medicines via NIH RxTerms
@@ -180,9 +187,12 @@ def search_medicines(raw_query: str, limit: int = 8) -> Dict[str, Any]:
                     similarity(name, %s) AS sim_name,
                     similarity(generic_name, %s) AS sim_gen,
                     CASE 
-                        WHEN LOWER(name) = %s OR LOWER(generic_name) = %s THEN 1.0
-                        WHEN LOWER(name) LIKE %s OR LOWER(generic_name) LIKE %s THEN 0.90
-                        WHEN LOWER(name) LIKE %s OR LOWER(generic_name) LIKE %s THEN 0.75
+                        WHEN LOWER(name) = %s THEN 1.0
+                        WHEN LOWER(generic_name) = %s THEN 0.95
+                        WHEN LOWER(name) LIKE %s THEN 0.92
+                        WHEN LOWER(generic_name) LIKE %s THEN 0.88
+                        WHEN LOWER(name) LIKE %s THEN 0.75
+                        WHEN LOWER(generic_name) LIKE %s THEN 0.70
                         ELSE GREATEST(similarity(name, %s), similarity(generic_name, %s)) * 0.69
                     END AS rank_score,
                     CASE 
@@ -197,7 +207,10 @@ def search_medicines(raw_query: str, limit: int = 8) -> Dict[str, Any]:
                     OR LOWER(generic_name) LIKE %s
                     OR similarity(name, %s) > 0.28
                     OR similarity(generic_name, %s) > 0.28
-                ORDER BY rank_score DESC, similarity(name, %s) DESC
+                ORDER BY 
+                    rank_score DESC, 
+                    CASE WHEN category != 'Global Medicine' THEN 1 ELSE 0 END DESC,
+                    similarity(name, %s) DESC
                 LIMIT %s;
                 """
                 params = (
