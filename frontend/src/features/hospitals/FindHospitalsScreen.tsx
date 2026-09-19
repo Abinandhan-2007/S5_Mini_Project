@@ -131,14 +131,14 @@ export const FindHospitalsScreen: React.FC = () => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
 
-      const matchesName = hosp.name.toLowerCase().includes(q);
-      const matchesAddress = hosp.address.toLowerCase().includes(q);
-      const matchesFacility = hosp.facilityType.toLowerCase().includes(q);
-      const matchesSpecialty = hosp.specialties.some((s) => s.toLowerCase().includes(q));
+      const matchesName = (hosp.name || '').toLowerCase().includes(q);
+      const matchesAddress = (hosp.address || '').toLowerCase().includes(q);
+      const matchesFacility = (hosp.facilityType || (hosp as any).facility_type || '').toLowerCase().includes(q);
+      const matchesSpecialty = Array.isArray(hosp.specialties) && hosp.specialties.some((s) => (s || '').toLowerCase().includes(q));
 
       const matchesDoctor = doctors.some(
-        (doc) => (doc.hospitalId === hosp.id || hosp.id === 'hosp-1') &&
-          (doc.name.toLowerCase().includes(q) || doc.specialty.toLowerCase().includes(q))
+        (doc) => (doc.hospitalId === hosp.id || (doc as any).hospital_id === hosp.id || hosp.id === 'hosp-1') &&
+          ((doc.name || '').toLowerCase().includes(q) || (doc.specialty || '').toLowerCase().includes(q))
       );
 
       return matchesName || matchesAddress || matchesFacility || matchesSpecialty || matchesDoctor;

@@ -31,6 +31,7 @@ import {
   Zap,
   RotateCcw,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import type { TokenQueueItem } from '../../types/receptionist';
 import type { PrescriptionMedicine, SoapNotes, PatientVitals, PatientEMRRecord, TriagePriority } from '../../types/doctor';
@@ -335,6 +336,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [rxValidationError, setRxValidationError] = useState<string | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(180);
   const [isCopiedPhone, setIsCopiedPhone] = useState(false);
 
@@ -475,6 +477,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
 
   // Add a medication row
   const handleAddMedication = () => {
+    setRxValidationError(null);
     setPrescriptions((prev) => [
       ...prev,
       {
@@ -489,6 +492,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   };
 
   const handleUpdateMed = (id: string, field: keyof PrescriptionMedicine, val: string) => {
+    setRxValidationError(null);
     setPrescriptions((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: val } : m))
     );
@@ -499,6 +503,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   };
 
   const handleSelectMedicine = (id: string, item: MedicineSearchResultItem) => {
+    setRxValidationError(null);
     const defaults = inferPrescriptionDefaults(item);
     setPrescriptions((prev) =>
       prev.map((m) => {
@@ -519,6 +524,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   };
 
   const handleApplyPresetDrug = (preset: typeof COMMON_DRUG_PRESETS[0]) => {
+    setRxValidationError(null);
     setPrescriptions((prev) => [
       ...prev.filter((p) => p.drugName.trim() !== ''),
       {
@@ -551,8 +557,25 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     }, 350);
   };
 
+  const hasValidMedication = () => prescriptions.some((m) => m.drugName.trim().length > 0);
+
+  const handleGoToSummary = () => {
+    if (!hasValidMedication()) {
+      setRxValidationError('Please add at least one medication before proceeding to the summary.');
+      showToast('⚠️ Please enter at least one medication before proceeding.');
+      return;
+    }
+    setRxValidationError(null);
+    setActiveTab('summary');
+  };
+
   // Print Prescription - Formal Hospital Letterhead Stationery (A4 / PDF)
   const handlePrintPrescription = () => {
+    if (!hasValidMedication()) {
+      setRxValidationError('Please add at least one medication before printing prescription.');
+      showToast('⚠️ Please enter at least one medication before printing.');
+      return;
+    }
     setActiveTab('summary');
     setTimeout(() => {
       const printFrame = document.createElement('iframe');
@@ -805,6 +828,12 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   // Finish Visit & Save to EMR
   const handleCompleteVisit = async () => {
     if (!patient) return;
+    if (!hasValidMedication()) {
+      setRxValidationError('Please add at least one medication before completing the visit.');
+      showToast('⚠️ Please enter at least one medication before completing the visit.');
+      setActiveTab('rx');
+      return;
+    }
     setIsFinishing(true);
 
     try {
@@ -1376,7 +1405,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
 
             <button
               type="button"
-              onClick={() => setActiveTab('summary')}
+              onClick={handleGoToSummary}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
                 activeTab === 'summary'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
@@ -1823,6 +1852,14 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 </div>
               </div>
 
+              {/* Medication Validation Warning Banner */}
+              {rxValidationError && (
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{rxValidationError}</span>
+                </div>
+              )}
+
               {/* Bottom Hop Button to Summary Tab */}
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <button
@@ -1835,7 +1872,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setActiveTab('summary')}
+                  onClick={handleGoToSummary}
                   className="px-4 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0B5A54] font-bold text-xs flex items-center gap-1.5 border border-teal-200 transition-all cursor-pointer"
                 >
                   <span>Review Visit Summary & Print</span>

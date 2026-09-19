@@ -1426,7 +1426,10 @@ def fetch_all_tokens_from_db(
                             continue
 
                         is_checked = bool(app_dict.get("is_checked_in", False))
-                        if is_checked or raw_status == "Checked In":
+                        # Priority: explicit terminal/active statuses always win over is_checked_in flag
+                        if raw_status in ["Completed", "In Consultation"]:
+                            token_status = raw_status
+                        elif is_checked or raw_status == "Checked In":
                             token_status = "Checked In"
                         elif raw_status in ["Upcoming", "Waiting", "Confirmed"]:
                             token_status = "Waiting"
@@ -1598,7 +1601,10 @@ def fetch_all_tokens_from_db(
                 p_name = app_dict.get("patient_name") or app_dict.get("patientName") or p_obj.get("full_name") or "Patient"
                 p_phone = app_dict.get("patient_phone") or app_dict.get("patientPhone") or p_obj.get("phone") or "+91 98765 43210"
 
-                if is_checked or raw_status == "Checked In":
+                # Priority: explicit terminal/active statuses always win over is_checked_in flag
+                if raw_status in ["Completed", "In Consultation"]:
+                    token_status = raw_status
+                elif is_checked or raw_status == "Checked In":
                     token_status = "Checked In"
                 elif raw_status in ["Upcoming", "Waiting", "Confirmed"]:
                     token_status = "Waiting"

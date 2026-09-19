@@ -70,6 +70,9 @@ export interface Hospital {
   imageUrl: string;
   specialties: string[];
   facilityType: 'General' | 'Cardiology' | 'Pediatrics' | 'Specialty Clinic' | 'Emergency Care';
+  latitude?: number;
+  longitude?: number;
+  coordinates?: { lat: number; lng: number };
 }
 
 export interface Appointment {

@@ -35,7 +35,14 @@ export const RemindersScreen: React.FC = () => {
     history.forEach((visit) => {
       const list = visit.prescriptions || visit.soapData?.prescriptions || [];
       list.forEach((rx: any, idx: number) => {
-        const name = typeof rx === 'string' ? rx : rx.drug_name || rx.name || 'Prescription';
+        let name = 'Prescription';
+        if (typeof rx === 'string') {
+          // If string like "Ciprofloxacin 500mg (1 Tab, BD, 5 Days...)", extract the medicine name
+          const clean = rx.split('(')[0].trim();
+          name = clean || rx;
+        } else if (typeof rx === 'object' && rx !== null) {
+          name = rx.drugName || rx.drug_name || rx.name || rx.medication_name || 'Prescription';
+        }
         const dosage = typeof rx === 'object' ? rx.dosage || '1 Tablet' : '1 Tablet';
         const medId = `rx-${visit.id || 'visit'}-${idx}`;
         const slotId = 'afternoon';
@@ -201,25 +208,25 @@ export const RemindersScreen: React.FC = () => {
       {/* MAIN CONTENT AREA */}
       <div className="px-4 sm:px-6 md:px-8 py-3 space-y-4 max-w-5xl mx-auto w-full">
         {/* Progress Card */}
-        <Card padding="md" className="bg-[#0B5A54] text-white space-y-2 shadow-xs">
+        <div className="bg-gradient-to-r from-[#0B5A54] to-[#126B64] rounded-2xl p-4 text-white space-y-2.5 shadow-sm border border-teal-800/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-emerald-300" />
-              <span className="text-xs font-bold font-heading">Today's Adherence</span>
+              <span className="text-xs font-bold font-heading text-white">Today's Adherence</span>
             </div>
-            <Badge variant="tint" size="sm" className="bg-white/20 text-white border-0">
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/25">
               {reminders.filter(r => r.taken).length}/{reminders.length} Taken
-            </Badge>
+            </span>
           </div>
-          <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-black/20 rounded-full h-2.5 overflow-hidden p-0.5">
             <div
-              className="bg-emerald-400 h-full transition-all duration-300"
+              className="bg-emerald-400 h-full transition-all duration-300 rounded-full shadow-xs"
               style={{
                 width: `${(reminders.filter(r => r.taken).length / Math.max(1, reminders.length)) * 100}%`,
               }}
             />
           </div>
-        </Card>
+        </div>
 
         {/* Reminders List */}
         <div className="space-y-3 text-left">

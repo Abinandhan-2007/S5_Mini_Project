@@ -527,15 +527,17 @@ def translate_medicine_info(
             "Authorization": f"Bearer {mistral_key}",
             "Content-Type": "application/json"
         }
+        # Truncate very long fields to avoid sending more than the model can echo back
+        MAX_FIELD_LEN = 800
         extract_for_translation = {
-            "purpose": info_dict.get("purpose") or "",
-            "indicationsAndUsage": info_dict.get("indicationsAndUsage") or "",
-            "summary": info_dict.get("summary") or "",
-            "mainUses": info_dict.get("mainUses") or [],
-            "howToTake": info_dict.get("howToTake") or [],
-            "warnings": info_dict.get("warnings") or [],
-            "sideEffects": info_dict.get("sideEffects") or [],
-            "disclaimer": info_dict.get("disclaimer") or "Informational reference only. Consult your doctor or pharmacist.",
+            "purpose": (info_dict.get("purpose") or "")[:MAX_FIELD_LEN],
+            "indicationsAndUsage": (info_dict.get("indicationsAndUsage") or "")[:MAX_FIELD_LEN],
+            "summary": (info_dict.get("summary") or "")[:MAX_FIELD_LEN],
+            "mainUses": (info_dict.get("mainUses") or [])[:8],
+            "howToTake": (info_dict.get("howToTake") or [])[:6],
+            "warnings": (info_dict.get("warnings") or [])[:6],
+            "sideEffects": (info_dict.get("sideEffects") or [])[:8],
+            "disclaimer": (info_dict.get("disclaimer") or "Informational reference only. Consult your doctor or pharmacist.")[:200],
         }
 
         prompt = (
@@ -551,9 +553,9 @@ def translate_medicine_info(
             "messages": [{"role": "user", "content": prompt}],
             "response_format": {"type": "json_object"},
             "temperature": 0.1,
-            "max_tokens": 700
+            "max_tokens": 2000
         }
-        with httpx.Client(timeout=14.0) as client:
+        with httpx.Client(timeout=20.0) as client:
             res = client.post(url, headers=headers, json=payload)
             if res.status_code == 200:
                 data = res.json()
@@ -570,8 +572,9 @@ def translate_medicine_info(
                 translated_res["lang"] = lang_code
                 _DRUG_INFO_CACHE[cache_key] = translated_res
                 return translated_res
+            else:
+                logger.warning(f"Mistral translation API error: HTTP {res.status_code} — {res.text[:300]}")
     except Exception as e:
         logger.warning(f"Error translating medicine info: {e}")
 
     return info_dict
-

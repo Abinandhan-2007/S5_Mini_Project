@@ -42,6 +42,8 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
     }
   }, [autoOpenAdd]);
 
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -52,7 +54,51 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
     receptionDesksCount: 2,
     logoUrl: '/hospital_default.jpg',
     isActive: true,
+    latitude: 11.0505,
+    longitude: 77.0373,
   });
+
+  const handleDetectGps = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setFormData((prev) => ({
+            ...prev,
+            latitude: parseFloat(pos.coords.latitude.toFixed(6)),
+            longitude: parseFloat(pos.coords.longitude.toFixed(6)),
+          }));
+          onShowToast('GPS coordinates updated from your device!');
+        },
+        (err) => alert(`GPS detection failed: ${err.message}`)
+      );
+    }
+  };
+
+  const handleGeocodeAddress = async () => {
+    if (!formData.address.trim()) {
+      alert('Please enter a physical address first.');
+      return;
+    }
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: parseFloat(parseFloat(data[0].lat).toFixed(6)),
+          longitude: parseFloat(parseFloat(data[0].lon).toFixed(6)),
+        }));
+        onShowToast('Auto-resolved GPS coordinates from address!');
+      } else {
+        alert('Could not resolve GPS for this address. Please enter coordinates manually or use Current Device GPS.');
+      }
+    } catch {
+      alert('Error connecting to map geocoder service.');
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   const filteredHospitals = hospitals.filter((h) =>
     h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,6 +117,8 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
       receptionDesksCount: 2,
       logoUrl: '/hospital_default.jpg',
       isActive: true,
+      latitude: 11.0505,
+      longitude: 77.0373,
     });
     setIsAddModalOpen(true);
   };
@@ -87,6 +135,8 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
       receptionDesksCount: h.receptionDesksCount,
       logoUrl: h.logoUrl,
       isActive: h.isActive,
+      latitude: h.latitude || 11.0505,
+      longitude: h.longitude || 77.0373,
     });
     setIsEditModalOpen(true);
   };
@@ -278,7 +328,17 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block mb-1">Physical Address</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block">Physical Address</label>
+                    <button
+                      type="button"
+                      onClick={handleGeocodeAddress}
+                      disabled={isGeocoding}
+                      className="text-[10.5px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <span>{isGeocoding ? 'Locating...' : '🔍 Find GPS'}</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
@@ -298,6 +358,48 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
                     placeholder="North District"
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                   />
+                </div>
+              </div>
+
+              {/* Precise GPS Coordinates for Route Navigation */}
+              <div className="p-3 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 font-mono uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5 text-[#0B5A54]" />
+                    Exact GPS Coordinates (Map Navigation)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDetectGps}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white hover:bg-teal-100 text-[#0B5A54] border border-teal-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    📍 Use Current GPS
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="11.0505"
+                      value={formData.latitude}
+                      onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="77.0373"
+                      value={formData.longitude}
+                      onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -391,7 +493,17 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block mb-1">Address</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block">Address</label>
+                    <button
+                      type="button"
+                      onClick={handleGeocodeAddress}
+                      disabled={isGeocoding}
+                      className="text-[10.5px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <span>{isGeocoding ? 'Locating...' : '🔍 Find GPS'}</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
@@ -409,6 +521,48 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                   />
+                </div>
+              </div>
+
+              {/* Precise GPS Coordinates for Route Navigation */}
+              <div className="p-3 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 font-mono uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5 text-[#0B5A54]" />
+                    Exact GPS Coordinates (Map Navigation)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDetectGps}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white hover:bg-teal-100 text-[#0B5A54] border border-teal-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    📍 Use Current GPS
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="11.0505"
+                      value={formData.latitude}
+                      onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="77.0373"
+                      value={formData.longitude}
+                      onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
                 </div>
               </div>
 

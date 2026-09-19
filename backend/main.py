@@ -2335,6 +2335,39 @@ def get_patient_prescriptions(patient_id: str):
     result = []
     seen_drugs = set()
 
+    def parse_duration_days(duration_str: str) -> int:
+        """Parse duration string like '4 Days', '7 Day Course', '2 weeks' into integer days."""
+        if not duration_str:
+            return 7
+        s = str(duration_str).lower().strip()
+        import re
+        m = re.search(r'(\d+)\s*(?:day|d\b)', s)
+        if m:
+            return int(m.group(1))
+        m = re.search(r'(\d+)\s*week', s)
+        if m:
+            return int(m.group(1)) * 7
+        m = re.search(r'(\d+)', s)
+        if m:
+            return int(m.group(1))
+        return 7
+
+    def compute_days_completed(created_at_str: str, total_days: int) -> int:
+        """Compute how many days have elapsed since the prescription was created."""
+        from datetime import date as date_cls
+        today = date_cls.today()
+        if not created_at_str:
+            return 0
+        try:
+            # Handle ISO datetime strings and plain date strings
+            date_part = str(created_at_str)[:10]  # 'YYYY-MM-DD'
+            start = date_cls.fromisoformat(date_part)
+            elapsed = (today - start).days
+            return max(0, min(elapsed, total_days))
+        except Exception:
+            return 0
+
+
     # 1. PostgreSQL Prescriptions Table
     if database.use_pg:
         try:
@@ -2356,6 +2389,9 @@ def get_patient_prescriptions(patient_id: str):
                         k = d_name.lower().strip()
                         if k not in seen_drugs:
                             seen_drugs.add(k)
+                            _dur_str = "5 Days"
+                            _total = parse_duration_days(_dur_str)
+                            _created = str(r.get("created_at") or "")
                             result.append({
                                 "id": str(r["id"]),
                                 "patientId": str(r["patient_id"]),
@@ -2364,11 +2400,13 @@ def get_patient_prescriptions(patient_id: str):
                                 "frequency": r.get("frequency") or "Twice daily",
                                 "mealTiming": r.get("meal_timing") or "As directed",
                                 "instructions": r.get("meal_timing") or "Take as directed by doctor",
-                                "duration": "5 Days",
+                                "duration": _dur_str,
+                                "totalDays": _total,
+                                "daysCompleted": compute_days_completed(_created, _total),
                                 "prescriber": r.get("prescriber") or "Treating Physician",
                                 "iconType": r.get("icon_type") or "pill",
                                 "status": r.get("status") or "Active",
-                                "createdAt": str(r.get("created_at") or "")
+                                "createdAt": _created
                             })
 
                     # Also extract any prescriptions inside consultations.soap_data
@@ -2395,6 +2433,9 @@ def get_patient_prescriptions(patient_id: str):
                                 k = m_name.lower().strip()
                                 if k not in seen_drugs:
                                     seen_drugs.add(k)
+                                    _dur_str = med.get("duration") or "3 Days"
+                                    _total = parse_duration_days(_dur_str)
+                                    _created = c_date
                                     result.append({
                                         "id": f"rx-cons-{c['id']}-{m_idx}",
                                         "patientId": target_pid,
@@ -2403,11 +2444,13 @@ def get_patient_prescriptions(patient_id: str):
                                         "frequency": med.get("frequency") or "Twice daily",
                                         "mealTiming": med.get("instructions") or med.get("mealTiming") or "After Food",
                                         "instructions": med.get("instructions") or "Follow doctor advice",
-                                        "duration": med.get("duration") or "3 Days",
+                                        "duration": _dur_str,
+                                        "totalDays": _total,
+                                        "daysCompleted": compute_days_completed(_created, _total),
                                         "prescriber": c_doc,
                                         "iconType": "pill",
                                         "status": "Active",
-                                        "createdAt": c_date
+                                        "createdAt": _created
                                     })
         except Exception as e:
             logger.warning(f"Error fetching PG prescriptions: {e}")
@@ -2424,6 +2467,9 @@ def get_patient_prescriptions(patient_id: str):
                 k = d_name.lower().strip()
                 if k not in seen_drugs:
                     seen_drugs.add(k)
+                    _dur_str = r.get("duration") or "3 Days"
+                    _total = parse_duration_days(_dur_str)
+                    _created = str(r.get("created_at") or "")
                     result.append({
                         "id": str(r.get("id")),
                         "patientId": target_pid,
@@ -2432,11 +2478,13 @@ def get_patient_prescriptions(patient_id: str):
                         "frequency": r.get("frequency") or "Twice daily",
                         "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
                         "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
-                        "duration": r.get("duration") or "3 Days",
+                        "duration": _dur_str,
+                        "totalDays": _total,
+                        "daysCompleted": compute_days_completed(_created, _total),
                         "prescriber": r.get("prescriber") or "Treating Physician",
                         "iconType": r.get("icon_type") or r.get("iconType") or "pill",
                         "status": r.get("status") or "Active",
-                        "createdAt": str(r.get("created_at") or "")
+                        "createdAt": _created
                     })
 
         for c in db.get("consultations", []):
@@ -2454,6 +2502,9 @@ def get_patient_prescriptions(patient_id: str):
                         k = m_name.lower().strip()
                         if k not in seen_drugs:
                             seen_drugs.add(k)
+                            _dur_str = med.get("duration") or "3 Days"
+                            _total = parse_duration_days(_dur_str)
+                            _created = c_date
                             result.append({
                                 "id": f"rx-json-{c.get('id')}-{m_idx}",
                                 "patientId": target_pid,
@@ -2462,11 +2513,13 @@ def get_patient_prescriptions(patient_id: str):
                                 "frequency": med.get("frequency") or "Twice daily",
                                 "mealTiming": med.get("instructions") or med.get("mealTiming") or "After Food",
                                 "instructions": med.get("instructions") or "Follow doctor advice",
-                                "duration": med.get("duration") or "3 Days",
+                                "duration": _dur_str,
+                                "totalDays": _total,
+                                "daysCompleted": compute_days_completed(_created, _total),
                                 "prescriber": c_doc,
                                 "iconType": "pill",
                                 "status": "Active",
-                                "createdAt": c_date
+                                "createdAt": _created
                             })
     except Exception as e:
         logger.warning(f"Error reading JSON prescriptions: {e}")
@@ -3000,6 +3053,8 @@ def format_hospital(h: dict) -> HospitalResponse:
     image = h.get("image_url") or h.get("imageUrl") or "/hospital_default.jpg"
     fac_type = h.get("facility_type") or h.get("facilityType") or "General"
     h_code = h.get("hospital_code") or h.get("hospitalCode")
+    lat = float(h["latitude"]) if h.get("latitude") is not None else None
+    lng = float(h["longitude"]) if h.get("longitude") is not None else None
 
     return HospitalResponse(
         id=str(h["id"]),
@@ -3019,7 +3074,9 @@ def format_hospital(h: dict) -> HospitalResponse:
         facilityType=fac_type,
         facility_type=fac_type,
         distanceMiles=dist,
-        distance_miles=dist
+        distance_miles=dist,
+        latitude=lat,
+        longitude=lng
     )
 
 def format_doctor(d: dict) -> DoctorResponse:

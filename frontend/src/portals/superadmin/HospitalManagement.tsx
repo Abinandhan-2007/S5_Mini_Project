@@ -68,6 +68,45 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
   const [email, setEmail] = useState('');
   const [facilityType, setFacilityType] = useState('General Hospital');
   const [specialtiesInput, setSpecialtiesInput] = useState('Cardiology, General Medicine, Pediatrics, Emergency Care');
+  const [latitude, setLatitude] = useState<string>('');
+  const [longitude, setLongitude] = useState<string>('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  const handleDetectGps = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLatitude(pos.coords.latitude.toFixed(6));
+          setLongitude(pos.coords.longitude.toFixed(6));
+        },
+        (err) => alert(`Could not detect GPS: ${err.message}`)
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  const handleGeocodeAddress = async () => {
+    if (!address.trim()) {
+      alert('Please enter a street address first.');
+      return;
+    }
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setLatitude(parseFloat(data[0].lat).toFixed(6));
+        setLongitude(parseFloat(data[0].lon).toFixed(6));
+      } else {
+        alert('Could not resolve GPS for this address. Please enter coordinates manually or use Current GPS button.');
+      }
+    } catch {
+      alert('Error connecting to map geocoder.');
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   const loadHospitals = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -115,6 +154,8 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
         email: email.trim() || undefined,
         facility_type: facilityType,
         specialties: specs.length > 0 ? specs : ['General Medicine'],
+        latitude: latitude ? parseFloat(latitude) : undefined,
+        longitude: longitude ? parseFloat(longitude) : undefined,
       });
 
       setCreatedSuccess(
@@ -124,6 +165,8 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
       setAddress('');
       setPhone('');
       setEmail('');
+      setLatitude('');
+      setLongitude('');
       await loadHospitals(true);
       setTimeout(() => {
         setIsAddModalOpen(false);
@@ -576,9 +619,19 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 font-sans">
-                  Full Street Address *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-sans">
+                    Full Street Address *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGeocodeAddress}
+                    disabled={isGeocoding}
+                    className="text-[11px] font-bold text-[#0B5A54] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{isGeocoding ? 'Locating...' : '🔍 Auto-Find GPS from Address'}</span>
+                  </button>
+                </div>
                 <textarea
                   required
                   rows={2}
@@ -587,6 +640,48 @@ export const HospitalManagement: React.FC<HospitalManagementProps> = ({
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B5A54] font-sans"
                 />
+              </div>
+
+              {/* Precise GPS Coordinates for Route Navigation */}
+              <div className="p-3 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 font-mono uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5 text-[#0B5A54]" />
+                    Exact GPS Coordinates (Map Navigation)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDetectGps}
+                    className="text-[10.5px] font-bold px-2 py-0.5 rounded-lg bg-white hover:bg-teal-100 text-[#0B5A54] border border-teal-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    📍 Use Current Device GPS
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 11.0505"
+                      value={latitude}
+                      onChange={(e) => setLatitude(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 77.0373"
+                      value={longitude}
+                      onChange={(e) => setLongitude(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

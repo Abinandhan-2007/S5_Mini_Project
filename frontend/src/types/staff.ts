@@ -116,6 +116,8 @@ export interface HospitalBranch {
   receptionDesksCount: number;
   logoUrl: string;
   isActive: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface DepartmentRecord {
@@ -138,11 +140,9 @@ export interface AnnouncementRecord {
   audience: 'All Patients' | 'All Staff' | 'Clinical Staff' | 'Front Desk Reception';
   department?: string;
   priority: 'Normal' | 'High' | 'Urgent';
-  scheduledFor: string;
-  sentAt: string;
-  deliveredCount: number;
-  readCount: number;
-  status: 'Sent' | 'Scheduled' | 'Draft';
+  isActive: boolean;
+  postedAt: string;
+  authorName: string;
 }
 
 export type SuperAdminHospitalLifecycle = 'Draft' | 'Pending Setup' | 'Active' | 'Suspended';
@@ -186,6 +186,8 @@ export interface SuperAdminHospital {
   has_active_admin: boolean;
   doctor_count: number;
   receptionist_count: number;
+  latitude?: number;
+  longitude?: number;
   admin?: {
     id: string;
     full_name: string;

@@ -80,6 +80,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [travelMode, setTravelMode] = useState<'drive' | 'bike' | 'walk'>('drive');
+  const [mapLayer, setMapLayer] = useState<'street' | 'satellite'>('satellite');
 
   const hospCoords = resolveHospitalCoords(hospitalName, coordinates);
 
@@ -104,7 +105,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
     if (isOpen) {
       detectLocation();
     }
-  }, [isOpen, hospitalName]);
+  }, [isOpen, hospitalName, coordinates]);
 
   if (!isOpen) return null;
 
@@ -114,10 +115,12 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
   const bikeMinutes = Math.max(2, Math.round((effectiveKm / 35) * 60)); // ~35 km/h bike avg
   const walkMinutes = Math.max(8, Math.round((effectiveKm / 4.8) * 60)); // ~4.8 km/h walk avg
 
-  // OpenStreetMap Bounding Box
+  // Map Embed URLs (Satellite via Google Maps embed `t=k`, Street via OpenStreetMap)
   const delta = 0.012;
   const bbox = `${hospCoords.lng - delta}%2C${hospCoords.lat - delta}%2C${hospCoords.lng + delta}%2C${hospCoords.lat + delta}`;
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${hospCoords.lat}%2C${hospCoords.lng}`;
+  const streetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${hospCoords.lat}%2C${hospCoords.lng}`;
+  const satelliteMapUrl = `https://maps.google.com/maps?q=${hospCoords.lat},${hospCoords.lng}&t=k&z=17&ie=UTF8&iwloc=&output=embed`;
+  const mapEmbedUrl = mapLayer === 'satellite' ? satelliteMapUrl : streetMapUrl;
 
   // Launch Google Maps GPS Turn-by-Turn
   const handleLaunchGoogleMaps = () => {
@@ -125,6 +128,15 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
     const dest = encodeURIComponent(`${hospitalName}, ${facilityAddress}`);
     const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${dest}&travelmode=driving`;
     window.open(gmapsUrl, '_blank');
+  };
+
+  // Launch OpenStreetMap (Free, never blocked by school Google Workspace accounts)
+  const handleLaunchOpenStreetMap = () => {
+    const route = userLoc
+      ? `${userLoc.lat}%2C${userLoc.lng}%3B${hospCoords.lat}%2C${hospCoords.lng}`
+      : `${hospCoords.lat}%2C${hospCoords.lng}`;
+    const osmUrl = `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${route}`;
+    window.open(osmUrl, '_blank');
   };
 
   // Launch Apple Maps
@@ -203,20 +215,46 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
             />
 
             {/* Custom Overlay Pin & Badge */}
-            <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200/80 flex items-center gap-2">
+            <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200/80 flex items-center gap-2 z-10">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
               <span className="text-[11px] font-black text-slate-800">
                 {department || 'Destination Hospital'}
               </span>
             </div>
 
+            {/* Satellite / Street Map Toggle Pill */}
+            <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200/80 flex items-center gap-1 z-10">
+              <button
+                type="button"
+                onClick={() => setMapLayer('satellite')}
+                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer ${
+                  mapLayer === 'satellite'
+                    ? 'bg-[#0B5A54] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                🛰️ Satellite
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapLayer('street')}
+                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer ${
+                  mapLayer === 'street'
+                    ? 'bg-[#0B5A54] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                🗺️ Road Map
+              </button>
+            </div>
+
             {/* Open Full Google Maps Floating Badge */}
             <button
               onClick={handleLaunchGoogleMaps}
-              className="absolute bottom-3 right-3 bg-[#0B5A54] hover:bg-[#094742] text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              className="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-[#0B5A54] border border-teal-300/80 text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 z-10"
             >
-              <span>View in Satellite</span>
-              <ExternalLink className="w-3 h-3" />
+              <span>Open in Google Maps</span>
+              <ExternalLink className="w-3 h-3 text-[#0B5A54]" />
             </button>
           </div>
 
@@ -338,20 +376,31 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
         </div>
 
         {/* Footer Action Bar */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row gap-2.5 shrink-0">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row gap-2 shrink-0">
           <button
             type="button"
             onClick={handleLaunchGoogleMaps}
-            className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-teal-900/15 hover:shadow-lg transition-all cursor-pointer active:scale-98"
+            className="flex-1 py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-98"
+            title="Opens Google Maps Navigation (requires Google Maps enabled on your account)"
           >
             <Navigation className="w-4 h-4" />
-            <span>Start Turn-by-Turn GPS Navigation</span>
+            <span>Google Maps</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleLaunchOpenStreetMap}
+            className="flex-1 py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98"
+            title="OpenRoute / OpenStreetMap (Works on school & restricted accounts)"
+          >
+            <MapPin className="w-4 h-4 text-emerald-400" />
+            <span>Open Directions</span>
           </button>
 
           <button
             type="button"
             onClick={handleLaunchAppleMaps}
-            className="py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+            className="py-2.5 px-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
           >
             <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
             <span>Apple Maps</span>

@@ -65,6 +65,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const completedPatients = queue.filter((p) => p.status === 'Completed' || (p.status as any) === 'Done');
 
   // Currently Serving Patient (Active in consultation OR next in line if none)
+  // Exclude completed patients from nowServing — they should never re-appear as pending
   const nowServing = inConsultationPatients[0] || activePatient || waitingPatients[0] || null;
 
   // Helper to derive priority
@@ -321,7 +322,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   </p>
                 </div>
 
-                {/* Action Buttons: Cancel and Accept */}
+                {/* Action Buttons: Cancel and Accept — hidden for completed visits */}
+                {nowServing.status === 'Completed' || (nowServing.status as any) === 'Done' ? (
+                  <div className="flex items-center gap-2 pt-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <span className="text-sm font-bold text-emerald-700">Visit Concluded — Prescription & EMR Saved</span>
+                  </div>
+                ) : (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                   {/* Now Serving Pre-Consultation Vitals Status */}
                   {(() => {
@@ -355,16 +362,17 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   })()}
 
                   <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                    {/* Cancel / Decline Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleCancelPatient(nowServing)}
-                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-slate-200 hover:border-rose-200 bg-white hover:bg-rose-50/80 text-slate-600 hover:text-rose-600 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 group"
-                      title="Decline or cancel this patient visit"
-                    >
-                      <XCircle className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition-colors" />
-                      <span>Cancel</span>
-                    </button>
+                    {nowServing.status !== 'In Consultation' && (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelPatient(nowServing)}
+                        className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-slate-200 hover:border-rose-200 bg-white hover:bg-rose-50/80 text-slate-600 hover:text-rose-600 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 group"
+                        title="Decline or cancel this patient visit"
+                      >
+                        <XCircle className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition-colors" />
+                        <span>Cancel</span>
+                      </button>
+                    )}
 
                     {/* Accept & Open Active Consultation */}
                     <button
@@ -373,11 +381,12 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-[#0B5A54] hover:bg-[#084843] text-white font-black text-xs sm:text-sm shadow-sm hover:shadow-md hover:shadow-teal-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer group"
                     >
                       <CheckCircle2 className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
-                      <span>Accept</span>
+                      <span>{nowServing.status === 'In Consultation' ? 'Resume' : 'Accept'}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-teal-200 group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
                 </div>
+                )}
               </div>
             ) : (
               <div className="py-10 text-center text-slate-400">

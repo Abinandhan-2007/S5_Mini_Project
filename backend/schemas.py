@@ -279,6 +279,8 @@ class HospitalResponse(BaseModel):
     facility_type: Optional[str] = "General"
     distanceMiles: Optional[float] = 1.0
     distance_miles: Optional[float] = 1.0
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class DoctorResponse(BaseModel):
     id: str

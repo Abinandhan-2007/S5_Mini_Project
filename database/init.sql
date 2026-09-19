@@ -82,6 +82,8 @@ ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS facility_type VARCHAR(100) DEFAUL
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS distance_miles DECIMAL(4, 1) DEFAULT 1.0;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 6);
+ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 6);
 
 -- Trigger Function for Auto-Generating Hospital Display Codes (H001, H002, H003...)
 CREATE OR REPLACE FUNCTION generate_hospital_code()

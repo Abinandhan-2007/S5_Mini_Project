@@ -256,14 +256,43 @@ const getDoseSlotsForMed = (frequencyStr = '', dosageStr = ''): DoseSlot[] => {
   ];
 };
 
-// Default prescribed course lengths per medication index
+/** Parse duration string like "4 Days", "7 Day Course", "2 Weeks" → number of days */
+const parseDurationDays = (duration: string): number => {
+  if (!duration) return 7;
+  const s = duration.toLowerCase();
+  const dayMatch = s.match(/(\d+)\s*(?:day|d\b)/);
+  if (dayMatch) return parseInt(dayMatch[1], 10);
+  const weekMatch = s.match(/(\d+)\s*week/);
+  if (weekMatch) return parseInt(weekMatch[1], 10) * 7;
+  const numMatch = s.match(/(\d+)/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+  return 7;
+};
+
+/** Compute how many days have elapsed since prescription was created */
+const computeDaysCompleted = (createdAt: string | undefined, totalDays: number): number => {
+  if (!createdAt) return 0;
+  try {
+    const datePart = createdAt.slice(0, 10);
+    const start = new Date(datePart);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    const elapsed = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
+    return Math.max(0, Math.min(elapsed, totalDays));
+  } catch {
+    return 0;
+  }
+};
+
+// Default prescribed course lengths — only used when duration string is missing
 const DEFAULT_COURSE_DAYS = [
-  { total: 10, completed: 4 },
-  { total: 14, completed: 11 },
-  { total: 30, completed: 18 },
-  { total: 7, completed: 5 },
-  { total: 14, completed: 8 },
-  { total: 5, completed: 3 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
+  { total: 7, completed: 0 },
 ];
 
 export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
@@ -305,6 +334,17 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : [];
     return sourceList.map((p, idx) => {
       const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
+      // Derive totalDays: prefer explicit backend field, then parse duration string, then fallback
+      const resolvedTotal: number =
+        p.totalDays ??
+        (p.duration ? parseDurationDays(p.duration as string) : courseDefaults.total);
+      // Derive daysCompleted: prefer explicit backend field, then compute from createdAt, then 0
+      const resolvedCompleted: number =
+        p.daysCompleted !== undefined
+          ? p.daysCompleted
+          : ((p as any).createdAt
+              ? computeDaysCompleted((p as any).createdAt as string, resolvedTotal)
+              : 0);
       return {
         id: p.id || `rx-${idx}`,
         drugName: (p.drugName || 'Prescription Medication')
@@ -317,8 +357,8 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
         status: p.status || (idx === 4 ? 'Refill Soon' : 'Active'),
         iconType: p.iconType || 'pill',
         nextDose: p.nextDose || (idx === 0 ? 'Today at 8:00 PM' : 'Tomorrow 9:00 AM'),
-        totalDays: p.totalDays || courseDefaults.total,
-        daysCompleted: p.daysCompleted !== undefined ? p.daysCompleted : courseDefaults.completed,
+        totalDays: resolvedTotal,
+        daysCompleted: resolvedCompleted,
       };
     });
   }, [prescriptions]);

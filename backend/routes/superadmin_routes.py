@@ -40,6 +40,8 @@ class CreateHospitalRequest(BaseModel):
     rating: Optional[float] = 4.8
     reviews_count: Optional[int] = 0
     image_url: Optional[str] = "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800&auto=format&fit=crop&q=80"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class UpdateHospitalRequest(BaseModel):
@@ -50,6 +52,8 @@ class UpdateHospitalRequest(BaseModel):
     facility_type: Optional[str] = None
     emergency_available: Optional[bool] = None
     is_active: Optional[bool] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class HospitalLifecycleRequest(BaseModel):
@@ -530,11 +534,13 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
                         INSERT INTO hospitals (
                             id, name, address, phone, email, facility_type, 
                             rating, reviews_count, emergency_available, 
-                            image_url, specialties, distance_miles, is_active
+                            image_url, specialties, distance_miles, is_active,
+                            latitude, longitude
                         ) VALUES (
                             %s, %s, %s, %s, %s, %s, 
                             %s, %s, %s, 
-                            %s, %s, 1.0, true
+                            %s, %s, 1.0, true,
+                            %s, %s
                         )
                         RETURNING id, hospital_code, name, address, phone, email, is_active, created_at;
                         """,
@@ -549,7 +555,9 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
                             payload.reviews_count or 0,
                             payload.emergency_available if payload.emergency_available is not None else True,
                             payload.image_url or "",
-                            payload.specialties or ["General Medicine", "Emergency Care"]
+                            payload.specialties or ["General Medicine", "Emergency Care"],
+                            payload.latitude,
+                            payload.longitude
                         )
                     )
                     row = cur.fetchone()
@@ -585,7 +593,9 @@ def create_hospital(payload: CreateHospitalRequest, current_user: Dict[str, Any]
             "is_active": True,
             "is_suspended": False,
             "lifecycle_state": "Draft",
-            "distance_miles": 1.0
+            "distance_miles": 1.0,
+            "latitude": payload.latitude,
+            "longitude": payload.longitude
         }
         h_list.append(new_hosp_entry)
         db["hospitals"] = h_list

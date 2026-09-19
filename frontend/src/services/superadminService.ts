@@ -52,6 +52,8 @@ export const superadminService = {
     facility_type?: string;
     specialties?: string[];
     emergency_available?: boolean;
+    latitude?: number;
+    longitude?: number;
   }): Promise<{ message: string; hospital: SuperAdminHospital }> => {
     const res = await apiPost('/superadmin/hospitals', payload);
     const data = await res.json();
