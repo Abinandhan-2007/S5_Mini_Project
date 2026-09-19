@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Layers,
   ShieldCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
@@ -30,6 +31,8 @@ import { AdminAppointmentOverview } from './AdminAppointmentOverview';
 import { AdminReportsAnalytics } from './AdminReportsAnalytics';
 import { AdminAnnouncements } from './AdminAnnouncements';
 import { AdminSettingsProfile } from './AdminSettingsProfile';
+import { StaffChatHub } from '../../components/chat/StaffChatHub';
+import { adminService } from '../../services/adminService';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 export type AdminTab =
@@ -41,6 +44,7 @@ export type AdminTab =
   | 'appointments'
   | 'reports'
   | 'announcements'
+  | 'chat'
   | 'settings';
 
 interface NavSection {
@@ -86,6 +90,8 @@ export const AdminLayout: React.FC = () => {
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
 
+  const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
+
   // Automatic robust background polling for Admin metrics and operations
   usePolling(
     async () => {
@@ -96,6 +102,10 @@ export const AdminLayout: React.FC = () => {
         fetchNurses(),
         fetchAnnouncements(true),
         fetchStaffMessages(true),
+        adminService.getHospitalDoctorLeaves().then((leaves) => {
+          const pending = leaves.filter((l) => l.status === 'Pending').length;
+          setPendingLeavesCount(pending);
+        }).catch(() => {}),
       ]);
     },
     {
@@ -162,8 +172,12 @@ export const AdminLayout: React.FC = () => {
           id: 'doctors',
           label: 'Doctor Management',
           icon: Stethoscope,
-          badge: doctors.length > 0 ? `${doctors.length}` : undefined,
-          badgeColor: 'bg-teal-50 text-[#0B5A54] border-teal-200',
+          badge: pendingLeavesCount > 0
+            ? `${pendingLeavesCount} leave${pendingLeavesCount > 1 ? 's' : ''}`
+            : (doctors.length > 0 ? `${doctors.length}` : undefined),
+          badgeColor: pendingLeavesCount > 0
+            ? 'bg-amber-50 text-amber-800 border-amber-300 font-semibold'
+            : 'bg-teal-50 text-[#0B5A54] border-teal-200',
         },
         {
           id: 'receptionists',
@@ -199,11 +213,18 @@ export const AdminLayout: React.FC = () => {
       groupTitle: 'COMMUNICATION & SYSTEM',
       items: [
         {
+          id: 'chat',
+          label: 'Staff Live Chat',
+          icon: MessageSquare,
+          badge: unreadStaffMessagesCount > 0 ? `${unreadStaffMessagesCount} new` : undefined,
+          badgeColor: 'bg-teal-50 text-[#0B5A54] border-teal-200 font-bold',
+        },
+        {
           id: 'announcements',
           label: 'Broadcasts & Staff Messages',
           icon: Megaphone,
-          badge: unreadStaffMessagesCount > 0 ? `${unreadStaffMessagesCount} msg` : (announcements.length > 0 ? `${announcements.length}` : undefined),
-          badgeColor: unreadStaffMessagesCount > 0 ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse' : 'bg-amber-50 text-amber-800 border-amber-200',
+          badge: announcements.length > 0 ? `${announcements.length}` : undefined,
+          badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
         },
         { id: 'settings', label: 'Settings & Profile', icon: Settings },
       ],
@@ -259,6 +280,11 @@ export const AdminLayout: React.FC = () => {
         return {
           title: 'Hospital Notifications',
           breadcrumb: `${hospName} / Broadcast Alerts`,
+        };
+      case 'chat':
+        return {
+          title: 'Staff Live Chat Messenger',
+          breadcrumb: `${hospName} / Real-Time Staff Communications`,
         };
       case 'settings':
         return {
@@ -604,6 +630,16 @@ export const AdminLayout: React.FC = () => {
 
           {activeTab === 'announcements' && (
             <AdminAnnouncements onShowToast={showToast} />
+          )}
+
+          {activeTab === 'chat' && (
+            <StaffChatHub
+              currentRole="admin"
+              currentStaffId={currentStaff?.id || currentStaff?.staff_id}
+              currentStaffName={adminDisplayName}
+              hospitalId={currentStaff?.hospital_id}
+              onShowToast={showToast}
+            />
           )}
 
           {activeTab === 'settings' && (

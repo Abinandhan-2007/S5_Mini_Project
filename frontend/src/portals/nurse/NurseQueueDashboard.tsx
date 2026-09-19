@@ -96,13 +96,17 @@ export const NurseQueueDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchQueue();
-    // Auto-refresh queue every 20 seconds
-    const interval = setInterval(fetchQueue, 20000);
+    // Auto-refresh queue every 6 seconds
+    const interval = setInterval(fetchQueue, 6000);
     return () => clearInterval(interval);
   }, [currentStaff]);
 
   // Filtered Queue
   const filteredQueue = queue.filter((item) => {
+    // Strictly require patient to be checked in at reception
+    const isCheckedIn = item.is_checked_in || item.queue_status === 'Checked In' || !!item.vitals;
+    if (!isCheckedIn) return false;
+
     // Search query matching
     const q = searchQuery.toLowerCase().trim();
     const matchesQuery =
@@ -120,10 +124,11 @@ export const NurseQueueDashboard: React.FC = () => {
   });
 
   // Summary counts
-  const totalWaiting = queue.length;
-  const pendingCount = queue.filter((i) => i.vitals_status === 'pending').length;
-  const recordedCount = queue.filter((i) => i.vitals_status === 'recorded').length;
-  const flaggedCount = queue.filter((i) => i.vitals_status === 'abnormal_flagged').length;
+  const checkedInQueue = queue.filter((i) => i.is_checked_in || i.queue_status === 'Checked In' || !!i.vitals);
+  const totalWaiting = checkedInQueue.length;
+  const pendingCount = checkedInQueue.filter((i) => i.vitals_status === 'pending').length;
+  const recordedCount = checkedInQueue.filter((i) => i.vitals_status === 'recorded').length;
+  const flaggedCount = checkedInQueue.filter((i) => i.vitals_status === 'abnormal_flagged').length;
 
   return (
     <div className="space-y-6">
@@ -320,11 +325,20 @@ export const NurseQueueDashboard: React.FC = () => {
 
                     {/* Patient Details */}
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h4 className="text-sm font-black text-slate-900 font-heading">{item.patient.name}</h4>
                         <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px] font-bold">
                           {item.patient.patient_code || 'PT-REG'}
                         </span>
+
+                        {/* Arrival / Check-in Badge */}
+                        {item.is_checked_in || item.queue_status === 'Checked In' ? (
+                          <span className="px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-[#0B5A54] text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-[#14B8A6]" />
+                            <span>Arrived / Checked In</span>
+                          </span>
+                        ) : null}
+
                         {/* Status Badge */}
                         {isFlagged ? (
                           <span className="px-2 py-0.5 rounded-full bg-rose-100 border border-rose-300 text-rose-700 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">

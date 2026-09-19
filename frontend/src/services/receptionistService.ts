@@ -366,4 +366,38 @@ export const receptionistService = {
     }
     return await res.json();
   },
+
+  async createNurseRequest(payload: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    department?: string;
+    shift?: string;
+    specialization?: string;
+    notes?: string;
+  }): Promise<{ success: boolean; request: any; message: string }> {
+    const res = await apiFetch('/receptionist/nurse-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to submit nurse onboarding request' }));
+      throw new Error(err.detail || `Failed with status ${res.status}`);
+    }
+    return await res.json();
+  },
+
+  async getNurseRequests(): Promise<any[]> {
+    try {
+      const res = await apiFetch('/receptionist/nurse-requests', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        return data.requests || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch nurse requests for receptionist', e);
+    }
+    return [];
+  },
 };

@@ -2,6 +2,7 @@
 import uuid
 import re
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Header, status
@@ -13,7 +14,9 @@ try:
 except ImportError:
     from backend.core.security import hash_password
 from routes.staff_auth import get_current_staff
-from schemas import PatientResponse
+from schemas import PatientResponse, DoctorLeaveStatusUpdate, NurseRequestStatusUpdate
+
+logger = logging.getLogger("carepulse.admin")
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Portal"])
 
@@ -1715,5 +1718,480 @@ def update_doctor_record(doctor_id: str, payload: Dict[str, Any]):
 
     write_json_db(db)
     return {"success": True, "message": "Doctor updated successfully"}
+
+
+@router.get("/doctor-leaves")
+def get_hospital_doctor_leaves_for_admin(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve doctor leave applications for the admin's hospital.
+    Superadmin can see all hospital leaves.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only hospital administrators can review doctor leave requests")
+
+    effective_hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (role == "superadmin")
+
+    if not is_superadmin and not effective_hosp_id:
+        return {"leaves": []}
+
+    leaves = []
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if is_superadmin:
+                        cur.execute("SELECT * FROM doctor_leaves ORDER BY applied_at DESC")
+                    else:
+                        cur.execute("SELECT * FROM doctor_leaves WHERE hospital_id = %s ORDER BY applied_at DESC", (effective_hosp_id,))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        leaves.append({
+                            "id": str(r["id"]),
+                            "doctorId": str(r["doctor_id"]),
+                            "doctor_id": str(r["doctor_id"]),
+                            "doctorName": r["doctor_name"],
+                            "hospitalId": str(r["hospital_id"] or ""),
+                            "hospital_id": str(r["hospital_id"] or ""),
+                            "startDate": str(r["start_date"]),
+                            "endDate": str(r["end_date"]),
+                            "daysCount": r["days_count"],
+                            "reason": r["reason"],
+                            "status": r["status"],
+                            "appliedAt": r["applied_at"].isoformat() if hasattr(r["applied_at"], "isoformat") else str(r["applied_at"]),
+                            "approvedBy": r.get("approved_by") if "approved_by" in r else None,
+                            "approvedAt": r.get("approved_at").isoformat() if r.get("approved_at") and hasattr(r.get("approved_at"), "isoformat") else str(r.get("approved_at") or "")
+                        })
+        except Exception as e:
+            logger.warning(f"Error fetching doctor leaves from pg for admin: {e}")
+
+    if not leaves:
+        db = read_json_db()
+        for l in db.get("doctor_leaves", []):
+            l_hosp = l.get("hospital_id") or l.get("hospitalId")
+            if is_superadmin or l_hosp == effective_hosp_id:
+                leaves.append(l)
+
+    return {"leaves": leaves}
+
+
+@router.patch("/doctor-leaves/{leave_id}/status")
+def update_doctor_leave_status_by_admin(
+    leave_id: str,
+    payload: DoctorLeaveStatusUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Approve, Reject, or Cancel a doctor leave request by Hospital Admin.
+    Strictly verifies multi-tenant isolation (admin can only manage leaves in their hospital).
+    Approving leave dynamically freezes consultation slots in that date range.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only hospital administrators can approve or reject leave requests")
+
+    new_status = (payload.status or "").strip().capitalize()
+    if new_status not in ["Approved", "Rejected", "Cancelled", "Pending"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Allowed: Approved, Rejected, Cancelled, Pending")
+
+    user_hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (role == "superadmin")
+
+    target_leave = None
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM doctor_leaves WHERE id = %s LIMIT 1", (leave_id,))
+                    row = cur.fetchone()
+                    if row:
+                        target_leave = dict(row)
+        except Exception as e:
+            logger.warning(f"Error fetching leave for admin update in pg: {e}")
+
+    if not target_leave:
+        db = read_json_db()
+        for l in db.get("doctor_leaves", []):
+            if l.get("id") == leave_id:
+                target_leave = l
+                break
+
+    if not target_leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    leave_hosp_id = target_leave.get("hospital_id") or target_leave.get("hospitalId")
+    if not is_superadmin and user_hosp_id and leave_hosp_id and user_hosp_id != leave_hosp_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Cannot modify leave request for a doctor in another hospital."
+        )
+
+    admin_name = staff_ctx.get("name") or "Hospital Admin"
+    now_iso = datetime.now().isoformat()
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE doctor_leaves SET status = %s WHERE id = %s RETURNING *", (new_status, leave_id))
+                    row = cur.fetchone()
+                    if row:
+                        conn.commit()
+                        target_leave = dict(row)
+        except Exception as e:
+            logger.warning(f"Error updating leave status in pg by admin: {e}")
+
+    db = read_json_db()
+    for l in db.get("doctor_leaves", []):
+        if l.get("id") == leave_id:
+            l["status"] = new_status
+            l["approvedBy"] = admin_name if new_status == "Approved" else None
+            l["approvedAt"] = now_iso if new_status == "Approved" else None
+            target_leave = l
+    write_json_db(db)
+
+    # If approved, dispatch automated notification messages to Receptionist and Nurse
+    if new_status == "Approved":
+        try:
+            from routes.communication_routes import dispatch_system_staff_notification
+            effective_hosp = leave_hosp_id or user_hosp_id or "hosp-bag"
+            doc_name = target_leave.get("doctor_name") or target_leave.get("doctorName") or "Doctor"
+            s_date = target_leave.get("start_date") or target_leave.get("startDate") or ""
+            e_date = target_leave.get("end_date") or target_leave.get("endDate") or ""
+            days_c = target_leave.get("days_count") or target_leave.get("daysCount") or 1
+            reason_txt = target_leave.get("reason") or "Personal Leave"
+
+            # 1. Message to Receptionists
+            rec_msg = (
+                f"Doctor Leave Approved: Dr. {doc_name} is on approved leave from {s_date} to {e_date} ({days_c} days). "
+                f"Reason: {reason_txt}. Consultation slots for these dates have been automatically frozen. "
+                f"Please adjust front-desk appointment schedules and inform arriving patients."
+            )
+            dispatch_system_staff_notification(
+                hospital_id=effective_hosp,
+                subject=f"Doctor Leave Approved: Dr. {doc_name}",
+                message=rec_msg,
+                recipient_role="receptionist",
+                priority="high",
+                sender_name=admin_name
+            )
+
+            # 2. Message to Nurses
+            nurse_msg = (
+                f"Doctor Leave Approved: Dr. {doc_name} is on approved leave from {s_date} to {e_date} ({days_c} days). "
+                f"Reason: {reason_txt}. Consultation slots are frozen. "
+                f"Please update OPD triage queues and pre-op vitals scheduling accordingly."
+            )
+            dispatch_system_staff_notification(
+                hospital_id=effective_hosp,
+                subject=f"Doctor Leave Approved: Dr. {doc_name}",
+                message=nurse_msg,
+                recipient_role="nurse",
+                priority="high",
+                sender_name=admin_name
+            )
+        except Exception as notif_err:
+            logger.warning(f"Error dispatching leave approval notification: {notif_err}")
+
+    return {"success": True, "leave": target_leave}
+
+
+def ensure_nurse_requests_table():
+    """Ensure nurse_requests table exists in PostgreSQL."""
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS nurse_requests (
+                            id VARCHAR(100) PRIMARY KEY,
+                            hospital_id VARCHAR(100) NOT NULL,
+                            requested_by_id VARCHAR(100),
+                            requested_by_name VARCHAR(255),
+                            requested_by_role VARCHAR(50) DEFAULT 'receptionist',
+                            full_name VARCHAR(255) NOT NULL,
+                            email VARCHAR(255) NOT NULL,
+                            phone VARCHAR(100),
+                            department VARCHAR(100) DEFAULT 'Triage & Vitals',
+                            shift VARCHAR(100) DEFAULT 'Morning (07:00 AM - 03:30 PM)',
+                            specialization VARCHAR(100) DEFAULT 'General Nursing',
+                            notes TEXT,
+                            status VARCHAR(50) DEFAULT 'Pending',
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            approved_by VARCHAR(255),
+                            approved_at TIMESTAMP WITH TIME ZONE,
+                            rejection_reason TEXT
+                        );
+                    """)
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"ensure_nurse_requests_table note: {e}")
+
+
+@router.get("/nurse-requests")
+def get_nurse_requests_for_admin(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve nurse onboarding applications submitted by Receptionists.
+    Scoped to admin's hospital (or all for SuperAdmin).
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only administrators can view nurse onboarding requests")
+
+    effective_hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (role == "superadmin")
+
+    ensure_nurse_requests_table()
+    requests = []
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if is_superadmin:
+                        cur.execute("SELECT * FROM nurse_requests ORDER BY created_at DESC")
+                    else:
+                        cur.execute("SELECT * FROM nurse_requests WHERE hospital_id = %s ORDER BY created_at DESC", (effective_hosp_id,))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        requests.append({
+                            "id": str(r["id"]),
+                            "hospitalId": str(r["hospital_id"]),
+                            "requestedById": str(r.get("requested_by_id") or ""),
+                            "requestedByName": r.get("requested_by_name") or "Receptionist",
+                            "requestedByRole": r.get("requested_by_role") or "receptionist",
+                            "fullName": r["full_name"],
+                            "email": r["email"],
+                            "phone": r.get("phone") or "",
+                            "department": r.get("department") or "Triage & Vitals",
+                            "shift": r.get("shift") or "Morning (07:00 AM - 03:30 PM)",
+                            "specialization": r.get("specialization") or "General Nursing",
+                            "notes": r.get("notes") or "",
+                            "status": r.get("status") or "Pending",
+                            "createdAt": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+                            "approvedBy": r.get("approved_by"),
+                            "approvedAt": r["approved_at"].isoformat() if r.get("approved_at") and hasattr(r["approved_at"], "isoformat") else str(r.get("approved_at") or ""),
+                            "rejectionReason": r.get("rejection_reason")
+                        })
+        except Exception as e:
+            logger.warning(f"Error fetching nurse requests in pg: {e}")
+
+    if not requests:
+        db = read_json_db()
+        for nr in db.get("nurse_requests", []):
+            nr_hosp = nr.get("hospital_id") or nr.get("hospitalId")
+            if is_superadmin or nr_hosp == effective_hosp_id:
+                requests.append(nr)
+
+    return {"success": True, "requests": requests}
+
+
+@router.patch("/nurse-requests/{request_id}/status")
+def update_nurse_request_status_by_admin(
+    request_id: str,
+    payload: NurseRequestStatusUpdate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Approve or reject a nurse onboarding application submitted by a receptionist.
+    If approved:
+      1. Automatically creates a nurse account in staff table with auto-generated staff_code (N001xxx).
+      2. Dispatches confirmation message to the Receptionist.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only administrators can approve or reject nurse requests")
+
+    new_status = (payload.status or "").strip().capitalize()
+    if new_status not in ["Approved", "Rejected"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Allowed: Approved, Rejected")
+
+    user_hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (role == "superadmin")
+    admin_name = staff_ctx.get("name") or "Hospital Admin"
+    now_iso = datetime.now().isoformat()
+
+    ensure_nurse_requests_table()
+    target_req = None
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM nurse_requests WHERE id = %s LIMIT 1", (request_id,))
+                    row = cur.fetchone()
+                    if row:
+                        target_req = dict(row)
+        except Exception as e:
+            logger.warning(f"Error fetching nurse request in pg: {e}")
+
+    if not target_req:
+        db = read_json_db()
+        for nr in db.get("nurse_requests", []):
+            if nr.get("id") == request_id:
+                target_req = nr
+                break
+
+    if not target_req:
+        raise HTTPException(status_code=404, detail="Nurse onboarding request not found")
+
+    req_hosp_id = target_req.get("hospital_id") or target_req.get("hospitalId")
+    if not is_superadmin and user_hosp_id and req_hosp_id and user_hosp_id != req_hosp_id:
+        raise HTTPException(status_code=403, detail="Access denied: Cannot review nurse requests from another hospital.")
+
+    rejection_reason = payload.rejectionReason or payload.rejection_reason or ""
+    created_nurse = None
+
+    # If approved, auto-provision the nurse account
+    if new_status == "Approved":
+        nurse_name = target_req.get("full_name") or target_req.get("fullName") or "Nurse"
+        nurse_email = (target_req.get("email") or "").strip().lower()
+        nurse_phone = target_req.get("phone") or "+91 98765 00000"
+        nurse_dept = target_req.get("department") or "Triage & Vitals"
+        nurse_shift = target_req.get("shift") or "Morning (07:00 AM - 03:30 PM)"
+        hosp_id = req_hosp_id or user_hosp_id or "hosp-bag"
+
+        new_nurse_id = str(uuid.uuid4())
+        hashed_pass = hash_password("Nurse@123")
+        staff_code = None
+
+        if database.use_pg:
+            try:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            INSERT INTO staff (id, full_name, email, password_hash, role, specialization, phone, hospital_id)
+                            VALUES (%s, %s, %s, %s, 'nurse', %s, %s, %s)
+                            RETURNING id, staff_code, full_name, email, role, hospital_id
+                        """, (new_nurse_id, nurse_name, nurse_email, hashed_pass, nurse_dept, nurse_phone, hosp_id))
+                        row = cur.fetchone()
+                        if row:
+                            new_nurse_id = str(row["id"])
+                            staff_code = row.get("staff_code")
+                        conn.commit()
+            except Exception as e:
+                logger.warning(f"Error provisioning nurse in PG: {e}")
+
+        db = read_json_db()
+        if not staff_code:
+            hosp_num = "001"
+            matched_hosp = next((h for h in db.get("hospitals", []) if h.get("id") == hosp_id), None)
+            if matched_hosp:
+                hc = matched_hosp.get("hospital_code") or matched_hosp.get("hospitalCode") or ""
+                m = re.search(r"\d+", hc)
+                if m:
+                    hosp_num = f"{int(m.group(0)):03d}"
+            nurse_count = sum(1 for s in db.get("staff", []) if s.get("role") == "nurse" and (s.get("hospital_id") == hosp_id or s.get("hospitalId") == hosp_id))
+            staff_code = f"N{hosp_num}{101 + nurse_count:03d}"
+
+        created_nurse = {
+            "id": new_nurse_id,
+            "staff_code": staff_code,
+            "staffCode": staff_code,
+            "full_name": nurse_name,
+            "name": nurse_name,
+            "email": nurse_email,
+            "role": "nurse",
+            "specialization": nurse_dept,
+            "department": nurse_dept,
+            "shift": nurse_shift,
+            "phone": nurse_phone,
+            "hospital_id": hosp_id,
+            "hospitalId": hosp_id,
+            "is_active": True,
+            "isActive": True,
+        }
+
+        # Dual-write nurse to JSON DB
+        stf_list = db.get("staff", [])
+        if not any(s.get("id") == new_nurse_id for s in stf_list):
+            stf_list.append(created_nurse)
+            db["staff"] = stf_list
+        write_json_db(db)
+
+        # Send confirmation message to Receptionist
+        try:
+            from routes.communication_routes import dispatch_system_staff_notification
+            dispatch_system_staff_notification(
+                hospital_id=hosp_id,
+                subject=f"Nurse Requisition Approved: {nurse_name}",
+                message=(
+                    f"Nurse onboarding request for '{nurse_name}' ({nurse_dept}) has been approved by {admin_name}. "
+                    f"Account provisioned with Staff Code: {staff_code}. Default login password: Nurse@123."
+                ),
+                recipient_role="receptionist",
+                priority="normal",
+                sender_name=admin_name
+            )
+        except Exception as e:
+            logger.warning(f"Error dispatching nurse approval confirmation: {e}")
+
+    # Update request record in Postgres
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE nurse_requests
+                        SET status = %s, approved_by = %s, approved_at = CURRENT_TIMESTAMP, rejection_reason = %s
+                        WHERE id = %s
+                        RETURNING *
+                    """, (new_status, admin_name, rejection_reason if new_status == "Rejected" else None, request_id))
+                    row = cur.fetchone()
+                    if row:
+                        conn.commit()
+                        target_req = dict(row)
+        except Exception as e:
+            logger.warning(f"Error updating nurse request status in PG: {e}")
+
+    # Dual-write request update to JSON DB
+    db = read_json_db()
+    for nr in db.get("nurse_requests", []):
+        if nr.get("id") == request_id:
+            nr["status"] = new_status
+            nr["approvedBy"] = admin_name
+            nr["approvedAt"] = now_iso
+            nr["rejectionReason"] = rejection_reason if new_status == "Rejected" else None
+            target_req = nr
+            break
+    write_json_db(db)
+
+    return {
+        "success": True,
+        "message": f"Nurse request status updated to {new_status}",
+        "request": target_req,
+        "nurse": created_nurse
+    }
+
+
 
 

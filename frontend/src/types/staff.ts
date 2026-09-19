@@ -4,6 +4,7 @@ export type StaffRole = 'superadmin' | 'admin' | 'receptionist' | 'doctor' | 'nu
 
 export interface Staff {
   id: string;
+  staff_id?: string;
   staff_code?: string;
   staffCode?: string;
   name?: string;

@@ -16,9 +16,15 @@ import {
   Calendar,
   ArrowUpDown,
   RotateCcw,
+  HeartPulse,
+  Microscope,
+  Activity,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { nurseService } from '../../services/nurseService';
 import type { TokenQueueItem, TokenStatus } from '../../types/receptionist';
+import type { NurseQueueItem } from '../../types/nurse';
 
 interface PatientBookingsProps {
   onShowToast?: (msg: string) => void;
@@ -110,6 +116,24 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
 
+  // Live Nurse Vitals & Labs Queue State
+  const [nurseQueue, setNurseQueue] = useState<NurseQueueItem[]>([]);
+  const [trackingItem, setTrackingItem] = useState<{ token: TokenQueueItem; triage?: NurseQueueItem | null } | null>(null);
+  const [trackingLabTests, setTrackingLabTests] = useState<any[]>([]);
+  const [isLoadingTrackingLabTests, setIsLoadingTrackingLabTests] = useState(false);
+
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const effectiveHospId = currentStaff?.hospital_id || currentStaff?.hospitalId;
+
+  const loadNurseQueue = React.useCallback(async () => {
+    try {
+      const q = await nurseService.getQueue(effectiveHospId);
+      setNurseQueue(q || []);
+    } catch {
+      // ignore offline fallback
+    }
+  }, [effectiveHospId]);
+
   // Date Filter & Sort by Date State (Default to 'ALL' to show all patient bookings)
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<SortByOption>('TIME_ASC');
@@ -121,7 +145,12 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
   useEffect(() => {
     fetchBookings();
     fetchTokens();
-  }, [fetchBookings, fetchTokens]);
+    loadNurseQueue();
+    const timer = setInterval(() => {
+      loadNurseQueue();
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [fetchBookings, fetchTokens, loadNurseQueue]);
 
   const rawBookings = bookings.length > 0 ? bookings : tokens;
 
@@ -130,14 +159,34 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
     try {
       const success = await checkInAppointment(item.id);
       if (success) {
-        onShowToast?.(`Patient ${item.patientName} checked in successfully and added to live queue!`);
+        onShowToast?.(`Patient ${item.patientName} checked in! Transferred to Nurse Station for triage vitals & lab tests.`);
       } else {
-        onShowToast?.(`Check-in completed for ${item.patientName}`);
+        onShowToast?.(`Check-in completed for ${item.patientName}. Transferred to Nurse Station.`);
       }
+      loadNurseQueue();
     } catch (err) {
       onShowToast?.(`Failed to check in ${item.patientName}`);
     } finally {
       setCheckingInId(null);
+    }
+  };
+
+  const handleOpenTrackingModal = async (item: TokenQueueItem) => {
+    const triageMatch = nurseQueue.find(
+      (nq) =>
+        nq.appointment_id === item.id ||
+        nq.appointment_id === item.appointmentId ||
+        (item.patientName && nq.patient?.name?.toLowerCase() === item.patientName.toLowerCase())
+    );
+    setTrackingItem({ token: item, triage: triageMatch || null });
+    setIsLoadingTrackingLabTests(true);
+    try {
+      const tests = await nurseService.getLabTests(item.id);
+      setTrackingLabTests(tests || []);
+    } catch {
+      setTrackingLabTests([]);
+    } finally {
+      setIsLoadingTrackingLabTests(false);
     }
   };
 
@@ -614,6 +663,12 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
           {filteredBookings.map((item) => {
             const doc = doctors.find((d) => d.id === item.doctorId);
             const isOnline = !isWalkIn(item.type);
+            const triageMatch = nurseQueue.find(
+              (nq) =>
+                nq.appointment_id === item.id ||
+                nq.appointment_id === item.appointmentId ||
+                (item.patientName && nq.patient?.name?.toLowerCase() === item.patientName.toLowerCase())
+            );
 
             return (
               <div
@@ -723,6 +778,51 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                       {doc?.roomNumber || 'Cabin 101 - 1st Floor'}
                     </div>
                   </div>
+
+                  {/* Live Clinical Status: Nurse Vitals & Labs Tracker */}
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-1 text-[10px]">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                      {triageMatch?.vitals ? (
+                        <span
+                          className={`px-2 py-0.5 rounded-md font-bold flex items-center gap-1 border ${
+                            triageMatch.abnormal_flags && triageMatch.abnormal_flags.length > 0
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                          title={`BP: ${triageMatch.vitals.bp_systolic}/${triageMatch.vitals.bp_diastolic}, Pulse: ${triageMatch.vitals.heart_rate}`}
+                        >
+                          <HeartPulse className="w-3 h-3 text-emerald-600" />
+                          <span>Vitals: {triageMatch.vitals.bp_systolic}/{triageMatch.vitals.bp_diastolic}</span>
+                        </span>
+                      ) : item.isCheckedIn || item.status === 'Checked In' ? (
+                        <span className="px-2 py-0.5 rounded-md font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-500" />
+                          <span>Vitals Pending (Nurse)</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md font-medium text-slate-400 bg-slate-100 border border-slate-200">
+                          Awaiting Arrival
+                        </span>
+                      )}
+
+                      {triageMatch?.lab_test_count && triageMatch.lab_test_count > 0 ? (
+                        <span className="px-1.5 py-0.5 rounded-md font-bold bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-1">
+                          <Microscope className="w-3 h-3 text-sky-600" />
+                          <span>{triageMatch.lab_test_count} Labs</span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTrackingModal(item)}
+                      className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200 font-extrabold flex items-center gap-1 text-[10px] cursor-pointer shrink-0 transition-colors"
+                      title="Track clinical vitals and diagnostic lab progress"
+                    >
+                      <Activity className="w-3 h-3 text-[#14B8A6]" />
+                      <span>Track</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Card Footer */}
@@ -770,6 +870,7 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                   <th className="p-4">Patient Details</th>
                   <th className="p-4">Doctor & Cabin</th>
                   <th className="p-4">Status</th>
+                  <th className="p-4">Clinical Status (Nurse)</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -777,6 +878,12 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                 {filteredBookings.map((item) => {
                   const doc = doctors.find((d) => d.id === item.doctorId);
                   const isOnline = !isWalkIn(item.type);
+                  const triageMatch = nurseQueue.find(
+                    (nq) =>
+                      nq.appointment_id === item.id ||
+                      nq.appointment_id === item.appointmentId ||
+                      (item.patientName && nq.patient?.name?.toLowerCase() === item.patientName.toLowerCase())
+                  );
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
@@ -843,6 +950,49 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                               <span>{item.checkInTime || item.arrivalTime || 'Checked In'}</span>
                             </span>
                           )}
+                        </div>
+                      </td>
+
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-1">
+                            {triageMatch?.vitals ? (
+                              <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1 border ${
+                                triageMatch.abnormal_flags && triageMatch.abnormal_flags.length > 0
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                <HeartPulse className="w-3 h-3 text-emerald-600" />
+                                <span>{triageMatch.vitals.bp_systolic}/{triageMatch.vitals.bp_diastolic} mmHg</span>
+                              </span>
+                            ) : item.isCheckedIn || item.status === 'Checked In' ? (
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 w-max">
+                                <Clock className="w-3 h-3 text-amber-500" />
+                                <span>Vitals Pending</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md font-medium text-[10px] text-slate-400 bg-slate-100 border border-slate-200 w-max">
+                                Waiting Arrival
+                              </span>
+                            )}
+
+                            {triageMatch?.lab_test_count && triageMatch.lab_test_count > 0 ? (
+                              <span className="px-1.5 py-0.5 rounded-md font-bold text-[10px] bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-1 w-max">
+                                <Microscope className="w-3 h-3 text-sky-600" />
+                                <span>{triageMatch.lab_test_count} Lab Tests</span>
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTrackingModal(item)}
+                            className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Track clinical vitals & lab diagnostics"
+                          >
+                            <Activity className="w-3.5 h-3.5 text-[#14B8A6]" />
+                            <span>Track</span>
+                          </button>
                         </div>
                       </td>
 
@@ -956,6 +1106,224 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
               <button
                 onClick={() => setTokenToPrint(null)}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          4. LIVE CLINICAL VITALS & LABS TRACKING INSPECTOR MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {trackingItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-5 border border-slate-200 shadow-2xl relative">
+            <button
+              onClick={() => setTrackingItem(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-200 font-mono text-xs font-black">
+                  {trackingItem.token.tokenNumber}
+                </span>
+                <h3 className="font-black text-lg text-slate-900 font-heading">
+                  {trackingItem.token.patientName}
+                </h3>
+                {trackingItem.token.isCheckedIn || trackingItem.token.status === 'Checked In' ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Checked In
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                    Waiting Arrival
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Attending: <strong className="text-[#0B5A54]">{trackingItem.token.doctorName}</strong> • Phone: <span className="font-mono">{trackingItem.token.patientPhone}</span> • Slot: <span className="font-mono font-bold">{trackingItem.token.timeSlot}</span>
+              </p>
+            </div>
+
+            {/* Section A: Nurse Triage Vitals */}
+            <div className={`p-4 rounded-2xl border ${
+              trackingItem.triage?.vitals
+                ? trackingItem.triage.abnormal_flags && trackingItem.triage.abnormal_flags.length > 0
+                  ? 'bg-rose-50/40 border-rose-200'
+                  : 'bg-emerald-50/30 border-emerald-200'
+                : 'bg-amber-50/40 border-amber-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <HeartPulse className={`w-4 h-4 ${trackingItem.triage?.vitals ? 'text-emerald-600' : 'text-amber-600'}`} />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                    Clinical Triage Vitals (Nurse Station)
+                  </h4>
+                </div>
+
+                {trackingItem.triage?.vitals ? (
+                  trackingItem.triage.abnormal_flags && trackingItem.triage.abnormal_flags.length > 0 ? (
+                    <span className="px-2 py-0.5 bg-rose-100 text-rose-700 border border-rose-300 font-extrabold text-[10px] rounded-full flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Abnormal Vitals Flagged</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-[10px] rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Recorded by Nurse</span>
+                    </span>
+                  )
+                ) : (
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] rounded-full">
+                    Pending Nurse Triage
+                  </span>
+                )}
+              </div>
+
+              {trackingItem.triage?.vitals ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                      <span className="text-[10px] font-bold text-slate-400 block">Blood Pressure</span>
+                      <span className="font-mono font-black text-slate-800 text-sm">
+                        {trackingItem.triage.vitals.bp_systolic && trackingItem.triage.vitals.bp_diastolic
+                          ? `${trackingItem.triage.vitals.bp_systolic}/${trackingItem.triage.vitals.bp_diastolic} mmHg`
+                          : '--'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                      <span className="text-[10px] font-bold text-slate-400 block">Heart Rate</span>
+                      <span className="font-mono font-black text-slate-800 text-sm">
+                        {trackingItem.triage.vitals.heart_rate ? `${trackingItem.triage.vitals.heart_rate} bpm` : '--'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                      <span className="text-[10px] font-bold text-slate-400 block">Temperature</span>
+                      <span className="font-mono font-black text-slate-800 text-sm">
+                        {trackingItem.triage.vitals.temperature
+                          ? `${trackingItem.triage.vitals.temperature} °${trackingItem.triage.vitals.temperature_unit || 'F'}`
+                          : '--'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                      <span className="text-[10px] font-bold text-slate-400 block">Blood Oxygen (SpO2)</span>
+                      <span className="font-mono font-black text-slate-800 text-sm">
+                        {trackingItem.triage.vitals.spo2 ? `${trackingItem.triage.vitals.spo2} %` : '--'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                      <span className="text-[10px] font-bold text-slate-400 block">Weight / BMI</span>
+                      <span className="font-mono font-black text-slate-800 text-sm">
+                        {trackingItem.triage.vitals.weight_kg ? `${trackingItem.triage.vitals.weight_kg} kg` : '--'}
+                        {trackingItem.triage.vitals.bmi ? ` (${trackingItem.triage.vitals.bmi.toFixed(1)})` : ''}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                      <span className="text-[10px] font-bold text-slate-400 block">Blood Glucose</span>
+                      <span className="font-mono font-black text-slate-800 text-sm">
+                        {trackingItem.triage.vitals.blood_glucose ? `${trackingItem.triage.vitals.blood_glucose} mg/dL` : 'Not tested'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {trackingItem.triage.abnormal_flags && trackingItem.triage.abnormal_flags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {trackingItem.triage.abnormal_flags.map((flag, idx) => (
+                        <span key={idx} className="px-2 py-0.5 rounded-md bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-black flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <span>{flag}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-slate-500 font-medium flex items-center justify-between pt-1 border-t border-slate-200/70">
+                    <span>Recorded by: <strong className="text-slate-800">{trackingItem.triage.vitals.recorded_by_name || 'Nurse'}</strong></span>
+                    <span className="font-mono">{trackingItem.triage.vitals.recorded_at ? new Date(trackingItem.triage.vitals.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 text-center space-y-1.5">
+                  <p className="text-xs font-bold text-slate-800">
+                    {trackingItem.token.isCheckedIn || trackingItem.token.status === 'Checked In'
+                      ? 'Patient is queued at the Nurse Station awaiting vitals'
+                      : 'Patient has not arrived/checked in yet'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                    Receptionists track progress here. Once the triage nurse inputs the clinical readings in the Nurse Portal, they appear here live.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Section B: Diagnostic Lab Tests */}
+            <div className={`p-4 rounded-2xl border ${
+              trackingLabTests.length > 0 ? 'bg-sky-50/30 border-sky-200' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Microscope className={`w-4 h-4 ${trackingLabTests.length > 0 ? 'text-sky-600' : 'text-slate-400'}`} />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                    Diagnostic Lab Tests & Specimen Status
+                  </h4>
+                </div>
+
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-white text-slate-700 border-slate-200">
+                  {trackingLabTests.length} Tests
+                </span>
+              </div>
+
+              {isLoadingTrackingLabTests ? (
+                <div className="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                  <RotateCcw className="w-3.5 h-3.5 animate-spin text-sky-500" />
+                  <span>Loading diagnostic tests...</span>
+                </div>
+              ) : trackingLabTests.length > 0 ? (
+                <div className="space-y-2">
+                  {trackingLabTests.map((t, idx) => (
+                    <div key={t.id || idx} className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                      <div>
+                        <span className="font-extrabold text-slate-900 block">{t.test_type}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {t.recorded_at ? new Date(t.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}
+                        </span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${
+                        t.status === 'Completed'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : t.status === 'In Analysis'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-sky-50 text-sky-700 border-sky-200'
+                      }`}>
+                        {t.status || 'Sample Collected'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 text-center py-2">
+                  No diagnostic laboratory tests have been ordered for this consultation.
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setTrackingItem(null)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Close
               </button>

@@ -87,6 +87,21 @@ export const HomeScreen: React.FC = () => {
     return [];
   }, [appointments, activeAppointment]);
 
+  // Check if patient has checked in at the hospital today
+  const isCheckedInAtHospital = useMemo(() => {
+    const list = appointments && appointments.length > 0 ? appointments : activeAppointment ? [activeAppointment] : [];
+    return list.some((a) => {
+      const s = (a.status || '').trim().toLowerCase();
+      return (
+        s === 'checked in' ||
+        s === 'checked_in' ||
+        s === 'in consultation' ||
+        s === 'in_consultation' ||
+        Boolean((a as any).isCheckedIn)
+      );
+    });
+  }, [appointments, activeAppointment]);
+
   const [selectedModalAppointment, setSelectedModalAppointment] = useState<Appointment | null>(null);
   const [liveQueueData, setLiveQueueData] = useState<LiveQueueData | null>(null);
   const [isLoadingQueue, setIsLoadingQueue] = useState(false);
@@ -402,47 +417,55 @@ export const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* ── HOSPITAL VITALS & LAB TEST TRACKING CARD ── */}
-        <div
-          onClick={() => navigate('/vitals-lab')}
-          className="bg-gradient-to-r from-[#0B5A54] via-teal-700 to-teal-600 rounded-3xl p-4 sm:p-5 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden"
-        >
-          {/* Decorative glow blob */}
-          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/8 blur-xl" />
-          <div className="absolute -right-2 -bottom-4 w-20 h-20 rounded-full bg-teal-300/10 blur-lg" />
+        {/* ── HOSPITAL VITALS & LAB TEST TRACKING CARD (Appears only after hospital check-in) ── */}
+        {isCheckedInAtHospital && (
+          <div
+            onClick={() => navigate('/vitals-lab')}
+            className="bg-gradient-to-r from-[#0B5A54] via-teal-700 to-teal-600 rounded-3xl p-4 sm:p-5 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden animate-in fade-in slide-in-from-bottom-2"
+          >
+            {/* Decorative glow blob */}
+            <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/8 blur-xl" />
+            <div className="absolute -right-2 -bottom-4 w-20 h-20 rounded-full bg-teal-300/10 blur-lg" />
 
-          <div className="flex items-center justify-between gap-3 relative z-10">
-            <div className="flex items-start gap-3.5">
-              {/* Icon cluster */}
-              <div className="flex items-center gap-1.5">
-                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-xs">
-                  <HeartPulse className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-between gap-3 relative z-10">
+              <div className="flex items-start gap-3.5">
+                {/* Icon cluster */}
+                <div className="flex items-center gap-1.5">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-xs">
+                    <HeartPulse className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-xs">
+                    <Microscope className="w-5 h-5 text-white" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-xs">
-                  <Microscope className="w-5 h-5 text-white" />
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
+                    </span>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-teal-200">
+                      Hospital Check-In Active
+                    </p>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-white leading-tight tracking-tight">
+                    Live Vitals & Lab Diagnostics
+                  </h3>
+                  <p className="text-[11px] text-teal-200/80 font-medium leading-snug max-w-[220px]">
+                    Your hospital arrival is confirmed. View nurse triage readings & live diagnostic lab tests
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-teal-200">
-                  Hospital Pre-Consultation
-                </p>
-                <h3 className="text-sm sm:text-base font-black text-white leading-tight tracking-tight">
-                  Vitals & Lab Test Tracking
-                </h3>
-                <p className="text-[11px] text-teal-200/80 font-medium leading-snug max-w-[200px]">
-                  View nurse-recorded triage vitals, live test status & diagnostic reports from your hospital visits
-                </p>
-              </div>
-            </div>
-
-            <div className="shrink-0 flex flex-col items-center gap-1.5">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center border border-white/25 group-hover:bg-white/30 transition-colors">
-                <ChevronRight className="w-4 h-4 text-white" />
+              <div className="shrink-0 flex flex-col items-center gap-1.5">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center border border-white/25 group-hover:bg-white/30 transition-colors">
+                  <ChevronRight className="w-4 h-4 text-white" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
       </main>
 

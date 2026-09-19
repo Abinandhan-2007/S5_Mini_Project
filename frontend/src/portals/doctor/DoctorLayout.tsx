@@ -18,6 +18,8 @@ import {
   Radio,
   BellRing,
   QrCode,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { usePolling } from '../../lib/usePolling';
@@ -35,6 +37,7 @@ import type { DoctorTab } from '../../types/doctor';
 import type { TokenQueueItem, DoctorRecord } from '../../types/receptionist';
 import { playCallChime, speakDoctorAnnouncement } from '../../services/consultationService';
 import { DoctorAvailabilityModal } from './DoctorAvailabilityModal';
+import { StaffChatHub } from '../../components/chat/StaffChatHub';
 
 
 
@@ -74,10 +77,42 @@ export const DoctorLayout: React.FC = () => {
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
   const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
+  const sendStaffMessage = useStaffStore((s) => s.sendStaffMessage);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
   const navigate = useNavigate();
+
+  // Direct Staff-Admin Message Modal State
+  const [isContactAdminOpen, setIsContactAdminOpen] = useState(false);
+  const [adminMsgSubject, setAdminMsgSubject] = useState('');
+  const [adminMsgBody, setAdminMsgBody] = useState('');
+  const [adminMsgPriority, setAdminMsgPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
+  const [isSendingAdminMsg, setIsSendingAdminMsg] = useState(false);
+
+  const handleSendAdminMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminMsgSubject.trim() || !adminMsgBody.trim()) return;
+
+    setIsSendingAdminMsg(true);
+    try {
+      await sendStaffMessage({
+        subject: adminMsgSubject.trim(),
+        message: adminMsgBody.trim(),
+        priority: adminMsgPriority,
+        recipientRole: 'admin',
+      });
+      showToast('Inquiry dispatched directly to Hospital Administration.');
+      setAdminMsgSubject('');
+      setAdminMsgBody('');
+      setAdminMsgPriority('normal');
+      setIsContactAdminOpen(false);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to dispatch message to administration.');
+    } finally {
+      setIsSendingAdminMsg(false);
+    }
+  };
 
   const handlePatientLoaded = (patientData: any) => {
     setScannedPatientRecord(patientData);
@@ -296,6 +331,11 @@ export const DoctorLayout: React.FC = () => {
           id: 'profile',
           label: 'Doctor Profile & Shift',
           icon: Settings,
+        },
+        {
+          id: 'chat',
+          label: 'Staff Live Chat',
+          icon: MessageSquare,
         },
         {
           id: 'notifications',
@@ -591,6 +631,20 @@ export const DoctorLayout: React.FC = () => {
               <span className="hidden sm:inline">Call Next</span>
             </button>
 
+            {/* Quick Action: Direct Message to Hospital Administration */}
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer ${
+                activeTab === 'chat'
+                  ? 'bg-purple-700 text-white shadow-md'
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-200'
+              }`}
+              title="Open direct live chat with Hospital Administration"
+            >
+              <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'chat' ? 'text-white' : 'text-purple-700'}`} />
+              <span className="hidden md:inline">Message Admin</span>
+            </button>
+
             {/* ── Notification Center Navbar Trigger ── */}
             <button
               onClick={() => setIsNotifOpen(true)}
@@ -758,6 +812,16 @@ export const DoctorLayout: React.FC = () => {
               showToast={showToast}
             />
           )}
+
+          {activeTab === 'chat' && (
+            <StaffChatHub
+              currentRole="doctor"
+              currentStaffId={resolvedDoctorId}
+              currentStaffName={currentDoctor.name || currentStaff?.name || 'Doctor'}
+              hospitalId={currentStaff?.hospital_id}
+              onShowToast={showToast}
+            />
+          )}
         </main>
       </div>
 
@@ -861,6 +925,116 @@ export const DoctorLayout: React.FC = () => {
         portalRole="doctor"
         onStartConsultation={handleStartConsultationFromDossier}
       />
+
+      {/* ── Contact Hospital Administration Modal ── */}
+      {isContactAdminOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsContactAdminOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-purple-900">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-purple-50 text-purple-700 rounded-xl">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black font-heading text-slate-900">
+                    Contact Hospital Administration
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Submit clinical requisitions, scheduling requests, or cabin queries
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsContactAdminOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendAdminMessage} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700">Subject / Requisition Type *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Pharmacy Stock Request / Cabin Equipment Issue"
+                  value={adminMsgSubject}
+                  onChange={(e) => setAdminMsgSubject(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-purple-500/20"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700">Priority Level</label>
+                <div className="flex items-center gap-2">
+                  {(['normal', 'high', 'urgent'] as const).map((pr) => (
+                    <button
+                      key={pr}
+                      type="button"
+                      onClick={() => setAdminMsgPriority(pr)}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-black capitalize transition-all cursor-pointer border ${
+                        adminMsgPriority === pr
+                          ? pr === 'urgent'
+                            ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-2xs'
+                            : pr === 'high'
+                            ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                            : 'bg-purple-50 text-purple-800 border-purple-300 shadow-2xs'
+                          : 'bg-slate-50 text-slate-500 border-slate-200'
+                      }`}
+                    >
+                      {pr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700">Detailed Message *</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Describe your inquiry, patient transfer coordination, or requisition details..."
+                  value={adminMsgBody}
+                  onChange={(e) => setAdminMsgBody(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-purple-500/20"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsContactAdminOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingAdminMsg || !adminMsgSubject.trim() || !adminMsgBody.trim()}
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md shadow-purple-900/15 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSendingAdminMsg ? (
+                    <span>Sending...</span>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send to Admin</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

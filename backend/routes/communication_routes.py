@@ -421,14 +421,16 @@ def get_staff_messages(
                         # Admin sees all messages in their facility
                         pass
                     else:
-                        # Staff sees messages where they are sender, recipient, or part of parent thread
+                        # Staff sees messages where they are sender, recipient, recipient_role, or part of parent thread
                         where_clauses.append("""
                             (sender_id = %s 
                              OR recipient_id = %s 
+                             OR recipient_role = %s
+                             OR recipient_role = 'all'
                              OR parent_id IN (SELECT id FROM staff_messages WHERE sender_id = %s)
                              OR id IN (SELECT parent_id FROM staff_messages WHERE sender_id = %s))
                         """)
-                        params.extend([caller_id, caller_id, caller_id, caller_id])
+                        params.extend([caller_id, caller_id, caller_role, caller_id, caller_id])
 
                     if where_clauses:
                         query += " WHERE " + " AND ".join(where_clauses)
@@ -504,18 +506,21 @@ def get_staff_messages(
         else:
             root_messages.append(m)
 
-    # If caller is staff (not admin/superadmin), only return threads where caller is involved
+    # If caller is staff (not admin/superadmin), only return threads where caller is involved or targeted by role
     if caller_role not in ("admin", "superadmin"):
         visible_roots = []
         for root in root_messages:
             r_sender = root.get("sender_id") or root.get("senderId")
             r_recip = root.get("recipient_id") or root.get("recipientId")
+            r_role = root.get("recipient_role") or root.get("recipientRole")
             involved = (
                 r_sender == caller_id
                 or r_recip == caller_id
+                or r_role in (caller_role, "all")
                 or any(
                     (rep.get("sender_id") or rep.get("senderId")) == caller_id
                     or (rep.get("recipient_id") or rep.get("recipientId")) == caller_id
+                    or (rep.get("recipient_role") or rep.get("recipientRole")) in (caller_role, "all")
                     for rep in root.get("replies", [])
                 )
             )
@@ -742,3 +747,202 @@ def delete_message(
         logger.warning(f"Error deleting message in Postgres: {e}")
 
     return {"success": True, "message": f"Message {msg_id} removed."}
+
+
+def dispatch_system_staff_notification(
+    hospital_id: str,
+    subject: str,
+    message: str,
+    recipient_role: str = "receptionist",
+    priority: str = "high",
+    sender_name: str = "Hospital Administration"
+) -> dict:
+    """
+    Programmatically dispatches an automated administrative notification message to a specific staff role
+    (e.g., 'receptionist', 'nurse', 'doctor', or 'all') within the target hospital.
+    """
+    ensure_communication_tables()
+    msg_id = f"sys-msg-{uuid.uuid4().hex[:12]}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        with safe_pg_connection() as conn:
+            if conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO staff_messages (
+                            id, hospital_id, sender_id, sender_name, sender_role,
+                            sender_code, recipient_role, recipient_id, subject,
+                            message, priority, is_read, parent_id, created_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    """, (
+                        msg_id,
+                        hospital_id,
+                        "system-admin",
+                        sender_name,
+                        "admin",
+                        "ADM001",
+                        recipient_role,
+                        None,
+                        subject,
+                        message,
+                        priority,
+                        False,
+                        None
+                    ))
+                    conn.commit()
+    except Exception as e:
+        logger.warning(f"Error dispatching system staff notification in Postgres: {e}")
+
+    # Fallback to JSON DB
+    db = read_json_db()
+    if "staff_messages" not in db:
+        db["staff_messages"] = []
+    
+    rec = {
+        "id": msg_id,
+        "hospitalId": hospital_id,
+        "hospital_id": hospital_id,
+        "senderId": "system-admin",
+        "sender_id": "system-admin",
+        "senderName": sender_name,
+        "senderRole": "admin",
+        "senderCode": "ADM001",
+        "recipientRole": recipient_role,
+        "recipient_role": recipient_role,
+        "recipientId": None,
+        "subject": subject,
+        "message": message,
+        "priority": priority,
+        "isRead": False,
+        "is_read": False,
+        "parentId": None,
+        "createdAt": now_iso,
+        "created_at": now_iso,
+        "replies": []
+    }
+    db["staff_messages"].insert(0, rec)
+    write_json_db(db)
+    return rec
+
+
+@router.get("/staff-contacts")
+def get_staff_contacts_for_chat(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve contact directory for the interactive Chat Area.
+    Every staff member (Doctor, Nurse, Receptionist, Administrator) can view
+    all other staff contacts in their hospital facility for peer-to-peer and inter-department chat.
+    """
+    staff = _require_auth_staff(authorization)
+    caller_role = staff.get("role", "staff")
+    caller_id = staff.get("staff_id") or staff.get("id") or ""
+    effective_hosp_id = _resolve_hospital_scope(staff)
+
+    contacts = []
+    seen_ids = set()
+
+    # 1. Hospital Administration contact (always available for non-admins)
+    if caller_role not in ("admin", "superadmin"):
+        contacts.append({
+            "id": "admin",
+            "name": "Hospital Administration",
+            "role": "admin",
+            "department": "Executive Management",
+            "staffCode": "HQ-ADMIN",
+            "avatarUrl": "",
+            "online": True
+        })
+        seen_ids.add("admin")
+
+    # 2. Query PostgreSQL if enabled
+    if database.use_pg:
+        try:
+            with safe_pg_connection() as conn:
+                if conn:
+                    with conn.cursor() as cur:
+                        # Doctors
+                        doc_query = "SELECT id, name, specialty, department, photo, hospital_id FROM doctors"
+                        doc_params = []
+                        if effective_hosp_id:
+                            doc_query += " WHERE hospital_id = %s"
+                            doc_params.append(effective_hosp_id)
+                        cur.execute(doc_query, doc_params)
+                        for r in cur.fetchall():
+                            d_id = str(r["id"])
+                            if d_id != caller_id and d_id not in seen_ids:
+                                seen_ids.add(d_id)
+                                contacts.append({
+                                    "id": d_id,
+                                    "name": r["name"] or "Doctor",
+                                    "role": "doctor",
+                                    "department": r.get("department") or r.get("specialty") or "General Medicine",
+                                    "staffCode": "DOC",
+                                    "avatarUrl": r.get("photo") or "/doctor_default.jpg",
+                                    "online": True
+                                })
+
+                        # Staff: Nurses, Receptionists, and Admins
+                        stf_query = "SELECT id, full_name, role, specialization, staff_code, avatar_url, hospital_id FROM staff WHERE is_active = true"
+                        stf_params = []
+                        if effective_hosp_id:
+                            stf_query += " AND hospital_id = %s"
+                            stf_params.append(effective_hosp_id)
+                        cur.execute(stf_query, stf_params)
+                        for r in cur.fetchall():
+                            s_id = str(r["id"])
+                            if s_id != caller_id and s_id not in seen_ids:
+                                seen_ids.add(s_id)
+                                s_role = r.get("role") or "staff"
+                                contacts.append({
+                                    "id": s_id,
+                                    "name": r.get("full_name") or "Staff Member",
+                                    "role": s_role,
+                                    "department": r.get("specialization") or ("Executive" if s_role == "admin" else ("Nursing" if s_role == "nurse" else "Front Desk")),
+                                    "staffCode": r.get("staff_code") or "",
+                                    "avatarUrl": r.get("avatar_url") or "",
+                                    "online": True
+                                })
+        except Exception as e:
+            logger.warning(f"Error fetching staff contacts from PG: {e}")
+
+    # 3. Query JSON DB (fallback or supplement)
+    db = read_json_db()
+    for doc in db.get("doctors", []):
+        d_id = str(doc.get("id"))
+        d_hosp = doc.get("hospital_id") or doc.get("hospitalId")
+        if effective_hosp_id and d_hosp != effective_hosp_id:
+            continue
+        if d_id != caller_id and d_id not in seen_ids:
+            seen_ids.add(d_id)
+            contacts.append({
+                "id": d_id,
+                "name": doc.get("name", "Doctor"),
+                "role": "doctor",
+                "department": doc.get("department") or doc.get("specialty") or "General Medicine",
+                "staffCode": doc.get("staff_code") or doc.get("staffCode") or "DOC",
+                "avatarUrl": doc.get("photo") or "/doctor_default.jpg",
+                "online": True
+            })
+
+    for s in db.get("staff", []):
+        s_id = str(s.get("id"))
+        s_hosp = s.get("hospital_id") or s.get("hospitalId")
+        if effective_hosp_id and s_hosp != effective_hosp_id:
+            continue
+        if s_id != caller_id and s_id not in seen_ids:
+            seen_ids.add(s_id)
+            s_role = s.get("role") or "staff"
+            contacts.append({
+                "id": s_id,
+                "name": s.get("full_name") or s.get("name", "Staff Member"),
+                "role": s_role,
+                "department": s.get("specialization") or s.get("department") or ("Executive" if s_role == "admin" else ("Nursing" if s_role == "nurse" else "Front Desk")),
+                "staffCode": s.get("staff_code") or s.get("staffCode") or "",
+                "avatarUrl": s.get("avatar_url") or s.get("avatarUrl") or "",
+                "online": True
+            })
+
+    return {"success": True, "contacts": contacts}
+

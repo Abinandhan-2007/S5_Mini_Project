@@ -18,9 +18,17 @@ import {
   ChevronDown,
   List,
   LayoutGrid,
+  UserPlus,
+  CheckCircle2,
+  XCircle,
+  Mail,
+  Phone,
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import type { NurseRecord } from '../../types/staff';
+import { adminService, type NurseRequestRecord } from '../../services/adminService';
 
 interface AdminNurseManagementProps {
   onShowToast: (msg: string) => void;
@@ -80,9 +88,55 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
   const [newResetPassword, setNewResetPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Receptionist Nurse Requests state
+  const [adminTab, setAdminTab] = useState<'directory' | 'requests'>('directory');
+  const [nurseRequests, setNurseRequests] = useState<NurseRequestRecord[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const loadNurseRequests = async () => {
+    setIsLoadingRequests(true);
+    try {
+      const list = await adminService.getNurseRequests();
+      setNurseRequests(list);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
   useEffect(() => {
     fetchNurses();
+    loadNurseRequests();
   }, [fetchNurses]);
+
+  const handleApproveRequest = async (reqId: string, nurseName: string) => {
+    setActionLoadingId(reqId);
+    try {
+      await adminService.updateNurseRequestStatus(reqId, 'Approved');
+      onShowToast?.(`Nurse ${nurseName} approved and created successfully! Account provisioned.`);
+      await loadNurseRequests();
+      await fetchNurses();
+    } catch (err: any) {
+      onShowToast?.(err.message || 'Failed to approve nurse request.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRejectRequest = async (reqId: string, nurseName: string) => {
+    setActionLoadingId(reqId);
+    try {
+      await adminService.updateNurseRequestStatus(reqId, 'Rejected');
+      onShowToast?.(`Nurse request for ${nurseName} rejected.`);
+      await loadNurseRequests();
+    } catch (err: any) {
+      onShowToast?.(err.message || 'Failed to reject request.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   useEffect(() => {
     if (autoOpenAdd) {
@@ -304,6 +358,58 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
         </button>
       </div>
 
+      {/* ── Tab Switcher ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/80 pb-2">
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80">
+          <button
+            type="button"
+            onClick={() => setAdminTab('directory')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              adminTab === 'directory'
+                ? 'bg-white text-[#0B5A54] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <HeartPulse className="w-4 h-4" />
+            <span>Nurse Directory & Rosters ({nurses.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('requests');
+              loadNurseRequests();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              adminTab === 'requests'
+                ? 'bg-white text-[#0B5A54] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Receptionist Nurse Requests</span>
+            {nurseRequests.filter((r) => r.status === 'Pending').length > 0 && (
+              <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                {nurseRequests.filter((r) => r.status === 'Pending').length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {adminTab === 'requests' && (
+          <button
+            type="button"
+            onClick={loadNurseRequests}
+            disabled={isLoadingRequests}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-[#0B5A54] rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingRequests ? 'animate-spin' : ''}`} />
+            <span>Refresh Requests</span>
+          </button>
+        )}
+      </div>
+
+      {adminTab === 'directory' && (
+        <>
       {/* ── Search & Filter Toolbar ── */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         {/* Search Bar */}
@@ -688,6 +794,211 @@ export const AdminNurseManagement: React.FC<AdminNurseManagementProps> = ({
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+        </>
+      )}
+
+      {/* ── Receptionist Nurse Requisitions Tab ── */}
+      {adminTab === 'requests' && (
+        <div className="space-y-5 animate-in fade-in duration-200">
+          {/* Status summary pills */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Requisitions</p>
+              <p className="text-xl font-black text-slate-900 mt-1">{nurseRequests.length}</p>
+            </div>
+            <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200/80 shadow-2xs">
+              <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Pending Approval</span>
+              </p>
+              <p className="text-xl font-black text-amber-900 mt-1">
+                {nurseRequests.filter((r) => r.status === 'Pending').length}
+              </p>
+            </div>
+            <div className="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200/80 shadow-2xs">
+              <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Approved & Added</span>
+              </p>
+              <p className="text-xl font-black text-emerald-900 mt-1">
+                {nurseRequests.filter((r) => r.status === 'Approved').length}
+              </p>
+            </div>
+            <div className="bg-rose-50/60 rounded-2xl p-4 border border-rose-200/80 shadow-2xs">
+              <p className="text-[11px] font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Rejected</span>
+              </p>
+              <p className="text-xl font-black text-rose-900 mt-1">
+                {nurseRequests.filter((r) => r.status === 'Rejected').length}
+              </p>
+            </div>
+          </div>
+
+          {/* List or empty state */}
+          {isLoadingRequests ? (
+            <div className="bg-white rounded-3xl p-12 border border-slate-200/90 text-center shadow-xs">
+              <RefreshCw className="w-8 h-8 mx-auto mb-3 text-[#0B5A54] animate-spin" />
+              <p className="text-xs font-bold text-slate-500">Loading nurse onboarding applications...</p>
+            </div>
+          ) : nurseRequests.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 border border-dashed border-slate-300 text-center shadow-xs space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center mx-auto">
+                <UserPlus className="w-7 h-7" />
+              </div>
+              <h4 className="text-base font-black text-slate-900 font-heading">No Nurse Applications Yet</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                When receptionists apply to onboard nursing staff for clinical duty, their submissions will appear here for administrative approval and automatic account creation.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {nurseRequests.map((req) => {
+                const isPending = req.status === 'Pending';
+                const isApproved = req.status === 'Approved';
+                const isRejected = req.status === 'Rejected';
+                const isActionBusy = actionLoadingId === req.id;
+
+                return (
+                  <div
+                    key={req.id}
+                    className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-4"
+                  >
+                    <div className="space-y-3">
+                      {/* Card Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-base font-black text-slate-900 font-heading">
+                              {req.fullName}
+                            </h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                              Candidate
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Requisition ID: <span className="font-mono">{req.id.slice(0, 8)}</span>
+                          </p>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          {isPending && (
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-black px-2.5 py-1 rounded-full">
+                              <Clock className="w-3 h-3" />
+                              Pending Review
+                            </span>
+                          )}
+                          {isApproved && (
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Approved & Added
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-800 border border-rose-200 text-[11px] font-black px-2.5 py-1 rounded-full">
+                              <XCircle className="w-3 h-3" />
+                              Rejected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details Box */}
+                      <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100 space-y-2 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-semibold truncate">{req.email}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-semibold">{req.phone || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-semibold truncate">{req.department || 'Triage & Vitals'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-semibold truncate">{req.shift || 'Morning Shift'}</span>
+                          </div>
+                        </div>
+
+                        {req.notes && (
+                          <div className="pt-2 border-t border-slate-200/60 flex items-start gap-1.5 text-slate-600">
+                            <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                            <p className="italic text-[11px] leading-relaxed">
+                              "{req.notes}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Origin Meta */}
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                        <span>
+                          Applied by: <strong className="text-slate-600">{req.requestedByName || 'Receptionist'}</strong>
+                        </span>
+                        <span>
+                          {new Date(req.createdAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 border-t border-slate-100">
+                      {isPending ? (
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleRejectRequest(req.id, req.fullName)}
+                            disabled={isActionBusy}
+                            className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApproveRequest(req.id, req.fullName)}
+                            disabled={isActionBusy}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                          >
+                            {isActionBusy ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>Approving...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Approve & Create Nurse</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : isApproved ? (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-3 py-2 rounded-xl border border-emerald-200/80">
+                          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                          <span>Staff record provisioned. Nurse credentials dispatched.</span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] font-semibold text-slate-400 italic">
+                          This requisition was rejected.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

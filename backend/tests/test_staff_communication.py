@@ -329,5 +329,68 @@ class TestStaffCommunication(unittest.TestCase):
         for ann in super_filter_res.json()["announcements"]:
             self.assertEqual(ann["hospitalId"], "hosp-bag")
 
+    def test_08_staff_contacts_all_roles(self):
+        """Staff contacts endpoint returns hospital colleagues across all roles and excludes caller."""
+        # Nurse requests contacts
+        nurse_res = self.client.get(
+            "/api/communication/staff-contacts",
+            headers={"Authorization": f"Bearer {self.nurse_a_token}"}
+        )
+        self.assertEqual(nurse_res.status_code, 200)
+        contacts = nurse_res.json()["contacts"]
+        self.assertIsInstance(contacts, list)
+        
+        # Nurse A should not see herself in contacts
+        self_ids = [c["id"] for c in contacts if c["id"] == "nurse-bag-01"]
+        self.assertEqual(len(self_ids), 0, "Current staff member should be excluded from contacts directory")
+
+        # Doctor requests contacts
+        doc_res = self.client.get(
+            "/api/communication/staff-contacts",
+            headers={"Authorization": f"Bearer {self.doctor_a_token}"}
+        )
+        self.assertEqual(doc_res.status_code, 200)
+        doc_contacts = doc_res.json()["contacts"]
+        self_doc_ids = [c["id"] for c in doc_contacts if c["id"] == "doc-bag-01"]
+        self.assertEqual(len(self_doc_ids), 0, "Doctor should be excluded from own contacts")
+
+    def test_09_peer_to_peer_staff_messaging(self):
+        """Direct peer-to-peer messaging between staff members (Doctor to Nurse)."""
+        # Doctor A sends direct message to Nurse A
+        send_res = self.client.post(
+            "/api/communication/messages",
+            headers={"Authorization": f"Bearer {self.doctor_a_token}"},
+            json={
+                "subject": "Direct Patient Update",
+                "message": "Nurse Jenkins, please verify vitals for Room 302.",
+                "recipientRole": "nurse",
+                "recipientId": "nurse-bag-01",
+                "priority": "urgent"
+            }
+        )
+        self.assertEqual(send_res.status_code, 201)
+        direct_msg_id = send_res.json()["data"]["id"]
+
+        # Nurse A fetches messages -> MUST see Doctor A's message
+        nurse_res = self.client.get(
+            "/api/communication/messages",
+            headers={"Authorization": f"Bearer {self.nurse_a_token}"}
+        )
+        self.assertEqual(nurse_res.status_code, 200)
+        received = [m for m in nurse_res.json()["messages"] if m["id"] == direct_msg_id]
+        self.assertEqual(len(received), 1, "Nurse A did not receive direct message from Doctor A")
+        self.assertEqual(received[0]["senderId"], "doc-bag-01")
+        self.assertEqual(received[0]["recipientId"], "nurse-bag-01")
+
+        # Receptionist Rita fetches messages -> should NOT see this direct 1-to-1 doctor-nurse message
+        rec_res = self.client.get(
+            "/api/communication/messages",
+            headers={"Authorization": f"Bearer {self.receptionist_a_token}"}
+        )
+        self.assertEqual(rec_res.status_code, 200)
+        rec_received = [m for m in rec_res.json()["messages"] if m["id"] == direct_msg_id]
+        self.assertEqual(len(rec_received), 0, "Receptionist improperly saw direct 1-on-1 message between Doctor and Nurse")
+
 if __name__ == "__main__":
     unittest.main()
+

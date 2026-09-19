@@ -19,6 +19,7 @@ from schemas import (
     WalkInAppointmentCreate,
     NurseCreateRequest,
     DoctorLeaveStatusUpdate,
+    NurseRequestCreate,
 )
 import database
 
@@ -2708,8 +2709,13 @@ def update_doctor_leave_status(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     role = (staff_ctx.get("role") or "").lower()
-    if role not in ["receptionist", "admin", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Access denied: Only receptionists and administrators can approve leave requests")
+    if role == "receptionist":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Doctor leave approval is strictly reserved for Hospital Administrators, not receptionists."
+        )
+    if role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only hospital administrators can approve leave requests")
 
     new_status = (payload.status or "").strip().capitalize()
     if new_status not in ["Approved", "Rejected", "Cancelled", "Pending"]:
@@ -2767,5 +2773,202 @@ def update_doctor_leave_status(
     database.write_json_db(db)
 
     return {"success": True, "leave": target_leave}
+
+
+@router.post("/nurse-requests", status_code=status.HTTP_201_CREATED)
+def create_nurse_request(
+    payload: NurseRequestCreate,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Receptionist submits a requisition to add a new nurse.
+    Request enters 'Pending' status awaiting Hospital Administrator approval.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    role = (staff_ctx.get("role") or "").lower()
+    if role not in ["receptionist", "admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Access denied: Only receptionists can submit nurse onboarding requests")
+
+    hosp_id = staff_ctx.get("hospital_id") or "hosp-bag"
+    staff_id = staff_ctx.get("staff_id") or str(uuid.uuid4())
+    staff_name = staff_ctx.get("name") or staff_ctx.get("full_name") or "Receptionist Desk"
+
+    nurse_name = payload.fullName or payload.full_name or ""
+    if not nurse_name.strip():
+        raise HTTPException(status_code=400, detail="Nurse full name is required")
+
+    nurse_email = (payload.email or "").strip().lower()
+    if not nurse_email:
+        raise HTTPException(status_code=400, detail="Nurse email is required")
+
+    req_id = f"nreq-{uuid.uuid4().hex[:8]}"
+    now_iso = datetime.now().isoformat()
+    dept = payload.department or "Triage & Vitals"
+    shift = payload.shift or "Morning (07:00 AM - 03:30 PM)"
+    spec = payload.specialization or "General Nursing"
+    phone = payload.phone or "+91 98765 00000"
+    notes = payload.notes or ""
+
+    # 1. PostgreSQL dual-write
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS nurse_requests (
+                            id VARCHAR(100) PRIMARY KEY,
+                            hospital_id VARCHAR(100) NOT NULL,
+                            requested_by_id VARCHAR(100),
+                            requested_by_name VARCHAR(255),
+                            requested_by_role VARCHAR(50) DEFAULT 'receptionist',
+                            full_name VARCHAR(255) NOT NULL,
+                            email VARCHAR(255) NOT NULL,
+                            phone VARCHAR(100),
+                            department VARCHAR(100) DEFAULT 'Triage & Vitals',
+                            shift VARCHAR(100) DEFAULT 'Morning (07:00 AM - 03:30 PM)',
+                            specialization VARCHAR(100) DEFAULT 'General Nursing',
+                            notes TEXT,
+                            status VARCHAR(50) DEFAULT 'Pending',
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            approved_by VARCHAR(255),
+                            approved_at TIMESTAMP WITH TIME ZONE,
+                            rejection_reason TEXT
+                        );
+                    """)
+                    cur.execute("""
+                        INSERT INTO nurse_requests (
+                            id, hospital_id, requested_by_id, requested_by_name, requested_by_role,
+                            full_name, email, phone, department, shift, specialization, notes, status
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pending')
+                    """, (
+                        req_id, hosp_id, staff_id, staff_name, role,
+                        nurse_name, nurse_email, phone, dept, shift, spec, notes
+                    ))
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Error inserting nurse request in PG: {e}")
+
+    # 2. JSON DB dual-write
+    db = database.read_json_db()
+    if "nurse_requests" not in db:
+        db["nurse_requests"] = []
+
+    req_record = {
+        "id": req_id,
+        "hospitalId": hosp_id,
+        "hospital_id": hosp_id,
+        "requestedById": staff_id,
+        "requested_by_id": staff_id,
+        "requestedByName": staff_name,
+        "requested_by_name": staff_name,
+        "requestedByRole": role,
+        "requested_by_role": role,
+        "fullName": nurse_name,
+        "full_name": nurse_name,
+        "email": nurse_email,
+        "phone": phone,
+        "department": dept,
+        "shift": shift,
+        "specialization": spec,
+        "notes": notes,
+        "status": "Pending",
+        "createdAt": now_iso,
+        "created_at": now_iso,
+        "approvedBy": None,
+        "approvedAt": None,
+        "rejectionReason": None
+    }
+    db["nurse_requests"].insert(0, req_record)
+    database.write_json_db(db)
+
+    # 3. Notify Hospital Administrator in the Chat
+    try:
+        from routes.communication_routes import dispatch_system_staff_notification
+        dispatch_system_staff_notification(
+            hospital_id=hosp_id,
+            subject=f"New Nurse Requisition: {nurse_name}",
+            message=(
+                f"Receptionist {staff_name} submitted a request to add a new nurse: '{nurse_name}' for '{dept}' ({shift}). "
+                f"Review and approve under Nurse Management &rarr; Receptionist Nurse Requests."
+            ),
+            recipient_role="admin",
+            priority="high",
+            sender_name=staff_name
+        )
+    except Exception as e:
+        logger.warning(f"Error dispatching nurse requisition notification to Admin: {e}")
+
+    return {
+        "success": True,
+        "message": f"Nurse onboarding request for '{nurse_name}' submitted for Admin approval.",
+        "request": req_record
+    }
+
+
+@router.get("/nurse-requests")
+def get_receptionist_nurse_requests(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Retrieve nurse onboarding applications for the receptionist's hospital.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from routes.staff_auth import get_current_staff
+    staff_ctx = get_current_staff(authorization)
+    if not staff_ctx:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    hosp_id = staff_ctx.get("hospital_id")
+    is_superadmin = (staff_ctx.get("role") == "superadmin")
+
+    requests = []
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    if is_superadmin or not hosp_id:
+                        cur.execute("SELECT * FROM nurse_requests ORDER BY created_at DESC")
+                    else:
+                        cur.execute("SELECT * FROM nurse_requests WHERE hospital_id = %s ORDER BY created_at DESC", (hosp_id,))
+                    rows = cur.fetchall()
+                    for r in rows:
+                        requests.append({
+                            "id": str(r["id"]),
+                            "hospitalId": str(r["hospital_id"]),
+                            "requestedById": str(r.get("requested_by_id") or ""),
+                            "requestedByName": r.get("requested_by_name") or "Receptionist",
+                            "requestedByRole": r.get("requested_by_role") or "receptionist",
+                            "fullName": r["full_name"],
+                            "email": r["email"],
+                            "phone": r.get("phone") or "",
+                            "department": r.get("department") or "Triage & Vitals",
+                            "shift": r.get("shift") or "Morning (07:00 AM - 03:30 PM)",
+                            "specialization": r.get("specialization") or "General Nursing",
+                            "notes": r.get("notes") or "",
+                            "status": r.get("status") or "Pending",
+                            "createdAt": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+                            "approvedBy": r.get("approved_by"),
+                            "approvedAt": r["approved_at"].isoformat() if r.get("approved_at") and hasattr(r["approved_at"], "isoformat") else str(r.get("approved_at") or ""),
+                            "rejectionReason": r.get("rejection_reason")
+                        })
+        except Exception as e:
+            logger.warning(f"Error fetching nurse requests in PG: {e}")
+
+    if not requests:
+        db = database.read_json_db()
+        for nr in db.get("nurse_requests", []):
+            nr_hosp = nr.get("hospital_id") or nr.get("hospitalId")
+            if is_superadmin or not hosp_id or nr_hosp == hosp_id:
+                requests.append(nr)
+
+    return {"success": True, "requests": requests}
+
 
 

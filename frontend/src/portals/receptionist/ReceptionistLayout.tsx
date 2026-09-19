@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   HeartPulse,
   QrCode,
+  MessageSquare,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
@@ -29,6 +30,7 @@ import { DoctorManagement } from './DoctorManagement';
 import { NurseManagement } from './NurseManagement';
 import { PatientCheckIn } from './PatientCheckIn';
 import { ReceptionistProfile } from './ReceptionistProfile';
+import { StaffChatHub } from '../../components/chat/StaffChatHub';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 import { NewAppointmentModal } from './NewAppointmentModal';
 import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
@@ -42,6 +44,7 @@ export type ReceptionistTab =
   | 'checkin'
   | 'doctors'
   | 'nurses'
+  | 'chat'
   | 'profile';
 
 interface NavSection {
@@ -213,7 +216,7 @@ export const ReceptionistLayout: React.FC = () => {
         },
         {
           id: 'checkin',
-          label: 'Express Check-In & Vitals',
+          label: 'Check-In & Clinical Tracker',
           icon: UserCheck,
           badge: pendingArrivalsCount > 0 ? `${pendingArrivalsCount}` : undefined,
           badgeColor: 'bg-sky-50 text-sky-700 border-sky-200',
@@ -235,6 +238,11 @@ export const ReceptionistLayout: React.FC = () => {
           label: 'Nursing & Vitals Team',
           icon: HeartPulse,
         },
+        {
+          id: 'chat',
+          label: 'Staff Live Chat',
+          icon: MessageSquare,
+        },
       ],
     },
     {
@@ -250,13 +258,13 @@ export const ReceptionistLayout: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return {
-          title: 'OPD Command Dashboard',
-          breadcrumb: 'Front Desk / Live Overview',
+          title: 'OPD Command Center',
+          breadcrumb: 'Front Desk / Hospital Overview',
         };
       case 'queue':
         return {
-          title: 'Live Token Queue Desk',
-          breadcrumb: 'Front Desk / Token Calling & Queue Stream',
+          title: 'Live Token Queue & Calling Desk',
+          breadcrumb: 'Front Desk / Patient Flow Management',
         };
       case 'bookings':
         return {
@@ -265,8 +273,8 @@ export const ReceptionistLayout: React.FC = () => {
         };
       case 'checkin':
         return {
-          title: 'Express Check-In & Vitals',
-          breadcrumb: 'Front Desk / Patient Arrival & Triage',
+          title: 'Patient Arrival & Clinical Tracker',
+          breadcrumb: 'Front Desk / Patient Arrival & Nurse Vitals Tracking',
         };
       case 'doctors':
         return {
@@ -277,6 +285,11 @@ export const ReceptionistLayout: React.FC = () => {
         return {
           title: 'Hospital Nurses & Triage Staff',
           breadcrumb: 'Front Desk / Appoint & Manage Nurses',
+        };
+      case 'chat':
+        return {
+          title: 'Hospital Staff & Admin Live Chat',
+          breadcrumb: 'Front Desk / Inter-Department Messenger Line',
         };
       case 'profile':
         return {
@@ -626,6 +639,16 @@ export const ReceptionistLayout: React.FC = () => {
 
           {activeTab === 'nurses' && (
             <NurseManagement onShowToast={showToast} />
+          )}
+
+          {activeTab === 'chat' && (
+            <StaffChatHub
+              currentRole="receptionist"
+              currentStaffId={currentStaff?.id || currentStaff?.staff_id}
+              currentStaffName={staffDisplayName}
+              hospitalId={currentStaff?.hospital_id}
+              onShowToast={showToast}
+            />
           )}
 
           {activeTab === 'profile' && (

@@ -112,6 +112,8 @@ export interface NurseQueueItem {
   appointment_id: string;
   token_number?: number;
   queue_status: string;
+  is_checked_in?: boolean;
+  checked_in_at?: string | null;
   vitals_status: VitalsStatus;
   date: string;
   time: string;
@@ -123,3 +125,4 @@ export interface NurseQueueItem {
   abnormal_flags?: string[];
   lab_test_count?: number;
 }
+

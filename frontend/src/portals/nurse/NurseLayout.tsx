@@ -17,6 +17,7 @@ import { usePolling } from '../../lib/usePolling';
 import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal';
 import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
+import { StaffChatHub } from '../../components/chat/StaffChatHub';
 
 interface NurseLayoutProps {
   children: ReactNode;
@@ -38,6 +39,7 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
 
   // Communication Modal State
   const [isCommsOpen, setIsCommsOpen] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [commsTab, setCommsTab] = useState<'broadcasts' | 'message'>('broadcasts');
   const [msgSubject, setMsgSubject] = useState('');
   const [msgContent, setMsgContent] = useState('');
@@ -129,13 +131,23 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
             <button
               onClick={() => setIsCommsOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/15 transition-all cursor-pointer relative"
-              title="Hospital Broadcasts & Admin Support"
+              title="Hospital Broadcasts & Staff Inquiries"
             >
               <Bell className="w-3.5 h-3.5 text-teal-200" />
               <span className="hidden sm:inline">Notice Hub</span>
               {announcements.length > 0 && (
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               )}
+            </button>
+
+            {/* Live Staff Chat Button */}
+            <button
+              onClick={() => setIsChatModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/30 hover:bg-purple-500/40 text-white font-extrabold text-xs border border-purple-300/40 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="Live Chat Messenger with Hospital Doctors, Staff & Administration"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-purple-200" />
+              <span className="hidden sm:inline">Staff Chat</span>
             </button>
 
             {/* Center Hospital Badge */}
@@ -397,6 +409,47 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Live Admin Chat Modal ── */}
+      {isChatModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setIsChatModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-100 overflow-hidden relative animate-in zoom-in-95 duration-150 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Hospital Staff & Administration Live Chat</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Real-time messaging with doctors, receptionists, nurses & administrators</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChatModalOpen(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3">
+              <StaffChatHub
+                currentRole="nurse"
+                currentStaffId={currentStaff?.id || currentStaff?.staff_id}
+                currentStaffName={currentStaff?.name || 'Nurse'}
+                hospitalId={currentStaff?.hospital_id}
+                onShowToast={(msg) => setFeedbackToast(msg)}
+              />
+            </div>
           </div>
         </div>
       )}

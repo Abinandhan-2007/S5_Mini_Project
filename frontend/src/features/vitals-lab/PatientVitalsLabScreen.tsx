@@ -105,6 +105,18 @@ export const PatientVitalsLabScreen: React.FC = () => {
   // Latest vitals entry for top metric cards
   const latestVitals = vitalsList[0] || fallbackVitals[0];
 
+  const appointments = useCarePulseStore((s) => s.appointments);
+  const isCheckedIn = (appointments || []).some((a) => {
+    const s = (a.status || '').trim().toLowerCase();
+    return (
+      s === 'checked in' ||
+      s === 'checked_in' ||
+      s === 'in consultation' ||
+      s === 'in_consultation' ||
+      Boolean((a as any).isCheckedIn)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-28 select-none">
       {/* ── TOP HEADER ── */}
@@ -139,8 +151,40 @@ export const PatientVitalsLabScreen: React.FC = () => {
         </div>
       </header>
 
+      {/* ── HOSPITAL CHECK-IN GATING BANNER ── */}
+      {!isCheckedIn ? (
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-xs text-amber-900 shadow-xs">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-black text-amber-950">Hospital Arrival Check-In Required</h4>
+              <p className="text-amber-800 leading-relaxed">
+                You have not checked in for today&apos;s hospital visit yet. Please present your token or QR code at the reception desk upon arrival. Your live nurse triage readings and lab diagnostic updates will activate automatically once checked in.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-between text-xs text-teal-900 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="font-black text-[#0B5A54]">
+                Arrival Confirmed • Live Hospital Triage & Diagnostics Active
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-white text-[#0B5A54] border border-teal-200 font-mono text-[10px] font-bold">
+              Checked In
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ── NAVIGATION TABS ── */}
-      <div className="bg-white border-b border-slate-200 px-4 py-2 sticky top-[65px] z-20 shadow-xs">
+      <div className="bg-white border-b border-slate-200 px-4 py-2 sticky top-[65px] z-20 shadow-xs mt-3">
         <div className="max-w-4xl mx-auto flex items-center gap-2">
           <button
             onClick={() => setActiveTab('vitals')}

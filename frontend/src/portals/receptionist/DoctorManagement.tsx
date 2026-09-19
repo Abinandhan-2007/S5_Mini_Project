@@ -68,7 +68,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
   const [activeTab, setActiveTab] = useState<'directory' | 'leaves'>('directory');
   const [leavesList, setLeavesList] = useState<any[]>([]);
   const [isLoadingLeaves, setIsLoadingLeaves] = useState(false);
-  const [processingLeaveId, setProcessingLeaveId] = useState<string | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('all');
 
   const loadHospitalLeaves = async () => {
@@ -86,19 +85,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
   useEffect(() => {
     loadHospitalLeaves();
   }, []);
-
-  const handleUpdateLeaveStatus = async (leaveId: string, status: string) => {
-    setProcessingLeaveId(leaveId);
-    try {
-      await receptionistService.updateDoctorLeaveStatus(leaveId, status);
-      onShowToast?.(`Doctor leave marked as ${status}. ${status === 'Approved' ? 'Slots are now frozen.' : 'Slots un-frozen.'}`);
-      await loadHospitalLeaves();
-    } catch (e: any) {
-      onShowToast?.(e.message || 'Failed to update leave status');
-    } finally {
-      setProcessingLeaveId(null);
-    }
-  };
 
   const pendingLeavesCount = leavesList.filter((l) => (l.status || 'Pending') === 'Pending').length;
 
@@ -246,12 +232,10 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
             }`}
           >
             <CalendarX className="w-3.5 h-3.5" />
-            <span>Doctor Leave Approvals</span>
-            {pendingLeavesCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black">
-                {pendingLeavesCount}
-              </span>
-            )}
+            <span>Doctor Leave Rosters</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold">
+              Admin Managed
+            </span>
           </button>
         </div>
 
@@ -334,7 +318,6 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                   const isPending = status === 'Pending';
                   const isApproved = status === 'Approved';
                   const isRejected = status === 'Rejected';
-                  const isProcessing = processingLeaveId === leave.id;
 
                   return (
                     <div
@@ -403,38 +386,30 @@ export const DoctorManagement: React.FC<DoctorManagementProps> = ({ onShowToast 
                         )}
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                        <span className="flex items-center gap-1 text-slate-400">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
+                          <span>Approvals managed by Hospital Admin</span>
+                        </span>
                         {isPending && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={isProcessing}
-                              onClick={() => handleUpdateLeaveStatus(leave.id, 'Rejected')}
-                              className="px-3.5 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isProcessing}
-                              onClick={() => handleUpdateLeaveStatus(leave.id, 'Approved')}
-                              className="px-4 py-1.5 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                            >
-                              {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                              <span>Approve & Freeze Slots</span>
-                            </button>
-                          </>
+                          <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold">
+                            Awaiting Admin Approval
+                          </span>
                         )}
                         {isApproved && (
-                          <button
-                            type="button"
-                            disabled={isProcessing}
-                            onClick={() => handleUpdateLeaveStatus(leave.id, 'Cancelled')}
-                            className="px-3.5 py-1.5 rounded-xl border border-amber-200 bg-white hover:bg-amber-50 text-amber-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                          >
-                            {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                            <span>Revoke Approval (Unfreeze Slots)</span>
-                          </button>
+                          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
+                            Approved (Slots Frozen)
+                          </span>
+                        )}
+                        {isRejected && (
+                          <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full font-bold">
+                            Rejected by Admin
+                          </span>
+                        )}
+                        {status === 'Cancelled' && (
+                          <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full font-bold">
+                            Cancelled
+                          </span>
                         )}
                       </div>
                     </div>

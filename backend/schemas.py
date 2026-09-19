@@ -566,3 +566,20 @@ class DoctorLeaveResponse(BaseModel):
 class DoctorLeaveStatusUpdate(BaseModel):
     status: str
 
+
+class NurseRequestCreate(BaseModel):
+    fullName: Optional[str] = None
+    full_name: Optional[str] = None
+    email: str
+    phone: Optional[str] = ""
+    department: Optional[str] = "Triage & Vitals"
+    shift: Optional[str] = "Morning (07:00 AM - 03:30 PM)"
+    specialization: Optional[str] = "General Nursing"
+    notes: Optional[str] = ""
+
+
+class NurseRequestStatusUpdate(BaseModel):
+    status: str # "Approved", "Rejected"
+    rejectionReason: Optional[str] = None
+    rejection_reason: Optional[str] = None
+

@@ -165,6 +165,8 @@ def get_nurse_queue(
                             a.id AS appointment_id,
                             a.ticket_number AS token_number,
                             a.status AS queue_status,
+                            a.is_checked_in,
+                            a.checked_in_at,
                             a.date,
                             a.time_slot AS time,
                             a.type AS appointment_type,
@@ -202,7 +204,8 @@ def get_nurse_queue(
                         LEFT JOIN doctors d ON a.doctor_id = d.id
                         LEFT JOIN vitals v ON v.appointment_id = a.id
                         LEFT JOIN staff vs ON v.recorded_by = vs.id
-                        WHERE 1=1
+                        WHERE (a.is_checked_in IS TRUE OR a.status = 'Checked In')
+                          AND (a.status IS NULL OR a.status NOT IN ('Completed', 'Cancelled'))
                     """
                     params = []
                     if effective_hosp_id:
@@ -211,7 +214,13 @@ def get_nurse_queue(
                     elif not is_superadmin:
                         return {"success": True, "queue": []}
 
-                    query += " ORDER BY a.created_at DESC NULLS LAST, a.date DESC"
+                    query += """
+                        ORDER BY 
+                            CASE WHEN a.is_checked_in IS TRUE OR a.status = 'Checked In' THEN 0 ELSE 1 END,
+                            a.checked_in_at DESC NULLS LAST,
+                            a.created_at DESC NULLS LAST, 
+                            a.date DESC
+                    """
                     cur.execute(query, tuple(params))
                     rows = cur.fetchall()
 
@@ -251,10 +260,13 @@ def get_nurse_queue(
                         else:
                             vitals_status = "recorded"
 
+                        is_arrived = bool(rd.get("is_checked_in") or rd.get("queue_status") == "Checked In")
                         queue_items.append({
                             "appointment_id": str(rd["appointment_id"]),
                             "token_number": rd.get("token_number"),
-                            "queue_status": rd.get("queue_status") or "waiting",
+                            "queue_status": "Checked In" if is_arrived else (rd.get("queue_status") or "waiting"),
+                            "is_checked_in": is_arrived,
+                            "checked_in_at": str(rd.get("checked_in_at")) if rd.get("checked_in_at") else None,
                             "vitals_status": vitals_status,
                             "date": str(rd["date"]),
                             "time": str(rd["time"]),
@@ -311,10 +323,17 @@ def get_nurse_queue(
         else:
             v_status = "recorded"
 
+        if a.get("status") in ("Completed", "Cancelled"):
+            continue
+        is_arrived = bool(a.get("is_checked_in") or a.get("status") == "Checked In")
+        if not is_arrived:
+            continue
         queue_items.append({
             "appointment_id": str(a.get("id")),
             "token_number": a.get("token_number") or a.get("tokenNumber"),
-            "queue_status": a.get("queue_status") or a.get("queueStatus") or "waiting",
+            "queue_status": "Checked In" if is_arrived else (a.get("queue_status") or a.get("queueStatus") or "waiting"),
+            "is_checked_in": is_arrived,
+            "checked_in_at": a.get("checked_in_at"),
             "vitals_status": v_status,
             "date": a.get("date"),
             "time": a.get("time"),
@@ -339,6 +358,14 @@ def get_nurse_queue(
             "abnormal_flags": abnormal_flags,
             "lab_test_count": t_count
         })
+
+    queue_items.sort(
+        key=lambda x: (
+            0 if x.get("is_checked_in") or x.get("queue_status") == "Checked In" else 1,
+            x.get("checked_in_at") or "",
+            x.get("time") or ""
+        )
+    )
 
     return {"success": True, "queue": queue_items}
 

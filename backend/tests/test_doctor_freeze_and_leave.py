@@ -69,6 +69,26 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
             "hospital_id": cls.hosp_b
         })
 
+        # Admin A Token (Hospital Alpha)
+        cls.admin_a_token = create_jwt({
+            "type": "staff",
+            "role": "admin",
+            "staff_id": "adm-alpha-01",
+            "name": "Admin Alpha",
+            "email": "adm.alpha@carepulse.com",
+            "hospital_id": cls.hosp_a
+        })
+
+        # Admin B Token (Hospital Beta)
+        cls.admin_b_token = create_jwt({
+            "type": "staff",
+            "role": "admin",
+            "staff_id": "adm-beta-01",
+            "name": "Admin Beta",
+            "email": "adm.beta@carepulse.com",
+            "hospital_id": cls.hosp_b
+        })
+
         # Clean up any leftover test doctor leaves
         if database.use_pg:
             try:
@@ -148,6 +168,26 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
         1h 30m window (current_time to current_time + 90m) are frozen.
         Slots starting after 90m remain available and visible.
         """
+        # Dynamically seed slots around current time: one within 90m, one after 90m
+        now = datetime.now()
+        slot1_start = now + timedelta(minutes=30)
+        slot1_end = now + timedelta(minutes=90)
+        slot2_start = now + timedelta(minutes=120)
+        slot2_end = now + timedelta(minutes=180)
+        dynamic_slots = [
+            {"timeSlot": f"{slot1_start.strftime('%I:%M %p')} - {slot1_end.strftime('%I:%M %p')}", "maxSeats": 5, "bookedSeats": 0, "isAvailable": True},
+            {"timeSlot": f"{slot2_start.strftime('%I:%M %p')} - {slot2_end.strftime('%I:%M %p')}", "maxSeats": 5, "bookedSeats": 0, "isAvailable": True},
+        ]
+        self._ensure_doctor(self.doc_a_id, "Dr. Alpha Specialist", self.hosp_a)
+        # Update doctor's slots with dynamic slots
+        db = database.read_json_db()
+        for d in db.get("doctors", []):
+            if d.get("id") == self.doc_a_id:
+                d["slot_capacities"] = dynamic_slots
+                d["slotCapacities"] = dynamic_slots
+                break
+        database.write_json_db(db)
+
         # Mark doctor A unavailable
         patch_res = self.client.patch(
             f"/api/doctor/{self.doc_a_id}/availability",
@@ -179,7 +219,7 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
                 # Must be frozen!
                 self.assertTrue(s["isFrozen"], f"Slot {time_slot} starting at {start_mins}m should be frozen (now={current_mins}m, window={freeze_until}m)")
                 self.assertFalse(s["isAvailable"])
-                self.assertEqual(s["statusBadge"], "Frozen (Doctor Away)")
+                self.assertEqual(s.get("freezeType") or s.get("statusBadge"), "Frozen (Doctor Away)")
             elif start_mins >= freeze_until:
                 # Starts after 90 minutes -> MUST BE AVAILABLE!
                 self.assertFalse(s["isFrozen"], f"Slot {time_slot} after 90m window should NOT be frozen")
@@ -242,10 +282,18 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
         for s in res_before.json().get("slots", []):
             self.assertFalse(s["isFrozen"], f"Slot {s['timeSlot']} should NOT be frozen while leave is Pending")
 
-        # 3. Receptionist approves the leave
-        approve_res = self.client.patch(
+        # 3. Receptionist is forbidden from approving leave (403)
+        rec_res = self.client.patch(
             f"/api/receptionist/leaves/{leave_id}/status",
             headers={"Authorization": f"Bearer {self.receptionist_a_token}"},
+            json={"status": "Approved"}
+        )
+        self.assertEqual(rec_res.status_code, 403, "Receptionist must not be allowed to approve leave")
+
+        # Admin approves the leave
+        approve_res = self.client.patch(
+            f"/api/admin/doctor-leaves/{leave_id}/status",
+            headers={"Authorization": f"Bearer {self.admin_a_token}"},
             json={"status": "Approved"}
         )
         self.assertEqual(approve_res.status_code, 200)
@@ -293,15 +341,23 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
         )
         self.assertEqual(patch_b_res.status_code, 403, "Receptionist from another hospital must be forbidden from approving cross-hospital leaves")
 
-        # Receptionist A (Hospital Alpha) can see and approve it
+        # Admin B (Hospital Beta) attempts cross-hospital approval: MUST BE FORBIDDEN (HTTP 403)!
+        adm_b_patch = self.client.patch(
+            f"/api/admin/doctor-leaves/{leave_a_id}/status",
+            headers={"Authorization": f"Bearer {self.admin_b_token}"},
+            json={"status": "Approved"}
+        )
+        self.assertEqual(adm_b_patch.status_code, 403, "Cross-hospital admin approval must be forbidden")
+
+        # Admin A (Hospital Alpha) can see and approve it
         get_a_res = self.client.get(
-            "/api/receptionist/leaves",
-            headers={"Authorization": f"Bearer {self.receptionist_a_token}"}
+            "/api/admin/doctor-leaves",
+            headers={"Authorization": f"Bearer {self.admin_a_token}"}
         )
         self.assertEqual(get_a_res.status_code, 200)
         leaves_seen_by_a = get_a_res.json().get("leaves", [])
         self.assertTrue(any(l["id"] == leave_a_id for l in leaves_seen_by_a),
-                        "Receptionist A should see leave from their own hospital")
+                        "Admin A should see leave from their own hospital")
 
     def test_05_leave_cancellation_unfreezes_slots(self):
         """
@@ -310,7 +366,7 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
         """
         leave_date = (datetime.now() + timedelta(days=15)).strftime("%Y-%m-%d")
 
-        # 1. Apply and Approve leave
+        # 1. Apply and Approve leave by Admin
         apply_res = self.client.post(
             "/api/doctor/leave",
             headers={"Authorization": f"Bearer {self.doctor_a_token}"},
@@ -319,8 +375,8 @@ class TestDoctorFreezeAndLeave(unittest.TestCase):
         leave_id = apply_res.json()["leave"]["id"]
 
         approve_res = self.client.patch(
-            f"/api/receptionist/leaves/{leave_id}/status",
-            headers={"Authorization": f"Bearer {self.receptionist_a_token}"},
+            f"/api/admin/doctor-leaves/{leave_id}/status",
+            headers={"Authorization": f"Bearer {self.admin_a_token}"},
             json={"status": "Approved"}
         )
         self.assertEqual(approve_res.status_code, 200)
