@@ -106,6 +106,10 @@ def parse_medical_text_fallback(text: str, document_type: str = "auto") -> Dict[
         ("paracetamol", "650mg", "as needed for fever"),
         ("ibuprofen", "400mg", "every 8 hours as needed"),
         ("omeprazole", "20mg", "once daily before breakfast"),
+        ("pantoprazole", "40mg", "once daily before breakfast"),
+        ("cetirizine", "10mg", "once daily at bedtime"),
+        ("telmisartan", "40mg", "once daily in the morning"),
+        ("doxycycline", "100mg", "twice daily with water"),
         ("levothyroxine", "50mcg", "once daily in the morning"),
         ("azithromycin", "250mg", "once daily for 5 days")
     ]

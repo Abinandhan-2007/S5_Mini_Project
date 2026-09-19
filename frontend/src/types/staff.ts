@@ -143,11 +143,11 @@ export interface AnnouncementRecord {
   isActive?: boolean;
   postedAt?: string;
   authorName?: string;
+  status?: 'Sent' | 'Scheduled' | 'Draft' | string;
   scheduledFor?: string;
   sentAt?: string;
   deliveredCount?: number;
   readCount?: number;
-  status?: 'Sent' | 'Scheduled' | 'Draft';
 }
 
 export type SuperAdminHospitalLifecycle = 'Draft' | 'Pending Setup' | 'Active' | 'Suspended';

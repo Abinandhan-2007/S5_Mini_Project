@@ -24,6 +24,7 @@ export interface MedicationItem {
   nextDose?: string;
   totalDays?: number;
   daysCompleted?: number;
+  duration?: string;
 }
 
 export interface MedicationCardStackProps {

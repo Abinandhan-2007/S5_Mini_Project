@@ -69,6 +69,35 @@ class TestScanMedicineOCRAndFuzzyMatch(unittest.TestCase):
                 "icon_type": "pill"
             }
         ]
+        # Ensure prescriptions exist in JSON DB and PG for HTTP endpoint integration tests
+        try:
+            from backend.database import read_json_db, JSON_DB_PATH, get_pg_connection, use_pg
+            import json
+            db_data = read_json_db()
+            existing_rx = db_data.get("prescriptions", [])
+            rx_ids = {r.get("id") for r in existing_rx}
+            for sp in self.sample_prescriptions:
+                if sp["id"] not in rx_ids:
+                    existing_rx.append(sp)
+            db_data["prescriptions"] = existing_rx
+            with open(JSON_DB_PATH, "w", encoding="utf-8") as f:
+                json.dump(db_data, f, indent=2)
+            
+            if use_pg:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        for sp in self.sample_prescriptions:
+                            cur.execute(
+                                """
+                                INSERT INTO prescriptions (id, patient_id, drug_name, dosage, frequency, meal_timing, prescriber, icon_type, status)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Active')
+                                ON CONFLICT (id) DO NOTHING;
+                                """,
+                                (sp["id"], sp["patient_id"], sp["drug_name"], sp["dosage"], sp["frequency"], sp["meal_timing"], sp["prescriber"], sp["icon_type"])
+                            )
+                        conn.commit()
+        except Exception:
+            pass
 
     # -------------------------------------------------------------------------
     # SCENARIO 1: Clear, correctly-spelled drug name match

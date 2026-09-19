@@ -247,6 +247,10 @@ export const MedicineInfoLookupScreen: React.FC = () => {
   const [scanLanguage, setScanLanguage] = useState<string>(language || 'en');
   const [isTranslating, setIsTranslating] = useState(false);
 
+  // Authoritative English baseline and multi-language client cache for instant 0ms switching
+  const originalEnglishResultRef = useRef<MedicineInfoLookupResponse | null>(null);
+  const languageCacheRef = useRef<Record<string, MedicineInfoLookupResponse>>({});
+
   // Synchronize initial language from i18n
   useEffect(() => {
     if (language && !scanLanguage) {
@@ -290,17 +294,35 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     return () => clearInterval(timer);
   }, [isAnalyzing]);
 
-  // Fast on-the-fly translation when switching languages on active result
+  // Fast on-the-fly translation with instant 0ms client-side cache
   const handleSwitchLanguage = async (newLang: string) => {
     setScanLanguage(newLang);
     if (!lookupResult || lookupResult.status !== 'FOUND') return;
 
-    // If result already has this lang, avoid redundant API call
-    if (lookupResult.lang === newLang) return;
+    // If result is already displayed in this lang, avoid redundant work
+    if (lookupResult.lang === newLang || (newLang === 'en' && !lookupResult.lang)) return;
 
-    setIsTranslating(true);
     stopSpeaking();
     setIsSpeaking(false);
+
+    // 1. Instant Cache Hit: 0ms switch if already translated or switching back to English
+    if (newLang === 'en' && originalEnglishResultRef.current) {
+      setLookupResult({
+        ...originalEnglishResultRef.current,
+        lang: 'en',
+      });
+      return;
+    }
+
+    if (languageCacheRef.current[newLang]) {
+      setLookupResult(languageCacheRef.current[newLang]);
+      return;
+    }
+
+    // 2. Not cached: Translate always from pristine English baseline to prevent translation degradation
+    const baseline = originalEnglishResultRef.current || lookupResult;
+
+    setIsTranslating(true);
 
     try {
       const res = await apiFetch('/medicine/translate-info', {
@@ -308,26 +330,29 @@ export const MedicineInfoLookupScreen: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetLang: newLang,
-          drugName: lookupResult.drugName,
-          genericName: lookupResult.genericName,
-          purpose: lookupResult.purpose,
-          indicationsAndUsage: lookupResult.indicationsAndUsage,
-          summary: lookupResult.summary,
-          mainUses: lookupResult.mainUses,
-          howToTake: lookupResult.howToTake,
-          warnings: lookupResult.warnings,
-          sideEffects: lookupResult.sideEffects,
-          disclaimer: lookupResult.disclaimer,
+          drugName: baseline.drugName,
+          genericName: baseline.genericName,
+          purpose: baseline.purpose,
+          indicationsAndUsage: baseline.indicationsAndUsage,
+          summary: baseline.summary,
+          mainUses: baseline.mainUses,
+          howToTake: baseline.howToTake,
+          warnings: baseline.warnings,
+          sideEffects: baseline.sideEffects,
+          disclaimer: baseline.disclaimer,
         }),
       });
 
       if (res.ok) {
         const data: MedicineInfoLookupResponse = await res.json();
-        setLookupResult((prev) => ({
-          ...prev,
+        const updatedResult: MedicineInfoLookupResponse = {
+          ...baseline,
           ...data,
           lang: newLang,
-        }));
+        };
+        // Store in multi-language cache for instantaneous subsequent switches
+        languageCacheRef.current[newLang] = updatedResult;
+        setLookupResult(updatedResult);
       }
     } catch (err) {
       console.warn('Medicine translation note:', err);
@@ -504,6 +529,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     setIsSideEffectsExpanded(false);
     stopSpeaking();
     setIsSpeaking(false);
+    languageCacheRef.current = {};
+    originalEnglishResultRef.current = null;
 
     try {
       const res = await apiFetch('/medicine/lookup-info', {
@@ -518,6 +545,11 @@ export const MedicineInfoLookupScreen: React.FC = () => {
       if (res.ok) {
         const data: MedicineInfoLookupResponse = await res.json();
         setLookupResult(data);
+        const curLang = scanLanguage || 'en';
+        languageCacheRef.current[curLang] = data;
+        if (curLang === 'en' || !originalEnglishResultRef.current) {
+          originalEnglishResultRef.current = data;
+        }
       } else {
         // Check if we have sample fallback for the drug name
         const searchKey = Object.keys(SAMPLE_MEDICATIONS).find(
@@ -528,7 +560,10 @@ export const MedicineInfoLookupScreen: React.FC = () => {
         );
 
         if (searchKey) {
-          setLookupResult(SAMPLE_MEDICATIONS[searchKey]);
+          const sampleData = SAMPLE_MEDICATIONS[searchKey];
+          setLookupResult(sampleData);
+          originalEnglishResultRef.current = sampleData;
+          languageCacheRef.current = { en: sampleData };
         } else {
           const errData = await res.json().catch(() => ({}));
           setErrorNotice(errData?.detail || 'Failed to lookup medicine. Please try again.');
@@ -545,10 +580,13 @@ export const MedicineInfoLookupScreen: React.FC = () => {
       );
 
       if (searchKey) {
-        setLookupResult(SAMPLE_MEDICATIONS[searchKey]);
+        const sampleData = SAMPLE_MEDICATIONS[searchKey];
+        setLookupResult(sampleData);
+        originalEnglishResultRef.current = sampleData;
+        languageCacheRef.current = { en: sampleData };
       } else if (payload.drugName) {
         // Generate a standard informative card
-        setLookupResult({
+        const cardData: MedicineInfoLookupResponse = {
           status: 'FOUND',
           drugName: payload.drugName,
           genericName: payload.genericName || payload.drugName,
@@ -558,7 +596,10 @@ export const MedicineInfoLookupScreen: React.FC = () => {
           indicationsAndUsage: `Indicated for conditions diagnosed by a medical professional. Adhere to your pharmacist's dosage guidelines.`,
           summary: `Clinical guidance for ${payload.drugName}. Always verify against your active prescriptions before taking.`,
           disclaimer: 'Informational reference only.',
-        });
+        };
+        setLookupResult(cardData);
+        originalEnglishResultRef.current = cardData;
+        languageCacheRef.current = { en: cardData };
       } else {
         setErrorNotice('Network connection slow. Please try again or search by medication name.');
       }
@@ -591,6 +632,8 @@ export const MedicineInfoLookupScreen: React.FC = () => {
     setManualQuery('');
     stopSpeaking();
     setIsSpeaking(false);
+    originalEnglishResultRef.current = null;
+    languageCacheRef.current = {};
   };
 
   const analyzingSteps = [
