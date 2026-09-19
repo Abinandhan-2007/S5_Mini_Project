@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../../lib/apiFetch';
 import { usePolling } from '../../lib/usePolling';
+import { useStaffStore } from '../../store/staffStore';
 
 export interface ChatContact {
   id: string;
@@ -74,6 +75,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
   const [inputPriority, setInputPriority] = useState<'normal' | 'urgent'>('normal');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const markStaffMessageRead = useStaffStore((s) => s.markStaffMessageRead);
 
   const isAdmin = currentRole === 'admin' || currentRole === 'superadmin';
 
@@ -192,6 +194,48 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
       })
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, [messages, selectedContact, currentStaffId, currentRole]);
+
+  // Map of unread incoming messages grouped by sender contact id / role
+  const contactUnreadMap = useMemo(() => {
+    const map = new Map<string, number>();
+
+    const allFlat: ChatMessage[] = [];
+    messages.forEach((root) => {
+      allFlat.push(root);
+      if (root.replies && root.replies.length > 0) {
+        root.replies.forEach((r) => allFlat.push(r));
+      }
+    });
+
+    allFlat.forEach((m) => {
+      const isFromMe = Boolean(
+        (currentStaffId && (m.senderId === currentStaffId || m.senderCode === currentStaffId)) ||
+        (m.senderRole === currentRole)
+      );
+      if (isFromMe || m.isRead) return;
+
+      const senderKey = m.senderId || (m.senderRole === 'admin' ? 'admin' : '');
+      if (senderKey) {
+        map.set(senderKey, (map.get(senderKey) || 0) + 1);
+      }
+    });
+
+    return map;
+  }, [messages, currentStaffId, currentRole]);
+
+  // Automatically mark incoming messages from active selectedContact as read
+  useEffect(() => {
+    if (!selectedContact || activeConversationMessages.length === 0) return;
+    activeConversationMessages.forEach((m) => {
+      const isFromMe = Boolean(
+        (currentStaffId && (m.senderId === currentStaffId || m.senderCode === currentStaffId)) ||
+        (m.senderRole === currentRole)
+      );
+      if (!isFromMe && !m.isRead) {
+        markStaffMessageRead(m.id);
+      }
+    });
+  }, [selectedContact, activeConversationMessages, currentStaffId, currentRole, markStaffMessageRead]);
 
   // Handle Send Message
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -384,6 +428,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
               const isSelected = selectedContact?.id === contact.id;
               const badge = getRoleBadge(contact.role);
               const BadgeIcon = badge.icon;
+              const contactUnread = contactUnreadMap.get(contact.id) || 0;
 
               return (
                 <div
@@ -412,11 +457,18 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
                       <h4 className="text-xs font-bold text-slate-900 truncate">
                         {contact.name}
                       </h4>
-                      {contact.staffCode && (
-                        <span className="text-[10px] font-mono font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                          {contact.staffCode}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {contactUnread > 0 && (
+                          <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-black text-[9px] animate-pulse shadow-xs">
+                            {contactUnread} new
+                          </span>
+                        )}
+                        {contact.staffCode && (
+                          <span className="text-[10px] font-mono font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {contact.staffCode}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium truncate">

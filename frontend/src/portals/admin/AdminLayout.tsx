@@ -217,7 +217,7 @@ export const AdminLayout: React.FC = () => {
           label: 'Staff Live Chat',
           icon: MessageSquare,
           badge: unreadStaffMessagesCount > 0 ? `${unreadStaffMessagesCount} new` : undefined,
-          badgeColor: 'bg-teal-50 text-[#0B5A54] border-teal-200 font-bold',
+          badgeColor: 'bg-rose-500 text-white border-rose-600 font-bold animate-pulse shadow-xs',
         },
         {
           id: 'announcements',

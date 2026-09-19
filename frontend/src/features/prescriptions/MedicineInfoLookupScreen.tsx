@@ -350,7 +350,9 @@ export const MedicineInfoLookupScreen: React.FC = () => {
           ...data,
           lang: newLang,
         };
-        // Store in multi-language cache for instantaneous subsequent switches
+        if (newLang === 'en') {
+          originalEnglishResultRef.current = updatedResult;
+        }
         languageCacheRef.current[newLang] = updatedResult;
         setLookupResult(updatedResult);
       }
@@ -547,7 +549,7 @@ export const MedicineInfoLookupScreen: React.FC = () => {
         setLookupResult(data);
         const curLang = scanLanguage || 'en';
         languageCacheRef.current[curLang] = data;
-        if (curLang === 'en' || !originalEnglishResultRef.current) {
+        if (curLang === 'en' || data.lang === 'en') {
           originalEnglishResultRef.current = data;
         }
       } else {

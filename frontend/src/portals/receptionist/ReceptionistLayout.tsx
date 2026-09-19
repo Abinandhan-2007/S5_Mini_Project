@@ -85,6 +85,7 @@ export const ReceptionistLayout: React.FC = () => {
   const fetchBookings = useStaffStore((s) => s.fetchBookings);
   const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
   const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
+  const unreadStaffMessagesCount = useStaffStore((s) => s.unreadStaffMessagesCount);
   const callNextToken = useStaffStore((s) => s.callNextToken);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const logoutStaff = useStaffStore((s) => s.logoutStaff);
@@ -242,6 +243,8 @@ export const ReceptionistLayout: React.FC = () => {
           id: 'chat',
           label: 'Staff Live Chat',
           icon: MessageSquare,
+          badge: unreadStaffMessagesCount > 0 ? `${unreadStaffMessagesCount} new` : undefined,
+          badgeColor: 'bg-rose-500 text-white border-rose-600 font-bold animate-pulse shadow-xs',
         },
       ],
     },
@@ -506,6 +509,24 @@ export const ReceptionistLayout: React.FC = () => {
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
               <span>+ Walk-In</span>
+            </button>
+
+            {/* Quick Action: Staff Live Chat */}
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`relative p-2.5 rounded-xl border transition-all cursor-pointer ${
+                activeTab === 'chat'
+                  ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                  : 'border-slate-200/90 text-slate-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+              }`}
+              title="Staff Live Chat Messenger"
+            >
+              <MessageSquare className="w-4 h-4" />
+              {unreadStaffMessagesCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white rounded-full text-[9px] font-mono font-black flex items-center justify-center ring-2 ring-white animate-pulse shadow-xs">
+                  {unreadStaffMessagesCount}
+                </span>
+              )}
             </button>
 
             {/* Notification Bell Dropdown */}

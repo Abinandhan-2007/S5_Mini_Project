@@ -14,6 +14,7 @@ import type {
 import type { DoctorRecord, TokenQueueItem, TokenStatus, ReceptionistProfile, TimeSlotCapacity } from '../types/receptionist';
 import { receptionistService } from '../services/receptionistService';
 import { apiGet, apiPost, apiFetch } from '../lib/apiFetch';
+import { playChatNotificationSound, playUrgentAlertSound } from '../lib/soundUtils';
 
 export function createSplitSlot(
   id: string,
@@ -1236,13 +1237,46 @@ export const useStaffStore = create<StaffState>((set, get) => ({
         const data = await res.json();
         if (data && Array.isArray(data.messages)) {
           const msgs: StaffMessage[] = data.messages;
-          const unreadCount = msgs.reduce((acc, m) => {
-            let count = m.isRead ? 0 : 1;
-            if (m.replies) {
-              count += m.replies.filter(r => !r.isRead).length;
+          const currentStaff = get().currentStaff;
+          const myId = currentStaff?.id || currentStaff?.staff_id;
+          const myCode = currentStaff?.staff_code || currentStaff?.staffCode;
+
+          const isUnreadForMe = (msg: StaffMessage) => {
+            const isFromMe = Boolean(
+              (myId && (msg.senderId === myId || msg.senderCode === myId)) ||
+              (myCode && msg.senderCode === myCode)
+            );
+            if (isFromMe) return false;
+            return !msg.isRead;
+          };
+
+          let unreadCount = 0;
+          let hasUrgentUnread = false;
+          msgs.forEach((m) => {
+            if (isUnreadForMe(m)) {
+              unreadCount++;
+              if (m.priority === 'urgent' || m.priority === 'high') hasUrgentUnread = true;
             }
-            return acc + count;
-          }, 0);
+            if (m.replies && m.replies.length > 0) {
+              m.replies.forEach((r) => {
+                if (isUnreadForMe(r)) {
+                  unreadCount++;
+                  if (r.priority === 'urgent' || r.priority === 'high') hasUrgentUnread = true;
+                }
+              });
+            }
+          });
+
+          const prevCount = get().unreadStaffMessagesCount;
+          // Trigger audio chime if new unread incoming messages arrive while browsing
+          if (unreadCount > prevCount && prevCount >= 0) {
+            if (hasUrgentUnread) {
+              playUrgentAlertSound();
+            } else {
+              playChatNotificationSound();
+            }
+          }
+
           set({ staffMessages: msgs, unreadStaffMessagesCount: unreadCount });
         }
       }

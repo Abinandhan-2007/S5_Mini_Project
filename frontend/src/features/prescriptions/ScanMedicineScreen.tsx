@@ -54,6 +54,8 @@ export const ScanMedicineScreen: React.FC = () => {
   const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
   const [scanLanguage, setScanLanguage] = useState<string>(language || 'en');
   const [isTranslating, setIsTranslating] = useState(false);
+  const originalEnglishDrugInfoRef = useRef<DrugInfoData | null>(null);
+  const scanLanguageCacheRef = useRef<Record<string, DrugInfoData>>({});
 
   // Fast translation when patient toggles language
   const handleSwitchLanguage = async (newLang: string) => {
@@ -62,6 +64,44 @@ export const ScanMedicineScreen: React.FC = () => {
     const currentDrugInfo = scanResult.match?.drugInfo || candidateDrugInfo;
     if (!currentDrugInfo) return;
 
+    // 1. 0ms instant cache hit
+    if (newLang === 'en' && originalEnglishDrugInfoRef.current) {
+      const enInfo = originalEnglishDrugInfoRef.current;
+      if (scanResult.match) {
+        setScanResult({
+          ...scanResult,
+          match: {
+            ...scanResult.match,
+            drugInfo: enInfo,
+          },
+        });
+      }
+      if (candidateDrugInfo) {
+        setCandidateDrugInfo(enInfo);
+      }
+      return;
+    }
+
+    if (scanLanguageCacheRef.current[newLang]) {
+      const cached = scanLanguageCacheRef.current[newLang];
+      if (scanResult.match) {
+        setScanResult({
+          ...scanResult,
+          match: {
+            ...scanResult.match,
+            drugInfo: cached,
+          },
+        });
+      }
+      if (candidateDrugInfo) {
+        setCandidateDrugInfo(cached);
+      }
+      return;
+    }
+
+    // 2. Always translate from pristine English baseline to prevent translation degradation
+    const baseline = originalEnglishDrugInfoRef.current || currentDrugInfo;
+
     setIsTranslating(true);
     try {
       const res = await apiFetch('/medicine/translate-info', {
@@ -69,31 +109,36 @@ export const ScanMedicineScreen: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetLang: newLang,
-          drugName: currentDrugInfo.drug_name,
-          purpose: currentDrugInfo.purpose,
-          indicationsAndUsage: currentDrugInfo.indications_and_usage,
-          summary: currentDrugInfo.summary,
-          mainUses: currentDrugInfo.mainUses,
-          howToTake: currentDrugInfo.howToTake,
-          warnings: currentDrugInfo.warnings,
-          sideEffects: currentDrugInfo.sideEffects,
+          drugName: baseline.drug_name,
+          purpose: baseline.purpose,
+          indicationsAndUsage: baseline.indications_and_usage,
+          summary: baseline.summary,
+          mainUses: baseline.mainUses,
+          howToTake: baseline.howToTake,
+          warnings: baseline.warnings,
+          sideEffects: baseline.sideEffects,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
         const updatedDrugInfo: DrugInfoData = {
-          drug_name: currentDrugInfo.drug_name,
+          drug_name: baseline.drug_name,
           found: true,
           purpose: data.purpose,
           indications_and_usage: data.indicationsAndUsage,
           summary: data.summary,
-          source: data.source || 'CarePulse Medical Translation',
+          source: data.source || `CarePulse Medical Translation (${newLang.toUpperCase()})`,
           mainUses: data.mainUses,
           howToTake: data.howToTake,
           warnings: data.warnings,
           sideEffects: data.sideEffects,
         };
+
+        if (newLang === 'en') {
+          originalEnglishDrugInfoRef.current = updatedDrugInfo;
+        }
+        scanLanguageCacheRef.current[newLang] = updatedDrugInfo;
 
         if (scanResult.match) {
           setScanResult({
@@ -276,6 +321,11 @@ export const ScanMedicineScreen: React.FC = () => {
       if (res.ok) {
         const data: ScanMatchResponse = await res.json();
         setScanResult(data);
+        scanLanguageCacheRef.current = {};
+        if (data.match?.drugInfo) {
+          originalEnglishDrugInfoRef.current = data.match.drugInfo;
+          scanLanguageCacheRef.current['en'] = data.match.drugInfo;
+        }
         const prefill = data.match?.drugName || data.extractedText || '';
         setEditableQuery(prefill);
       } else {
@@ -316,6 +366,9 @@ export const ScanMedicineScreen: React.FC = () => {
       if (res.ok) {
         const info: DrugInfoData = await res.json();
         setCandidateDrugInfo(info);
+        scanLanguageCacheRef.current = {};
+        originalEnglishDrugInfoRef.current = info;
+        scanLanguageCacheRef.current['en'] = info;
       }
     } catch (e) {
       console.warn('Drug info fetch note:', e);

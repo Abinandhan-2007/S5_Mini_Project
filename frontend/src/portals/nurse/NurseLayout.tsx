@@ -31,6 +31,7 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
   const staffMessages = useStaffStore((s) => s.staffMessages);
   const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
   const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
+  const unreadStaffMessagesCount = useStaffStore((s) => s.unreadStaffMessagesCount);
   const sendStaffMessage = useStaffStore((s) => s.sendStaffMessage);
 
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
@@ -143,11 +144,16 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
             {/* Live Staff Chat Button */}
             <button
               onClick={() => setIsChatModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/30 hover:bg-purple-500/40 text-white font-extrabold text-xs border border-purple-300/40 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/30 hover:bg-purple-500/40 text-white font-extrabold text-xs border border-purple-300/40 shadow-2xs transition-all active:scale-95 cursor-pointer relative"
               title="Live Chat Messenger with Hospital Doctors, Staff & Administration"
             >
               <MessageSquare className="w-3.5 h-3.5 text-purple-200" />
               <span className="hidden sm:inline">Staff Chat</span>
+              {unreadStaffMessagesCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-rose-500 text-white rounded-full text-[9px] font-mono font-black animate-pulse shadow-xs">
+                  {unreadStaffMessagesCount}
+                </span>
+              )}
             </button>
 
             {/* Center Hospital Badge */}

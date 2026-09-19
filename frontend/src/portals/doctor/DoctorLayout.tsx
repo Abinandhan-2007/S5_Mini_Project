@@ -77,6 +77,7 @@ export const DoctorLayout: React.FC = () => {
   const fetchDoctors = useStaffStore((s) => s.fetchDoctors);
   const fetchAnnouncements = useStaffStore((s) => s.fetchAnnouncements);
   const fetchStaffMessages = useStaffStore((s) => s.fetchStaffMessages);
+  const unreadStaffMessagesCount = useStaffStore((s) => s.unreadStaffMessagesCount);
   const sendStaffMessage = useStaffStore((s) => s.sendStaffMessage);
   const updateTokenStatus = useStaffStore((s) => s.updateTokenStatus);
   const toggleDoctorAvailability = useStaffStore((s) => s.toggleDoctorAvailability);
@@ -336,6 +337,8 @@ export const DoctorLayout: React.FC = () => {
           id: 'chat',
           label: 'Staff Live Chat',
           icon: MessageSquare,
+          badge: unreadStaffMessagesCount > 0 ? `${unreadStaffMessagesCount} new` : undefined,
+          badgeColor: 'bg-rose-500 text-white border-rose-600 font-bold animate-pulse shadow-xs',
         },
         {
           id: 'notifications',
@@ -634,15 +637,20 @@ export const DoctorLayout: React.FC = () => {
             {/* Quick Action: Direct Message to Hospital Administration */}
             <button
               onClick={() => setActiveTab('chat')}
-              className={`px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer relative ${
                 activeTab === 'chat'
                   ? 'bg-purple-700 text-white shadow-md'
                   : 'bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-200'
               }`}
-              title="Open direct live chat with Hospital Administration"
+              title="Open direct live chat with Hospital Administration & Staff"
             >
               <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'chat' ? 'text-white' : 'text-purple-700'}`} />
-              <span className="hidden md:inline">Message Admin</span>
+              <span className="hidden md:inline">Staff Chat</span>
+              {unreadStaffMessagesCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-rose-500 text-white rounded-full text-[9px] font-mono font-black animate-pulse shadow-xs">
+                  {unreadStaffMessagesCount}
+                </span>
+              )}
             </button>
 
             {/* ── Notification Center Navbar Trigger ── */}
