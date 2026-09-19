@@ -642,7 +642,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               quickReplyChips: isFailure
                 ? ['Try Again', 'Book Doctor Visit', '🚨 Emergency (108)']
-                : aiData.quickReplyChips,
+                : (aiData.quickReplyChips || []),
               confidence: isFailure ? 0 : (aiData.confidence_score ?? 88),
               riskLevel: isFailure ? 'low' : (aiData.risk_level ?? 'low'),
               specialty: isFailure ? undefined : ((aiData.suggested_specialties && aiData.suggested_specialties[0]) || 'General Medicine'),

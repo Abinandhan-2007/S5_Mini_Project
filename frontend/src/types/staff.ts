@@ -145,7 +145,7 @@ export interface AnnouncementRecord {
   postedAt?: string;
   authorName?: string;
   authorRole?: string;
-  status?: 'Scheduled' | 'Sent' | string;
+  status?: 'Sent' | 'Scheduled' | 'Draft' | string;
   scheduledFor?: string;
   sentAt?: string;
   deliveredCount?: number;

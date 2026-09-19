@@ -338,7 +338,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       // Derive totalDays: prefer explicit backend field, then parse duration string, then fallback
       const resolvedTotal: number =
         p.totalDays ??
-        (p.duration ? parseDurationDays(p.duration as string) : courseDefaults.total);
+        ((p as any).duration ? parseDurationDays((p as any).duration as string) : courseDefaults.total);
       // Derive daysCompleted: prefer explicit backend field, then compute from createdAt, then 0
       const resolvedCompleted: number =
         p.daysCompleted !== undefined

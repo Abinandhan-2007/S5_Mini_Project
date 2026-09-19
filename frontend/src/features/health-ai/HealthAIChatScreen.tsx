@@ -145,21 +145,6 @@ export const HealthAIChatScreen: React.FC = () => {
                 )}
               </div>
             )}
-
-            {/* Quick Reply Action Chips */}
-            {msg.sender === 'bot' && msg.quickReplyChips && msg.quickReplyChips.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pl-2 pt-1">
-                {msg.quickReplyChips.map((chip, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(chip)}
-                    className="text-[11px] font-semibold text-[#0B5A54] bg-[#E3F3F1] border border-[#0B5A54]/20 px-3 py-1 rounded-full hover:bg-[#0B5A54] hover:text-white transition-all active:scale-95 shadow-2xs cursor-pointer"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         ))}
 
@@ -226,12 +211,12 @@ export const HealthAIChatScreen: React.FC = () => {
 
       {/* STABLE BOTTOM INPUT BAR */}
       <div
-        className={`fixed left-0 right-0 z-30 max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-2 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] shadow-md transition-all duration-200 ${isInputFocused ? 'bottom-2' : 'bottom-20 sm:bottom-22'
+        className={`fixed left-0 right-0 z-30 max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-2 bg-transparent pointer-events-none transition-all duration-200 ${isInputFocused ? 'bottom-2' : 'bottom-20 sm:bottom-22'
           }`}
       >
-        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E4E7EC] rounded-full px-3 py-1.5 focus-within:border-[#0B5A54] focus-within:ring-2 focus-within:ring-[#0B5A54]/20 transition-all">
-          <div className="w-7 h-7 rounded-full bg-[#E3F3F1] flex items-center justify-center text-[#0B5A54] shrink-0">
-            <Sparkles className="w-3.5 h-3.5 text-[#0B5A54]" />
+        <div className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm rounded-full px-3.5 py-1.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all pointer-events-auto">
+          <div className="w-7 h-7 flex items-center justify-center text-emerald-600 shrink-0">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
           </div>
           <input
             type="text"
@@ -246,7 +231,7 @@ export const HealthAIChatScreen: React.FC = () => {
           <button
             onClick={() => handleSend()}
             disabled={!input.trim() || isAiTyping}
-            className="w-8 h-8 rounded-full bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] text-white flex items-center justify-center disabled:opacity-30 hover:shadow-md active:scale-95 transition-all shrink-0 shadow-2xs cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-center disabled:opacity-30 hover:shadow-md hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all shrink-0 shadow-xs cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
           </button>
