@@ -1579,6 +1579,10 @@ def fetch_all_tokens_from_db(
                 if app_id in seen_ids or (t_num and t_num in seen_tickets):
                     continue
 
+                if database.use_pg and app_dict.get("synced_to_pg"):
+                    # Item was previously synced to PostgreSQL but not returned by PG query (deliberately deleted from PG)
+                    continue
+
                 app_doc_id = app_dict.get("doctor_id") or app_dict.get("doctorId")
                 doc_obj = doc_obj_map.get(app_doc_id, {})
                 app_hosp = app_dict.get("hospital_id") or app_dict.get("hospitalId") or doc_obj.get("hospital_id") or doc_obj.get("hospitalId")

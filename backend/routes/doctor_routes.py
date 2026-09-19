@@ -126,6 +126,9 @@ def get_doctor_appointments(
             if a_id in seen_ids or (a_ticket and a_ticket in seen_tickets):
                 continue
 
+            if database.use_pg and a.get("synced_to_pg"):
+                continue
+
             app_hosp = a.get("hospital_id") or a.get("hospitalId") or doc_hosp_map.get(a.get("doctor_id"))
             if effective_hosp_id and app_hosp != effective_hosp_id:
                 continue

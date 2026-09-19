@@ -15,9 +15,15 @@ import {
   CheckCircle2,
   KeyRound,
   X,
+  Clock,
+  Copy,
+  Check,
+  RefreshCw,
+  Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import { apiPost } from '../../lib/apiFetch';
+import { apiPost, apiFetch } from '../../lib/apiFetch';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 interface StaffPortalLoginProps {
@@ -34,7 +40,18 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
   // Forgot Password Modal State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState('');
-  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccessMessage, setForgotSuccessMessage] = useState<string | null>(null);
+  const [pendingNotice, setPendingNotice] = useState<string | null>(null);
+  const [resolvedResult, setResolvedResult] = useState<{
+    staffName?: string;
+    staffRole?: string;
+    temporaryPassword?: string;
+    resolvedAt?: string;
+  } | null>(null);
+  const [copiedTempPass, setCopiedTempPass] = useState(false);
 
   const doctors = useStaffStore((s) => s.doctors);
   const receptionists = useStaffStore((s) => s.receptionists);
@@ -321,13 +338,98 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
     setIsLoading(false);
   };
 
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setForgotSent(true);
-    setTimeout(() => {
-      setForgotSent(false);
+    const idClean = forgotIdentifier.trim();
+    if (!idClean) return;
+
+    setForgotLoading(true);
+    setForgotError(null);
+    setForgotSuccessMessage(null);
+    setResolvedResult(null);
+    setPendingNotice(null);
+
+    try {
+      const res = await apiPost('/staff/forgot-password', {
+        identifier: idClean,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setForgotSuccessMessage(
+          data.message ||
+            `Assistance ticket #${data.requestId} has been logged! Your Hospital Administrator received an urgent security notification.`
+        );
+        setPendingNotice(
+          'Your ticket is now queued in the Hospital Admin portal. Once the administrator approves it, click "Check Reset Status" below to get your temporary password.'
+        );
+      } else {
+        setForgotError(
+          data.detail ||
+            data.message ||
+            'No matching staff account found. Please check your username or work email.'
+        );
+      }
+    } catch (err: any) {
+      setForgotError(err.message || 'Unable to communicate with the authentication server.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    const idClean = forgotIdentifier.trim();
+    if (!idClean) {
+      setForgotError('Please enter your username or work email to check reset status.');
+      return;
+    }
+
+    setCheckingStatus(true);
+    setForgotError(null);
+    try {
+      const res = await apiFetch(
+        `/staff/forgot-password/status?identifier=${encodeURIComponent(idClean)}`
+      );
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.status === 'Resolved') {
+          setResolvedResult({
+            staffName: data.staffName,
+            staffRole: data.staffRole,
+            temporaryPassword: data.temporaryPassword || 'CarePulse#2026',
+            resolvedAt: data.resolvedAt,
+          });
+          setForgotSuccessMessage('Password reset approved by Hospital Administrator!');
+          setPendingNotice(null);
+        } else {
+          setResolvedResult(null);
+          setPendingNotice(
+            `Ticket status: Pending review by Hospital Administrator. Submitted: ${data.createdAt || 'recently'}. Please ask your on-duty Admin or check again shortly.`
+          );
+        }
+      } else {
+        setForgotError(data.detail || 'No active reset request found for this account.');
+      }
+    } catch (err: any) {
+      setForgotError(err.message || 'Unable to check reset ticket status.');
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const handleApplyTemporaryPassword = () => {
+    if (resolvedResult?.temporaryPassword) {
+      setIdentifier(forgotIdentifier.trim());
+      setPassword(resolvedResult.temporaryPassword);
       setIsForgotModalOpen(false);
-    }, 2800);
+    }
+  };
+
+  const handleCopyTempPassword = () => {
+    if (resolvedResult?.temporaryPassword) {
+      navigator.clipboard.writeText(resolvedResult.temporaryPassword);
+      setCopiedTempPass(true);
+      setTimeout(() => setCopiedTempPass(false), 2000);
+    }
   };
 
   return (
@@ -605,63 +707,162 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         </motion.div>
       </div>
 
-      {/* ── Forgot Password Modal ── */}
+      {/* ── Staff Password Assistance Modal ── */}
       {isForgotModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-[#0B5A54]" />
-                <h3 className="text-sm font-black text-slate-900 font-heading">
-                  Staff Password Assistance
-                </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center border border-teal-100">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 font-heading">
+                    Staff Password Assistance
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Hospital Administrator credential recovery
+                  </p>
+                </div>
               </div>
               <button
-                onClick={() => setIsForgotModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                onClick={() => {
+                  setIsForgotModalOpen(false);
+                  setForgotError(null);
+                  setForgotSuccessMessage(null);
+                  setPendingNotice(null);
+                }}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {forgotSent ? (
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2 animate-in fade-in">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                <h4 className="text-xs font-black text-emerald-800">Assistance Request Sent</h4>
-                <p className="text-[11px] text-emerald-700 font-medium">
-                  A password reset link or internal IT ticket has been logged for your staff account.
-                </p>
+            {/* Resolved Temporary Credentials Card */}
+            {resolvedResult ? (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3 animate-in fade-in">
+                <div className="flex items-center gap-2 text-emerald-800">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <h4 className="text-xs font-black text-emerald-900">
+                      Password Reset by Hospital Administrator!
+                    </h4>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      Account: <span className="font-bold">{resolvedResult.staffName}</span> ({resolvedResult.staffRole?.toUpperCase()})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-emerald-200/80 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Temporary Password
+                    </span>
+                    <span className="font-mono text-sm font-black text-slate-900 select-all">
+                      {resolvedResult.temporaryPassword}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyTempPassword}
+                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                    title="Copy Password"
+                  >
+                    {copiedTempPass ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApplyTemporaryPassword}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white text-xs font-black shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Auto-Fill Credentials & Sign In</span>
+                </button>
               </div>
-            ) : (
-              <form onSubmit={handleForgotSubmit} className="space-y-3 text-xs font-bold text-slate-700">
-                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                  Enter your staff username or work email. Your department administrator or IT lead will verify your account.
-                </p>
+            ) : null}
+
+            {/* Success / Alert Notices */}
+            {forgotSuccessMessage && !resolvedResult && (
+              <div className="p-3 rounded-2xl bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#0B5A54] shrink-0 mt-0.5" />
+                <span>{forgotSuccessMessage}</span>
+              </div>
+            )}
+
+            {pendingNotice && !resolvedResult && (
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium flex items-start gap-2">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>{pendingNotice}</span>
+              </div>
+            )}
+
+            {forgotError && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{forgotError}</span>
+              </div>
+            )}
+
+            {/* Input Form & Action Buttons */}
+            <form onSubmit={handleForgotSubmit} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-700 font-bold block text-[11px]">
+                  Staff Username, Work Email, or Staff ID
+                </label>
                 <input
                   type="text"
                   required
                   value={forgotIdentifier}
-                  onChange={(e) => setForgotIdentifier(e.target.value)}
-                  placeholder="Username or work email"
+                  onChange={(e) => {
+                    setForgotIdentifier(e.target.value);
+                    setForgotError(null);
+                  }}
+                  placeholder="e.g. kmchdesk1@gmail.com or dr.sharma"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
                 />
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsForgotModalOpen(false)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-bold text-xs shadow-md cursor-pointer"
-                  >
-                    Send Request
-                  </button>
-                </div>
-              </form>
-            )}
+              </div>
+
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                Enter your work credentials. You can submit a request directly to your Hospital Admin or check if your ticket has already been approved.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCheckStatus}
+                  disabled={checkingStatus || !forgotIdentifier.trim()}
+                  className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${checkingStatus ? 'animate-spin' : ''}`} />
+                  <span>Check Reset Status</span>
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotLoading || !forgotIdentifier.trim()}
+                  className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-[#0B5A54] hover:bg-[#084540] text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all"
+                >
+                  {forgotLoading ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <KeyRound className="w-3.5 h-3.5" />
+                  )}
+                  <span>Request Admin Reset</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

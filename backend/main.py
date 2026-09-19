@@ -1972,6 +1972,8 @@ def get_patient_appointments(patient_id: str):
         db = read_json_db()
         apps = db.get("appointments", [])
         for a in apps:
+            if database.use_pg and a.get("synced_to_pg"):
+                continue
             a_pid = str(a.get("patient_id") or a.get("patientId") or a.get("patient_uuid") or "").strip()
             a_id = str(a.get("id"))
             a_ticket = a.get("ticket_number") or a.get("ticketNumber", "")
@@ -2625,6 +2627,8 @@ def get_patient_prescriptions(patient_id: str):
 
 
     # 1. PostgreSQL Prescriptions Table
+    # 1. PostgreSQL Prescriptions Table (Primary Authoritative Source)
+    pg_queried = False
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
@@ -2638,7 +2642,12 @@ def get_patient_prescriptions(patient_id: str):
                         """,
                         (target_pid,)
                     )
-                    for r in cur.fetchall():
+                    rows = cur.fetchall()
+                    pg_queried = True
+                    for r in rows:
+                        st = (r.get("status") or "Active").lower().strip()
+                        if st in ["discontinued", "cancelled", "deleted"]:
+                            continue
                         d_name = r.get("drug_name") or ""
                         if not d_name:
                             continue
@@ -2664,123 +2673,106 @@ def get_patient_prescriptions(patient_id: str):
                                 "status": r.get("status") or "Active",
                                 "createdAt": _created
                             })
-
-                    # Also extract any prescriptions inside consultations.soap_data
-                    cur.execute(
-                        """
-                        SELECT id, doctor_name, hospital_id, date, soap_data, created_at
-                        FROM consultations
-                        WHERE patient_id::text = %s
-                        ORDER BY date DESC
-                        """,
-                        (target_pid,)
-                    )
-                    for c in cur.fetchall():
-                        s_data = c.get("soap_data")
-                        soap = s_data if isinstance(s_data, dict) else (json.loads(s_data) if s_data else {})
-                        meds = soap.get("prescriptions") or []
-                        c_doc = c.get("doctor_name") or "Treating Physician"
-                        c_date = str(c.get("date") or "")
-                        for m_idx, med in enumerate(meds):
-                            if isinstance(med, dict):
-                                m_name = med.get("drugName") or med.get("name") or med.get("medicine") or ""
-                                if not m_name:
-                                    continue
-                                k = m_name.lower().strip()
-                                if k not in seen_drugs:
-                                    seen_drugs.add(k)
-                                    _dur_str = med.get("duration") or "3 Days"
-                                    _total = parse_duration_days(_dur_str)
-                                    _created = c_date
-                                    result.append({
-                                        "id": f"rx-cons-{c['id']}-{m_idx}",
-                                        "patientId": target_pid,
-                                        "drugName": m_name,
-                                        "dosage": med.get("dosage") or "1 Tab",
-                                        "frequency": med.get("frequency") or "Twice daily",
-                                        "mealTiming": med.get("instructions") or med.get("mealTiming") or "After Food",
-                                        "instructions": med.get("instructions") or "Follow doctor advice",
-                                        "duration": _dur_str,
-                                        "totalDays": _total,
-                                        "daysCompleted": compute_days_completed(_created, _total),
-                                        "prescriber": c_doc,
-                                        "iconType": "pill",
-                                        "status": "Active",
-                                        "createdAt": _created
-                                    })
         except Exception as e:
             logger.warning(f"Error fetching PG prescriptions: {e}")
+            database.use_pg = False
 
-    # 2. Resilient JSON DB fallback & merge
-    try:
-        db = read_json_db()
-        for r in db.get("prescriptions", []):
-            r_pid = str(r.get("patient_id") or r.get("patientId") or "")
-            if r_pid == target_pid:
-                d_name = r.get("drug_name") or r.get("drugName") or ""
-                if not d_name:
-                    continue
-                k = d_name.lower().strip()
-                if k not in seen_drugs:
-                    seen_drugs.add(k)
-                    _dur_str = r.get("duration") or "3 Days"
-                    _total = parse_duration_days(_dur_str)
-                    _created = str(r.get("created_at") or "")
-                    result.append({
-                        "id": str(r.get("id")),
-                        "patientId": target_pid,
-                        "drugName": d_name,
-                        "dosage": r.get("dosage") or "1 Tab",
-                        "frequency": r.get("frequency") or "Twice daily",
-                        "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
-                        "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
-                        "duration": _dur_str,
-                        "totalDays": _total,
-                        "daysCompleted": compute_days_completed(_created, _total),
-                        "prescriber": r.get("prescriber") or "Treating Physician",
-                        "iconType": r.get("icon_type") or r.get("iconType") or "pill",
-                        "status": r.get("status") or "Active",
-                        "createdAt": _created
-                    })
-
-        for c in db.get("consultations", []):
-            c_pid = str(c.get("patient_id") or "")
-            if c_pid == target_pid:
-                soap = c.get("soap_data", {})
-                meds = soap.get("prescriptions") or []
-                c_doc = c.get("doctor_name") or "Treating Physician"
-                c_date = str(c.get("date") or "")
-                for m_idx, med in enumerate(meds):
-                    if isinstance(med, dict):
-                        m_name = med.get("drugName") or med.get("name") or med.get("medicine") or ""
-                        if not m_name:
-                            continue
-                        k = m_name.lower().strip()
-                        if k not in seen_drugs:
-                            seen_drugs.add(k)
-                            _dur_str = med.get("duration") or "3 Days"
-                            _total = parse_duration_days(_dur_str)
-                            _created = c_date
-                            result.append({
-                                "id": f"rx-json-{c.get('id')}-{m_idx}",
-                                "patientId": target_pid,
-                                "drugName": m_name,
-                                "dosage": med.get("dosage") or "1 Tab",
-                                "frequency": med.get("frequency") or "Twice daily",
-                                "mealTiming": med.get("instructions") or med.get("mealTiming") or "After Food",
-                                "instructions": med.get("instructions") or "Follow doctor advice",
-                                "duration": _dur_str,
-                                "totalDays": _total,
-                                "daysCompleted": compute_days_completed(_created, _total),
-                                "prescriber": c_doc,
-                                "iconType": "pill",
-                                "status": "Active",
-                                "createdAt": _created
-                            })
-    except Exception as e:
-        logger.warning(f"Error reading JSON prescriptions: {e}")
+    # 2. Resilient JSON DB fallback (only when PostgreSQL is offline or un-synced)
+    if not pg_queried:
+        try:
+            db = read_json_db()
+            for r in db.get("prescriptions", []):
+                r_pid = str(r.get("patient_id") or r.get("patientId") or "")
+                if r_pid == target_pid:
+                    st = (r.get("status") or "Active").lower().strip()
+                    if st in ["discontinued", "cancelled", "deleted"]:
+                        continue
+                    d_name = r.get("drug_name") or r.get("drugName") or ""
+                    if not d_name:
+                        continue
+                    k = d_name.lower().strip()
+                    if k not in seen_drugs:
+                        seen_drugs.add(k)
+                        _dur_str = r.get("duration") or "3 Days"
+                        _total = parse_duration_days(_dur_str)
+                        _created = str(r.get("created_at") or "")
+                        result.append({
+                            "id": str(r.get("id")),
+                            "patientId": target_pid,
+                            "drugName": d_name,
+                            "dosage": r.get("dosage") or "1 Tab",
+                            "frequency": r.get("frequency") or "Twice daily",
+                            "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
+                            "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
+                            "duration": _dur_str,
+                            "totalDays": _total,
+                            "daysCompleted": compute_days_completed(_created, _total),
+                            "prescriber": r.get("prescriber") or "Treating Physician",
+                            "iconType": r.get("icon_type") or r.get("iconType") or "pill",
+                            "status": r.get("status") or "Active",
+                            "createdAt": _created
+                        })
+        except Exception as e:
+            logger.warning(f"Error reading JSON prescriptions: {e}")
 
     return result
+
+
+@app.delete("/api/prescriptions/{prescription_id}")
+def delete_prescription(prescription_id: str):
+    """
+    Permanently delete or discontinue a prescription across PostgreSQL, JSON store, and consultation notes.
+    """
+    clean_id = str(prescription_id).strip()
+    deleted = False
+
+    # 1. Delete from PostgreSQL prescriptions table
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM prescriptions WHERE id::text = %s RETURNING id, patient_id, drug_name",
+                        (clean_id,)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        deleted = True
+                        p_id = str(row["patient_id"])
+                        d_name = (row.get("drug_name") or "").lower().strip()
+                        # Also clean from consultations soap_data for this patient so it never resurrects
+                        cur.execute("SELECT id, soap_data FROM consultations WHERE patient_id::text = %s", (p_id,))
+                        for c in cur.fetchall():
+                            s = c.get("soap_data")
+                            if isinstance(s, dict) and "prescriptions" in s:
+                                orig = s["prescriptions"]
+                                filtered = [
+                                    m for m in orig
+                                    if (str(m.get("id")) != clean_id and (m.get("drugName") or m.get("name") or "").lower().strip() != d_name)
+                                ]
+                                if len(filtered) != len(orig):
+                                    s["prescriptions"] = filtered
+                                    cur.execute("UPDATE consultations SET soap_data = %s::jsonb WHERE id = %s", (json.dumps(s), c["id"]))
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Error deleting prescription from PostgreSQL: {e}")
+
+    # 2. Delete from database.json prescriptions
+    try:
+        db = read_json_db()
+        orig_len = len(db.get("prescriptions", []))
+        db["prescriptions"] = [r for r in db.get("prescriptions", []) if str(r.get("id")) != clean_id]
+        if len(db.get("prescriptions", [])) < orig_len:
+            deleted = True
+        for c in db.get("consultations", []):
+            soap = c.get("soap_data", {})
+            if "prescriptions" in soap:
+                soap["prescriptions"] = [m for m in soap["prescriptions"] if str(m.get("id")) != clean_id]
+        write_json_db(db)
+    except Exception as e:
+        logger.warning(f"Error deleting prescription from JSON DB: {e}")
+
+    return {"success": True, "message": f"Prescription {clean_id} deleted successfully"}
 
 
 @app.post("/api/prescriptions/scan-match", response_model=ScanMatchResponse)

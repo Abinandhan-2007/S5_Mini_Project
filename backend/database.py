@@ -276,7 +276,10 @@ def sync_offline_json_to_pg(existing_conn=None) -> int:
 
         # 4. Sync appointments
         synced = 0
+        json_apps_modified = False
         for app in json_appointments:
+            if app.get("synced_to_pg"):
+                continue
             raw_id = app.get("id")
             if not raw_id:
                 continue
@@ -362,8 +365,16 @@ def sync_offline_json_to_pg(existing_conn=None) -> int:
                         str(h_id) if h_id else None, str(h_name), d_date, t_slot, a_type, st, is_chk, chk_at
                     ))
                     synced += 1
+                    app["synced_to_pg"] = True
+                    json_apps_modified = True
             except Exception as ins_err:
                 logger.debug(f"Note on inserting appointment {ticket}: {ins_err}")
+
+        if json_apps_modified:
+            try:
+                write_json_db(db)
+            except Exception as w_err:
+                logger.warning(f"Error saving synced_to_pg in database.json: {w_err}")
 
         # 5. Sync consultations
         for c in db.get("consultations", []):
@@ -385,6 +396,8 @@ def sync_offline_json_to_pg(existing_conn=None) -> int:
 
         # 6. Sync prescriptions
         for rx in db.get("prescriptions", []):
+            if rx.get("synced_to_pg"):
+                continue
             rx_id = rx.get("id")
             if rx_id:
                 rx_uuid = to_valid_uuid(rx_id)
@@ -404,6 +417,8 @@ def sync_offline_json_to_pg(existing_conn=None) -> int:
                                 rx.get("prescriber"), rx.get("icon_type") or rx.get("iconType") or "pill",
                                 rx.get("status") or "Active"
                             ))
+                            rx["synced_to_pg"] = True
+                            json_apps_modified = True
                     except Exception:
                         pass
 

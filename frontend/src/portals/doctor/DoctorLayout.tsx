@@ -22,6 +22,7 @@ import {
   Send,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { usePolling } from '../../lib/usePolling';
 import { DoctorDashboard } from './DoctorDashboard';
 import { ActiveConsultation } from './ActiveConsultation';
@@ -633,6 +634,9 @@ export const DoctorLayout: React.FC = () => {
               <Volume2 className="w-3.5 h-3.5 text-teal-200" />
               <span className="hidden sm:inline">Call Next</span>
             </button>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* Quick Action: Direct Message to Hospital Administration */}
             <button

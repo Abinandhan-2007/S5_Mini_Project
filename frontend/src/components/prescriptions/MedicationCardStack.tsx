@@ -341,7 +341,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
         ((p as any).duration ? parseDurationDays((p as any).duration as string) : courseDefaults.total);
       // Derive daysCompleted: prefer explicit backend field, then compute from createdAt, then 0
       const resolvedCompleted: number =
-        p.daysCompleted !== undefined
+        p.daysCompleted !== undefined && p.daysCompleted !== null
           ? p.daysCompleted
           : ((p as any).createdAt
               ? computeDaysCompleted((p as any).createdAt as string, resolvedTotal)
@@ -352,12 +352,12 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
           .replace(/\s*\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|meq|%)\b/gi, '')
           .trim(),
         dosage: p.dosage || '1 dose',
-        frequency: p.frequency || (idx === 1 || idx === 3 ? '1 capsule • 3 times daily for 7 days' : idx === 0 ? '1 tablet • Twice daily after meals' : '1 tablet • Daily every morning'),
+        frequency: p.frequency || 'As directed by doctor',
         prescriber: p.prescriber || 'Treating Physician',
         hospitalName: p.hospitalName || 'CarePulse Medical Center',
-        status: p.status || (idx === 4 ? 'Refill Soon' : 'Active'),
+        status: p.status || 'Active',
         iconType: p.iconType || 'pill',
-        nextDose: p.nextDose || (idx === 0 ? 'Today at 8:00 PM' : 'Tomorrow 9:00 AM'),
+        nextDose: p.nextDose || undefined,
         totalDays: resolvedTotal,
         daysCompleted: resolvedCompleted,
       };
@@ -604,8 +604,9 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
               const completedSlotsCount = doseSlots.filter((s) => Boolean(todaySlots[s.id])).length;
               const allDosesTakenToday = completedSlotsCount === doseSlots.length && doseSlots.length > 0;
 
-              const baseTotal = med.totalDays || 10;
-              const baseCompleted = med.daysCompleted || 4;
+              const baseTotal = med.totalDays || 7;
+              // Use nullish coalescing (??) NOT logical OR (||) — 0 days completed is valid!
+              const baseCompleted = med.daysCompleted ?? 0;
               const effectiveCompleted = allDosesTakenToday ? Math.min(baseTotal, baseCompleted + 1) : baseCompleted;
               const progressPercent = Math.round((effectiveCompleted / baseTotal) * 100);
               const isCourseFinished = effectiveCompleted >= baseTotal;

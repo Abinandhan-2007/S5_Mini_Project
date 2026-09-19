@@ -1,6 +1,8 @@
 # backend/routes/staff_auth.py
 import os
+import uuid
 import logging
+from datetime import datetime
 from typing import Optional, Dict, Any, Union
 from fastapi import APIRouter, HTTPException, Header, status
 from pydantic import BaseModel, EmailStr
@@ -564,4 +566,249 @@ def staff_login(request: StaffLoginRequest):
         token=session_token,
         staff=staff_profile
     )
+
+
+class StaffForgotPasswordRequest(BaseModel):
+    identifier: str
+
+
+@router.post("/forgot-password")
+def request_staff_password_reset(payload: StaffForgotPasswordRequest):
+    """
+    Log a password assistance request for staff and dispatch an urgent alert to Hospital Administration.
+    """
+    raw_identifier = (payload.identifier or "").strip().lower()
+    if not raw_identifier:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Staff username or work email is required."
+        )
+
+    raw_prefix = raw_identifier.split("@")[0] if "@" in raw_identifier else raw_identifier
+    carepulse_email = f"{raw_identifier}@carepulse.com" if "@" not in raw_identifier else raw_identifier
+
+    found_staff = None
+
+    # 1. Search in PostgreSQL staff table
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT id, full_name, email, role, hospital_id, phone
+                        FROM staff
+                        WHERE LOWER(TRIM(email)) = %s 
+                           OR LOWER(TRIM(email)) = %s
+                           OR LOWER(TRIM(SPLIT_PART(email, '@', 1))) = %s
+                           OR LOWER(TRIM(COALESCE(username, ''))) = %s
+                           OR LOWER(TRIM(COALESCE(staff_code, ''))) = %s
+                           OR LOWER(TRIM(id::text)) = %s
+                        LIMIT 1
+                        """,
+                        (raw_identifier, carepulse_email, raw_prefix, raw_identifier, raw_identifier, raw_identifier)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        found_staff = dict(row)
+
+                    if not found_staff:
+                        # Also check doctors table
+                        cur.execute(
+                            """
+                            SELECT id, name as full_name, email, 'doctor' as role, hospital_id, phone
+                            FROM doctors
+                            WHERE LOWER(TRIM(id)) = %s
+                               OR LOWER(TRIM(COALESCE(email, ''))) = %s
+                               OR LOWER(TRIM(SPLIT_PART(COALESCE(email, ''), '@', 1))) = %s
+                            LIMIT 1
+                            """,
+                            (raw_identifier, raw_identifier, raw_prefix)
+                        )
+                        doc_row = cur.fetchone()
+                        if doc_row:
+                            found_staff = dict(doc_row)
+        except Exception as e:
+            logger.warning(f"Error checking staff in PostgreSQL for password reset: {e}")
+
+    # 2. Fallback check in database.json
+    if not found_staff:
+        db = read_json_db()
+        for s in db.get("staff", []) + db.get("receptionists", []) + db.get("doctors", []) + db.get("nurses", []):
+            s_email = (s.get("email") or "").strip().lower()
+            s_user = (s.get("username") or "").strip().lower()
+            s_code = (s.get("staff_code") or s.get("staffCode") or "").strip().lower()
+            s_id = str(s.get("id") or "").strip().lower()
+            if raw_identifier in [s_email, s_user, s_code, s_id] or raw_prefix in [s_user, s_code, s_id]:
+                found_staff = {
+                    "id": s.get("id"),
+                    "full_name": s.get("name") or s.get("full_name") or "Staff Member",
+                    "email": s.get("email") or carepulse_email,
+                    "role": s.get("role") or "staff",
+                    "hospital_id": s.get("hospital_id") or s.get("hospitalId") or "hosp-1",
+                    "phone": s.get("phone") or "+91 98765 00000",
+                }
+                break
+
+    if not found_staff:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active staff account matches this username or email. Please verify with your department lead."
+        )
+
+    req_id = f"sprq-{uuid.uuid4().hex[:8]}"
+    staff_id = str(found_staff.get("id"))
+    staff_name = found_staff.get("full_name") or found_staff.get("name") or "Staff Member"
+    staff_role = found_staff.get("role") or "staff"
+    staff_email = found_staff.get("email") or raw_identifier
+    hosp_id = found_staff.get("hospital_id") or "hosp-1"
+    now_iso = datetime.now().isoformat()
+
+    # 3. Record in PostgreSQL staff_password_resets table
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO staff_password_resets (id, staff_id, staff_name, staff_role, staff_email, hospital_id, status, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'Pending', NOW())
+                        """,
+                        (req_id, staff_id, staff_name, staff_role, staff_email, hosp_id)
+                    )
+                    conn.commit()
+
+                    # Also log an urgent notification message for the Hospital Admin in staff_messages table
+                    try:
+                        msg_id = f"msg-{uuid.uuid4().hex[:8]}"
+                        cur.execute(
+                            """
+                            INSERT INTO staff_messages (
+                                id, hospital_id, sender_id, sender_name, sender_role, sender_code,
+                                recipient_role, recipient_id, subject, message, priority, is_read, created_at
+                            )
+                            VALUES (%s, %s, 'system-security', 'CarePulse Security System', 'admin', 'SEC01', 'admin', 'all_admins', 'Staff Password Reset Request', %s, 'urgent', FALSE, NOW())
+                            """,
+                            (
+                                msg_id,
+                                hosp_id,
+                                f"⚠️ Staff Password Reset Request: {staff_name} ({staff_role.upper()}, {staff_email}) requested a terminal password reset. Ticket #{req_id}."
+                            )
+                        )
+                        conn.commit()
+                    except Exception as e_msg:
+                        logger.warning(f"Note on staff_messages log: {e_msg}")
+        except Exception as e:
+            logger.warning(f"Error persisting staff password reset in PostgreSQL: {e}")
+
+    # 4. Record in database.json for offline resilience
+    try:
+        db = read_json_db()
+        db.setdefault("staff_password_resets", []).insert(0, {
+            "id": req_id,
+            "staffId": staff_id,
+            "staffName": staff_name,
+            "staffRole": staff_role,
+            "staffEmail": staff_email,
+            "hospitalId": hosp_id,
+            "status": "Pending",
+            "createdAt": now_iso
+        })
+        write_json_db(db)
+    except Exception as e:
+        logger.warning(f"Error persisting staff password reset in JSON DB: {e}")
+
+    return {
+        "success": True,
+        "message": f"Assistance ticket #{req_id} logged for {staff_name}. Hospital Administration has been notified.",
+        "requestId": req_id,
+        "staffName": staff_name,
+        "staffRole": staff_role,
+        "hospitalId": hosp_id
+    }
+
+
+@router.get("/forgot-password/status")
+def get_staff_password_reset_status(identifier: str):
+    """
+    Check if the staff member's password reset request has been resolved by the Hospital Administrator.
+    """
+    raw_identifier = (identifier or "").strip().lower()
+    if not raw_identifier:
+        raise HTTPException(status_code=400, detail="Identifier is required")
+
+    raw_prefix = raw_identifier.split("@")[0] if "@" in raw_identifier else raw_identifier
+
+    # 1. Query PostgreSQL staff_password_resets
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT id, staff_id, staff_name, staff_role, staff_email, status, temporary_password, resolved_at, created_at
+                        FROM staff_password_resets
+                        WHERE LOWER(TRIM(staff_email)) = %s
+                           OR LOWER(TRIM(SPLIT_PART(staff_email, '@', 1))) = %s
+                           OR LOWER(TRIM(staff_id)) = %s
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """,
+                        (raw_identifier, raw_prefix, raw_identifier)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        status_val = row.get("status") or "Pending"
+                        if status_val == "Resolved":
+                            return {
+                                "success": True,
+                                "status": "Resolved",
+                                "staffName": row.get("staff_name"),
+                                "staffRole": row.get("staff_role"),
+                                "temporaryPassword": row.get("temporary_password") or "CarePulse#2026",
+                                "resolvedAt": str(row.get("resolved_at") or ""),
+                                "message": "Your password has been reset by the Hospital Administrator! You can now log in using your temporary password."
+                            }
+                        return {
+                            "success": True,
+                            "status": "Pending",
+                            "staffName": row.get("staff_name"),
+                            "staffRole": row.get("staff_role"),
+                            "createdAt": str(row.get("created_at") or ""),
+                            "message": "Your password reset request is awaiting Admin review."
+                        }
+        except Exception as e:
+            logger.warning(f"Error checking reset status in PostgreSQL: {e}")
+
+    # 2. Check in database.json
+    db = read_json_db()
+    for req in db.get("staff_password_resets", []):
+        r_email = (req.get("staffEmail") or "").strip().lower()
+        r_user = r_email.split("@")[0]
+        r_id = str(req.get("staffId") or "").strip().lower()
+        if raw_identifier in [r_email, r_user, r_id] or raw_prefix in [r_email, r_user]:
+            if req.get("status") == "Resolved":
+                return {
+                    "success": True,
+                    "status": "Resolved",
+                    "staffName": req.get("staffName"),
+                    "staffRole": req.get("staffRole"),
+                    "temporaryPassword": req.get("temporaryPassword") or "CarePulse#2026",
+                    "resolvedAt": req.get("resolvedAt"),
+                    "message": "Your password has been reset by the Hospital Administrator! You can now log in using your temporary password."
+                }
+            return {
+                "success": True,
+                "status": "Pending",
+                "staffName": req.get("staffName"),
+                "staffRole": req.get("staffRole"),
+                "createdAt": req.get("createdAt"),
+                "message": "Your password reset request is awaiting Admin review."
+            }
+
+    return {
+        "success": False,
+        "status": "NotFound",
+        "message": "No active password assistance request found for this account."
+    }
 

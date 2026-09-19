@@ -11,6 +11,7 @@ import {
   Camera,
   Utensils,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -18,6 +19,7 @@ import { BottomNav } from '../../components/ui/BottomNav';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
 import { useCarePulseStore } from '../../lib/store';
+import { apiFetch } from '../../lib/apiFetch';
 import { MedicationCardStack } from '../../components/prescriptions';
 import { useTranslation } from '../../i18n';
 
@@ -61,107 +63,65 @@ export const PrescriptionsScreen: React.FC = () => {
   }, [user?.id, syncPrescriptions, syncHistory]);
 
   const effectivePrescriptions = storePrescriptions || [];
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Build dynamic prescription groups from store prescriptions & consultation history
+  const handleDeletePrescription = async (medId: string, medName: string) => {
+    if (!window.confirm(`Are you sure you want to remove ${medName} from your active prescriptions?`)) {
+      return;
+    }
+    setDeletingId(medId);
+    try {
+      await apiFetch(`/prescriptions/${encodeURIComponent(medId)}`, { method: 'DELETE' });
+      if (user?.id) {
+        await syncPrescriptions(user.id);
+      }
+    } catch (e) {
+      console.warn('Failed to delete prescription:', e);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Build dynamic prescription groups authoritatively from store prescriptions
   const dynamicGroups: DoctorPrescriptionGroup[] = React.useMemo(() => {
-    const groups: DoctorPrescriptionGroup[] = [];
-
-    // 1. From clinical consultations with structured prescription details
-    if (history && history.length > 0) {
-      history.forEach((h, idx) => {
-        const meds: PrescribedMedicine[] = [];
-        const rawMeds = h.prescriptions || (h as any).soapData?.prescriptions || [];
-
-        if (Array.isArray(rawMeds) && rawMeds.length > 0) {
-          rawMeds.forEach((m: any, mIdx: number) => {
-            const medName = m.drugName || m.name || m.medicine;
-            if (medName) {
-              meds.push({
-                id: m.id || `med-${h.id || idx}-${mIdx}`,
-                name: medName,
-                dosage: m.dosage || '1 Tab',
-                instructions: m.instructions || m.frequency || 'Follow doctor advice',
-                duration: m.duration ? (String(m.duration).includes('Day') ? m.duration : `${m.duration} Days Course`) : 'Standard Course',
-                mealTiming: m.mealTiming || m.instructions || undefined,
-              });
-            }
-          });
-        } else if (h.prescriptionDetails && h.prescriptionDetails.length > 3 && !h.prescriptionDetails.toLowerCase().includes('continue prescribed')) {
-          const parts = h.prescriptionDetails.split(' • ');
-          parts.forEach((p, pIdx) => {
-            meds.push({
-              id: `med-${h.id || idx}-${pIdx}`,
-              name: p.trim(),
-              dosage: 'As prescribed',
-              instructions: 'Follow clinical instructions',
-              duration: 'Course completion',
-            });
-          });
-        }
-
-        if (meds.length > 0) {
-          groups.push({
-            id: `hist-grp-${h.id || idx}`,
-            doctorName: h.doctorName || 'Specialist Doctor',
-            doctorSpecialty: h.specialty || 'General Medicine',
-            doctorPhoto: h.doctorPhoto || '/doctor_default.jpg',
-            hospitalName: h.hospitalName || 'CarePulse Central Hospital',
-            datePrescribed: h.date || 'Recent',
-            status: 'Active',
-            medicines: meds,
-          });
-        }
-      });
+    if (!effectivePrescriptions || effectivePrescriptions.length === 0) {
+      return [];
     }
 
-    // 2. Add or merge direct prescriptions from storePrescriptions
-    if (effectivePrescriptions && effectivePrescriptions.length > 0) {
-      const byDoctor: Record<string, PrescribedMedicine[]> = {};
-      effectivePrescriptions.forEach((rx) => {
-        const prescriber = rx.prescriber || 'Treating Physician';
-        if (!byDoctor[prescriber]) byDoctor[prescriber] = [];
-        byDoctor[prescriber].push({
-          id: rx.id,
-          name: rx.drugName,
-          dosage: rx.dosage || 'As directed',
-          instructions: rx.frequency || rx.instructions || 'Follow doctor advice',
-          duration: rx.duration || (rx.totalDays ? `${rx.totalDays} Days Course` : 'Standard Course'),
-          mealTiming: rx.mealTiming || undefined,
-        });
+    const byDoctor: Record<string, PrescribedMedicine[]> = {};
+    const metaMap: Record<string, { specialty: string; hospital: string; date: string }> = {};
+
+    effectivePrescriptions.forEach((rx) => {
+      const prescriber = rx.prescriber || 'Treating Physician';
+      if (!byDoctor[prescriber]) {
+        byDoctor[prescriber] = [];
+        metaMap[prescriber] = {
+          specialty: 'Specialist Physician',
+          hospital: rx.hospitalName || 'CarePulse Central Hospital',
+          date: rx.createdAt ? String(rx.createdAt).split('T')[0] : 'Recent',
+        };
+      }
+      byDoctor[prescriber].push({
+        id: rx.id,
+        name: rx.drugName,
+        dosage: rx.dosage || 'As directed',
+        instructions: rx.frequency || rx.instructions || 'Follow doctor advice',
+        duration: rx.duration || (rx.totalDays ? `${rx.totalDays} Days Course` : 'Standard Course'),
+        mealTiming: rx.mealTiming || undefined,
       });
+    });
 
-      Object.entries(byDoctor).forEach(([doctorName, meds], idx) => {
-        const matchingGroup = groups.find(
-          (g) => g.doctorName.toLowerCase().trim() === doctorName.toLowerCase().trim()
-        );
-
-        if (!matchingGroup) {
-          groups.push({
-            id: `rx-grp-${idx}`,
-            doctorName,
-            doctorSpecialty: 'Specialist Physician',
-            doctorPhoto: '/doctor_default.jpg',
-            hospitalName: 'CarePulse Central Hospital',
-            datePrescribed: 'Recent',
-            status: 'Active',
-            medicines: meds,
-          });
-        } else {
-          // Merge medicines without duplicate names
-          meds.forEach((m) => {
-            const alreadyExists = matchingGroup.medicines.some(
-              (em) => em.name.toLowerCase().trim() === m.name.toLowerCase().trim()
-            );
-            if (!alreadyExists) {
-              matchingGroup.medicines.push(m);
-            }
-          });
-        }
-      });
-    }
-
-    return groups;
-  }, [effectivePrescriptions, history]);
+    return Object.entries(byDoctor).map(([doctorName, meds], idx) => ({
+      id: `rx-grp-${idx}`,
+      doctorName,
+      doctorSpecialty: metaMap[doctorName]?.specialty || 'General Medicine',
+      doctorPhoto: '/doctor_default.jpg',
+      hospitalName: metaMap[doctorName]?.hospital || 'CarePulse Central Hospital',
+      datePrescribed: metaMap[doctorName]?.date || 'Recent',
+      status: 'Active',
+      medicines: meds,
+    }));
+  }, [effectivePrescriptions]);
 
   const filteredGroups = dynamicGroups.filter((grp) => {
     const q = searchQuery.toLowerCase().trim();
@@ -419,6 +379,17 @@ export const PrescriptionsScreen: React.FC = () => {
                         <span className="text-[10px] font-extrabold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-xl">
                           {med.duration}
                         </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePrescription(med.id, med.name);
+                          }}
+                          disabled={deletingId === med.id}
+                          className="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                          title="Delete Prescription"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}

@@ -2193,5 +2193,296 @@ def update_nurse_request_status_by_admin(
     }
 
 
+class StaffResetResolvePayload(BaseModel):
+    temporaryPassword: Optional[str] = "CarePulse#2026"
+    rejectionReason: Optional[str] = None
+
+
+@router.get("/staff-password-resets")
+def get_staff_password_resets(
+    status: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    List all staff password reset assistance requests for the requesting administrator's hospital.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    if not staff_ctx or staff_ctx.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    is_superadmin = (staff_ctx.get("role") == "superadmin")
+    effective_hosp_id = staff_ctx.get("hospital_id") if not is_superadmin else None
+
+    requests = []
+    seen_ids = set()
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    query = "SELECT * FROM staff_password_resets WHERE 1=1"
+                    params = []
+                    if effective_hosp_id:
+                        query += " AND hospital_id = %s"
+                        params.append(effective_hosp_id)
+                    if status and status.lower() != "all":
+                        query += " AND LOWER(status) = %s"
+                        params.append(status.lower())
+                    query += " ORDER BY created_at DESC"
+                    cur.execute(query, tuple(params))
+                    for r in cur.fetchall():
+                        rid = str(r["id"])
+                        seen_ids.add(rid)
+                        requests.append({
+                            "id": rid,
+                            "staffId": str(r["staff_id"]),
+                            "staffName": r["staff_name"],
+                            "staffRole": r["staff_role"],
+                            "staffEmail": r["staff_email"],
+                            "hospitalId": r.get("hospital_id"),
+                            "status": r.get("status") or "Pending",
+                            "temporaryPassword": r.get("temporary_password"),
+                            "resolvedBy": r.get("resolved_by"),
+                            "createdAt": str(r.get("created_at") or ""),
+                            "resolvedAt": str(r.get("resolved_at") or "") if r.get("resolved_at") else None
+                        })
+        except Exception as e:
+            logger.warning(f"Error reading staff_password_resets from PG: {e}")
+
+    # Fallback / merge JSON store
+    db = read_json_db()
+    for r in db.get("staff_password_resets", []):
+        rid = str(r.get("id"))
+        if rid in seen_ids:
+            continue
+        h_id = r.get("hospitalId") or r.get("hospital_id")
+        if effective_hosp_id and h_id != effective_hosp_id:
+            continue
+        if status and status.lower() != "all" and (r.get("status") or "").lower() != status.lower():
+            continue
+        seen_ids.add(rid)
+        requests.append(r)
+
+    pending_count = sum(1 for r in requests if (r.get("status") or "").lower() == "pending")
+
+    return {
+        "success": True,
+        "requests": requests,
+        "total": len(requests),
+        "pendingCount": pending_count
+    }
+
+
+@router.post("/staff-password-resets/{request_id}/resolve")
+def resolve_staff_password_reset(
+    request_id: str,
+    payload: StaffResetResolvePayload,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Approve and reset a staff member's password, updating their credentials and notifying them.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    if not staff_ctx or staff_ctx.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    admin_name = staff_ctx.get("name") or "Administrator"
+    effective_hosp_id = staff_ctx.get("hospital_id")
+    temp_pass = (payload.temporaryPassword or "").strip() or "CarePulse#2026"
+    hashed_pass = hash_password(temp_pass)
+
+    clean_req_id = str(request_id).strip()
+    target_req = None
+
+    # 1. Look up request
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM staff_password_resets WHERE id = %s", (clean_req_id,))
+                    row = cur.fetchone()
+                    if row:
+                        target_req = dict(row)
+        except Exception as e:
+            logger.warning(f"Error fetching request in PG: {e}")
+
+    if not target_req:
+        db = read_json_db()
+        for r in db.get("staff_password_resets", []):
+            if str(r.get("id")) == clean_req_id:
+                target_req = r
+                break
+
+    if not target_req:
+        raise HTTPException(status_code=404, detail="Password reset request not found")
+
+    staff_id = str(target_req.get("staff_id") or target_req.get("staffId"))
+    staff_email = (target_req.get("staff_email") or target_req.get("staffEmail") or "").strip().lower()
+    staff_name = target_req.get("staff_name") or target_req.get("staffName") or "Staff"
+    staff_role = (target_req.get("staff_role") or target_req.get("staffRole") or "staff").lower()
+    hosp_id = target_req.get("hospital_id") or target_req.get("hospitalId") or effective_hosp_id
+
+    # 2. Update staff credentials in PostgreSQL
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # Update staff table
+                    cur.execute(
+                        """
+                        UPDATE staff
+                        SET password = %s, password_hash = %s
+                        WHERE id::text = %s OR LOWER(email) = %s
+                        """,
+                        (temp_pass, hashed_pass, staff_id, staff_email)
+                    )
+                    # Also update doctors table if doctor
+                    if staff_role == "doctor":
+                        cur.execute(
+                            """
+                            UPDATE doctors
+                            SET password = %s, password_hash = %s
+                            WHERE id::text = %s OR LOWER(email) = %s
+                            """,
+                            (temp_pass, hashed_pass, staff_id, staff_email)
+                        )
+                    # Update reset request status
+                    cur.execute(
+                        """
+                        UPDATE staff_password_resets
+                        SET status = 'Resolved', temporary_password = %s, resolved_by = %s, resolved_at = NOW()
+                        WHERE id = %s
+                        """,
+                        (temp_pass, admin_name, clean_req_id)
+                    )
+                    conn.commit()
+
+                    # Post confirmation message into staff_messages
+                    try:
+                        msg_id = f"msg-{uuid.uuid4().hex[:8]}"
+                        cur.execute(
+                            """
+                            INSERT INTO staff_messages (
+                                id, hospital_id, sender_id, sender_name, sender_role, sender_code,
+                                recipient_role, recipient_id, subject, message, priority, is_read, created_at
+                            )
+                            VALUES (%s, %s, %s, %s, 'admin', 'A001', %s, %s, 'Staff Password Reset Approved', %s, 'normal', FALSE, NOW())
+                            """,
+                            (
+                                msg_id,
+                                hosp_id,
+                                staff_ctx.get("staff_id") or "admin-system",
+                                admin_name,
+                                staff_role,
+                                staff_id,
+                                f"✅ Password Reset Approved: Administrator {admin_name} has reset the password for {staff_name} ({staff_email}). Temporary password: {temp_pass}"
+                            )
+                        )
+                        conn.commit()
+                    except Exception as e_msg:
+                        logger.warning(f"Note on staff_messages approval log: {e_msg}")
+        except Exception as e:
+            logger.warning(f"Error updating staff password in PostgreSQL: {e}")
+
+    # 3. Update in database.json
+    db = read_json_db()
+    for s in db.get("staff", []) + db.get("receptionists", []) + db.get("doctors", []) + db.get("nurses", []):
+        if str(s.get("id")) == staff_id or (s.get("email") or "").lower() == staff_email:
+            s["password"] = temp_pass
+            s["password_hash"] = hashed_pass
+
+    now_iso = datetime.now().isoformat()
+    for r in db.get("staff_password_resets", []):
+        if str(r.get("id")) == clean_req_id:
+            r["status"] = "Resolved"
+            r["temporaryPassword"] = temp_pass
+            r["resolvedBy"] = admin_name
+            r["resolvedAt"] = now_iso
+            break
+    write_json_db(db)
+
+    return {
+        "success": True,
+        "message": f"Password for {staff_name} ({staff_role}) has been reset successfully!",
+        "temporaryPassword": temp_pass,
+        "staffName": staff_name,
+        "resolvedBy": admin_name
+    }
+
+
+@router.post("/staff/{staff_id}/reset-password")
+def direct_admin_reset_staff_password(
+    staff_id: str,
+    payload: StaffResetResolvePayload,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Directly reset a staff member's password from the Admin staff directory without requiring an existing request.
+    """
+    staff_ctx = get_current_staff(authorization) if authorization else None
+    if not staff_ctx or staff_ctx.get("role") not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    admin_name = staff_ctx.get("name") or "Administrator"
+    temp_pass = (payload.temporaryPassword or "").strip() or "CarePulse#2026"
+    hashed_pass = hash_password(temp_pass)
+    clean_staff_id = str(staff_id).strip()
+
+    updated = False
+    staff_name = "Staff Member"
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        UPDATE staff
+                        SET password = %s, password_hash = %s
+                        WHERE id::text = %s
+                        RETURNING full_name, role, email
+                        """,
+                        (temp_pass, hashed_pass, clean_staff_id)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        updated = True
+                        staff_name = row["full_name"]
+                    # Also update doctor table if matching ID
+                    cur.execute(
+                        """
+                        UPDATE doctors
+                        SET password = %s, password_hash = %s
+                        WHERE id::text = %s
+                        RETURNING name, specialty
+                        """,
+                        (temp_pass, hashed_pass, clean_staff_id)
+                    )
+                    doc_row = cur.fetchone()
+                    if doc_row:
+                        updated = True
+                        staff_name = doc_row["name"]
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Error directly resetting staff password in PostgreSQL: {e}")
+
+    db = read_json_db()
+    for s in db.get("staff", []) + db.get("receptionists", []) + db.get("doctors", []) + db.get("nurses", []):
+        if str(s.get("id")) == clean_staff_id:
+            s["password"] = temp_pass
+            s["password_hash"] = hashed_pass
+            staff_name = s.get("name") or s.get("full_name") or staff_name
+            updated = True
+    write_json_db(db)
+
+    return {
+        "success": True,
+        "message": f"Password reset successfully for {staff_name}!",
+        "temporaryPassword": temp_pass,
+        "staffName": staff_name,
+        "staffId": clean_staff_id
+    }
+
+
 
 

@@ -569,7 +569,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
                 return (
                   <div
                     key={msg.id}
-                    className="mx-auto max-w-xl bg-linear-to-r from-teal-900 to-[#0B5A54] text-white p-4 rounded-2xl shadow-md border border-teal-700 space-y-2 animate-in fade-in zoom-in-95 duration-200"
+                    className="mx-auto max-w-xl bg-gradient-to-r from-teal-900 to-[#0B5A54] text-white p-4 rounded-2xl shadow-md border border-teal-700 space-y-2 animate-in fade-in zoom-in-95 duration-200"
                   >
                     <div className="flex items-center justify-between text-xs font-black tracking-wide">
                       <span className="flex items-center gap-1.5 text-teal-200 uppercase text-[10px]">
@@ -609,7 +609,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
                   <div
                     className={`max-w-md lg:max-w-lg p-4 rounded-3xl text-xs font-medium shadow-xs leading-relaxed transition-all ${
                       isMine
-                        ? 'bg-linear-to-br from-[#0B5A54] to-teal-800 text-white rounded-br-xs'
+                        ? 'bg-gradient-to-br from-[#0B5A54] to-teal-800 text-white rounded-br-xs'
                         : 'bg-white border border-slate-200/80 text-slate-900 rounded-bl-xs'
                     }`}
                   >

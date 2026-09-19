@@ -19,8 +19,10 @@ import {
   Layers,
   ShieldCheck,
   MessageSquare,
+  KeyRound,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { usePolling } from '../../lib/usePolling';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminDoctorManagement } from './AdminDoctorManagement';
@@ -32,7 +34,8 @@ import { AdminReportsAnalytics } from './AdminReportsAnalytics';
 import { AdminAnnouncements } from './AdminAnnouncements';
 import { AdminSettingsProfile } from './AdminSettingsProfile';
 import { StaffChatHub } from '../../components/chat/StaffChatHub';
-import { adminService } from '../../services/adminService';
+import { adminService, type StaffPasswordReset } from '../../services/adminService';
+import { AdminStaffResetsModal } from './AdminStaffResetsModal';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 export type AdminTab =
@@ -91,6 +94,19 @@ export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
+  const [staffResets, setStaffResets] = useState<StaffPasswordReset[]>([]);
+  const [pendingResetsCount, setPendingResetsCount] = useState(0);
+  const [isResetsModalOpen, setIsResetsModalOpen] = useState(false);
+
+  const refreshResets = async () => {
+    try {
+      const data = await adminService.getStaffPasswordResets('all');
+      setStaffResets(data.requests || []);
+      setPendingResetsCount(data.pendingCount || 0);
+    } catch (e) {
+      console.warn('Failed to refresh staff password resets', e);
+    }
+  };
 
   // Automatic robust background polling for Admin metrics and operations
   usePolling(
@@ -105,6 +121,10 @@ export const AdminLayout: React.FC = () => {
         adminService.getHospitalDoctorLeaves().then((leaves) => {
           const pending = leaves.filter((l) => l.status === 'Pending').length;
           setPendingLeavesCount(pending);
+        }).catch(() => {}),
+        adminService.getStaffPasswordResets('all').then((data) => {
+          setStaffResets(data.requests || []);
+          setPendingResetsCount(data.pendingCount || 0);
         }).catch(() => {}),
       ]);
     },
@@ -500,6 +520,28 @@ export const AdminLayout: React.FC = () => {
               </kbd>
             </div>
 
+            {/* Staff Password Reset Requests Button */}
+            <button
+              onClick={() => setIsResetsModalOpen(true)}
+              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer shadow-2xs ${
+                pendingResetsCount > 0
+                  ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                  : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+              title="Staff Password Reset Requests"
+            >
+              <KeyRound className={`w-3.5 h-3.5 ${pendingResetsCount > 0 ? 'text-amber-600' : 'text-slate-500'}`} />
+              <span className="hidden sm:inline">Password Assistance</span>
+              {pendingResetsCount > 0 && (
+                <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full leading-tight animate-pulse shadow-xs">
+                  {pendingResetsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>
               <button
@@ -508,7 +550,7 @@ export const AdminLayout: React.FC = () => {
                 title="System Notifications"
               >
                 <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#0B5A54]" />
+                <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${pendingResetsCount > 0 ? 'bg-rose-500 animate-ping' : 'bg-[#0B5A54]'}`} />
               </button>
 
               {isNotifOpen && (
@@ -518,10 +560,32 @@ export const AdminLayout: React.FC = () => {
                       Notifications & Alerts
                     </span>
                     <span className="text-[10px] font-black text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-full">
-                      2 New
+                      {pendingResetsCount > 0 ? `${pendingResetsCount} Urgent` : 'Live'}
                     </span>
                   </div>
                   <div className="space-y-2 text-xs">
+                    {pendingResetsCount > 0 && (
+                      <div
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          setIsResetsModalOpen(true);
+                        }}
+                        className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/90 cursor-pointer hover:bg-amber-100 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-black text-amber-950 flex items-center gap-1.5">
+                            <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Staff Password Resets</span>
+                          </p>
+                          <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded-full">
+                            {pendingResetsCount} Action Needed
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-900 font-medium mt-1">
+                          Staff members requested password assistance. Click to review and set credentials.
+                        </p>
+                      </div>
+                    )}
                     <div className="p-2.5 rounded-xl bg-teal-50/50 border border-teal-100">
                       <p className="font-black text-slate-900">Dr. Olivia Wilson Shift Complete</p>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5">
@@ -647,8 +711,17 @@ export const AdminLayout: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* ── Staff Password Reset Requests Assistance Modal ── */}
+      <AdminStaffResetsModal
+        isOpen={isResetsModalOpen}
+        onClose={() => setIsResetsModalOpen(false)}
+        requests={staffResets}
+        onRefresh={refreshResets}
+      />
     </div>
   );
 };
 
 export default AdminLayout;
+

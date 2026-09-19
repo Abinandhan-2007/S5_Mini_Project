@@ -18,6 +18,7 @@ import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal
 import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 import { StaffChatHub } from '../../components/chat/StaffChatHub';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 interface NurseLayoutProps {
   children: ReactNode;
@@ -182,6 +183,9 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
                 <div className="text-[10px] text-teal-200/80 font-medium">{currentStaff?.department || 'Triage & Vitals'}</div>
               </div>
             </div>
+
+            {/* Theme Toggle */}
+            <ThemeToggle className="bg-white/10 border-white/10 text-white hover:bg-white/20 !text-white" />
 
             <button
               onClick={handleLogout}

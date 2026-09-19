@@ -93,4 +93,64 @@ export const adminService = {
     }
     return await res.json();
   },
+
+  async getStaffPasswordResets(status?: string): Promise<{ requests: StaffPasswordReset[]; total: number; pendingCount: number }> {
+    try {
+      const query = status ? `?status=${encodeURIComponent(status)}` : '';
+      const res = await apiFetch(`/admin/staff-password-resets${query}`, { method: 'GET' });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to fetch staff password resets', e);
+    }
+    return { requests: [], total: 0, pendingCount: 0 };
+  },
+
+  async resolveStaffPasswordReset(
+    requestId: string,
+    temporaryPassword?: string
+  ): Promise<{ success: boolean; message: string; temporaryPassword?: string }> {
+    const res = await apiFetch(`/admin/staff-password-resets/${encodeURIComponent(requestId)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ temporaryPassword: temporaryPassword || 'CarePulse#2026' }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to resolve password reset request' }));
+      throw new Error(err.detail || `Failed with status ${res.status}`);
+    }
+    return await res.json();
+  },
+
+  async directResetStaffPassword(
+    staffId: string,
+    temporaryPassword?: string
+  ): Promise<{ success: boolean; message: string; temporaryPassword?: string }> {
+    const res = await apiFetch(`/admin/staff/${encodeURIComponent(staffId)}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ temporaryPassword: temporaryPassword || 'CarePulse#2026' }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to reset staff password' }));
+      throw new Error(err.detail || `Failed with status ${res.status}`);
+    }
+    return await res.json();
+  },
 };
+
+export interface StaffPasswordReset {
+  id: string;
+  staffId: string;
+  staffName: string;
+  staffRole: string;
+  staffEmail: string;
+  hospitalId?: string;
+  status: 'Pending' | 'Resolved' | string;
+  temporaryPassword?: string;
+  resolvedBy?: string;
+  createdAt: string;
+  resolvedAt?: string | null;
+}
+

@@ -290,16 +290,18 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   // Active workspace tab
   const [activeTab, setActiveTab] = useState<ConsultationTab>('soap');
 
-  // Vitals State
+  // Vitals State — starts blank; only filled once nurse records vitals
   const [vitals, setVitals] = useState<PatientVitals>({
-    bpSys: 120,
-    bpDia: 80,
-    heartRate: 74,
-    temperature: 98.6,
-    spo2: 99,
-    weight: 68,
-    recordedAt: 'Today 09:30 AM',
+    bpSys: 0,
+    bpDia: 0,
+    heartRate: 0,
+    temperature: 0,
+    spo2: 0,
+    weight: 0,
+    recordedAt: 'Pending nurse check-in',
   });
+  // Track whether vitals have actually been loaded from nurse
+  const [vitalsFromNurse, setVitalsFromNurse] = useState(false);
 
   // Nurse Pre-Consultation Vitals & Diagnostics State
   const [nursePrep, setNursePrep] = useState<{
@@ -360,6 +362,11 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
   useEffect(() => {
     if (!patient) return;
 
+    // Reset vitals state for the new patient
+    setVitalsFromNurse(false);
+    setNursePrep(null);
+    setVitals({ bpSys: 0, bpDia: 0, heartRate: 0, temperature: 0, spo2: 0, weight: 0, recordedAt: 'Pending nurse check-in' });
+
     // 1. Check for existing draft
     const draft = staffConsultationService.getDraft(patient.id);
     if (draft) {
@@ -369,9 +376,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
       if (draft.followUpDays) setFollowUpDays(draft.followUpDays);
     } else {
       // Pre-fill subjective with health issue / intake
+      // Objective is left blank until nurse vitals are loaded
       setSoap({
         subjective: `Patient reports: ${patient.healthIssue || (patient as any).issue || 'Routine Outpatient Consultation'}. Symptoms presented during OPD triage.`,
-        objective: `Vitals recorded: BP 120/80 mmHg, Pulse 74 bpm, SpO2 99%, Temp 98.6°F. General physical examination unremarkable. S1/S2 heard, lungs clear.`,
+        objective: `General physical examination pending. Awaiting nurse-recorded vitals.`,
         assessment: patient.diagnosis || patient.assessment || patient.healthIssue || 'General Clinical Evaluation',
         plan: `Continue prescribed medication regimen. Maintain adequate hydration and rest. Follow up in ${followUpDays} days.`,
       });
@@ -396,19 +404,20 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
             setNursePrep(prep);
             const nv = prep.vitals;
             const updatedVitals: PatientVitals = {
-              bpSys: nv.bp_systolic || 120,
-              bpDia: nv.bp_diastolic || 80,
-              heartRate: nv.heart_rate || 74,
-              temperature: nv.temperature || 98.6,
-              spo2: nv.spo2 || 99,
-              weight: nv.weight_kg || 68,
+              bpSys: nv.bp_systolic ?? 0,
+              bpDia: nv.bp_diastolic ?? 0,
+              heartRate: nv.heart_rate ?? 0,
+              temperature: nv.temperature ?? 0,
+              spo2: nv.spo2 ?? 0,
+              weight: nv.weight_kg ?? 0,
               recordedAt: nv.recorded_by_name ? `Recorded by ${nv.recorded_by_name}` : 'Recorded by Nurse',
             };
             setVitals(updatedVitals);
+            setVitalsFromNurse(true);
 
             setSoap((prev) => ({
               ...prev,
-              objective: `Nurse Intake Vitals: BP ${updatedVitals.bpSys}/${updatedVitals.bpDia} mmHg, HR ${updatedVitals.heartRate} bpm, SpO2 ${updatedVitals.spo2}%, Temp ${updatedVitals.temperature}°${nv.temperature_unit || 'C'}, Weight ${updatedVitals.weight} kg, BMI ${nv.bmi || '--'}${nv.blood_glucose ? `, Glucose ${nv.blood_glucose} mg/dL (${nv.glucose_context || ''})` : ''}.${nv.notes ? ` Nurse Notes: ${nv.notes}` : ''}`,
+              objective: `Nurse Intake Vitals: BP ${nv.bp_systolic || '--'}/${nv.bp_diastolic || '--'} mmHg, HR ${nv.heart_rate || '--'} bpm, SpO2 ${nv.spo2 || '--'}%, Temp ${nv.temperature || '--'}°${nv.temperature_unit || 'C'}, Weight ${nv.weight_kg || '--'} kg, BMI ${nv.bmi || '--'}${nv.blood_glucose ? `, Glucose ${nv.blood_glucose} mg/dL (${nv.glucose_context || ''})` : ''}.${nv.notes ? ` Nurse Notes: ${nv.notes}` : ''}`,
             }));
           } else if (prep && prep.lab_tests && prep.lab_tests.length > 0) {
             setNursePrep(prep);
@@ -1190,84 +1199,119 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                 <Activity className="w-4 h-4 text-[#0B5A54]" />
                 <h3 className="font-black text-slate-900 text-sm font-heading">Patient Intake Vitals</h3>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">{vitals.recordedAt}</span>
+              <span className={`text-[10px] font-mono ${vitalsFromNurse ? 'text-emerald-600 font-bold' : 'text-amber-500 font-semibold'}`}>
+                {vitals.recordedAt}
+              </span>
             </div>
+
+            {!vitalsFromNurse && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-700 text-xs font-semibold">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Awaiting nurse vitals — values will appear here once the nurse records them.</span>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2">
               {/* Blood Pressure with subtle pulse wave */}
-              <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 flex flex-col justify-between">
+              <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${vitalsFromNurse ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-50/50 border-slate-200/50'}`}>
                 <div className="flex items-center justify-between text-slate-500 mb-0.5">
                   <span className="text-[10px] font-bold uppercase font-mono">BP</span>
                   <Heart className="w-3 h-3 text-rose-500" />
                 </div>
                 <div className="my-0.5">
-                  <span className="text-sm font-black text-slate-900 font-mono leading-none">
-                    {vitals.bpSys}/{vitals.bpDia}
+                  <span className={`text-sm font-black font-mono leading-none ${vitalsFromNurse ? 'text-slate-900' : 'text-slate-300'}`}>
+                    {vitalsFromNurse ? `${vitals.bpSys}/${vitals.bpDia}` : '—'}
                   </span>
-                  <span className="text-[9px] text-slate-400 ml-0.5">mmHg</span>
+                  {vitalsFromNurse && <span className="text-[9px] text-slate-400 ml-0.5">mmHg</span>}
                 </div>
                 <div className="flex items-center justify-between text-[9px]">
-                  <span className="text-emerald-700 font-bold">Optimal</span>
-                  <svg className="w-6 h-2 text-emerald-500 stroke-current" fill="none" viewBox="0 0 24 8">
-                    <path d="M0 4h6l2-3 3 6 2-5 2 3h9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {vitalsFromNurse ? (
+                    <>
+                      <span className="text-emerald-700 font-bold">
+                        {(vitals.bpSys > 140 || vitals.bpDia > 90) ? 'High' : (vitals.bpSys < 90 || vitals.bpDia < 60) ? 'Low' : 'Optimal'}
+                      </span>
+                      <svg className="w-6 h-2 text-emerald-500 stroke-current" fill="none" viewBox="0 0 24 8">
+                        <path d="M0 4h6l2-3 3 6 2-5 2 3h9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </>
+                  ) : <span className="text-slate-400">Pending</span>}
                 </div>
               </div>
 
               {/* Heart Pulse */}
-              <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 flex flex-col justify-between">
+              <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${vitalsFromNurse ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-50/50 border-slate-200/50'}`}>
                 <div className="flex items-center justify-between text-slate-500 mb-0.5">
                   <span className="text-[10px] font-bold uppercase font-mono">Pulse</span>
                   <Activity className="w-3 h-3 text-emerald-500" />
                 </div>
                 <div className="my-0.5">
-                  <span className="text-sm font-black text-slate-900 font-mono leading-none">{vitals.heartRate}</span>
-                  <span className="text-[9px] text-slate-400 ml-0.5">bpm</span>
+                  <span className={`text-sm font-black font-mono leading-none ${vitalsFromNurse ? 'text-slate-900' : 'text-slate-300'}`}>
+                    {vitalsFromNurse ? vitals.heartRate : '—'}
+                  </span>
+                  {vitalsFromNurse && <span className="text-[9px] text-slate-400 ml-0.5">bpm</span>}
                 </div>
                 <div className="flex items-center justify-between text-[9px]">
-                  <span className="text-emerald-700 font-bold">Regular</span>
-                  <svg className="w-6 h-2 text-emerald-500 stroke-current" fill="none" viewBox="0 0 24 8">
-                    <path d="M0 4h4l2-4 3 8 2-6 2 3h11" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {vitalsFromNurse ? (
+                    <>
+                      <span className="text-emerald-700 font-bold">
+                        {vitals.heartRate > 100 ? 'Tachycardia' : vitals.heartRate < 60 ? 'Bradycardia' : 'Regular'}
+                      </span>
+                      <svg className="w-6 h-2 text-emerald-500 stroke-current" fill="none" viewBox="0 0 24 8">
+                        <path d="M0 4h4l2-4 3 8 2-6 2 3h11" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </>
+                  ) : <span className="text-slate-400">Pending</span>}
                 </div>
               </div>
 
               {/* SpO2 */}
-              <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 flex flex-col justify-between">
+              <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${vitalsFromNurse ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-50/50 border-slate-200/50'}`}>
                 <div className="flex items-center justify-between text-slate-500 mb-0.5">
                   <span className="text-[10px] font-bold uppercase font-mono">SpO₂</span>
                   <Wind className="w-3 h-3 text-sky-500" />
                 </div>
                 <div className="my-0.5">
-                  <span className="text-sm font-black text-slate-900 font-mono leading-none">{vitals.spo2}%</span>
+                  <span className={`text-sm font-black font-mono leading-none ${vitalsFromNurse ? 'text-slate-900' : 'text-slate-300'}`}>
+                    {vitalsFromNurse ? `${vitals.spo2}%` : '—'}
+                  </span>
                 </div>
-                <span className="text-[9px] text-sky-700 font-bold">Optimal</span>
+                <span className={`text-[9px] font-bold ${vitalsFromNurse ? (vitals.spo2 < 95 ? 'text-red-600' : 'text-sky-700') : 'text-slate-400'}`}>
+                  {vitalsFromNurse ? (vitals.spo2 < 95 ? 'Low' : 'Optimal') : 'Pending'}
+                </span>
               </div>
 
               {/* Temperature */}
-              <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 flex flex-col justify-between">
+              <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${vitalsFromNurse ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-50/50 border-slate-200/50'}`}>
                 <div className="flex items-center justify-between text-slate-500 mb-0.5">
                   <span className="text-[10px] font-bold uppercase font-mono">Temp</span>
                   <Thermometer className="w-3 h-3 text-amber-500" />
                 </div>
                 <div className="my-0.5">
-                  <span className="text-sm font-black text-slate-900 font-mono leading-none">{vitals.temperature}</span>
-                  <span className="text-[9px] text-slate-400 ml-0.5">°F</span>
+                  <span className={`text-sm font-black font-mono leading-none ${vitalsFromNurse ? 'text-slate-900' : 'text-slate-300'}`}>
+                    {vitalsFromNurse ? vitals.temperature : '—'}
+                  </span>
+                  {vitalsFromNurse && <span className="text-[9px] text-slate-400 ml-0.5">°{nursePrep?.vitals?.temperature_unit || 'C'}</span>}
                 </div>
-                <span className="text-[9px] text-slate-500 font-medium">Afebrile</span>
+                <span className={`text-[9px] font-medium ${vitalsFromNurse ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {vitalsFromNurse ? (vitals.temperature > 38 ? 'Fever' : vitals.temperature < 35 ? 'Hypothermia' : 'Afebrile') : 'Pending'}
+                </span>
               </div>
 
               {/* Weight */}
-              <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 flex flex-col justify-between">
+              <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${vitalsFromNurse ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-50/50 border-slate-200/50'}`}>
                 <div className="flex items-center justify-between text-slate-500 mb-0.5">
                   <span className="text-[10px] font-bold uppercase font-mono">Weight</span>
                   <Weight className="w-3.5 h-3.5 text-purple-500" />
                 </div>
                 <div className="my-0.5">
-                  <span className="text-sm font-black text-slate-900 font-mono leading-none">{vitals.weight}</span>
-                  <span className="text-[9px] text-slate-400 ml-0.5">kg</span>
+                  <span className={`text-sm font-black font-mono leading-none ${vitalsFromNurse ? 'text-slate-900' : 'text-slate-300'}`}>
+                    {vitalsFromNurse ? vitals.weight : '—'}
+                  </span>
+                  {vitalsFromNurse && <span className="text-[9px] text-slate-400 ml-0.5">kg</span>}
                 </div>
-                <span className="text-[9px] text-slate-500 font-medium">BMI 23.5</span>
+                <span className="text-[9px] text-slate-500 font-medium">
+                  {vitalsFromNurse && nursePrep?.vitals?.bmi ? `BMI ${nursePrep.vitals.bmi}` : vitalsFromNurse ? 'BMI —' : 'Pending'}
+                </span>
               </div>
 
               {/* Blood Group Tile */}
