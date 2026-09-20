@@ -48,7 +48,6 @@ export const PrescriptionsScreen: React.FC = () => {
   const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const storePrescriptions = useCarePulseStore((s) => s.prescriptions);
-  const history = useCarePulseStore((s) => s.history);
   const syncPrescriptions = useCarePulseStore((s) => s.syncPrescriptions);
   const syncHistory = useCarePulseStore((s) => s.syncHistory);
 

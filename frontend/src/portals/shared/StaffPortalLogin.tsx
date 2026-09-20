@@ -20,7 +20,6 @@ import {
   Check,
   RefreshCw,
   Sparkles,
-  HelpCircle,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { apiPost, apiFetch } from '../../lib/apiFetch';
