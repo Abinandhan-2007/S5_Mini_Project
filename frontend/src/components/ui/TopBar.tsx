@@ -48,7 +48,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     try {
       readIds = JSON.parse(localStorage.getItem(`carepulse_read_notifs_${user.id}`) || '[]');
       clearedIds = JSON.parse(localStorage.getItem(`carepulse_cleared_notifs_${user.id}`) || '[]');
-    } catch {}
+    } catch { }
 
     const notifIds: string[] = [];
 

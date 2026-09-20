@@ -48,7 +48,6 @@ import { registerPushNotifications } from './lib/pushNotifications';
 import { initMedicationNotificationService } from './services/medicationNotificationService';
 import { LanguageProvider } from './i18n';
 import { TtsFallbackToast } from './components/ui/TtsFallbackToast';
-import { ThemeProvider } from './lib/theme';
 
 /**
  * Handles live foreground-resume APK version checking when app is already running.
@@ -192,17 +191,15 @@ export const App: React.FC = () => {
   // 3. Normal Authenticated App Flow (Biometric Lock / Session Restore / Login / Routes)
   return (
     <BrowserRouter>
-      <ThemeProvider>
-        <LanguageProvider>
-          <NotificationNavigationListener />
-          <AppResumeUpdateChecker />
-          <OfflineBanner />
-          <TtsFallbackToast />
-          <div className="min-h-screen min-h-[100dvh] bg-white dark:bg-[#111827] text-[#111827] dark:text-slate-100 antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col items-stretch overflow-x-hidden transition-colors duration-200">
-            <AppRoutes />
-          </div>
-        </LanguageProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <NotificationNavigationListener />
+        <AppResumeUpdateChecker />
+        <OfflineBanner />
+        <TtsFallbackToast />
+        <div className="min-h-screen min-h-[100dvh] bg-white text-[#111827] antialiased selection:bg-[#0B5A54] selection:text-white w-full relative flex flex-col items-stretch overflow-x-hidden">
+          <AppRoutes />
+        </div>
+      </LanguageProvider>
     </BrowserRouter>
   );
 };

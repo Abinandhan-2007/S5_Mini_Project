@@ -22,7 +22,6 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { usePolling } from '../../lib/usePolling';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminDoctorManagement } from './AdminDoctorManagement';
@@ -121,11 +120,11 @@ export const AdminLayout: React.FC = () => {
         adminService.getHospitalDoctorLeaves().then((leaves) => {
           const pending = leaves.filter((l) => l.status === 'Pending').length;
           setPendingLeavesCount(pending);
-        }).catch(() => {}),
+        }).catch(() => { }),
         adminService.getStaffPasswordResets('all').then((data) => {
           setStaffResets(data.requests || []);
           setPendingResetsCount(data.pendingCount || 0);
-        }).catch(() => {}),
+        }).catch(() => { }),
       ]);
     },
     {
@@ -335,9 +334,8 @@ export const AdminLayout: React.FC = () => {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          }`}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
@@ -383,11 +381,10 @@ export const AdminLayout: React.FC = () => {
                           setActiveTab(item.id);
                           setIsMobileSidebarOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${
-                          isActive
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${isActive
                             ? 'bg-teal-50/90 text-[#0B5A54] font-black shadow-2xs border border-teal-200/70'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {/* Active Accent Bar */}
@@ -396,11 +393,10 @@ export const AdminLayout: React.FC = () => {
                           )}
 
                           <Icon
-                            className={`w-4 h-4 shrink-0 transition-transform ${
-                              isActive
+                            className={`w-4 h-4 shrink-0 transition-transform ${isActive
                                 ? 'text-[#0B5A54] scale-105'
                                 : 'text-slate-400 group-hover:text-slate-600 group-hover:scale-105'
-                            }`}
+                              }`}
                           />
                           <span className="truncate tracking-tight">{item.label}</span>
                         </div>
@@ -408,9 +404,8 @@ export const AdminLayout: React.FC = () => {
                         {/* Optional Count Badge */}
                         {item.badge && (
                           <span
-                            className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${
-                              item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}
+                            className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}
                           >
                             {item.badge}
                           </span>
@@ -523,11 +518,10 @@ export const AdminLayout: React.FC = () => {
             {/* Staff Password Reset Requests Button */}
             <button
               onClick={() => setIsResetsModalOpen(true)}
-              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer shadow-2xs ${
-                pendingResetsCount > 0
+              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer shadow-2xs ${pendingResetsCount > 0
                   ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
                   : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
+                }`}
               title="Staff Password Reset Requests"
             >
               <KeyRound className={`w-3.5 h-3.5 ${pendingResetsCount > 0 ? 'text-amber-600' : 'text-slate-500'}`} />
@@ -538,9 +532,6 @@ export const AdminLayout: React.FC = () => {
                 </span>
               )}
             </button>
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
 
             {/* Notification Bell Dropdown */}
             <div className="relative" ref={notifRef}>

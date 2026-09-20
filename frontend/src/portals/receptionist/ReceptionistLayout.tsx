@@ -23,7 +23,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { ReceptionistDashboard } from './ReceptionistDashboard';
 import { TokenManagement } from './TokenManagement';
 import { PatientBookings } from './PatientBookings';
@@ -511,9 +510,6 @@ export const ReceptionistLayout: React.FC = () => {
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
               <span>+ Walk-In</span>
             </button>
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
 
             {/* Quick Action: Staff Live Chat */}
             <button

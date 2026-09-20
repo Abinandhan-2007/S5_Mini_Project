@@ -357,7 +357,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       if (res.ok && data.success) {
         setForgotSuccessMessage(
           data.message ||
-            `Assistance ticket #${data.requestId} has been logged! Your Hospital Administrator received an urgent security notification.`
+          `Assistance ticket #${data.requestId} has been logged! Your Hospital Administrator received an urgent security notification.`
         );
         setPendingNotice(
           'Your ticket is now queued in the Hospital Admin portal. Once the administrator approves it, click "Check Reset Status" below to get your temporary password.'
@@ -365,8 +365,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       } else {
         setForgotError(
           data.detail ||
-            data.message ||
-            'No matching staff account found. Please check your username or work email.'
+          data.message ||
+          'No matching staff account found. Please check your username or work email.'
         );
       }
     } catch (err: any) {

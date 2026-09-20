@@ -18,7 +18,6 @@ import { PatientQrScannerModal } from '../../components/qr/PatientQrScannerModal
 import { Patient360RecordModal } from '../../components/qr/Patient360RecordModal';
 import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 import { StaffChatHub } from '../../components/chat/StaffChatHub';
-import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 interface NurseLayoutProps {
   children: ReactNode;
@@ -184,9 +183,6 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
               </div>
             </div>
 
-            {/* Theme Toggle */}
-            <ThemeToggle className="bg-white/10 border-white/10 text-white hover:bg-white/20 !text-white" />
-
             <button
               onClick={handleLogout}
               title="Sign Out"
@@ -252,18 +248,16 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
             <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
               <button
                 onClick={() => setCommsTab('broadcasts')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                  commsTab === 'broadcasts' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
-                }`}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${commsTab === 'broadcasts' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
+                  }`}
               >
                 <Megaphone className="w-3.5 h-3.5 text-[#0B5A54]" />
                 <span>Hospital Notices ({announcements.length})</span>
               </button>
               <button
                 onClick={() => setCommsTab('message')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                  commsTab === 'message' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
-                }`}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${commsTab === 'message' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
+                  }`}
               >
                 <MessageSquare className="w-3.5 h-3.5 text-teal-600" />
                 <span>Contact Administration</span>
@@ -291,13 +285,12 @@ export const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
                     return (
                       <div
                         key={ann.id}
-                        className={`p-4 rounded-2xl border space-y-2 ${
-                          isUrgent
+                        className={`p-4 rounded-2xl border space-y-2 ${isUrgent
                             ? 'bg-rose-50/50 border-rose-200'
                             : isHigh
-                            ? 'bg-amber-50/50 border-amber-200'
-                            : 'bg-slate-50 border-slate-200/80'
-                        }`}
+                              ? 'bg-amber-50/50 border-amber-200'
+                              : 'bg-slate-50 border-slate-200/80'
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-2">

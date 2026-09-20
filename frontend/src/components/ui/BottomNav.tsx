@@ -99,8 +99,8 @@ export const BottomNav: React.FC = () => {
                   isTransitioning
                     ? 'bg-teal-600/95 text-white border-teal-400/60 shadow-teal-500/40 scale-105'
                     : isDarkMode
-                    ? 'bg-slate-900/90 text-teal-300 border-teal-500/30'
-                    : 'bg-white/95 text-[#0B5A54] border-teal-100/80'
+                      ? 'bg-slate-900/90 text-teal-300 border-teal-500/30'
+                      : 'bg-white/95 text-[#0B5A54] border-teal-100/80'
                 )}
               >
                 {t('nav.healthAi', 'Health AI')}
@@ -134,8 +134,8 @@ export const BottomNav: React.FC = () => {
                         ? 'bg-white/6 border border-white/10 text-teal-300'
                         : 'bg-[#0B5A54]/8 border border-[#0B5A54]/12 text-[#0B5A54]'
                       : isDarkMode
-                      ? 'bg-transparent text-slate-400 hover:text-slate-100 hover:bg-white/5'
-                      : 'bg-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
+                        ? 'bg-transparent text-slate-400 hover:text-slate-100 hover:bg-white/5'
+                        : 'bg-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
                   )}
                 >
                   {/* Sleek Icon Container */}
@@ -148,8 +148,8 @@ export const BottomNav: React.FC = () => {
                             ? 'text-teal-300 stroke-[2.4] scale-105'
                             : 'text-[#0B5A54] stroke-[2.4] scale-105'
                           : isDarkMode
-                          ? 'text-slate-400 stroke-[1.8] group-hover:text-slate-200 group-hover:scale-105'
-                          : 'text-slate-500 stroke-[1.8] group-hover:text-slate-800 group-hover:scale-105'
+                            ? 'text-slate-400 stroke-[1.8] group-hover:text-slate-200 group-hover:scale-105'
+                            : 'text-slate-500 stroke-[1.8] group-hover:text-slate-800 group-hover:scale-105'
                       )}
                     />
                   </div>
@@ -163,8 +163,8 @@ export const BottomNav: React.FC = () => {
                           ? 'font-bold text-white'
                           : 'font-bold text-slate-900'
                         : isDarkMode
-                        ? 'font-medium text-slate-400 group-hover:text-slate-200'
-                        : 'font-medium text-slate-500 group-hover:text-slate-800'
+                          ? 'font-medium text-slate-400 group-hover:text-slate-200'
+                          : 'font-medium text-slate-500 group-hover:text-slate-800'
                     )}
                   >
                     {item.label}

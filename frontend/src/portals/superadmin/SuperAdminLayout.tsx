@@ -79,9 +79,8 @@ export const SuperAdminLayout: React.FC = () => {
 
       {/* Persistent Left Command Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-white border-r border-slate-200/90 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-white border-r border-slate-200/90 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         {/* Brand & Platform Root Header */}
         <div className="h-20 px-5 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -140,26 +139,23 @@ export const SuperAdminLayout: React.FC = () => {
                   setActiveTab(item.id);
                   setIsMobileSidebarOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                  isActive
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-medium transition-all cursor-pointer ${isActive
                     ? 'bg-[#0B5A54] text-white font-semibold shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
-                    className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-white' : 'text-slate-400'
-                    }`}
+                    className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-slate-400'
+                      }`}
                   />
                   <span className="tracking-tight">{item.label}</span>
                 </div>
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-sans transition-colors ${
-                    isActive
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-sans transition-colors ${isActive
                       ? 'bg-white/20 text-white'
                       : 'bg-slate-100 text-slate-500 border border-slate-200'
-                  }`}
+                    }`}
                 >
                   {item.tag}
                 </span>
@@ -217,12 +213,12 @@ export const SuperAdminLayout: React.FC = () => {
                 {activeTab === 'dashboard'
                   ? 'Overview'
                   : activeTab === 'devices'
-                  ? 'Patient App Devices'
-                  : activeTab === 'hospitals'
-                  ? 'Hospital Facilities'
-                  : activeTab === 'admins'
-                  ? 'Hospital Administrators'
-                  : 'Platform Audit Log'}
+                    ? 'Patient App Devices'
+                    : activeTab === 'hospitals'
+                      ? 'Hospital Facilities'
+                      : activeTab === 'admins'
+                        ? 'Hospital Administrators'
+                        : 'Platform Audit Log'}
               </span>
             </div>
           </div>
