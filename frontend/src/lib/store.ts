@@ -274,22 +274,46 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
             registerPushNotifications(userData.id).catch(() => {});
             trackUserDevice(userData.id).catch(() => {});
             return true;
+          } else if (res && res.status === 404) {
+            // Patient account was deleted from the database — force full logout immediately
+            console.warn('Patient account not found in database (404). Forcing logout.');
+            await clearPersistentUserStorage();
+            set({
+              user: null,
+              isAuthenticated: false,
+              isInitializing: false,
+              appointments: [],
+              activeAppointment: null,
+              history: [],
+              prescriptions: [],
+            });
+            return false;
           } else if (res && (res.status === 401 || res.status === 403)) {
-            // Token is invalid or expired — purge token only, preserve offline user session so user is never logged out on reload
-            console.warn('Background token expired or rejected. Removing expired token while preserving active user session.');
-            try {
-              localStorage.removeItem('carepulse_token');
-              localStorage.removeItem('auth_token');
-              await Preferences.remove({ key: 'auth_token' });
-            } catch {}
+            // Token is invalid or expired — purge everything and force re-login
+            console.warn('Token rejected (401/403). Clearing session and forcing re-login.');
+            await clearPersistentUserStorage();
+            set({
+              user: null,
+              isAuthenticated: false,
+              isInitializing: false,
+              appointments: [],
+              activeAppointment: null,
+              history: [],
+              prescriptions: [],
+            });
+            return false;
           }
+          // For other errors (network timeout, 500, etc.) — backend is unreachable,
+          // fall through to cached user so user stays logged in during outages
         } catch (err) {
-          console.warn('Background token refresh notice:', err);
+          console.warn('Backend unreachable during session check, using cached session:', err);
+          // Network error — fall through to use cached session (backend may be offline)
         }
       }
 
-      // If backend was unreachable or in offline mode, but we have a valid cached user,
-      // preserve the user session so the user never gets logged out on app reopen
+      // If backend was unreachable (network error / 5xx) and we have a valid cached user,
+      // preserve the session so the user stays logged in during backend outages.
+      // NOTE: This only runs if the token call threw a network error — NOT for 401/404 responses.
       if (cachedUser && cachedUser.id) {
         set({
           user: cachedUser,

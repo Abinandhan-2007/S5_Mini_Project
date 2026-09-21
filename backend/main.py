@@ -1261,7 +1261,7 @@ def get_current_authenticated_patient(authorization: Optional[str] = Header(None
                 authProvider=p.get("auth_provider", "local")
             )
 
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Patient account not found.")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient account not found. Your account may have been deleted.")
 
 
 @app.get("/api/patients/{patient_id}", response_model=PatientResponse)
