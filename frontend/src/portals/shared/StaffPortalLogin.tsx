@@ -78,7 +78,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.staff) {
-          const userRole = data.staff.role === 'superadmin' ? 'admin' : data.staff.role;
+          const userRole = data.staff.role;
           const hospId = data.staff.hospitalId || data.staff.hospital_id || (data.staff.role === 'superadmin' ? 'hosp-1' : undefined);
           const hospName = data.staff.hospitalName || data.staff.hospital_name || 'CarePulse Medical Center';
           setStaffAuth(
@@ -102,7 +102,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
             data.token
           );
           setIsLoading(false);
-          if (userRole === 'admin') navigate('/admin');
+          if (userRole === 'superadmin') navigate('/superadmin');
+          else if (userRole === 'admin') navigate('/admin');
           else if (userRole === 'doctor') navigate('/doctor');
           else if (userRole === 'nurse') navigate('/nurse');
           else navigate('/receptionist');

@@ -263,8 +263,8 @@ async def text_to_speech_audio(
 
 
 @app.get("/api/health")
-def health_check():
-    db_status = "connected"
+def health_check(response: Response):
+    db_connected = False
     ping_latency_ms = None
     if database.use_pg:
         try:
@@ -273,21 +273,33 @@ def health_check():
                 with conn.cursor() as cur:
                     cur.execute("SELECT 1")
             ping_latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            db_connected = True
         except Exception as e:
-            db_status = f"unreachable ({e})"
+            database.use_pg = False
+            db_connected = False
     else:
-        db_status = "mock_json_store"
+        # Check if database has come online
+        db_connected = database.check_pg_health_and_sync()
 
-    is_healthy = (database.use_pg and db_status == "connected") or database.ALLOW_JSON_FALLBACK
+    if not db_connected:
+        response.status_code = 503
+        return {
+            "status": "unhealthy",
+            "service": "CarePulse FastAPI Backend",
+            "database": "PostgreSQL (OFFLINE)",
+            "db_connected": False,
+            "error": "⚠️ PostgreSQL database is OFFLINE! Please start PostgreSQL / pgAdmin.",
+            "offline_sync": "disabled",
+            "notification": "PostgreSQL database is offline. No offline sync will be performed."
+        }
 
     return {
-        "status": "healthy" if is_healthy else "degraded",
+        "status": "healthy",
         "service": "CarePulse FastAPI Backend",
-        "storage_mode": "postgresql" if database.use_pg else "json_fallback",
-        "database": f"PostgreSQL ({'pgvector' if getattr(database, 'has_pgvector', False) else 'standard relational'})" if database.use_pg else "JSON File Fallback",
-        "db_connected": database.use_pg and db_status == "connected",
+        "database": f"PostgreSQL ({'pgvector' if getattr(database, 'has_pgvector', False) else 'standard relational'})",
+        "db_connected": True,
         "db_latency_ms": ping_latency_ms,
-        "allow_json_fallback": database.ALLOW_JSON_FALLBACK
+        "offline_sync": "disabled"
     }
 
 # ==========================================

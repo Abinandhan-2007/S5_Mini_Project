@@ -1564,8 +1564,8 @@ def fetch_all_tokens_from_db(
             logger.warning(f"DB fetch tokens note: {e}")
             database.use_pg = False
 
-    # Always inspect JSON DB and seamlessly merge any offline or newly booked appointments not yet in PG
-    if is_superadmin or effective_hosp_id:
+    # Offline sync is disabled. Only inspect JSON DB if explicitly configured in offline fallback mode
+    if not database.use_pg and getattr(database, "ALLOW_JSON_FALLBACK", False) and (is_superadmin or effective_hosp_id):
         try:
             db = database.read_json_db()
             raw_apps = db.get("appointments", [])

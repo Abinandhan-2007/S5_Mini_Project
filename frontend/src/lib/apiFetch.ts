@@ -213,8 +213,11 @@ export async function apiFetch(
           }
         }
 
-        // Automatically clear offline fallback mode on any successful backend call
-        useCarePulseStore.getState().setIsOfflineMode(false);
+        if (res.status === 503) {
+          useCarePulseStore.getState().setIsOfflineMode(true);
+        } else if (res.ok) {
+          useCarePulseStore.getState().setIsOfflineMode(false);
+        }
         return res;
       }
     } catch (err) {
@@ -271,12 +274,21 @@ export function apiDelete(path: string): Promise<Response> {
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const res = await apiGet('/health');
-    if (!res || !res.ok) return false;
+    if (!res || !res.ok) {
+      useCarePulseStore.getState().setIsOfflineMode(true);
+      return false;
+    }
     const contentType = res.headers.get('content-type') || '';
-    if (contentType.includes('text/html')) return false;
+    if (contentType.includes('text/html')) {
+      useCarePulseStore.getState().setIsOfflineMode(true);
+      return false;
+    }
     const data = await res.json();
-    return Boolean(data && (data.status === 'healthy' || data.service?.toLowerCase().includes('carepulse')));
+    const isHealthy = Boolean(data && data.status === 'healthy' && data.db_connected !== false);
+    useCarePulseStore.getState().setIsOfflineMode(!isHealthy);
+    return isHealthy;
   } catch {
+    useCarePulseStore.getState().setIsOfflineMode(true);
     return false;
   }
 }

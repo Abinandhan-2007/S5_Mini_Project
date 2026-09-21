@@ -306,7 +306,7 @@ export const LoginScreen: React.FC = () => {
           if (staffRes.ok) {
             const staffData = await staffRes.json();
             if (staffData.success && staffData.staff) {
-              const userRole = staffData.staff.role === 'superadmin' ? 'admin' : staffData.staff.role;
+              const userRole = staffData.staff.role;
               const hospId = staffData.staff.hospitalId || staffData.staff.hospital_id || (staffData.staff.role === 'superadmin' ? 'hosp-1' : undefined);
               const hospName = staffData.staff.hospitalName || staffData.staff.hospital_name || 'CarePulse Medical Center';
               useStaffStore.getState().setStaffAuth(
@@ -330,10 +330,10 @@ export const LoginScreen: React.FC = () => {
                 staffData.token
               );
               setIsLoading(false);
-              if (userRole === 'admin') navigate('/admin');
+              if (userRole === 'superadmin') navigate('/superadmin');
+              else if (userRole === 'admin') navigate('/admin');
               else if (userRole === 'doctor') navigate('/doctor');
               else if (userRole === 'nurse') navigate('/nurse');
-              else if (userRole === 'superadmin') navigate('/superadmin');
               else navigate('/receptionist');
               return;
             }
