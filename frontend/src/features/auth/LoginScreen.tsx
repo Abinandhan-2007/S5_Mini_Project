@@ -294,8 +294,54 @@ export const LoginScreen: React.FC = () => {
     if (res) {
       data = await res.json().catch(() => ({}));
 
-      // 404 Not Found: User doesn't exist in PostgreSQL / backend
+      // 404 Not Found: Check if this user is a staff member (Admin, Doctor, Nurse, Receptionist, SuperAdmin)
       if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
+        try {
+          const staffRes = await apiPost('/staff/login', {
+            identifier: inputVal,
+            email: inputVal,
+            username: inputVal,
+            password: passVal,
+          });
+          if (staffRes.ok) {
+            const staffData = await staffRes.json();
+            if (staffData.success && staffData.staff) {
+              const userRole = staffData.staff.role === 'superadmin' ? 'admin' : staffData.staff.role;
+              const hospId = staffData.staff.hospitalId || staffData.staff.hospital_id || (staffData.staff.role === 'superadmin' ? 'hosp-1' : undefined);
+              const hospName = staffData.staff.hospitalName || staffData.staff.hospital_name || 'CarePulse Medical Center';
+              useStaffStore.getState().setStaffAuth(
+                {
+                  id: staffData.staff.id,
+                  name: staffData.staff.name,
+                  email: staffData.staff.email,
+                  role: userRole,
+                  department: staffData.staff.department,
+                  avatarUrl: staffData.staff.avatarUrl,
+                  hospitalId: hospId,
+                  hospital_id: hospId,
+                  hospitalName: hospName,
+                  hospital_name: hospName,
+                  doctorId: staffData.staff.doctorId || staffData.staff.doctor_id,
+                  doctor_id: staffData.staff.doctor_id || staffData.staff.doctorId,
+                  staff_code: staffData.staff.staff_code || staffData.staff.staffCode,
+                  staffCode: staffData.staff.staffCode || staffData.staff.staff_code,
+                  phone: staffData.staff.phone,
+                },
+                staffData.token
+              );
+              setIsLoading(false);
+              if (userRole === 'admin') navigate('/admin');
+              else if (userRole === 'doctor') navigate('/doctor');
+              else if (userRole === 'nurse') navigate('/nurse');
+              else if (userRole === 'superadmin') navigate('/superadmin');
+              else navigate('/receptionist');
+              return;
+            }
+          }
+        } catch {
+          // If staff login fails, continue to patient unregistered prompt below
+        }
+
         setUnregisteredIdentifier(inputVal);
         setShowSignupPrompt(true);
         setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);

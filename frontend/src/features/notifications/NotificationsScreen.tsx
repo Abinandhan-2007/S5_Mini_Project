@@ -178,7 +178,7 @@ export const NotificationsScreen: React.FC = () => {
     setReadIds(updated);
     try {
       localStorage.setItem(`carepulse_read_notifs_${user?.id || 'guest'}`, JSON.stringify(updated));
-    } catch {}
+    } catch { }
   };
 
   const handleClearAll = () => {
@@ -187,7 +187,7 @@ export const NotificationsScreen: React.FC = () => {
     setClearedIds(updated);
     try {
       localStorage.setItem(`carepulse_cleared_notifs_${user?.id || 'guest'}`, JSON.stringify(updated));
-    } catch {}
+    } catch { }
   };
 
   const markAsRead = (id: string) => {
@@ -196,7 +196,7 @@ export const NotificationsScreen: React.FC = () => {
       setReadIds(updated);
       try {
         localStorage.setItem(`carepulse_read_notifs_${user?.id || 'guest'}`, JSON.stringify(updated));
-      } catch {}
+      } catch { }
     }
   };
 
@@ -217,22 +217,22 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
-      {/* LIGHTER LUMINOUS CYAN TOPBAR */}
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] px-4 sm:px-6 pt-4 pb-4 w-full shadow-sm text-left sm:rounded-t-3xl transition-all">
+      {/* CLEAN TOPBAR WITHOUT BG COLOR */}
+      <header className="sticky top-0 z-30 bg-transparent px-4 sm:px-6 pt-4 pb-4 w-full text-left transition-all">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             {/* Left: Back Button + Title & Subtitle */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => navigate(-1)}
-                className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-all active:scale-95 shadow-2xs shrink-0 cursor-pointer"
                 title="Go Back"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
               <div className="min-w-0 space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-base sm:text-lg font-black font-heading text-white tracking-tight truncate">
+                  <h1 className="text-base sm:text-lg font-black font-heading text-slate-900 tracking-tight truncate">
                     Notifications
                   </h1>
                   {unreadCount > 0 && (
@@ -241,7 +241,7 @@ export const NotificationsScreen: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] sm:text-xs font-semibold text-teal-100/90 truncate">
+                <p className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
                   CarePulse Consultations & Health Alerts
                 </p>
               </div>
@@ -252,7 +252,7 @@ export const NotificationsScreen: React.FC = () => {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
-                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 border border-white/30 text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 text-slate-700 transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
                   title="Mark all as read"
                 >
                   <CheckCheck className="w-4 h-4" />
@@ -261,7 +261,7 @@ export const NotificationsScreen: React.FC = () => {
               {notifications.length > 0 && (
                 <button
                   onClick={handleClearAll}
-                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-rose-500 border border-white/30 text-white transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-50 hover:text-rose-600 border border-slate-200/80 text-slate-700 transition-all flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
                   title="Clear all notifications"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -284,7 +284,7 @@ export const NotificationsScreen: React.FC = () => {
                   'px-4 py-1.5 rounded-full text-xs font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer shadow-2xs select-none',
                   activeTab === tab.id
                     ? 'bg-[#0B5A54] text-white shadow-xs font-black'
-                    : 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80'
                 )}
               >
                 {tab.label}

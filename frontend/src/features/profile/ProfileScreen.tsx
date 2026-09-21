@@ -21,36 +21,93 @@ import {
   Phone,
   ShieldCheck,
   Sliders,
-  Globe,
+  ScanFace,
+  Copy,
+  Check,
+  Mail,
+  Activity,
+  BadgeCheck,
 } from 'lucide-react';
+import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
-import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
-import { LanguageSelectModal } from '../../components/ui/LanguageSelectModal';
 import { useTranslation } from '../../lib/i18n';
 import { useCarePulseStore } from '../../lib/store';
 import { calculateAge, getTodayDateString } from '../../lib/dateUtils';
 import { apiPost } from '../../lib/apiFetch';
+import {
+  registerDeviceBiometrics,
+  checkDeviceBiometricSupport,
+} from '../../lib/biometricAuthService';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { isUserProfileIncomplete, clearProfilePromptTracking } from '../auth/CompleteProfileScreen';
 
 export const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { t, currentOption } = useTranslation();
+  const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
   const logout = useCarePulseStore((s) => s.logout);
   const updateUser = useCarePulseStore((s) => s.updateUser);
+  const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
+  const toggleBiometric = useCarePulseStore((s) => s.toggleBiometric);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
+  const [copiedId, setCopiedId] = useState(false);
+  const [biometricNotice, setBiometricNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleToggleBiometric = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setBiometricNotice(null);
+    const nextState = !isBiometricEnabled;
+
+    if (nextState) {
+      const support = await checkDeviceBiometricSupport();
+      if (!support.isAvailable) {
+        setBiometricNotice({
+          type: 'error',
+          text: support.message || 'Biometric hardware unavailable on this device.',
+        });
+        setTimeout(() => setBiometricNotice(null), 3500);
+        return;
+      }
+
+      const registered = await registerDeviceBiometrics(user?.id);
+      if (registered) {
+        toggleBiometric(true);
+        setBiometricNotice({
+          type: 'success',
+          text: 'Biometric Face ID / Fingerprint lock enabled.',
+        });
+      } else {
+        setBiometricNotice({
+          type: 'error',
+          text: 'Biometric registration cancelled or failed.',
+        });
+      }
+    } else {
+      toggleBiometric(false);
+      setBiometricNotice({
+        type: 'success',
+        text: 'Biometric App Lock disabled.',
+      });
+    }
+    setTimeout(() => setBiometricNotice(null), 3500);
+  };
+
+  const handleCopyPatientId = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(patientDisplayCode);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
 
   useEffect(() => {
     const fetchAppVersion = async () => {
@@ -228,13 +285,6 @@ export const ProfileScreen: React.FC = () => {
 
   const settingsRows = [
     {
-      label: t('profile.language', 'Language Preference'),
-      icon: Globe,
-      subtext: `${currentOption.nativeLabel} (${currentOption.label}) • ${currentOption.flag}`,
-      badge: currentOption.nativeLabel,
-      action: () => setIsLanguageModalOpen(true),
-    },
-    {
       label: t('profile.advancedSettings', 'Advanced Settings'),
       icon: Sliders,
       subtext: t('profile.advancedSettingsSubtext', 'App features, biometric lock, alerts & audio'),
@@ -272,29 +322,42 @@ export const ProfileScreen: React.FC = () => {
     (user.id?.startsWith('PAT-') ? user.id : user.id ? `PAT-${user.id.slice(0, 6).toUpperCase()}` : 'PAT-000001');
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans text-slate-800 antialiased">
-      {/* HEADER SECTION WITH HERO GRADIENT */}
-      <header className="bg-gradient-to-br from-[#0B5A54] via-[#0D6E67] to-[#14B8A6] pt-7 pb-16 px-5 text-white shadow-lg relative overflow-hidden">
-        <div className="flex justify-between items-center max-w-lg mx-auto">
-          <h1 className="text-base sm:text-lg font-black font-heading tracking-tight">
-            {t('profile.title', 'Patient Profile & Vitals')}
-          </h1>
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans text-slate-800 antialiased select-none">
+      {/* 1. TOPBAR WITH "PROFILE" TITLE */}
+      <header className="sticky top-0 z-30 bg-transparent px-4 sm:px-6 pt-4 pb-2 w-full text-left transition-all">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight">
+              {t('nav.profile', 'Profile')}
+            </h1>
+            <p className="text-[11px] font-semibold text-slate-500">
+              {t('profile.accountPreferences', 'Patient Profile & Medical Identity')}
+            </p>
+          </div>
+
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsQrModalOpen(true)}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-md border border-white/30 shadow-2xs flex items-center justify-center active:scale-95 cursor-pointer"
-              title="Show Medical Health ID QR"
+              type="button"
+              onClick={() => navigate('/notifications')}
+              className="w-9 h-9 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-all relative active:scale-95 shadow-2xs cursor-pointer"
+              aria-label="Notifications"
+              title="Notifications"
             >
-              <QrCode className="w-4 h-4 text-white" />
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
             </button>
           </div>
         </div>
       </header>
 
       {/* MAIN CONTENT WRAPPER */}
-      <main className="max-w-lg mx-auto px-4 -mt-10 space-y-4">
-        {/* PATIENT CARD OVERLAP */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80 text-center relative flex flex-col items-center space-y-3">
+      <main className="max-w-lg mx-auto px-4 py-4 space-y-4 relative z-20">
+        {/* PATIENT CARD OVERLAP - CONCIERGE MEDICAL IDENTITY PASS */}
+        <div className="relative bg-white/95 backdrop-blur-xl rounded-[32px] p-5 sm:p-6 shadow-[0_20px_50px_-12px_rgba(4,39,34,0.18),0_2px_10px_rgba(0,0,0,0.03)] border border-white ring-1 ring-slate-200/70 text-center flex flex-col items-center space-y-4 overflow-hidden">
+          {/* Subtle decorative background watermark */}
+          <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-teal-500/5 to-transparent rounded-bl-full pointer-events-none" />
+          <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-gradient-to-tr from-emerald-500/5 to-transparent rounded-full pointer-events-none" />
+
           <input
             ref={fileInputRef}
             type="file"
@@ -303,22 +366,35 @@ export const ProfileScreen: React.FC = () => {
             onChange={handleFileChange}
           />
 
-          {/* AVATAR WITH CAMERA BADGE */}
-          <div className="relative cursor-pointer group -mt-12" onClick={handleAvatarClick}>
-            <Avatar
-              src={user.avatarUrl}
-              alt={user.fullName}
-              size="lg"
-              hasRing
-              className="ring-4 ring-white shadow-xl transition-transform group-hover:scale-105"
-            />
+          {/* AVATAR WITH LUXURY HALO & CAMERA BADGE */}
+          <div className="relative cursor-pointer group mt-1 sm:mt-2" onClick={handleAvatarClick}>
+            <div className="p-1 rounded-full bg-gradient-to-tr from-[#059669] via-[#14B8A6] to-[#38BDF8] shadow-[0_12px_32px_-6px_rgba(16,185,129,0.45)]">
+              <div className="p-1 bg-white rounded-full">
+                <Avatar
+                  src={user.avatarUrl}
+                  alt={user.fullName}
+                  size="xl"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover transition-transform group-hover:scale-105"
+                />
+              </div>
+            </div>
+
+            {/* Active verified patient green indicator */}
+            <div
+              className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center shadow-xs"
+              title="Active Verified Patient"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            </div>
+
+            {/* Camera upload badge */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleAvatarClick();
               }}
-              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#0B5A54] text-white flex items-center justify-center border-2 border-white shadow-md hover:bg-[#08423D] transition-transform active:scale-90 cursor-pointer"
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#0B5A54] to-[#042824] text-white flex items-center justify-center ring-2 ring-white shadow-lg hover:from-[#08423D] hover:to-[#021815] transition-all hover:scale-110 active:scale-90 cursor-pointer"
               title="Upload Profile Photo"
             >
               <Camera className="w-3.5 h-3.5 text-white" />
@@ -326,54 +402,102 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* NAME & CONTACT INFO */}
-          <div className="space-y-1.5 flex flex-col items-center">
-            <div className="flex items-center justify-center gap-1.5">
-              <h2 className="text-lg font-black font-heading text-slate-900 tracking-tight">
+          <div className="space-y-2 flex flex-col items-center w-full">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight">
                 {user.fullName}
               </h2>
-              {user.authProvider === 'google' && (
-                <span className="bg-teal-50 text-[#0B5A54] text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-teal-200 shrink-0">
+              {user.authProvider === 'google' ? (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 text-[#0B5A54] text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-emerald-200/90 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   Google
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 text-[#0B5A54] text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-emerald-200/90 shadow-2xs">
+                  <BadgeCheck className="w-3 h-3 text-emerald-600" />
+                  Verified
                 </span>
               )}
             </div>
 
-            {/* PROMINENT EASY-TO-READ PATIENT DISPLAY CODE */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/90 text-[#0B5A54] text-xs font-black shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">Patient ID:</span>
-              <span className="font-mono font-black tracking-wider text-xs">{patientDisplayCode}</span>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500 pt-0.5">
-              <span>{user.email}</span>
-              <span className="w-1 h-1 rounded-full bg-slate-300" />
-              <span className="text-[#0B5A54] font-bold">{user.phone || 'No phone set'}</span>
-            </div>
-            {user.address && (
-              <div className="flex items-center justify-center gap-1 text-[11px] text-slate-500 font-medium max-w-xs mx-auto">
-                <MapPin className="w-3 h-3 text-[#0B5A54] shrink-0" />
-                <span className="truncate">{user.address}</span>
+            {/* CONTACT METADATA CAPSULES */}
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1 w-full max-w-sm">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 border border-slate-200/80 text-slate-700 text-[11px] font-semibold">
+                <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="truncate max-w-[190px]">{user.email}</span>
               </div>
-            )}
+
+              <button
+                type="button"
+                onClick={openEditModal}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${user.phone && user.phone !== 'No phone set'
+                  ? 'bg-emerald-50 border-emerald-200/80 text-emerald-800 hover:bg-emerald-100/80'
+                  : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+                  }`}
+                title="Edit Phone Number"
+              >
+                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>{user.phone || '+ Add Phone'}</span>
+              </button>
+
+              {user.address && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-slate-200/70 text-slate-600 text-[11px] font-medium max-w-xs">
+                  <MapPin className="w-3 h-3 text-[#0B5A54] shrink-0" />
+                  <span className="truncate">{user.address}</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* EDIT PROFILE BUTTON */}
+          {/* EDIT COMPLETE MEDICAL PROFILE BUTTON - SLEEK COMPACT PILL */}
           <button
             type="button"
             onClick={openEditModal}
-            className="w-full bg-[#E3F3F1] hover:bg-[#0B5A54] text-[#0B5A54] hover:text-white border border-[#14B8A6]/30 py-2.5 px-4 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer shadow-2xs font-heading"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#0B5A54] via-[#0E6C64] to-[#14B8A6] hover:from-[#084540] hover:to-[#0D9488] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md active:scale-95 cursor-pointer font-heading mx-auto group border border-teal-300/30"
           >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>{t('profile.editProfile', 'Edit Complete Medical Profile')}</span>
+            <Edit3 className="w-3.5 h-3.5 text-emerald-200 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="tracking-tight">{t('profile.editProfile', 'Edit Complete Medical Profile')}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-200/90 group-hover:translate-x-0.5 transition-transform shrink-0" />
           </button>
+
+          {/* SECONDARY QUICK ACTIONS DOCK */}
+          <div className="grid grid-cols-3 gap-2 w-full pt-0.5">
+            <button
+              type="button"
+              onClick={() => setIsQrModalOpen(true)}
+              className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50/90 hover:bg-teal-50 border border-slate-200/70 hover:border-teal-200/90 text-slate-700 hover:text-[#0B5A54] transition-all cursor-pointer group shadow-2xs"
+            >
+              <QrCode className="w-4 h-4 text-[#0B5A54] mb-1 group-hover:scale-110 transition-transform" />
+              <span className="text-[10.5px] font-bold">QR Pass</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/history')}
+              className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50/90 hover:bg-teal-50 border border-slate-200/70 hover:border-teal-200/90 text-slate-700 hover:text-[#0B5A54] transition-all cursor-pointer group shadow-2xs"
+            >
+              <FileCheck className="w-4 h-4 text-[#0B5A54] mb-1 group-hover:scale-110 transition-transform" />
+              <span className="text-[10.5px] font-bold">Records</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyPatientId}
+              className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50/90 hover:bg-teal-50 border border-slate-200/70 hover:border-teal-200/90 text-slate-700 hover:text-[#0B5A54] transition-all cursor-pointer group shadow-2xs"
+            >
+              {copiedId ? (
+                <Check className="w-4 h-4 text-emerald-600 mb-1 animate-in zoom-in-50" />
+              ) : (
+                <Copy className="w-4 h-4 text-[#0B5A54] mb-1 group-hover:scale-110 transition-transform" />
+              )}
+              <span className="text-[10.5px] font-bold">{copiedId ? 'Copied' : 'Copy ID'}</span>
+            </button>
+          </div>
         </div>
 
         {/* INCOMPLETE PROFILE REMINDER CARD */}
         {isUserProfileIncomplete(user) && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300/80 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in backdrop-blur-xs">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm">
                 <AlertCircle className="w-5 h-5 text-white" />
               </div>
               <div className="min-w-0 text-left">
@@ -389,38 +513,44 @@ export const ProfileScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/complete-profile')}
-              className="px-3.5 py-1.5 bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[#0B5A54] to-[#0D6E67] hover:from-[#08423D] hover:to-[#0B5A54] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
             >
               {t('profile.completeNow', 'Complete Now →')}
             </button>
           </div>
         )}
 
-        {/* VITAL INFORMATION COMPACT GRID */}
-        <div className="space-y-2">
+        {/* VITAL INFORMATION COMPACT GRID - CLINICAL VITALS DASHBOARD */}
+        <div className="space-y-2.5">
           <div className="flex justify-between items-center px-1">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
-              {t('profile.vitalStats', 'VITAL MEDICAL STATS')}
-            </h3>
+            <div className="flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <h3 className="text-[10.5px] font-black text-slate-600 uppercase tracking-widest font-heading">
+                {t('profile.vitalStats', 'VITAL MEDICAL STATS')}
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Verified Records
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            {/* OFFICIAL CAREPULSE PATIENT ID CARD */}
-            <Card padding="sm" className="col-span-2 space-y-1.5 border border-teal-200/90 bg-gradient-to-r from-teal-50/80 via-white to-teal-50/80 shadow-2xs">
+            {/* OFFICIAL CAREPULSE PATIENT ID SMART CARD */}
+            <div className="col-span-2 relative overflow-hidden rounded-2xl border border-teal-200/90 bg-gradient-to-r from-teal-50/90 via-white to-emerald-50/70 p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
-                  <div className="w-5.5 h-5.5 rounded-lg bg-[#0B5A54] text-white flex items-center justify-center">
-                    <ShieldCheck className="w-3 h-3 text-white" />
+                <div className="flex items-center gap-2 text-[10px] font-black text-[#0B5A54] uppercase tracking-wider">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#0B5A54] to-[#042824] text-white flex items-center justify-center shadow-xs">
+                    <ShieldCheck className="w-3.5 h-3.5 text-white" />
                   </div>
                   <span>{t('profile.patientId', 'OFFICIAL CAREPULSE PATIENT ID')}</span>
                 </div>
-                <span className="text-[10px] font-bold text-[#0B5A54] bg-white px-2 py-0.5 rounded-md border border-teal-200 shadow-2xs">
+                <span className="text-[10px] font-black text-emerald-700 bg-white px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
                   {t('profile.activeStatus', 'Active')}
                 </span>
               </div>
-              <div className="flex items-center justify-between pl-0.5 pt-0.5">
+              <div className="flex items-center justify-between pt-2.5">
                 <div>
-                  <p className="text-sm sm:text-base font-black font-mono tracking-wider text-[#0B5A54]">
+                  <p className="text-base sm:text-lg font-black font-mono tracking-wider text-[#0B5A54]">
                     {patientDisplayCode}
                   </p>
                   <p className="text-[10.5px] text-slate-500 font-medium">
@@ -429,85 +559,172 @@ export const ProfileScreen: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(patientDisplayCode);
-                    alert(t('profile.copiedToast', `Patient ID ${patientDisplayCode} copied to clipboard!`));
-                  }}
-                  className="px-3 py-1.5 text-xs font-bold bg-white hover:bg-teal-50 text-[#0B5A54] border border-teal-200 rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+                  onClick={handleCopyPatientId}
+                  className="px-3 py-1.5 text-xs font-bold bg-white hover:bg-teal-50 text-[#0B5A54] border border-teal-200 rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0 flex items-center gap-1"
                   title="Copy Patient ID"
                 >
-                  {t('common.copy', 'Copy')}
+                  {copiedId ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-[#0B5A54]" />
+                      <span>{t('common.copy', 'Copy')}</span>
+                    </>
+                  )}
                 </button>
               </div>
-            </Card>
-            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
+            </div>
+
+            {/* DATE OF BIRTH TILE */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-2xs space-y-1.5">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
-                <div className="w-5.5 h-5.5 rounded-lg bg-teal-50 flex items-center justify-center">
-                  <Calendar className="w-3 h-3 text-[#0B5A54]" />
+                <div className="w-6 h-6 rounded-lg bg-teal-50 border border-teal-200/60 flex items-center justify-center shrink-0">
+                  <Calendar className="w-3.5 h-3.5 text-[#0B5A54]" />
                 </div>
                 <span>{t('profile.dob', 'DATE OF BIRTH')}</span>
               </div>
               <div className="flex items-center gap-1.5 pl-0.5">
-                <p className="text-xs font-extrabold font-heading text-slate-900">{user.dob || t('common.notSet', 'Not set')}</p>
+                <p className="text-xs font-black font-heading text-slate-900">{user.dob || t('common.notSet', 'Not set')}</p>
                 {userAge !== null && (
-                  <span className="text-[10px] font-bold text-[#0B5A54] bg-teal-50 px-1.5 py-0.5 rounded-md">
+                  <span className="text-[10px] font-black text-[#0B5A54] bg-teal-100/70 px-1.5 py-0.5 rounded-md">
                     {userAge} {t('common.yrs', 'yrs')}
                   </span>
                 )}
               </div>
-            </Card>
+            </div>
 
-            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
-              <div className="flex items-center gap-1.5 text-[9.5px] font-black text-[#0B5A54] uppercase tracking-wider">
-                <div className="w-5.5 h-5.5 rounded-lg bg-teal-50 flex items-center justify-center">
-                  <UserIcon className="w-3 h-3 text-[#0B5A54]" />
+            {/* GENDER TILE */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-2xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[9.5px] font-black text-cyan-700 uppercase tracking-wider">
+                <div className="w-6 h-6 rounded-lg bg-cyan-50 border border-cyan-200/60 flex items-center justify-center shrink-0">
+                  <UserIcon className="w-3.5 h-3.5 text-cyan-600" />
                 </div>
                 <span>{t('profile.gender', 'GENDER')}</span>
               </div>
-              <p className="text-xs font-extrabold font-heading text-slate-900 pl-0.5">{user.gender || t('common.notSet', 'Not set')}</p>
-            </Card>
+              <p className="text-xs font-black font-heading text-slate-900 pl-0.5">{user.gender || t('common.notSet', 'Not set')}</p>
+            </div>
 
-            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
+            {/* BLOOD GROUP TILE */}
+            <div className="p-3.5 rounded-2xl border border-rose-200/80 bg-gradient-to-br from-rose-50/50 via-white to-rose-50/30 shadow-2xs space-y-1.5">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black text-rose-600 uppercase tracking-wider">
-                <div className="w-5.5 h-5.5 rounded-lg bg-rose-50 flex items-center justify-center">
-                  <Droplet className="w-3 h-3 text-rose-500" />
+                <div className="w-6 h-6 rounded-lg bg-rose-100/80 border border-rose-200 flex items-center justify-center shrink-0">
+                  <Droplet className="w-3.5 h-3.5 text-rose-600" />
                 </div>
                 <span>{t('profile.bloodGroup', 'BLOOD GROUP')}</span>
               </div>
-              <p className="text-xs font-extrabold font-heading text-slate-900 pl-0.5">{user.bloodGroup || 'O+'}</p>
-            </Card>
+              <div className="flex items-center gap-1.5 pl-0.5">
+                <p className="text-xs sm:text-sm font-black font-heading text-rose-700">{user.bloodGroup || 'O+'}</p>
+                <span className="text-[9.5px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200/60">
+                  Rh Positive
+                </span>
+              </div>
+            </div>
 
-            <Card padding="sm" className="space-y-1 border border-slate-200 bg-white shadow-2xs">
-              <div className="flex items-center gap-1.5 text-[9.5px] font-black text-amber-600 uppercase tracking-wider">
-                <div className="w-5.5 h-5.5 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <PhoneCall className="w-3 h-3 text-amber-500" />
+            {/* EMERGENCY CONTACT TILE */}
+            <div className="p-3.5 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/30 shadow-2xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[9.5px] font-black text-amber-700 uppercase tracking-wider">
+                <div className="w-6 h-6 rounded-lg bg-amber-100/80 border border-amber-200 flex items-center justify-center shrink-0">
+                  <PhoneCall className="w-3.5 h-3.5 text-amber-600" />
                 </div>
                 <span>{t('profile.emergency', 'EMERGENCY')}</span>
               </div>
-              <p className="text-[11px] font-extrabold font-heading text-slate-900 truncate pl-0.5">
-                {user.emergencyContact?.name || t('profile.contactSet', 'Contact set')} ({user.emergencyContact?.relationship || t('profile.primary', 'Primary')})
+              <p className="text-[11px] font-black font-heading text-slate-900 truncate pl-0.5">
+                {user.emergencyContact?.name || t('profile.contactSet', 'Contact set')}
+                <span className="text-[10px] text-amber-700 font-semibold block sm:inline sm:ml-1">
+                  ({user.emergencyContact?.relationship || t('profile.primary', 'Primary')})
+                </span>
               </p>
-            </Card>
+            </div>
           </div>
         </div>
 
         {/* ACCOUNT PREFERENCES LIST */}
         <div className="space-y-2 pt-1">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 font-heading">
-            {t('profile.accountPreferences', 'ACCOUNT PREFERENCES')}
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-heading">
+              {t('profile.accountPreferences', 'ACCOUNT PREFERENCES')}
+            </h3>
+            {biometricNotice && (
+              <span className={`text-[10px] font-bold animate-in fade-in ${biometricNotice.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {biometricNotice.text}
+              </span>
+            )}
+          </div>
 
-          <Card padding="none" className="divide-y divide-slate-100 overflow-hidden shadow-2xs bg-white rounded-2xl border border-slate-200">
+          <div className="divide-y divide-slate-100 overflow-hidden shadow-sm bg-white rounded-3xl border border-slate-200">
+            {/* BIOMETRIC APP LOCK ENABLE BUTTON ROW */}
+            <div
+              onClick={handleToggleBiometric}
+              className="w-full p-3.5 flex items-center justify-between text-left hover:bg-teal-50/40 transition-colors cursor-pointer select-none group"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={clsx(
+                    'w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-all shadow-2xs',
+                    isBiometricEnabled
+                      ? 'bg-[#0B5A54] text-white shadow-xs'
+                      : 'bg-teal-50 text-[#0B5A54] group-hover:bg-[#0B5A54] group-hover:text-white'
+                  )}
+                >
+                  <ScanFace className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-slate-900 font-heading">
+                      {t('settings.biometricLock', 'Biometric App Lock')}
+                    </h4>
+                    <span
+                      className={clsx(
+                        'text-[9px] font-black uppercase px-2 py-0.5 rounded-full',
+                        isBiometricEnabled
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      )}
+                    >
+                      {isBiometricEnabled ? t('common.on', 'ON') : t('common.off', 'OFF')}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {isBiometricEnabled
+                      ? t('settings.biometricLockSubtextActive', '1-touch Face ID & Fingerprint unlock active')
+                      : t('settings.biometricLockSubtextDisabled', 'Tap switch to enable instant biometric security')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive Toggle Switch */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isBiometricEnabled}
+                onClick={handleToggleBiometric}
+                className={clsx(
+                  'w-11 h-6 rounded-full p-0.5 relative inline-flex items-center shrink-0 transition-colors duration-200 cursor-pointer focus:outline-none shadow-inner',
+                  isBiometricEnabled ? 'bg-[#0B5A54]' : 'bg-slate-300'
+                )}
+                title={isBiometricEnabled ? 'Disable Biometric Lock' : 'Enable Biometric Lock'}
+              >
+                <span
+                  className={clsx(
+                    'w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out block pointer-events-none',
+                    isBiometricEnabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
             {settingsRows.map((row, idx) => {
               const Icon = row.icon;
               return (
                 <button
                   key={idx}
                   onClick={row.action}
-                  className="w-full p-3 flex items-center justify-between text-left hover:bg-teal-50/50 transition-colors active:bg-teal-100/50 group cursor-pointer"
+                  className="w-full p-3.5 flex items-center justify-between text-left hover:bg-teal-50/40 transition-colors active:bg-teal-100/40 group cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center text-[#0B5A54] shrink-0 group-hover:bg-[#0B5A54] group-hover:text-white transition-colors">
+                    <div className="w-9 h-9 rounded-2xl bg-teal-50 flex items-center justify-center text-[#0B5A54] shrink-0 group-hover:bg-[#0B5A54] group-hover:text-white group-hover:scale-105 transition-all shadow-2xs">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
@@ -515,11 +732,11 @@ export const ProfileScreen: React.FC = () => {
                       <p className="text-[10px] text-slate-500 font-medium">{row.subtext}</p>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#0B5A54] transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#0B5A54] group-hover:translate-x-0.5 transition-all" />
                 </button>
               );
             })}
-          </Card>
+          </div>
         </div>
 
         {/* SIGN OUT */}
@@ -527,7 +744,7 @@ export const ProfileScreen: React.FC = () => {
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full max-w-[200px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full py-3 px-5 text-xs font-black transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer font-heading"
+            className="w-full max-w-[220px] bg-gradient-to-r from-rose-50 to-rose-100/80 hover:from-rose-100 hover:to-rose-200 text-rose-700 border border-rose-200 rounded-full py-3 px-5 text-xs font-black transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer font-heading"
           >
             <LogOut className="w-4 h-4 text-rose-600" />
             <span>{t('profile.signOut', 'Sign Out')}</span>
@@ -542,11 +759,7 @@ export const ProfileScreen: React.FC = () => {
         </div>
       </main>
 
-      {/* LANGUAGE SELECTION MODAL */}
-      <LanguageSelectModal
-        isOpen={isLanguageModalOpen}
-        onClose={() => setIsLanguageModalOpen(false)}
-      />
+
 
       {/* UNIFIED COMPREHENSIVE PROFILE EDIT MODAL */}
       {isEditModalOpen && (

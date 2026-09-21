@@ -66,6 +66,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
     const cleanId = identifier.trim().toLowerCase();
     const cleanPassword = password.trim();
 
+    let serverError: string | null = null;
     try {
       // 1. Attempt API backend staff login if available (accepts username or email)
       const res = await apiPost('/staff/login', {
@@ -106,6 +107,11 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
           else if (userRole === 'nurse') navigate('/nurse');
           else navigate('/receptionist');
           return;
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (errData && (errData.detail || errData.error)) {
+          serverError = errData.detail || errData.error;
         }
       }
     } catch {
@@ -333,7 +339,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       return;
     }
 
-    setError('Invalid username or password. Please verify your credentials.');
+    setError(serverError || 'Invalid username or password. Please verify your credentials.');
     setIsLoading(false);
   };
 

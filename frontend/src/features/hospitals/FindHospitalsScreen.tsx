@@ -160,31 +160,31 @@ export const FindHospitalsScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
-      {/* 1. LIGHTER LUMINOUS CYAN TOPBAR */}
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] px-4 sm:px-6 pt-4 pb-4 w-full shadow-sm text-left sm:rounded-t-3xl transition-all">
+      {/* 1. CLEAN TOPBAR WITHOUT BG COLOR */}
+      <header className="sticky top-0 z-30 bg-transparent px-4 sm:px-6 pt-4 pb-4 w-full text-left transition-all">
         <div className="max-w-7xl mx-auto space-y-3.5">
           {/* Top Row: Title + Notification Bell */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight">
+              <h1 className="text-lg sm:text-xl font-black font-heading text-slate-900 tracking-tight">
                 {t('hospitals.title', 'Find Hospitals & Clinics')}
               </h1>
             </div>
 
             <button
               onClick={() => navigate('/notifications')}
-              className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
+              className="w-9 h-9 rounded-full bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/80 flex items-center justify-center text-slate-800 transition-all relative active:scale-95 shadow-2xs shrink-0 cursor-pointer"
               aria-label={t('nav.notifications', 'Notifications')}
               title={t('nav.notifications', 'Notifications')}
             >
-              <Bell className="w-4 h-4 text-[#111827]" />
+              <Bell className="w-4 h-4 text-slate-800" />
               <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
             </button>
           </div>
 
           {/* SEARCH BAR WITH GEOLOCATION DETECTION */}
           <div className="space-y-1.5">
-            <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-3.5 py-2 shadow-sm focus-within:ring-2 focus-within:ring-white/80 transition-all">
+            <div className="relative flex items-center bg-slate-50 border border-slate-200/80 rounded-full px-3.5 py-2 shadow-xs focus-within:ring-2 focus-within:ring-teal-600/20 focus-within:border-[#0B5A54] transition-all">
               <Search className="w-4.5 h-4.5 text-[#0B5A54] shrink-0 mr-2" />
               <input
                 type="text"
@@ -220,7 +220,7 @@ export const FindHospitalsScreen: React.FC = () => {
             </div>
 
             {locationStatus && (
-              <div className="text-[11px] font-bold text-teal-100 text-left px-2 flex items-center gap-1">
+              <div className="text-[11px] font-bold text-teal-700 text-left px-2 flex items-center gap-1">
                 <span>{locationStatus}</span>
               </div>
             )}

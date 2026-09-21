@@ -46,27 +46,27 @@ export const AppointmentScheduleScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      {/* EXECUTIVE TOP HEADER */}
-      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] text-white pt-4 pb-5 px-4 shadow-md sticky top-0 z-30 sm:rounded-t-3xl">
+      {/* CLEAN TOP HEADER WITHOUT BG COLOR */}
+      <div className="bg-transparent text-slate-900 pt-4 pb-4 px-4 sticky top-0 z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20">
-              <Calendar className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center border border-teal-200/60 text-[#0B5A54] shadow-xs">
+              <Calendar className="w-5 h-5 text-[#0B5A54]" />
             </div>
             <div>
-              <h1 className="text-base font-black tracking-tight leading-tight">My Appointments</h1>
-              <p className="text-[11px] text-teal-50 font-medium">Scheduled visits, timings & tokens</p>
+              <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">My Appointments</h1>
+              <p className="text-[11px] text-slate-500 font-medium">Scheduled visits, timings & tokens</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/notifications')}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-colors relative"
               aria-label="Notifications"
             >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-300 ring-2 ring-[#1FA2AC]" />
+              <Bell className="w-4 h-4 text-slate-800" />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
             </button>
           </div>
         </div>
@@ -171,13 +171,12 @@ export const AppointmentScheduleScreen: React.FC = () => {
                             {app.ticketNumber || '#CP-0000'}
                           </span>
                           <span
-                            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
-                              isUpcoming
+                            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${isUpcoming
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : app.status === 'Cancelled'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-slate-200 text-slate-800'
-                            }`}
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-slate-200 text-slate-800'
+                              }`}
                           >
                             {app.status || 'Upcoming'}
                           </span>

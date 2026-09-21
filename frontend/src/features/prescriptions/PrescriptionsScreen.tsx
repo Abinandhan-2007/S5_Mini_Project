@@ -140,54 +140,54 @@ export const PrescriptionsScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-28 w-full relative select-none">
-      {/* EXECUTIVE CYAN TOP HEADER */}
-      <div className="bg-gradient-to-b from-[#1FA2AC] via-[#24A6B0] to-[#1FA2AC] text-white pt-4 pb-5 px-4 shadow-md sticky top-0 z-30 sm:rounded-t-3xl">
+      {/* CLEAN TOP HEADER WITHOUT BG COLOR */}
+      <div className="bg-transparent text-slate-900 pt-4 pb-4 px-4 sticky top-0 z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
               title="Back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-base font-black tracking-tight leading-tight">{t('prescriptions.title', 'Prescription Vault')}</h1>
-              <p className="text-[11px] text-teal-50 font-medium">{t('home.latestPrescriptions', 'Medications, dosages & refill schedule')}</p>
+              <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">{t('prescriptions.title', 'Prescription Vault')}</h1>
+              <p className="text-[11px] text-slate-500 font-medium">{t('home.latestPrescriptions', 'Medications, dosages & refill schedule')}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/prescriptions/scan')}
-              className="px-3 py-1.5 rounded-full bg-white text-[#0B5A54] hover:bg-teal-50 text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-full bg-[#E3F3F1] text-[#0B5A54] hover:bg-[#0B5A54] hover:text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
               title="Scan Medicine with Camera"
             >
-              <Camera className="w-3.5 h-3.5 text-[#0B5A54]" />
+              <Camera className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t('scanMedicine.scanAnother', 'Scan Medicine')}</span>
             </button>
 
             <button
               onClick={() => navigate('/notifications')}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors relative"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-colors relative"
               aria-label="Notifications"
             >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-300 ring-2 ring-[#1FA2AC]" />
+              <Bell className="w-4 h-4 text-slate-800" />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
             </button>
           </div>
         </div>
 
         {/* Search Pill Input */}
         {dynamicGroups.length > 0 && (
-          <div className="mt-4 relative">
+          <div className="mt-3 relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search medication, doctor, or condition..."
-              className="w-full bg-white text-slate-800 text-xs font-semibold placeholder:text-slate-400 pl-10 pr-4 py-2.5 rounded-2xl shadow-inner focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all"
+              className="w-full bg-slate-50 border border-slate-200/80 text-slate-800 text-xs font-semibold placeholder:text-slate-400 pl-10 pr-4 py-2 rounded-2xl shadow-2xs focus:outline-none focus:ring-2 focus:ring-teal-600/20 focus:border-[#0B5A54] transition-all"
             />
           </div>
         )}

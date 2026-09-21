@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 
 interface SmartMedicineLensCardProps {
@@ -37,7 +38,7 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
         hover:shadow-[0_14px_35px_rgba(20,184,166,0.25)]
         hover:border-teal-300/50
         transition-all duration-300 ease-out active:scale-[0.99]
-        flex flex-col justify-between min-h-[130px] sm:min-h-[140px] w-full
+        flex flex-col justify-between min-h-[140px] sm:min-h-[155px] w-full
         ${className}
       `}
     >
@@ -149,22 +150,24 @@ export const SmartMedicineLensCard: React.FC<SmartMedicineLensCardProps> = ({
         </p>
       </div>
 
-      {/* Bottom Action Row - Centered Open Button */}
-      <div className="relative z-10 pt-2.5 sm:pt-3 flex justify-center items-center">
+      {/* Bottom Action Row - Open Button on Left */}
+      <div className="relative z-10 pt-3 sm:pt-3.5 flex justify-start items-center">
         <button
           type="button"
           onClick={handleLaunchScanner}
           className="
-            py-1.5 sm:py-2 px-5 sm:px-6 rounded-full
+            py-2.5 sm:py-3 px-8 sm:px-10 min-w-[145px] sm:min-w-[165px] rounded-full
+            inline-flex items-center justify-center gap-2.5
             bg-gradient-to-r from-emerald-300 via-teal-200 to-emerald-300
-            text-[#042824] font-black text-xs sm:text-[13px] tracking-wide
-            shadow-[0_0_18px_rgba(52,211,153,0.35)]
-            hover:shadow-[0_0_25px_rgba(52,211,153,0.6)]
-            group-hover:scale-[1.03] active:scale-[0.96]
+            text-[#042824] font-black text-sm sm:text-base tracking-wide
+            shadow-[0_0_20px_rgba(52,211,153,0.4)]
+            hover:shadow-[0_0_28px_rgba(52,211,153,0.65)]
+            group/btn hover:scale-[1.03] active:scale-[0.96]
             transition-all duration-200 cursor-pointer
           "
         >
           <span className="font-heading">{t('home.openLens', 'Open')}</span>
+          <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover/btn:translate-x-1" />
         </button>
       </div>
     </div>

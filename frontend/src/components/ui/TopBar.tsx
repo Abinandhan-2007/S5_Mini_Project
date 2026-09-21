@@ -81,7 +81,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         className={
           isCyan
             ? 'sticky top-0 z-30 bg-[#1FA2AC] px-4 sm:px-6 md:px-8 pt-4 pb-3 w-full transition-all duration-200 shadow-2xs'
-            : 'sticky top-0 z-30 bg-[#EEF1F6]/95 backdrop-blur-md px-4 sm:px-6 md:px-8 py-3 w-full border-b border-[#E4E7EC]/50 transition-all duration-200'
+            : 'sticky top-0 z-30 bg-transparent px-4 sm:px-6 md:px-8 py-3 w-full transition-all duration-200'
         }
       >
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">

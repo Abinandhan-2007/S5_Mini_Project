@@ -233,16 +233,16 @@ export const BookAppointmentScreen: React.FC = () => {
   if (!doctor || !doctor.id || !doctor.name) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] pb-36 flex flex-col justify-between">
-        <header className="sticky top-0 z-30 bg-[#22B3BD] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md">
+        <header className="sticky top-0 z-30 bg-transparent text-slate-900 pt-4 pb-4 px-4 sm:px-6">
           <div className="max-w-3xl mx-auto flex items-center gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-colors"
               title="Go Back"
             >
-              <ArrowLeft className="w-4 h-4 text-white" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
-            <h1 className="text-lg font-black text-white">{t('booking.title', 'Book Appointment')}</h1>
+            <h1 className="text-lg font-black text-slate-900">{t('booking.title', 'Book Appointment')}</h1>
           </div>
         </header>
         <div className="max-w-sm mx-auto text-center space-y-4 px-4 my-auto">
@@ -268,22 +268,22 @@ export const BookAppointmentScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-36 w-full relative select-none text-left">
-      {/* 1. SIGNATURE CYAN/BLUE LUMINOUS HEADER */}
-      <header className="sticky top-0 z-30 bg-[#22B3BD] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md transition-all">
+      {/* 1. CLEAN TOPBAR WITHOUT BG COLOR */}
+      <header className="sticky top-0 z-30 bg-transparent text-slate-900 pt-4 pb-4 px-4 sm:px-6 transition-all">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-all active:scale-95 shadow-2xs cursor-pointer"
             title="Go Back"
           >
-            <ArrowLeft className="w-4 h-4 text-white" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
 
           <div className="text-center flex-1 min-w-0 pr-9">
-            <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight drop-shadow-2xs truncate">
+            <h1 className="text-lg sm:text-xl font-black font-heading text-slate-900 tracking-tight truncate">
               {t('booking.title', 'Book Appointment')}
             </h1>
-            <p className="text-[11px] font-medium text-cyan-50/90 tracking-wide">
+            <p className="text-[11px] font-medium text-slate-500 tracking-wide">
               {t('booking.stepDoctor', 'Step 1 of 2')} • {t('booking.stepDateTime', 'Slot & Facility Confirmation')}
             </p>
           </div>

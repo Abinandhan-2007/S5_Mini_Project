@@ -454,22 +454,22 @@ export const ScanMedicineScreen: React.FC = () => {
         className="hidden"
       />
 
-      {/* DISTINCT DEEP INDIGO-BLUE GRADIENT HEADER (#1E3A8A → #3B5FE0) */}
-      <header className="bg-gradient-to-r from-[#1E3A8A] via-[#2A4DC7] to-[#3B5FE0] text-white py-3 sm:py-3.5 px-4 shadow-sm sticky top-0 z-30 shrink-0">
+      {/* CLEAN HEADER WITHOUT BG COLOR */}
+      <header className="bg-transparent text-slate-900 py-3 sm:py-3.5 px-4 sticky top-0 z-30 shrink-0">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           {/* Back Button + Title */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/home')}
-              className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25 border border-white/20 flex items-center justify-center text-white transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+              className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
               title="Back to Home"
               aria-label="Back to Home"
             >
-              <ArrowLeft className="w-5 h-5 text-white" />
+              <ArrowLeft className="w-5 h-5 text-slate-700" />
             </button>
 
             <div>
-              <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight font-heading text-white">
+              <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight font-heading text-slate-900">
                 {t('scanMedicine.title', 'Medicine Info')}
               </h1>
             </div>
@@ -478,10 +478,10 @@ export const ScanMedicineScreen: React.FC = () => {
           {imagePreview && !isAnalyzing && (
             <button
               onClick={handleResetScan}
-              className="px-3.5 py-2 rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+              className="px-3.5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>{t('common.retry', 'Reset')}</span>
+              <span>{t('common.reset', 'Scan New')}</span>
             </button>
           )}
         </div>
@@ -664,11 +664,10 @@ export const ScanMedicineScreen: React.FC = () => {
                       type="button"
                       onClick={() => handleSwitchLanguage(item.code)}
                       disabled={isTranslating}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
-                        scanLanguage === item.code
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${scanLanguage === item.code
                           ? 'bg-[#0B5A54] text-white shadow-xs scale-102'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                      } ${isTranslating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        } ${isTranslating ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <span>{item.native}</span>
                       {scanLanguage === item.code && <Check className="w-3 h-3 stroke-[3]" />}

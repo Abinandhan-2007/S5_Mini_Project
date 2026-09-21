@@ -156,7 +156,7 @@ export const AppointmentDetailScreen: React.FC = () => {
       <main className="max-w-md mx-auto px-4 pt-4 sm:pt-6 space-y-4 text-left animate-in fade-in duration-300">
 
         {/* 1. PROFESSIONAL PREMIUM HEADER (NO NOTIFICATION / MESSAGE BUTTONS) */}
-        <header className="bg-white/90 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex items-center justify-between transition-all">
+        <header className="bg-transparent rounded-2xl p-3.5 sm:p-4 flex items-center justify-between transition-all">
           <div className="flex items-center gap-3">
             <button
               onClick={handleBack}
@@ -364,11 +364,10 @@ export const AppointmentDetailScreen: React.FC = () => {
                     key={slot}
                     type="button"
                     onClick={() => setNewSlot(slot)}
-                    className={`py-2 px-2.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
-                      newSlot === slot
+                    className={`py-2 px-2.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${newSlot === slot
                         ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     {slot}
                   </button>

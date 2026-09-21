@@ -283,13 +283,13 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   return (
     <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
-      {/* 1. LIGHTER LUMINOUS CYAN HEADER WITH EXPANDABLE UNIQUE SEARCH */}
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-[#22B3BD] via-[#28BAC4] to-[#35C6D0] text-white pt-5 pb-5 px-4 sm:px-6 shadow-sm sm:rounded-t-3xl transition-all">
+      {/* 1. CLEAN TOPBAR WITHOUT BG COLOR */}
+      <header className="sticky top-0 z-30 bg-transparent text-slate-900 pt-5 pb-5 px-4 sm:px-6 transition-all">
         <div className="max-w-4xl mx-auto space-y-3">
           {/* Top Row: Title + Action Buttons */}
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-white drop-shadow-2xs font-heading">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-slate-900 font-heading">
                 {t('history.title', 'History')}
               </h1>
             </div>
@@ -305,7 +305,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     transition={{ duration: 0.15 }}
                     type="button"
                     onClick={() => setIsSearchOpen(true)}
-                    className="w-9 h-9 rounded-full bg-white text-[#111827] hover:bg-teal-50 hover:text-[#0B5A54] flex items-center justify-center transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
+                    className="w-9 h-9 rounded-full bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/80 text-slate-800 flex items-center justify-center transition-all relative active:scale-95 shadow-2xs shrink-0 cursor-pointer"
                     aria-label="Search Visits"
                     title="Search Visits"
                   >
@@ -317,11 +317,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
               {/* Notification Bell Button */}
               <button
                 onClick={() => navigate('/notifications')}
-                className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#111827] hover:bg-gray-100 transition-all relative active:scale-95 shadow-sm shrink-0 cursor-pointer"
+                className="w-9 h-9 rounded-full bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/80 flex items-center justify-center text-slate-800 transition-all relative active:scale-95 shadow-2xs shrink-0 cursor-pointer"
                 aria-label="Notifications"
                 title="Notifications"
               >
-                <Bell className="w-4 h-4 text-[#111827]" />
+                <Bell className="w-4 h-4 text-slate-800" />
                 <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
               </button>
             </div>
@@ -338,7 +338,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                 className="overflow-hidden pt-1 space-y-2"
               >
                 {/* Search Bar Input Container with Close Trigger */}
-                <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-4 py-2.5 shadow-md focus-within:ring-2 focus-within:ring-white transition-all">
+                <div className="relative flex items-center bg-slate-50 border border-slate-200/80 rounded-full px-4 py-2.5 shadow-xs focus-within:ring-2 focus-within:ring-teal-600/20 focus-within:border-[#0B5A54] transition-all">
                   <Search className="w-4.5 h-4.5 text-[#0B5A54] shrink-0 mr-2.5" />
                   <input
                     type="text"
@@ -377,7 +377,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       </header>
 
       {/* 2. UNIQUE GLASSMORPHIC FILTER TOOLBAR */}
-      <section className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 shadow-xs sticky top-[73px] sm:top-[85px] z-20">
+      <section className="bg-transparent px-4 sm:px-6 py-2.5 sticky top-[73px] sm:top-[85px] z-20">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2.5">
           {/* Left: Interactive Date Filter Pill */}
           <div className="relative">
@@ -706,8 +706,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                                   {visit.status === 'Completed'
                                     ? t('history.statusCompleted', 'Completed')
                                     : visit.status === 'Cancelled'
-                                    ? t('history.statusCancelled', 'Cancelled')
-                                    : visit.status}
+                                      ? t('history.statusCancelled', 'Cancelled')
+                                      : visit.status}
                                 </span>
                               </span>
                             </div>
@@ -749,8 +749,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                                     {visit.visitType === 'In-Person'
                                       ? t('history.inPerson', 'In-Person')
                                       : visit.visitType === 'Follow-up'
-                                      ? t('history.followUp', 'Follow-up')
-                                      : visit.visitType}
+                                        ? t('history.followUp', 'Follow-up')
+                                        : visit.visitType}
                                   </span>
                                 </>
                               )}

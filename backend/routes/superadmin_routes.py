@@ -907,10 +907,28 @@ def create_hospital_admin(
     if not target_hosp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Hospital '{hospital_id}' does not exist.")
 
-    # Sequence staff code A<HospitalNumber>101
+    # Sequence staff code A<HospitalNumber><Seq101+>
     h_code = target_hosp.get("hospital_code") or "H001"
     digits = re.sub(r'\D', '', h_code) or "001"
-    assigned_code = f"A{int(digits):03d}101"
+    prefix = f"A{int(digits):03d}"
+
+    # Collect existing codes to guarantee unique staff_code
+    existing_codes = set()
+    for s in db.get("staff", []):
+        c = (s.get("staff_code") or s.get("staffCode") or "")
+        if c.startswith(prefix):
+            existing_codes.add(c)
+
+    # Check if admin with same email already exists in staff
+    existing_staff_entry = next((s for s in db.get("staff", []) if s.get("email", "").strip().lower() == clean_email), None)
+
+    if existing_staff_entry and (existing_staff_entry.get("staff_code") or "").startswith(prefix):
+        assigned_code = existing_staff_entry.get("staff_code")
+    else:
+        seq = 101
+        while f"{prefix}{seq:03d}" in existing_codes:
+            seq += 1
+        assigned_code = f"{prefix}{seq:03d}"
 
     hashed_pwd = hash_password(payload.password.strip())
     raw_pwd = payload.password.strip()
@@ -933,15 +951,15 @@ def create_hospital_admin(
         except Exception as e:
             logger.warning(f"Note on deactivating prior admin in PG: {e}")
 
-    # Check if admin with same email already exists in staff
-    existing_staff_entry = next((s for s in db.get("staff", []) if s.get("email", "").strip().lower() == clean_email), None)
-    
+    clean_username = clean_email.split("@")[0]
+
     if existing_staff_entry:
         staff_id = str(existing_staff_entry.get("id"))
         existing_staff_entry["staff_code"] = assigned_code
         existing_staff_entry["staffCode"] = assigned_code
         existing_staff_entry["name"] = clean_name
         existing_staff_entry["full_name"] = clean_name
+        existing_staff_entry["username"] = clean_username
         existing_staff_entry["password"] = raw_pwd
         existing_staff_entry["password_hash"] = hashed_pwd
         existing_staff_entry["role"] = "admin"
@@ -960,6 +978,7 @@ def create_hospital_admin(
             "staffCode": assigned_code,
             "name": clean_name,
             "full_name": clean_name,
+            "username": clean_username,
             "email": clean_email,
             "password": raw_pwd,
             "password_hash": hashed_pwd,
@@ -982,10 +1001,11 @@ def create_hospital_admin(
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        INSERT INTO staff (id, staff_code, full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id, is_active)
-                        VALUES (%s, %s, %s, %s, %s, 'admin', %s, %s, %s, %s, true)
+                        INSERT INTO staff (id, staff_code, username, full_name, email, password_hash, role, specialization, phone, avatar_url, hospital_id, is_active)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'admin', %s, %s, %s, %s, true)
                         ON CONFLICT (email) DO UPDATE SET
                             staff_code = EXCLUDED.staff_code,
+                            username = EXCLUDED.username,
                             full_name = EXCLUDED.full_name,
                             password_hash = EXCLUDED.password_hash,
                             role = 'admin',
@@ -997,6 +1017,7 @@ def create_hospital_admin(
                         (
                             staff_id,
                             assigned_code,
+                            clean_username,
                             clean_name,
                             clean_email,
                             hashed_pwd,

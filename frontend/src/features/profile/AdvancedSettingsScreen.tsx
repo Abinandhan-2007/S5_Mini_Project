@@ -113,23 +113,23 @@ export const AdvancedSettingsScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-32 text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white relative">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-[#22B3BD] text-white pt-4 pb-4 px-4 sm:px-6 shadow-md transition-all">
+      {/* Top Header without BG color */}
+      <header className="sticky top-0 z-30 bg-transparent text-slate-900 pt-4 pb-4 px-4 sm:px-6 transition-all">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => navigate('/profile')}
-            className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95 shadow-2xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/80 flex items-center justify-center text-slate-700 transition-all active:scale-95 shadow-2xs cursor-pointer"
             title="Go Back to Profile"
           >
-            <ArrowLeft className="w-4 h-4 text-white" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
 
           <div className="text-center flex-1 min-w-0 pr-9">
-            <h1 className="text-lg sm:text-xl font-black font-heading text-white tracking-tight drop-shadow-2xs truncate">
+            <h1 className="text-lg sm:text-xl font-black font-heading text-slate-900 tracking-tight truncate">
               Advanced Settings
             </h1>
-            <p className="text-[11px] font-medium text-cyan-50/90 tracking-wide">
+            <p className="text-[11px] font-medium text-slate-500 tracking-wide">
               App Features & Hardware Preferences
             </p>
           </div>

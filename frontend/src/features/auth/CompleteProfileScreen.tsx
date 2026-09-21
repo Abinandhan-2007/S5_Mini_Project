@@ -31,7 +31,7 @@ export const isUserProfileIncomplete = (user: any): boolean => {
     if (isMarked === 'true') return false;
     const isDismissed = localStorage.getItem(`carepulse_profile_dismissed_${user.id}`);
     if (isDismissed === 'true') return false;
-  } catch {}
+  } catch { }
 
   const cleanPhone = (user.phone || '').trim().replace(/\D/g, '');
   // Only truly missing phone (<10 digits or dummy zeroes)
@@ -85,7 +85,7 @@ export const markProfilePromptShown = (userId?: string) => {
       localStorage.setItem(`profile_prompt_last_shown_${userId}`, now);
     }
     localStorage.setItem(PROFILE_PROMPT_KEY, now);
-  } catch {}
+  } catch { }
 };
 
 /**
@@ -97,7 +97,7 @@ export const clearProfilePromptTracking = (userId?: string) => {
       localStorage.removeItem(`profile_prompt_last_shown_${userId}`);
     }
     localStorage.removeItem(PROFILE_PROMPT_KEY);
-  } catch {}
+  } catch { }
 };
 
 export const CompleteProfileScreen: React.FC = () => {
@@ -126,8 +126,8 @@ export const CompleteProfileScreen: React.FC = () => {
   const [emergencyName, setEmergencyName] = useState(user?.emergencyContact?.name || '');
   const [emergencyPhone, setEmergencyPhone] = useState(
     user?.emergencyContact?.phone &&
-    user.emergencyContact.phone !== '+91 98765 00000' &&
-    user.emergencyContact.phone !== '+91 98765 43210'
+      user.emergencyContact.phone !== '+91 98765 00000' &&
+      user.emergencyContact.phone !== '+91 98765 43210'
       ? user.emergencyContact.phone
       : ''
   );
@@ -240,8 +240,8 @@ export const CompleteProfileScreen: React.FC = () => {
         }
         try {
           localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
-          Preferences.set({ key: `carepulse_profile_completed_${user.id}`, value: 'true' }).catch(() => {});
-        } catch {}
+          Preferences.set({ key: `carepulse_profile_completed_${user.id}`, value: 'true' }).catch(() => { });
+        } catch { }
         // Clear tracking key entirely once profile is completed
         clearProfilePromptTracking(user.id);
       }
@@ -263,9 +263,9 @@ export const CompleteProfileScreen: React.FC = () => {
         localStorage.setItem(`carepulse_profile_completed_${user.id}`, 'true');
         localStorage.setItem(`carepulse_profile_dismissed_${user.id}`, 'true');
         sessionStorage.setItem(`carepulse_profile_modal_dismissed_${user.id}`, 'true');
-        Preferences.set({ key: `carepulse_profile_completed_${user.id}`, value: 'true' }).catch(() => {});
-        Preferences.set({ key: `carepulse_profile_dismissed_${user.id}`, value: 'true' }).catch(() => {});
-      } catch {}
+        Preferences.set({ key: `carepulse_profile_completed_${user.id}`, value: 'true' }).catch(() => { });
+        Preferences.set({ key: `carepulse_profile_dismissed_${user.id}`, value: 'true' }).catch(() => { });
+      } catch { }
       markProfilePromptShown(user.id);
     }
     navigate('/home', { replace: true });
@@ -273,18 +273,18 @@ export const CompleteProfileScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-12 flex flex-col font-sans text-slate-800 antialiased">
-      {/* Top App Header */}
-      <header className="bg-gradient-to-r from-[#0B5A54] via-[#14B8A6] to-[#0B5A54] text-white px-5 pt-8 pb-12 shadow-lg relative">
+      {/* Top App Header without colored background */}
+      <header className="bg-transparent text-slate-900 px-5 pt-6 pb-6 relative">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner">
-              <HeartPulse className="w-6 h-6 text-white" />
+            <div className="w-11 h-11 rounded-2xl bg-teal-50 flex items-center justify-center border border-teal-200/60 shadow-xs">
+              <HeartPulse className="w-6 h-6 text-[#0B5A54]" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-teal-50 text-teal-800 border border-teal-200/80 px-2.5 py-0.5 rounded-full">
                 Step 1 of 1 • Account Setup
               </span>
-              <h1 className="text-lg sm:text-xl font-black font-heading tracking-tight leading-tight mt-0.5">
+              <h1 className="text-lg sm:text-xl font-black font-heading tracking-tight leading-tight mt-0.5 text-slate-900">
                 {t('auth.completeProfileTitle', 'Complete Your Medical Profile')}
               </h1>
             </div>
@@ -293,14 +293,14 @@ export const CompleteProfileScreen: React.FC = () => {
           <button
             type="button"
             onClick={handleSkip}
-            className="text-xs font-bold text-teal-100 hover:text-white bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-full transition-all cursor-pointer"
+            className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-slate-200/80"
           >
             Skip for now
           </button>
         </div>
 
-        {/* User Card Overlap */}
-        <div className="max-w-2xl mx-auto mt-6 bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-xl border border-slate-100 flex items-center gap-4">
+        {/* User Card */}
+        <div className="max-w-2xl mx-auto mt-4 bg-slate-50 text-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 flex items-center gap-4">
           <Avatar
             src={user?.avatarUrl || ''}
             alt={user?.fullName || 'User'}
