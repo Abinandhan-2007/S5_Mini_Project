@@ -46,17 +46,29 @@ export const isStaffDomain = (): boolean => {
   // 1. On native mobile app (Capacitor Android / iOS), always Patient App
   if (Capacitor.isNativePlatform()) return false;
 
-  // If a patient session exists in local storage, do NOT divert them to staff portal
-  const hasPatientSession = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';
-  if (hasPatientSession) return false;
-
-  // 2. Explicit subdomain checks
+  // 2. Explicit subdomain or deployment host checks — these take HIGHEST priority
+  //    so that staff domains always show the staff portal, even if a patient session exists.
   const hostname = window.location.hostname.toLowerCase();
-  if (hostname.startsWith('staff.') || hostname.startsWith('admin.') || hostname.startsWith('doctor.')) {
+  if (
+    hostname.startsWith('staff.') ||
+    hostname.startsWith('admin.') ||
+    hostname.startsWith('doctor.') ||
+    hostname.includes('carepulse5.vercel.app')
+  ) {
     return true;
   }
 
-  // 3. Detect mobile browsers (Android, iPhone, iPad, small viewport mobile web)
+  // 3. If a valid patient user session actively exists (and this is NOT a dedicated staff host),
+  //    do NOT divert them to the staff portal.
+  const activeUser = localStorage.getItem('carepulse_user');
+  if (activeUser) {
+    try {
+      const parsed = JSON.parse(activeUser);
+      if (parsed && (parsed.id || parsed.email)) return false;
+    } catch {}
+  }
+
+  // 4. Detect mobile browsers (Android, iPhone, iPad, small viewport mobile web)
   const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
   const isMobileBrowser =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
@@ -66,7 +78,7 @@ export const isStaffDomain = (): boolean => {
     return false; // Default mobile web users to Patient App
   }
 
-  // 4. On desktop web without patient session, default to Staff Portal
+  // 5. On desktop web without patient session, default to Staff Portal
   return true;
 };
 
