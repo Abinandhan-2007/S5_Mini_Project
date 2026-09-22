@@ -119,7 +119,7 @@ export const VisitDetailScreen: React.FC = () => {
   const passedVisit = (location.state as { visit?: VisitRecord })?.visit;
 
   // Local state for fetched live vitals & consultation
-  const [, setLoadingClinical] = useState(false);
+  const [loadingClinical, setLoadingClinical] = useState(true);
   const [liveVitals, setLiveVitals] = useState<any | null>(null);
   const [liveConsultation, setLiveConsultation] = useState<any | null>(null);
 
@@ -503,6 +503,32 @@ export const VisitDetailScreen: React.FC = () => {
     };
   }, [liveVitals, hasVitalsData]);
 
+
+  // Show skeleton loader while fetching clinical data from backend
+  if (loadingClinical && !liveConsultation && !liveVitals && !passedVisit) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans">
+        <header className="sticky top-0 z-30 px-4 sm:px-6 pt-6 pb-3">
+          <div className="max-w-4xl mx-auto flex items-center">
+            <button
+              type="button"
+              onClick={() => navigate('/history')}
+              className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200/90 flex items-center justify-center"
+            >
+              <ChevronLeft className="w-6 h-6 text-slate-800 stroke-[2.3]" />
+            </button>
+          </div>
+        </header>
+        <div className="max-w-2xl mx-auto px-4 space-y-4 animate-pulse">
+          <div className="h-40 bg-slate-200/70 rounded-3xl" />
+          <div className="h-12 bg-slate-200/70 rounded-2xl" />
+          <div className="h-48 bg-slate-200/70 rounded-3xl" />
+          <div className="h-48 bg-slate-200/70 rounded-3xl" />
+          <div className="h-32 bg-slate-200/70 rounded-3xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 text-slate-900 font-sans select-none print:bg-white print:p-0 print:pb-0">

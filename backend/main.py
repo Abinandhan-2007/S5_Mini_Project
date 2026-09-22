@@ -3383,41 +3383,8 @@ def get_consultation_detail(consultation_id: str):
                     else:
                         return {"success": False, "detail": "Consultation record not found", "consultation": None, "vitals": vitals_data}
         except Exception as pg_err:
-            logger.warning(f"Note on PG consultation detail lookup (falling back to JSON DB): {pg_err}")
-
-    # JSON DB fallback
-    db = read_json_db()
-    consultations = db.get("consultations", [])
-    hosp_map = {h.get("id"): h.get("name") for h in db.get("hospitals", [])}
-    doc_map = {d.get("id"): d for d in db.get("doctors", [])}
-
-    matched_c = next((c for c in consultations if str(c.get("id")) == target_id), None)
-    if not matched_c:
-        matched_c = next((c for c in reversed(consultations) if str(c.get("patient_id")) == target_id), None)
-
-    if matched_c:
-        soap = matched_c.get("soap_data", {})
-        d_info = doc_map.get(matched_c.get("doctor_id"), {})
-        return {
-            "success": True,
-            "consultation": {
-                "id": str(matched_c.get("id")),
-                "patientId": str(matched_c.get("patient_id")),
-                "doctorId": matched_c.get("doctor_id"),
-                "doctorName": matched_c.get("doctor_name", "Specialist Doctor"),
-                "doctorSpecialty": d_info.get("specialty", "General Medicine"),
-                "doctorPhoto": d_info.get("photo", ""),
-                "hospitalId": matched_c.get("hospital_id"),
-                "hospitalName": hosp_map.get(matched_c.get("hospital_id"), "CarePulse Central Hospital"),
-                "date": str(matched_c.get("date")),
-                "soapData": soap,
-                "prescriptions": soap.get("prescriptions", []),
-                "diagnosis": soap.get("assessment") or "General Consultation",
-                "status": "Completed",
-                "ticketNumber": "TKT-892"
-            },
-            "vitals": None
-        }
+            logger.error(f"PostgreSQL error in consultation detail lookup: {pg_err}")
+            raise HTTPException(status_code=503, detail="Database unavailable. Please try again later.")
 
     return {"success": False, "detail": "Consultation not found", "consultation": None, "vitals": None}
 

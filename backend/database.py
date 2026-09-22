@@ -249,7 +249,6 @@ def init_db():
     If PostgreSQL is offline, logs a clear notification. Offline sync is permanently disabled.
     """
     global use_pg, has_pgvector
-    init_json_db()
     try:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:

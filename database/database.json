@@ -1,0 +1,136 @@
+{
+  "patients": [],
+  "consultations": [],
+  "appointments": [],
+  "prescriptions": [],
+  "doctors": [],
+  "hospitals": [
+    {
+      "id": "hosp-kmch-5fd04b",
+      "hospital_code": "H480",
+      "hospitalCode": "H480",
+      "name": "KMCH",
+      "address": "99A, Avinashi Road, Peelamedu, Coimbatore, Tamil Nadu, 641014",
+      "phone": "6382357771",
+      "email": "kmch@gmail.com",
+      "facility_type": "Multi-Specialty Research Hospital",
+      "rating": 4.8,
+      "reviews_count": 0,
+      "emergency_available": true,
+      "image_url": "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800&auto=format&fit=crop&q=80",
+      "specialties": [
+        "Cardiology",
+        "General Medicine",
+        "Pediatrics",
+        "Emergency Care"
+      ],
+      "is_active": true,
+      "is_suspended": false,
+      "lifecycle_state": "Pending Setup",
+      "distance_miles": 1.0,
+      "latitude": 11.492472,
+      "longitude": 77.280788
+    }
+  ],
+  "staff": [
+    {
+      "id": "f475822c-a2e0-4d00-b001-c6a09c7093ab",
+      "staff_code": "A480101",
+      "staffCode": "A480101",
+      "name": "kmchadmin",
+      "full_name": "kmchadmin",
+      "username": "kmchadmin",
+      "email": "kmchadmin@gmail.com",
+      "password": "kmchadmin",
+      "password_hash": "$2b$12$289Q.wjuAMnjT8Mn9MDFquSKZstNtU1hT6bFpBDOvxNw0FfEB9Q5.",
+      "role": "admin",
+      "department": "Chief Hospital Administration",
+      "specialization": "Chief Hospital Administration",
+      "phone": "6382357771",
+      "hospital_id": "hosp-kmch-5fd04b",
+      "hospitalId": "hosp-kmch-5fd04b",
+      "isActive": true,
+      "is_active": true,
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+    }
+  ],
+  "doctor_leaves": [],
+  "patient_devices": [
+    {
+      "id": "5895e528-49a8-4458-a873-e8674659c1e6",
+      "patient_id": "8d7378a7-303f-49e6-a536-0ec7610ff57c",
+      "device_id": "dev_ho5xvei5_mu44wn72",
+      "device_model": "Samsung SM-A156E Build/BP4A.251205.006",
+      "manufacturer": "Samsung",
+      "platform": "android",
+      "os_version": "Android 16",
+      "app_version": "1.0.4",
+      "ip_address": "2409:40f4:2112:824:8000::",
+      "fcm_token": "fk5fBEFPSO2rsFDO1v1RZk:APA91bGcFzvljPw3zgfmzotZT970p0yHFlxAkJvLj34Kedce6XfQ0rnSI-Uglyg5M7QkhQYtorvVhi3oCJAU5IsfOuxNlQ2Y5rHXB4V7SBlsozT97_6-CzM",
+      "is_active": true,
+      "last_login": "2026-09-22T14:43:45.771795+00:00",
+      "created_at": "2026-09-22T14:42:09.417198+00:00"
+    },
+    {
+      "id": "f1b59e87-564c-418a-92dd-4663051fa370",
+      "patient_id": "0c479fa5-fcdc-4165-b76b-f5b085e7942b",
+      "device_id": "dev_jr59r3l6_mu72myrt",
+      "device_model": "Windows Desktop Browser",
+      "manufacturer": "PC / Workstation",
+      "platform": "web",
+      "os_version": "Windows 10/11",
+      "app_version": "1.0.4",
+      "ip_address": "45.127.110.99",
+      "fcm_token": "",
+      "is_active": true,
+      "last_login": "2026-09-22T16:10:51.176429+00:00",
+      "created_at": "2026-09-22T16:10:51.176429+00:00"
+    }
+  ],
+  "audit_logs": [
+    {
+      "id": "audit-f0dab605b22a",
+      "timestamp": "2026-09-22T16:09:37.051662+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "ADMIN_APPOINTED",
+      "target_type": "admin",
+      "target_id": "f475822c-a2e0-4d00-b001-c6a09c7093ab",
+      "target_code": "A480101",
+      "target_name": "kmchadmin",
+      "description": "Appointed administrator A480101 (kmchadmin) to hospital H480 (KMCH)",
+      "before_state": null,
+      "after_state": {
+        "staff_code": "A480101",
+        "full_name": "kmchadmin",
+        "email": "kmchadmin@gmail.com",
+        "hospital_id": "hosp-kmch-5fd04b",
+        "hospital_code": "H480",
+        "hospital_name": "KMCH",
+        "facility_lifecycle": "Pending Setup"
+      },
+      "reason": null
+    },
+    {
+      "id": "audit-101393849d71",
+      "timestamp": "2026-09-22T16:08:53.301127+00:00",
+      "actor_code": "SA101",
+      "actor_name": "Platform SuperAdmin",
+      "action_type": "HOSPITAL_CREATED",
+      "target_type": "hospital",
+      "target_id": "hosp-kmch-5fd04b",
+      "target_code": "H480",
+      "target_name": "KMCH",
+      "description": "Provisioned hospital facility H480 (KMCH) in Draft state",
+      "before_state": null,
+      "after_state": {
+        "hospital_code": "H480",
+        "name": "KMCH",
+        "facility_type": "Multi-Specialty Research Hospital",
+        "lifecycle_state": "Draft",
+        "address": "99A, Avinashi Road, Peelamedu, Coimbatore, Tamil Nadu, 641014"
+      },
+      "reason": null
+    }
+  ]
+}

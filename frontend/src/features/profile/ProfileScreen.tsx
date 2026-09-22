@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Camera,
   Calendar,
   User as UserIcon,
   Droplet,
@@ -47,8 +48,30 @@ export const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const user = useCarePulseStore((s) => s.user);
-  const logout = useCarePulseStore((s) => s.logout);
   const updateUser = useCarePulseStore((s) => s.updateUser);
+  const logout = useCarePulseStore((s) => s.logout);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          updateUser({ avatarUrl: reader.result });
+          if (user?.id) {
+            apiPost(`/patients/${encodeURIComponent(user.id)}/update`, { avatarUrl: reader.result }).catch(() => { });
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const isBiometricEnabled = useCarePulseStore((s) => s.isBiometricEnabled);
   const toggleBiometric = useCarePulseStore((s) => s.toggleBiometric);
 
@@ -335,15 +358,24 @@ export const ProfileScreen: React.FC = () => {
           <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-teal-500/5 to-transparent rounded-bl-full pointer-events-none" />
           <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-gradient-to-tr from-emerald-500/5 to-transparent rounded-full pointer-events-none" />
 
-          {/* PATIENT AVATAR WITH LUXURY HALO */}
-          <div className="relative mt-1 sm:mt-2">
+          {/* AVATAR WITH LUXURY HALO & CAMERA BADGE */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          <div className="relative cursor-pointer group mt-1 sm:mt-2" onClick={handleAvatarClick}>
             <div className="p-1 rounded-full bg-gradient-to-tr from-[#059669] via-[#14B8A6] to-[#38BDF8] shadow-[0_12px_32px_-6px_rgba(16,185,129,0.45)]">
               <div className="p-1 bg-white rounded-full">
                 <Avatar
+                  src={user.avatarUrl}
                   alt={user.fullName}
                   fallbackText={user.fullName}
                   size="xl"
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover transition-transform group-hover:scale-105"
                 />
               </div>
             </div>
@@ -355,6 +387,19 @@ export const ProfileScreen: React.FC = () => {
             >
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             </div>
+
+            {/* Camera upload badge */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAvatarClick();
+              }}
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#0B5A54] to-[#042824] text-white flex items-center justify-center ring-2 ring-white shadow-lg hover:from-[#08423D] hover:to-[#021815] transition-all hover:scale-110 active:scale-90 cursor-pointer"
+              title="Upload Profile Photo"
+            >
+              <Camera className="w-3.5 h-3.5 text-white" />
+            </button>
           </div>
 
           {/* NAME & CONTACT INFO */}
