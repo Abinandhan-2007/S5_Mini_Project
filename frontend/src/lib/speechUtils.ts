@@ -67,10 +67,6 @@ function chunkText(text: string, maxLen = 160): string[] {
 const LANG_MAP: Record<string, { tag: string; prefix: string; name: string }> = {
   ta: { tag: 'ta-IN', prefix: 'ta', name: 'Tamil' },
   'ta-in': { tag: 'ta-IN', prefix: 'ta', name: 'Tamil' },
-  ml: { tag: 'ml-IN', prefix: 'ml', name: 'Malayalam' },
-  'ml-in': { tag: 'ml-IN', prefix: 'ml', name: 'Malayalam' },
-  hi: { tag: 'hi-IN', prefix: 'hi', name: 'Hindi' },
-  'hi-in': { tag: 'hi-IN', prefix: 'hi', name: 'Hindi' },
   en: { tag: 'en-US', prefix: 'en', name: 'English' },
   'en-us': { tag: 'en-US', prefix: 'en', name: 'English' },
 };
