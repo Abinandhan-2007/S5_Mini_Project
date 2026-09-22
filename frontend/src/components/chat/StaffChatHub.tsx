@@ -75,6 +75,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
   const [inputPriority, setInputPriority] = useState<'normal' | 'urgent'>('normal');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageStreamRef = useRef<HTMLDivElement>(null);
   const markStaffMessageRead = useStaffStore((s) => s.markStaffMessageRead);
 
   const isAdmin = currentRole === 'admin' || currentRole === 'superadmin';
@@ -129,9 +130,11 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
     { interval: 4000, enabled: true }
   );
 
-  // Auto scroll to bottom
+  // Auto scroll message container to bottom without scrolling window
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messageStreamRef.current) {
+      messageStreamRef.current.scrollTop = messageStreamRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -539,7 +542,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
         </div>
 
         {/* Message Stream */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        <div ref={messageStreamRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
           {activeConversationMessages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
               <div className="w-14 h-14 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-center text-[#0B5A54] mb-3">

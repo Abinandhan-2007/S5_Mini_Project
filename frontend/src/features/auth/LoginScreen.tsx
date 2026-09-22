@@ -514,23 +514,6 @@ export const LoginScreen: React.FC = () => {
           />
         </div>
 
-        {/* Portal Switcher Tabs */}
-        <div className="flex items-center justify-center p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1">
-          <button
-            type="button"
-            className="flex-1 py-2 px-3 rounded-lg text-xs font-bold bg-white text-[#0B5A54] shadow-xs flex items-center justify-center gap-1.5"
-          >
-            <span>👤 Patient Login</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/staff/login')}
-            className="flex-1 py-2 px-3 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <span>🏥 Staff Portal Login &rarr;</span>
-          </button>
-        </div>
-
         {/* Main Login Card */}
         <Card padding="lg" className="shadow-xs border border-[#E4E7EC] bg-[#F8FAFC]/90 space-y-4">
           <div className="text-left space-y-1 pb-1 border-b border-[#E4E7EC]/60">
