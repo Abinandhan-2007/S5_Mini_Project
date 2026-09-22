@@ -118,7 +118,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         phone: '+91 98765 00000',
         relationship: 'Primary Contact',
       },
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+      avatarUrl: '',
     };
     localStorage.setItem('has_logged_in', 'true');
     localStorage.setItem('carepulse_user', JSON.stringify(demoPatient));
@@ -403,7 +403,7 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
       bloodGroup: userData.bloodGroup || 'O+',
       phone: userData.phone || '+91 98765 00000',
       email: userData.email || '',
-      avatarUrl: userData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+      avatarUrl: userData.avatarUrl || '',
       emergencyContact: userData.emergencyContact || {
         name: 'Emergency Contact',
         phone: '+91 98765 00000',

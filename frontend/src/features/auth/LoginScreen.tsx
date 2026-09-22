@@ -207,7 +207,7 @@ export const LoginScreen: React.FC = () => {
                       gender: 'Not specified',
                       bloodGroup: 'O+',
                       emergencyContact: { name: 'Emergency Contact', phone: '+1 555-0199', relationship: 'Primary' },
-                      avatarUrl: decoded.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+                      avatarUrl: '',
                       authProvider: 'google',
                     };
                     await setUserAuth(fallbackUser, response.credential);
@@ -680,16 +680,6 @@ export const LoginScreen: React.FC = () => {
               {t('auth.registerButton', 'Sign Up')}
             </button>
           </p>
-
-          <div className="pt-2 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={() => navigate('/staff/login')}
-              className="text-xs font-bold text-[#0B5A54] hover:text-[#084540] hover:underline flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
-            >
-              <span>Staff Portal (Doctor / Admin / Receptionist) &rarr;</span>
-            </button>
-          </div>
 
           <div className="flex justify-center items-center gap-1.5 pt-1">
             <div className="w-6 h-1 rounded-full bg-[#0B5A54]" />

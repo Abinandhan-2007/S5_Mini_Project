@@ -69,7 +69,6 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All');
   const [isSpecialtyMenuOpen, setIsSpecialtyMenuOpen] = useState(false);
-  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(15);
 
   const formattedDateLabel = useMemo(() => {
@@ -250,7 +249,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
     if (onSelectVisit) {
       onSelectVisit(visit);
     } else {
-      setExpandedVisitId((prev) => (prev === visit.id ? null : visit.id));
+      navigate(`/history/${visit.id}`, { state: { visit } });
     }
   };
 
@@ -637,7 +636,6 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     const isCompleted = visit.status === 'Completed';
                     const isCancelled = visit.status === 'Cancelled';
                     const isNoShow = visit.status === 'No-Show';
-                    const isExpanded = expandedVisitId === visit.id;
 
                     return (
                       <motion.div
@@ -649,59 +647,69 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                       >
                         {/* VISIT CARD */}
                         <motion.div
-                          whileHover={{ y: -2, scale: 1.005 }}
-                          whileTap={{ scale: 0.99 }}
+                          whileHover={{ y: -2 }}
+                          whileTap={{ scale: 0.995 }}
                           onClick={() => handleCardClick(visit)}
-                          className={clsx(
-                            'bg-white rounded-2xl p-4 sm:p-5 border transition-all duration-200 cursor-pointer shadow-[0_3px_12px_-2px_rgba(11,90,84,0.06)] hover:shadow-md space-y-3 relative overflow-hidden',
-                            isExpanded ? 'border-[#14B8A6] ring-1 ring-[#14B8A6]/30' : 'border-slate-200/90'
-                          )}
+                          className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(11,90,84,0.05),0_1px_3px_rgba(0,0,0,0.02)] hover:border-teal-400/50 hover:shadow-[0_12px_28px_-6px_rgba(11,90,84,0.1)] transition-all duration-300 cursor-pointer relative overflow-hidden group space-y-4"
                         >
-                          {/* Top Row: Avatar + Doctor Info + Status Badge */}
-                          <div className="flex items-start justify-between gap-3">
-                            {/* Left + Middle */}
-                            <div className="flex items-center gap-3 min-w-0">
-                              {/* 44px Doctor Avatar with Status Ring */}
+
+                          {/* Ambient soft glow background watermark */}
+                          <div className="absolute -top-10 -right-10 w-28 h-28 bg-teal-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-teal-500/10 transition-colors" />
+
+                          {/* Top Row: Doctor Avatar + Doctor Info + Status Badge */}
+                          <div className="flex items-start justify-between gap-3 relative z-10">
+                            {/* Left + Middle: Doctor Media & Info */}
+                            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                              {/* Doctor Squircle Avatar with subtle gradient ring */}
                               <div className="relative shrink-0">
-                                <img
-                                  src={visit.doctorAvatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80'}
-                                  alt={visit.doctorName}
-                                  className={clsx(
-                                    'w-11 h-11 rounded-full object-cover shadow-xs',
-                                    isCompleted && 'ring-2 ring-[#14B8A6]',
-                                    isCancelled && 'ring-2 ring-rose-300',
-                                    isNoShow && 'ring-2 ring-slate-300'
-                                  )}
-                                  loading="lazy"
-                                />
+                                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-br from-teal-500/20 via-slate-100 to-emerald-500/20 shadow-xs flex items-center justify-center overflow-hidden border border-slate-200/80">
+                                  <img
+                                    src={visit.doctorAvatarUrl || '/doctor_default.jpg'}
+                                    alt={visit.doctorName}
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '/doctor_default.jpg';
+                                    }}
+                                    className="w-full h-full rounded-[14px] object-cover"
+                                    loading="lazy"
+                                  />
+                                </div>
+                                {isCompleted && (
+                                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-xs" title="Completed Consultation">
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-white stroke-[3]" />
+                                  </span>
+                                )}
                               </div>
 
                               {/* Doctor Details */}
-                              <div className="min-w-0 space-y-0.5">
-                                <h4 className="text-sm sm:text-base font-black text-slate-900 truncate tracking-tight">
-                                  {highlightMatch(formatDoctorName(visit.doctorName), searchQuery)}
-                                </h4>
-                                <p className="text-xs text-slate-500 font-semibold truncate flex items-center gap-1.5">
-                                  <span className="text-[#0B5A54] font-extrabold">{formatSpecialty(visit.doctorSpecialty)}</span>
-                                  <span>•</span>
+                              <div className="min-w-0 space-y-1 text-left flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight group-hover:text-[#0B5A54] transition-colors">
+                                    {highlightMatch(formatDoctorName(visit.doctorName), searchQuery)}
+                                  </h4>
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-teal-50 text-[#0B5A54] border border-teal-200/70 shadow-2xs">
+                                    {formatSpecialty(visit.doctorSpecialty)}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium truncate flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                   <span className="truncate">{highlightMatch(formatHospitalName(visit.hospitalName), searchQuery)}</span>
                                 </p>
                               </div>
                             </div>
 
-                            {/* Right Status Badge */}
-                            <div className="shrink-0 flex flex-col items-end gap-1">
+                            {/* Right Side: Status Badge & Optional Token */}
+                            <div className="shrink-0 flex flex-col items-end gap-1.5 text-right">
                               <span
                                 className={clsx(
-                                  'inline-flex items-center gap-1 text-[10.5px] sm:text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs',
-                                  isCompleted && 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                                  isCancelled && 'bg-rose-50 text-rose-800 border-rose-200',
-                                  isNoShow && 'bg-slate-100 text-slate-700 border-slate-200'
+                                  'inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full border shadow-2xs tracking-wide transition-all',
+                                  isCompleted && 'bg-emerald-50 text-emerald-800 border-emerald-300/80 shadow-[0_2px_8px_-2px_rgba(16,185,129,0.2)]',
+                                  isCancelled && 'bg-rose-50 text-rose-800 border-rose-300/80 shadow-[0_2px_8px_-2px_rgba(244,63,94,0.2)]',
+                                  isNoShow && 'bg-slate-100 text-slate-700 border-slate-300 shadow-xs'
                                 )}
                               >
-                                {isCompleted && <CheckCircle2 className="w-3 h-3 text-emerald-600 stroke-[2.5]" />}
-                                {isCancelled && <XCircle className="w-3 h-3 text-rose-600 stroke-[2.5]" />}
-                                {isNoShow && <AlertCircle className="w-3 h-3 text-slate-500 stroke-[2.5]" />}
+                                {isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />}
+                                {isCancelled && <XCircle className="w-3.5 h-3.5 text-rose-600 stroke-[2.5]" />}
+                                {isNoShow && <AlertCircle className="w-3.5 h-3.5 text-slate-500 stroke-[2.5]" />}
                                 <span>
                                   {visit.status === 'Completed'
                                     ? t('history.statusCompleted', 'Completed')
@@ -710,14 +718,20 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                                       : visit.status}
                                 </span>
                               </span>
+
+                              {visit.ticketNumber && (
+                                <span className="font-mono text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                  {visit.ticketNumber}
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          {/* Middle Row: Date, Time & Visit Type */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs font-medium text-slate-600">
-                            {/* Date & Time with Calendar Icon */}
-                            <div className="flex items-center gap-3">
-                              <span className="flex items-center gap-1.5 font-bold text-slate-700">
+                          {/* Middle Metadata Strip: Date, Time & Consultation Type */}
+                          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100 text-xs">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Date Pill */}
+                              <div className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200/80 font-bold text-slate-700 shadow-2xs transition-colors">
                                 <Calendar className="w-3.5 h-3.5 text-[#0B5A54] shrink-0" />
                                 <span>
                                   {new Date(visit.date).toLocaleDateString('en-US', {
@@ -727,83 +741,57 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                                     year: 'numeric',
                                   })}
                                 </span>
-                              </span>
+                              </div>
 
-                              <span className="flex items-center gap-1 text-slate-500 font-mono font-semibold">
-                                <Clock className="w-3 h-3 text-slate-400" />
+                              {/* Time Pill */}
+                              <div className="inline-flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 font-mono font-bold text-slate-600 shadow-2xs">
+                                <Clock className="w-3.5 h-3.5 text-teal-600 shrink-0" />
                                 <span>{visit.time}</span>
-                              </span>
+                              </div>
                             </div>
 
-                            {/* Visit Type Badge */}
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/60">
+                            {/* Visit Modality Badge */}
+                            <div className="inline-flex items-center">
                               {visit.visitType === 'Video Consult' ? (
-                                <>
-                                  <Video className="w-3 h-3 text-indigo-500" />
-                                  <span>{t('history.videoConsult', 'Video Consult')}</span>
-                                </>
+                                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-700 bg-indigo-50/80 border border-indigo-200/70 px-2.5 py-1 rounded-xl shadow-2xs">
+                                  <Video className="w-3.5 h-3.5 text-indigo-600" />
+                                  <span>{t('history.videoConsult', 'Video Consultation')}</span>
+                                </span>
                               ) : (
-                                <>
-                                  <Building2 className="w-3 h-3 text-teal-600" />
+                                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0B5A54] bg-teal-50/80 border border-teal-200/70 px-2.5 py-1 rounded-xl shadow-2xs">
+                                  <Building2 className="w-3.5 h-3.5 text-[#0B5A54]" />
                                   <span>
                                     {visit.visitType === 'In-Person'
-                                      ? t('history.inPerson', 'In-Person')
+                                      ? t('history.inPerson', 'In-Person Visit')
                                       : visit.visitType === 'Follow-up'
-                                        ? t('history.followUp', 'Follow-up')
+                                        ? t('history.followUp', 'Follow-up Consultation')
                                         : visit.visitType}
                                   </span>
-                                </>
+                                </span>
                               )}
                             </div>
                           </div>
 
-                          {/* Summary / SOAP notes expandable section */}
-                          {visit.summaryAvailable && (
-                            <div className="pt-1">
-                              <div
-                                className="w-full flex items-center justify-between text-xs font-bold text-[#0B5A54] bg-[#E3F3F1]/80 hover:bg-[#E3F3F1] px-3 py-1.5 rounded-xl border border-[#14B8A6]/30 transition-colors"
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <FileText className="w-3.5 h-3.5 text-[#0B5A54]" />
-                                  <span>{isExpanded ? 'Hide Consultation Summary' : 'View Consultation Summary'}</span>
-                                </span>
-                                <ChevronRight className={clsx('w-3.5 h-3.5 transition-transform duration-200', isExpanded && 'rotate-90')} />
+                          {/* Detailed Record & Bill Navigation Trigger Button */}
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCardClick(visit);
+                              }}
+                              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black bg-gradient-to-r from-teal-50/90 via-slate-50 to-teal-50/60 hover:from-teal-100 hover:to-teal-50 text-[#0B5A54] border border-teal-200/80 transition-all cursor-pointer shadow-2xs group/btn active:scale-98"
+                            >
+                              <span className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-[#0B5A54]" />
+                                <span className="tracking-tight">View Detailed Record & Vitals</span>
+                              </span>
+                              <div className="flex items-center gap-1 font-extrabold text-[11px] text-[#0B5A54]">
+                                <span>Detailed View</span>
+                                <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
                               </div>
-
-                              {/* Expanded Clinical Details */}
-                              <AnimatePresence>
-                                {isExpanded && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="mt-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                                      {visit.diagnosis && (
-                                        <div>
-                                          <span className="font-black text-slate-700 block">{t('history.diagnosisLabel', 'Diagnosis')}:</span>
-                                          <p className="text-slate-600 font-medium leading-relaxed">{visit.diagnosis}</p>
-                                        </div>
-                                      )}
-                                      {visit.prescriptionDetails && (
-                                        <div className="pt-1.5 border-t border-slate-200/70">
-                                          <span className="font-black text-slate-700 block">{t('history.prescriptionLabel', 'Prescription')}:</span>
-                                          <p className="text-[#0B5A54] font-bold">{visit.prescriptionDetails}</p>
-                                        </div>
-                                      )}
-                                      {visit.ticketNumber && (
-                                        <div className="pt-1 text-[11px] text-slate-400 font-mono">
-                                          {t('history.tokenLabel', 'Token')}: {visit.ticketNumber}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          )}
+                            </button>
+                          </div>
                         </motion.div>
                       </motion.div>
                     );

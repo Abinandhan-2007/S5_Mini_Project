@@ -169,7 +169,12 @@ export const AppointmentDetailScreen: React.FC = () => {
 
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Avatar src={user?.avatarUrl || appointmentData.doctorPhoto || ''} size="md" />
+                <Avatar
+                  src={user?.avatarUrl?.startsWith('data:image/') ? user.avatarUrl : undefined}
+                  alt={user?.fullName || appointmentData.clientName || 'Patient'}
+                  fallbackText={user?.fullName || appointmentData.clientName || 'Patient'}
+                  size="md"
+                />
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
               </div>
               <div>

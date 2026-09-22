@@ -135,10 +135,10 @@ export const Patient360RecordModal: React.FC<Patient360RecordModalProps> = ({
           <div className="flex items-center gap-3.5">
             <div className="relative">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#0B5A54] text-white font-black text-xl flex items-center justify-center shadow-md overflow-hidden border-2 border-white ring-2 ring-teal-600/30 shrink-0">
-                {patient.avatarUrl ? (
+                {patient.avatarUrl?.startsWith('data:image/') ? (
                   <img src={patient.avatarUrl} alt={patient.fullName} className="w-full h-full object-cover" />
                 ) : (
-                  <span>{patient.fullName.charAt(0)}</span>
+                  <span>{(patient.fullName || 'P').trim().charAt(0).toUpperCase()}</span>
                 )}
               </div>
               <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-emerald-500 text-white shadow-2xs border border-white">

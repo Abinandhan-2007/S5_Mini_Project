@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Camera,
   Calendar,
   User as UserIcon,
   Droplet,
@@ -25,7 +24,6 @@ import {
   Copy,
   Check,
   Mail,
-  Activity,
   BadgeCheck,
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -123,27 +121,6 @@ export const ProfileScreen: React.FC = () => {
     fetchAppVersion();
   }, []);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          updateUser({ avatarUrl: reader.result });
-          if (user?.id) {
-            apiPost(`/patients/${encodeURIComponent(user.id)}/update`, { avatarUrl: reader.result }).catch(() => { });
-          }
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   // Unified Edit Form State (Name, Email, Phone, Address, DOB, Gender, Blood Group, Emergency Contact)
   const [editName, setEditName] = useState(user?.fullName || '');
@@ -358,23 +335,15 @@ export const ProfileScreen: React.FC = () => {
           <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-teal-500/5 to-transparent rounded-bl-full pointer-events-none" />
           <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-gradient-to-tr from-emerald-500/5 to-transparent rounded-full pointer-events-none" />
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          {/* AVATAR WITH LUXURY HALO & CAMERA BADGE */}
-          <div className="relative cursor-pointer group mt-1 sm:mt-2" onClick={handleAvatarClick}>
+          {/* PATIENT AVATAR WITH LUXURY HALO */}
+          <div className="relative mt-1 sm:mt-2">
             <div className="p-1 rounded-full bg-gradient-to-tr from-[#059669] via-[#14B8A6] to-[#38BDF8] shadow-[0_12px_32px_-6px_rgba(16,185,129,0.45)]">
               <div className="p-1 bg-white rounded-full">
                 <Avatar
-                  src={user.avatarUrl}
                   alt={user.fullName}
+                  fallbackText={user.fullName}
                   size="xl"
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover transition-transform group-hover:scale-105"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full"
                 />
               </div>
             </div>
@@ -386,25 +355,12 @@ export const ProfileScreen: React.FC = () => {
             >
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             </div>
-
-            {/* Camera upload badge */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAvatarClick();
-              }}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#0B5A54] to-[#042824] text-white flex items-center justify-center ring-2 ring-white shadow-lg hover:from-[#08423D] hover:to-[#021815] transition-all hover:scale-110 active:scale-90 cursor-pointer"
-              title="Upload Profile Photo"
-            >
-              <Camera className="w-3.5 h-3.5 text-white" />
-            </button>
           </div>
 
           {/* NAME & CONTACT INFO */}
           <div className="space-y-2 flex flex-col items-center w-full">
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight">
+               <h2 className="text-xl sm:text-2xl font-black font-heading text-slate-900 tracking-tight">
                 {user.fullName}
               </h2>
               {user.authProvider === 'google' ? (
@@ -522,18 +478,6 @@ export const ProfileScreen: React.FC = () => {
 
         {/* VITAL INFORMATION COMPACT GRID - CLINICAL VITALS DASHBOARD */}
         <div className="space-y-2.5">
-          <div className="flex justify-between items-center px-1">
-            <div className="flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5 text-[#0B5A54]" />
-              <h3 className="text-[10.5px] font-black text-slate-600 uppercase tracking-widest font-heading">
-                {t('profile.vitalStats', 'VITAL MEDICAL STATS')}
-              </h3>
-            </div>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              Verified Records
-            </span>
-          </div>
-
           <div className="grid grid-cols-2 gap-2.5">
             {/* OFFICIAL CAREPULSE PATIENT ID SMART CARD */}
             <div className="col-span-2 relative overflow-hidden rounded-2xl border border-teal-200/90 bg-gradient-to-r from-teal-50/90 via-white to-emerald-50/70 p-4 shadow-sm">

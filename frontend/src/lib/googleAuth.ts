@@ -220,7 +220,7 @@ export const useGoogleAuth = () => {
                   phone: '+91 98765 43210',
                   relationship: 'Primary',
                 },
-                avatarUrl: gUser.imageUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+                avatarUrl: '',
                 authProvider: 'google',
               };
 

@@ -302,8 +302,9 @@ export const CompleteProfileScreen: React.FC = () => {
         {/* User Card */}
         <div className="max-w-2xl mx-auto mt-4 bg-slate-50 text-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 flex items-center gap-4">
           <Avatar
-            src={user?.avatarUrl || ''}
+            src={user?.avatarUrl?.startsWith('data:image/') ? user.avatarUrl : undefined}
             alt={user?.fullName || 'User'}
+            fallbackText={user?.fullName || 'User'}
             size="md"
             className="ring-2 ring-teal-500/30"
           />

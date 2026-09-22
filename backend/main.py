@@ -3234,6 +3234,194 @@ def get_patient_consultations(patient_id: str):
         return result
 
 
+@app.get("/api/consultations/detail/{consultation_id}")
+def get_consultation_detail(consultation_id: str):
+    """
+    Retrieve single clinical consultation detail by consultation ID or linked appointment ID.
+    Includes doctor details, hospital details, SOAP data, structured prescriptions, and linked vitals.
+    """
+    if not consultation_id or str(consultation_id).strip() in ["", "all", "None", "null", "undefined"]:
+        raise HTTPException(status_code=400, detail="Invalid consultation or appointment ID")
+
+    target_id = str(consultation_id).strip()
+
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    # 1. Search directly in consultations table by id
+                    cur.execute(
+                        """
+                        SELECT c.id, c.patient_id, c.doctor_id, c.doctor_name, c.hospital_id, c.date, c.soap_data, 
+                               h.name as hospital_name, d.specialty as doctor_specialty, d.photo as doctor_photo
+                        FROM consultations c
+                        LEFT JOIN hospitals h ON c.hospital_id = h.id
+                        LEFT JOIN doctors d ON c.doctor_id = d.id
+                        WHERE c.id::text = %s
+                        LIMIT 1
+                        """,
+                        (target_id,)
+                    )
+                    row = cur.fetchone()
+
+                    # 2. If not found by consultation id, check if target_id is an appointment id
+                    linked_apt = None
+                    if not row:
+                        cur.execute(
+                            """
+                            SELECT a.id, a.patient_id, a.doctor_id, a.doctor_name, a.doctor_specialty, 
+                                   a.hospital_id, a.hospital_name, a.date, a.time_slot, a.ticket_number,
+                                   a.diagnosis, a.prescription_details, a.status
+                            FROM appointments a
+                            WHERE a.id::text = %s OR a.ticket_number = %s
+                            LIMIT 1
+                            """,
+                            (target_id, target_id)
+                        )
+                        linked_apt = cur.fetchone()
+                        if linked_apt:
+                            p_id = linked_apt["patient_id"]
+                            cur.execute(
+                                """
+                                SELECT c.id, c.patient_id, c.doctor_id, c.doctor_name, c.hospital_id, c.date, c.soap_data,
+                                       h.name as hospital_name, d.specialty as doctor_specialty, d.photo as doctor_photo
+                                FROM consultations c
+                                LEFT JOIN hospitals h ON c.hospital_id = h.id
+                                LEFT JOIN doctors d ON c.doctor_id = d.id
+                                WHERE c.patient_id::text = %s
+                                ORDER BY c.date DESC
+                                LIMIT 1
+                                """,
+                                (str(p_id),)
+                            )
+                            row = cur.fetchone()
+
+                    # 3. Retrieve linked vitals if any exist for this appointment or patient
+                    vitals_data = None
+                    apt_id_to_check = str(linked_apt["id"]) if linked_apt else target_id
+                    cur.execute(
+                        """
+                        SELECT v.*, s.full_name as recorded_by_name
+                        FROM vitals v
+                        LEFT JOIN staff s ON v.recorded_by = s.id
+                        WHERE v.appointment_id::text = %s OR (v.patient_id::text = %s AND %s IS NOT NULL)
+                        ORDER BY v.recorded_at DESC NULLS LAST
+                        LIMIT 1
+                        """,
+                        (apt_id_to_check, str(row["patient_id"]) if row else (str(linked_apt["patient_id"]) if linked_apt else None), str(row["patient_id"]) if row else (str(linked_apt["patient_id"]) if linked_apt else None))
+                    )
+                    v_row = cur.fetchone()
+                    if v_row:
+                        vitals_data = {
+                            "id": str(v_row["id"]),
+                            "appointment_id": str(v_row["appointment_id"]) if v_row.get("appointment_id") else None,
+                            "patient_id": str(v_row["patient_id"]) if v_row.get("patient_id") else None,
+                            "height_cm": float(v_row["height_cm"]) if v_row.get("height_cm") is not None else None,
+                            "weight_kg": float(v_row["weight_kg"]) if v_row.get("weight_kg") is not None else None,
+                            "bmi": float(v_row["bmi"]) if v_row.get("bmi") is not None else None,
+                            "bp_systolic": v_row.get("bp_systolic"),
+                            "bp_diastolic": v_row.get("bp_diastolic"),
+                            "heart_rate": v_row.get("heart_rate"),
+                            "temperature": float(v_row["temperature"]) if v_row.get("temperature") is not None else None,
+                            "temperature_unit": v_row.get("temperature_unit") or "C",
+                            "respiratory_rate": v_row.get("respiratory_rate"),
+                            "spo2": v_row.get("spo2"),
+                            "blood_glucose": float(v_row["blood_glucose"]) if v_row.get("blood_glucose") is not None else None,
+                            "glucose_context": v_row.get("glucose_context"),
+                            "notes": v_row.get("notes"),
+                            "recorded_at": str(v_row["recorded_at"]) if v_row.get("recorded_at") else None,
+                            "recorded_by_name": v_row.get("recorded_by_name") or "Triage Nurse"
+                        }
+
+                    if row:
+                        soap = row["soap_data"] if isinstance(row["soap_data"], dict) else (json.loads(row["soap_data"]) if row.get("soap_data") else {})
+                        raw_meds = soap.get("prescriptions") or []
+                        return {
+                            "success": True,
+                            "consultation": {
+                                "id": str(row["id"]),
+                                "patientId": str(row["patient_id"]),
+                                "doctorId": row.get("doctor_id"),
+                                "doctorName": row.get("doctor_name") or "Specialist Doctor",
+                                "doctorSpecialty": row.get("doctor_specialty") or (linked_apt.get("doctor_specialty") if linked_apt else "General Medicine"),
+                                "doctorPhoto": row.get("doctor_photo") or "",
+                                "hospitalId": row.get("hospital_id"),
+                                "hospitalName": row.get("hospital_name") or (linked_apt.get("hospital_name") if linked_apt else "CarePulse Central Hospital"),
+                                "date": str(row["date"]),
+                                "soapData": soap,
+                                "prescriptions": raw_meds,
+                                "diagnosis": soap.get("assessment") or (linked_apt.get("diagnosis") if linked_apt else "General Medical Consultation"),
+                                "status": "Completed",
+                                "ticketNumber": linked_apt.get("ticket_number") if linked_apt else "TKT-892"
+                            },
+                            "vitals": vitals_data
+                        }
+                    elif linked_apt:
+                        return {
+                            "success": True,
+                            "consultation": {
+                                "id": str(linked_apt["id"]),
+                                "patientId": str(linked_apt["patient_id"]),
+                                "doctorId": linked_apt.get("doctor_id"),
+                                "doctorName": linked_apt.get("doctor_name") or "Specialist Doctor",
+                                "doctorSpecialty": linked_apt.get("doctor_specialty") or "General Medicine",
+                                "hospitalId": linked_apt.get("hospital_id"),
+                                "hospitalName": linked_apt.get("hospital_name") or "CarePulse Partner Hospital",
+                                "date": str(linked_apt["date"]),
+                                "soapData": {
+                                    "subjective": linked_apt.get("health_issue") or "Patient attended clinical appointment.",
+                                    "assessment": linked_apt.get("diagnosis") or "Clinical assessment completed.",
+                                    "plan": linked_apt.get("prescription_details") or "Follow standard medical advice."
+                                },
+                                "prescriptions": [],
+                                "diagnosis": linked_apt.get("diagnosis") or "General Medical Review",
+                                "status": linked_apt.get("status") or "Completed",
+                                "ticketNumber": linked_apt.get("ticket_number") or "TKT-412"
+                            },
+                            "vitals": vitals_data
+                        }
+                    else:
+                        return {"success": False, "detail": "Consultation record not found", "consultation": None, "vitals": vitals_data}
+        except Exception as pg_err:
+            logger.warning(f"Note on PG consultation detail lookup (falling back to JSON DB): {pg_err}")
+
+    # JSON DB fallback
+    db = read_json_db()
+    consultations = db.get("consultations", [])
+    hosp_map = {h.get("id"): h.get("name") for h in db.get("hospitals", [])}
+    doc_map = {d.get("id"): d for d in db.get("doctors", [])}
+
+    matched_c = next((c for c in consultations if str(c.get("id")) == target_id), None)
+    if not matched_c:
+        matched_c = next((c for c in reversed(consultations) if str(c.get("patient_id")) == target_id), None)
+
+    if matched_c:
+        soap = matched_c.get("soap_data", {})
+        d_info = doc_map.get(matched_c.get("doctor_id"), {})
+        return {
+            "success": True,
+            "consultation": {
+                "id": str(matched_c.get("id")),
+                "patientId": str(matched_c.get("patient_id")),
+                "doctorId": matched_c.get("doctor_id"),
+                "doctorName": matched_c.get("doctor_name", "Specialist Doctor"),
+                "doctorSpecialty": d_info.get("specialty", "General Medicine"),
+                "doctorPhoto": d_info.get("photo", ""),
+                "hospitalId": matched_c.get("hospital_id"),
+                "hospitalName": hosp_map.get(matched_c.get("hospital_id"), "CarePulse Central Hospital"),
+                "date": str(matched_c.get("date")),
+                "soapData": soap,
+                "prescriptions": soap.get("prescriptions", []),
+                "diagnosis": soap.get("assessment") or "General Consultation",
+                "status": "Completed",
+                "ticketNumber": "TKT-892"
+            },
+            "vitals": None
+        }
+
+    return {"success": False, "detail": "Consultation not found", "consultation": None, "vitals": None}
+
+
 def random_ticket() -> str:
     import random
     return str(random.randint(1000, 9999))

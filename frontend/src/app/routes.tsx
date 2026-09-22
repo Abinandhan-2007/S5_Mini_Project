@@ -12,6 +12,7 @@ import { HospitalDetailScreen } from '../features/hospitals/HospitalDetailScreen
 import { BookAppointmentScreen } from '../features/appointments/BookAppointmentScreen';
 import { AppointmentDetailScreen } from '../features/appointments/AppointmentDetailScreen';
 import { HistoryScreen } from '../features/history/HistoryScreen';
+import { VisitDetailScreen } from '../features/history/VisitDetailScreen';
 
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { AdvancedSettingsScreen } from '../features/profile/AdvancedSettingsScreen';
@@ -258,6 +259,14 @@ export const AppRoutes: React.FC = () => {
             element={
               <PageTransition>
                 <HistoryScreen />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/history/:id"
+            element={
+              <PageTransition>
+                <VisitDetailScreen />
               </PageTransition>
             }
           />

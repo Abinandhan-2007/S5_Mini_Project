@@ -107,7 +107,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <p className="text-[11px] font-bold text-teal-100/90 tracking-wide uppercase truncate">
                     {subtitle !== undefined ? subtitle : t('auth.loginTitle', 'WELCOME BACK')}
                   </p>
-                  <h1 className="text-lg sm:text-xl md:text-2xl font-black text-white font-heading leading-tight tracking-tight truncate">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white font-heading leading-tight tracking-tight truncate">
                     {displayTitle}
                   </h1>
                 </>

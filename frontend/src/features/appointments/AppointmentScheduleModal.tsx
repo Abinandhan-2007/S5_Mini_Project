@@ -200,7 +200,12 @@ export const AppointmentScheduleModal: React.FC<AppointmentScheduleModalProps> =
             {/* Top Right User Header Bar */}
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
               <div className="flex items-center gap-2.5">
-                <Avatar src={user?.avatarUrl || currentApp.doctorPhoto} size="sm" />
+                <Avatar
+                  src={user?.avatarUrl?.startsWith('data:image/') ? user.avatarUrl : undefined}
+                  alt={user?.fullName || 'Patient'}
+                  fallbackText={user?.fullName || 'Patient'}
+                  size="sm"
+                />
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 leading-tight">
                     {user?.fullName || 'Patient'}
