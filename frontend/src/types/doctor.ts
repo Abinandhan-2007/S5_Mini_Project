@@ -28,6 +28,8 @@ export interface PrescriptionMedicine {
   instructions: string; // e.g. "After food", "Before breakfast", "At bedtime"
   genericName?: string; // Active generic molecule (e.g. "Paracetamol", "Amoxicillin")
   category?: string;    // Therapeutic category (e.g. "Analgesic / Antipyretic", "Antibiotic")
+  purpose?: string;     // Verified clinical indication/usage
+  strengths?: string[]; // Available pharmaceutical strengths (e.g. ["500mg", "650mg"])
 }
 
 export interface PatientEMRRecord {

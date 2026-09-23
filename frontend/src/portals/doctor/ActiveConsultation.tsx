@@ -78,17 +78,18 @@ const inferPrescriptionDefaults = (item: MedicineSearchResultItem) => {
   const cat = (item.category || '').toLowerCase();
   const gen = (item.generic_name || '').toLowerCase();
   const name = (item.name || '').toLowerCase();
+  const primaryStrength = item.strengths && item.strengths.length > 0 ? item.strengths[0] : '';
 
-  // 1. Dosage Form Inference
-  let dosage = '1 Tab';
+  // 1. Dosage Form & Strength Inference (like in Medical Scan)
+  let dosage = primaryStrength ? `1 Tab (${primaryStrength})` : '1 Tab';
   if (form.includes('capsule') || form.includes('cap')) {
-    dosage = '1 Cap';
+    dosage = primaryStrength ? `1 Cap (${primaryStrength})` : '1 Cap';
   } else if (form.includes('syrup') || form.includes('suspension') || form.includes('liquid') || form.includes('solution') || form.includes('oral')) {
-    dosage = '5 ml';
+    dosage = primaryStrength ? `5 ml (${primaryStrength})` : '5 ml';
   } else if (form.includes('injection') || form.includes('inj') || form.includes('vial') || form.includes('amp')) {
-    dosage = '1 Vial';
+    dosage = primaryStrength ? `1 Vial (${primaryStrength})` : '1 Vial';
   } else if (form.includes('inhal') || form.includes('rotacap') || form.includes('resp')) {
-    dosage = '1 Puff';
+    dosage = primaryStrength ? `1 Puff (${primaryStrength})` : '1 Puff';
   } else if (form.includes('drop') || form.includes('eye') || form.includes('ear') || form.includes('nasal')) {
     dosage = '2 Drops';
   } else if (form.includes('cream') || form.includes('ointment') || form.includes('gel')) {
@@ -157,7 +158,7 @@ const inferPrescriptionDefaults = (item: MedicineSearchResultItem) => {
     instructions = 'Take with major meals';
   }
   else if (item.purpose) {
-    instructions = `Take after meals (${item.purpose})`;
+    instructions = `Take as directed (${item.purpose})`;
   }
 
   return { dosage, frequency, duration, instructions };
@@ -526,10 +527,12 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
           instructions: defaults.instructions,
           genericName: item.generic_name || undefined,
           category: item.category || undefined,
+          purpose: item.purpose || undefined,
+          strengths: item.strengths || undefined,
         };
       })
     );
-    showToast(`Autofilled prescription for ${item.name}`);
+    showToast(`Autofilled ${item.name} (${defaults.dosage}, ${defaults.frequency})`);
   };
 
   const handleApplyPresetDrug = (preset: typeof COMMON_DRUG_PRESETS[0]) => {
@@ -926,10 +929,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
     (patient.age && (patient.age < 12 || patient.age >= 65))
       ? 'Senior-Child'
       : (patient.healthIssue?.toLowerCase().includes('chest') ||
-         patient.healthIssue?.toLowerCase().includes('breath') ||
-         patient.healthIssue?.toLowerCase().includes('severe'))
-      ? 'Urgent'
-      : 'Normal';
+        patient.healthIssue?.toLowerCase().includes('breath') ||
+        patient.healthIssue?.toLowerCase().includes('severe'))
+        ? 'Urgent'
+        : 'Normal';
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto font-sans pb-10">
@@ -959,7 +962,7 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
               <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading tracking-tight">
                 Active Consultation Room
               </h1>
-              
+
               {/* In Session Pulsing Pill */}
               <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
@@ -1018,12 +1021,12 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
           2. WORKSPACE GRID: LEFT PATIENT CONTEXT (~30%) / RIGHT TABBED (~70%)
       ══════════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
+
         {/* ──────────────────────────────────────────────────────────────
             LEFT COLUMN (~30% / 4 COLS) — PATIENT CONTEXT & VITALS
         ────────────────────────────────────────────────────────────── */}
         <div className="lg:col-span-4 space-y-4">
-          
+
           {/* 1. Patient Identity Card */}
           <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4 relative overflow-hidden">
             <div className="flex items-start justify-between gap-3">
@@ -1037,13 +1040,12 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   </h2>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                        triagePriority === 'Urgent'
+                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${triagePriority === 'Urgent'
                           ? 'bg-rose-50 text-rose-700 border-rose-200'
                           : triagePriority === 'Senior-Child'
-                          ? 'bg-purple-50 text-purple-700 border-purple-200'
-                          : 'bg-teal-50 text-[#0B5A54] border-teal-200'
-                      }`}
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : 'bg-teal-50 text-[#0B5A54] border-teal-200'
+                        }`}
                     >
                       {triagePriority} Priority
                     </span>
@@ -1413,17 +1415,16 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
             RIGHT COLUMN (~70% / 8 COLS) — TABBED CLINICAL WORKSPACE
         ────────────────────────────────────────────────────────────── */}
         <div className="lg:col-span-8 space-y-4">
-          
+
           {/* 3 Tabs Header Strip */}
           <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs p-1.5 flex items-center gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('soap')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                activeTab === 'soap'
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${activeTab === 'soap'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <FileText className="w-4 h-4" />
               <span>SOAP Notes</span>
@@ -1432,17 +1433,15 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('rx')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                activeTab === 'rx'
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${activeTab === 'rx'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <Pill className="w-4 h-4" />
               <span>Prescription (Rx)</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
-                activeTab === 'rx' ? 'bg-teal-800 text-teal-100' : 'bg-slate-100 text-slate-700'
-              }`}>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${activeTab === 'rx' ? 'bg-teal-800 text-teal-100' : 'bg-slate-100 text-slate-700'
+                }`}>
                 {prescriptions.filter(p => p.drugName.trim()).length}
               </span>
             </button>
@@ -1450,11 +1449,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
             <button
               type="button"
               onClick={handleGoToSummary}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                activeTab === 'summary'
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${activeTab === 'summary'
                   ? 'bg-[#0B5A54] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <Printer className="w-4 h-4" />
               <span>Visit Summary</span>
@@ -1543,11 +1541,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                             key={diag}
                             type="button"
                             onClick={() => setSoap((s) => ({ ...s, assessment: diag }))}
-                            className={`text-[10.5px] font-semibold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
-                              soap.assessment === diag
+                            className={`text-[10.5px] font-semibold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${soap.assessment === diag
                                 ? 'bg-[#0B5A54] text-white border-[#0B5A54] font-bold shadow-2xs'
                                 : 'bg-white hover:bg-teal-50 text-slate-700 border-slate-200 hover:border-teal-300'
-                            }`}
+                              }`}
                           >
                             + {diag}
                           </button>
@@ -1806,14 +1803,50 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                           compact={true}
                         />
                         {med.genericName && (
-                          <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-[#0B5A54] font-medium bg-teal-50/80 px-2 py-1 rounded-lg border border-teal-200/80">
-                            <Sparkles className="w-3 h-3 text-teal-600 shrink-0" />
-                            <span className="truncate">
-                              <span className="font-bold">Active:</span> {med.genericName}
-                              {med.category && med.category !== 'General' && (
-                                <span className="text-slate-500 font-normal"> • {med.category}</span>
-                              )}
-                            </span>
+                          <div className="mt-1.5 space-y-1.5 bg-teal-50/90 p-2 rounded-xl border border-teal-200 text-left">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 text-[11px] text-[#0B5A54] font-bold min-w-0">
+                                <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                                <span className="truncate">
+                                  <span>Active Formula:</span> <span className="underline decoration-teal-300 font-black">{med.genericName}</span>
+                                  {med.category && med.category !== 'General' && (
+                                    <span className="text-teal-700 font-medium ml-1">({med.category})</span>
+                                  )}
+                                </span>
+                              </div>
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">
+                                Verified
+                              </span>
+                            </div>
+
+                            {/* Clinical Indication / Purpose (from Formulary) */}
+                            {med.purpose && (
+                              <p className="text-[10.5px] text-teal-900 font-medium leading-tight">
+                                <span className="font-bold text-teal-950">Indication:</span> {med.purpose}
+                              </p>
+                            )}
+
+                            {/* Quick Available Strength Pills (Like Patient App Medical Scan) */}
+                            {med.strengths && med.strengths.length > 0 && (
+                              <div className="flex items-center gap-1 pt-0.5 flex-wrap">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">Strengths:</span>
+                                {med.strengths.map((str) => (
+                                  <button
+                                    key={str}
+                                    type="button"
+                                    onClick={() => {
+                                      const baseForm = med.dosage.split('(')[0].trim() || '1 Tab';
+                                      handleUpdateMed(med.id, 'dosage', `${baseForm} (${str})`);
+                                      showToast(`Set dosage to ${baseForm} (${str})`);
+                                    }}
+                                    className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white hover:bg-teal-100 text-[#0B5A54] border border-teal-300 transition-colors cursor-pointer shadow-2xs"
+                                    title={`Click to set dosage with ${str}`}
+                                  >
+                                    + {str}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1825,8 +1858,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                           type="text"
                           value={med.dosage}
                           onChange={(e) => handleUpdateMed(med.id, 'dosage', e.target.value)}
-                          placeholder="1 Tab"
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                          placeholder="1 Tab (650mg)"
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                         />
                       </div>
 
@@ -1836,14 +1869,19 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                         <select
                           value={med.frequency}
                           onChange={(e) => handleUpdateMed(med.id, 'frequency', e.target.value)}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]"
                         >
                           <option value="OD (Once daily)">OD (Once daily)</option>
+                          <option value="OD (Morning)">OD (Morning)</option>
+                          <option value="OD (Night)">OD (Night)</option>
                           <option value="BD (Twice daily)">BD (Twice daily)</option>
                           <option value="TDS (Thrice daily)">TDS (Thrice daily)</option>
                           <option value="QID (Four times)">QID (Four times)</option>
                           <option value="SOS (As needed)">SOS (As needed)</option>
                           <option value="HS (Bedtime)">HS (Bedtime)</option>
+                          {med.frequency && !['OD (Once daily)', 'OD (Morning)', 'OD (Night)', 'BD (Twice daily)', 'TDS (Thrice daily)', 'QID (Four times)', 'SOS (As needed)', 'HS (Bedtime)'].includes(med.frequency) && (
+                            <option value={med.frequency}>{med.frequency}</option>
+                          )}
                         </select>
                       </div>
 
@@ -1884,11 +1922,10 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                       key={days}
                       type="button"
                       onClick={() => setFollowUpDays(days)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                        followUpDays === days
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${followUpDays === days
                           ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-2xs font-extrabold'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
-                      }`}
+                        }`}
                     >
                       {days} Days
                     </button>

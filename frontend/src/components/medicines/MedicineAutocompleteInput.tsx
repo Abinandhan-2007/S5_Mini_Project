@@ -136,6 +136,9 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
       if (highlightedIndex >= 0 && highlightedIndex < results.length) {
         e.preventDefault();
         handleItemClick(results[highlightedIndex]);
+      } else if (results.length > 0) {
+        e.preventDefault();
+        handleItemClick(results[0]);
       } else if (onSubmit) {
         e.preventDefault();
         setIsOpen(false);
@@ -200,8 +203,8 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
               compact
                 ? 'text-xs py-2 pl-8 pr-7 rounded-lg bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0B5A54] focus:border-[#0B5A54] shadow-2xs font-bold text-slate-900'
                 : pill
-                ? 'text-xs sm:text-[13px] font-semibold pl-10 pr-10 py-3 rounded-full bg-[#F1F5F9]/80 border border-slate-200/90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white focus:ring-2 focus:ring-blue-500/30'
-                : 'text-xs sm:text-[13px] font-semibold pl-10 pr-10 py-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white shadow-2xs',
+                  ? 'text-xs sm:text-[13px] font-semibold pl-10 pr-10 py-3 rounded-full bg-[#F1F5F9]/80 border border-slate-200/90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] focus:bg-white focus:ring-2 focus:ring-blue-500/30'
+                  : 'text-xs sm:text-[13px] font-semibold pl-10 pr-10 py-3 rounded-2xl bg-[#F8FAFC] border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white shadow-2xs',
               inputClassName
             )}
           />
@@ -293,6 +296,10 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
                     key={item.id || `med-${index}`}
                     type="button"
                     onMouseEnter={() => setHighlightedIndex(index)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleItemClick(item);
+                    }}
                     onClick={() => handleItemClick(item)}
                     className={clsx(
                       'w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer',
@@ -316,15 +323,15 @@ export const MedicineAutocompleteInput: React.FC<MedicineAutocompleteInputProps>
                             item.match_type === 'exact'
                               ? 'bg-emerald-100 text-emerald-800'
                               : item.match_type === 'prefix'
-                              ? 'bg-sky-100 text-sky-800'
-                              : 'bg-amber-100 text-amber-800'
+                                ? 'bg-sky-100 text-sky-800'
+                                : 'bg-amber-100 text-amber-800'
                           )}
                         >
                           {item.match_type === 'exact'
                             ? t('medicineAutocomplete.matchExact', 'Exact')
                             : item.match_type === 'prefix'
-                            ? t('medicineAutocomplete.matchPrefix', 'Prefix')
-                            : t('medicineAutocomplete.matchFuzzy', 'Fuzzy')}
+                              ? t('medicineAutocomplete.matchPrefix', 'Prefix')
+                              : t('medicineAutocomplete.matchFuzzy', 'Fuzzy')}
                         </span>
                       </div>
 

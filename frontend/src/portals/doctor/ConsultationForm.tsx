@@ -272,11 +272,10 @@ export const ConsultationForm: React.FC<ConsultationFormProps> = ({
                     key={d}
                     type="button"
                     onClick={() => setDiagnosis(d)}
-                    className={`text-[10.5px] font-bold px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${
-                      diagnosis === d
+                    className={`text-[10.5px] font-bold px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${diagnosis === d
                         ? 'bg-[#0B5A54] text-white border-[#0B5A54] shadow-xs'
                         : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
+                      }`}
                   >
                     {d}
                   </button>
@@ -426,11 +425,10 @@ export const ConsultationForm: React.FC<ConsultationFormProps> = ({
                   key={days}
                   type="button"
                   onClick={() => setFollowUpDays(days)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    followUpDays === days
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${followUpDays === days
                       ? 'bg-[#0B5A54] text-white shadow-xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   {days} Days
                 </button>
