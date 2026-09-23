@@ -197,7 +197,13 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
             CAREPULSE
           </span>
           {badge && (
-            <span className="px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider rounded-md bg-teal-400/20 border border-teal-300/40 text-teal-200 shrink-0">
+            <span
+              className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider rounded-md shrink-0 ${
+                theme === 'dark'
+                  ? 'bg-teal-400/20 border border-teal-300/40 text-teal-200'
+                  : 'bg-teal-50 border border-teal-200 text-[#0F766E]'
+              }`}
+            >
               {badge}
             </span>
           )}
