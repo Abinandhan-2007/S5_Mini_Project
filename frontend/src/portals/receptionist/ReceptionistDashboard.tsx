@@ -23,9 +23,14 @@ import {
   ArrowUpRight,
   Phone,
   Loader2,
+  Activity,
+  LayoutGrid,
+  ListFilter,
+  Eye,
+  X,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
-import type { TokenQueueItem } from '../../types/receptionist';
+import type { TokenQueueItem, DoctorRecord } from '../../types/receptionist';
 
 interface ReceptionistDashboardProps {
   onNavigateTab?: (tab: string) => void;
@@ -112,10 +117,14 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [onlineArrivalFilter, setOnlineArrivalFilter] = useState<'all' | 'awaiting' | 'checked_in'>('all');
-  // Physician Cabin Status Filter States
-  const [cabinStatusFilter, setCabinStatusFilter] = useState<'all' | 'active' | 'offline'>('all');
+  // Physician Cabin Status Filter States & Telemetry View
+  const [cabinStatusFilter, setCabinStatusFilter] = useState<'all' | 'in_session' | 'ready' | 'offline'>('all');
   const [cabinFloorFilter, setCabinFloorFilter] = useState<string>('all');
   const [cabinSearchQuery, setCabinSearchQuery] = useState<string>('');
+  const [cabinViewMode, setCabinViewMode] = useState<'grid' | 'table'>('grid');
+  const [inspectingCabinDoctor, setInspectingCabinDoctor] = useState<DoctorRecord | null>(null);
+  // Active Operational Stream Tab (Cabins vs Queue vs Pre-Booked)
+  const [activeOperationsTab, setActiveOperationsTab] = useState<'cabins' | 'queue' | 'prebooked'>('cabins');
 
   // Master appointment set (merges live tokens and all bookings)
   const allAppointments = useMemo(() => {
@@ -181,7 +190,6 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
   // Doctor categorizations
   const activeDoctors = doctors.filter((d) => d.isAvailable);
-  const offDutyDoctors = doctors.filter((d) => !d.isAvailable);
 
   // Extract unique floor names dynamically from doctor records
   const availableFloors = useMemo(() => {
@@ -198,11 +206,44 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
     return Array.from(floorSet).sort();
   }, [doctors]);
 
-  // Filtered doctors for the Physician Cabin Status grid
+  // Cabin Telemetry Real-Time Aggregation
+  const cabinTelemetry = useMemo(() => {
+    let inSessionCount = 0;
+    let readyCount = 0;
+    let offDutyCount = 0;
+    let totalQueuedPatients = 0;
+
+    doctors.forEach((doc) => {
+      const hasActive = inConsultationTokens.some((t) => t.doctorId === doc.id);
+      const docWaiters = waitingTokens.filter((t) => t.doctorId === doc.id);
+      totalQueuedPatients += docWaiters.length;
+
+      if (!doc.isAvailable) {
+        offDutyCount++;
+      } else if (hasActive) {
+        inSessionCount++;
+      } else {
+        readyCount++;
+      }
+    });
+
+    return {
+      totalCabins: doctors.length,
+      inSessionCount,
+      readyCount,
+      offDutyCount,
+      totalQueuedPatients,
+    };
+  }, [doctors, inConsultationTokens, waitingTokens]);
+
+  // Filtered doctors for the Physician Cabin Status grid & table
   const filteredCabinDoctors = useMemo(() => {
     return doctors.filter((doctor) => {
+      const hasActive = inConsultationTokens.some((t) => t.doctorId === doctor.id);
+
       // Status filter
-      if (cabinStatusFilter === 'active' && !doctor.isAvailable) return false;
+      if (cabinStatusFilter === 'in_session' && !hasActive) return false;
+      if (cabinStatusFilter === 'ready' && (!doctor.isAvailable || hasActive)) return false;
       if (cabinStatusFilter === 'offline' && doctor.isAvailable) return false;
 
       // Floor filter
@@ -214,16 +255,15 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       if (cabinSearchQuery.trim()) {
         const q = cabinSearchQuery.toLowerCase();
         const matchName = doctor.name.toLowerCase().includes(q);
-        const matchSpecialty = doctor.specialty.toLowerCase().includes(q);
-        const matchDepartment = doctor.department?.toLowerCase().includes(q);
-        const matchRoom = doctor.roomNumber.toLowerCase().includes(q);
+        const matchSpecialty = (doctor.specialty || '').toLowerCase().includes(q);
+        const matchDepartment = (doctor.department || '').toLowerCase().includes(q);
+        const matchRoom = (doctor.roomNumber || '').toLowerCase().includes(q);
         if (!matchName && !matchSpecialty && !matchDepartment && !matchRoom) return false;
       }
 
       return true;
     });
-  }, [doctors, cabinStatusFilter, cabinFloorFilter, cabinSearchQuery]);
-
+  }, [doctors, inConsultationTokens, cabinStatusFilter, cabinFloorFilter, cabinSearchQuery]);
 
   const handleCallNext = async (doctorId?: string) => {
     const targetToken = doctorId
@@ -239,6 +279,22 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
     onShowToast?.(`🔊 Now Calling: ${targetToken.tokenNumber} - ${targetToken.patientName}`);
   };
 
+  const handleAdmitNextPatient = async (doctorId: string) => {
+    const docWaiting = waitingTokens.filter((t) => t.doctorId === doctorId);
+    const target = docWaiting[0];
+    if (!target) {
+      onShowToast?.('No waiting patients found for this cabin.');
+      return;
+    }
+    await updateTokenStatus(target.id, 'In Consultation');
+    onShowToast?.(`Token ${target.tokenNumber} (${target.patientName}) admitted into consultation.`);
+  };
+
+  const handleCompleteCurrentConsultation = async (consultationId: string, patientName: string) => {
+    await updateTokenStatus(consultationId, 'Completed');
+    onShowToast?.(`Consultation for ${patientName} marked completed.`);
+  };
+
   const handlePrintRoster = () => {
     window.print();
     onShowToast?.('Opening print dialog for today’s OPD roster...');
@@ -252,7 +308,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 w-full">
         {/* Waiting in Queue */}
         <div
-          onClick={() => onNavigateTab?.('queue')}
+          onClick={() => setActiveOperationsTab('queue')}
           className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
           <div className="flex items-start justify-between gap-1.5">
@@ -276,7 +332,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
         {/* In Consultation */}
         <div
-          onClick={() => onNavigateTab?.('queue')}
+          onClick={() => setActiveOperationsTab('cabins')}
           className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-teal-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
           <div className="flex items-start justify-between gap-1.5">
@@ -300,7 +356,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
         {/* On-Duty Doctors */}
         <div
-          onClick={() => onNavigateTab?.('doctors')}
+          onClick={() => setActiveOperationsTab('cabins')}
           className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
           <div className="flex items-start justify-between gap-1.5">
@@ -343,7 +399,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
         {/* Online App Tokens */}
         <div
-          onClick={() => onNavigateTab?.('bookings')}
+          onClick={() => setActiveOperationsTab('prebooked')}
           className="min-w-0 bg-white p-3.5 sm:p-4.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
         >
           <div className="flex items-start justify-between gap-1.5">
@@ -627,7 +683,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
 
               {/* 2. Express Arrival Check-In (Medical Cyan & Ocean Sky) */}
               <button
-                onClick={() => onNavigateTab?.('checkin')}
+                onClick={() => setActiveOperationsTab('prebooked')}
                 className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-sky-50/90 via-cyan-50/50 to-sky-100/50 border border-sky-200/90 hover:border-sky-400 shadow-2xs hover:shadow-md hover:shadow-sky-900/10 transition-all duration-200 flex flex-col justify-between items-start text-left cursor-pointer group hover:-translate-y-0.5 relative overflow-hidden h-[122px] shrink-0"
               >
                 {/* Subtle Clinical Mesh Pattern */}
@@ -737,8 +793,88 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
+          OPD OPERATIONAL CONSOLE: STREAM TAB BAR
+          Switch between: Physician Cabins, Waiting Hall Queue, Pre-Booked Arrivals
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="sticky top-[69px] z-20 bg-[#F8FAFB]/95 backdrop-blur-md py-3 -mx-1 px-1 transition-all flex justify-center">
+        <div className="inline-flex items-center p-1.5 bg-white rounded-full border border-slate-200/90 shadow-md shadow-slate-200/60 max-w-full overflow-x-auto no-scrollbar gap-1.5 ring-1 ring-slate-100">
+          {/* Tab 1: Physician Cabins */}
+          <button
+            type="button"
+            onClick={() => setActiveOperationsTab('cabins')}
+            className={`px-5 py-2.5 rounded-full text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeOperationsTab === 'cabins'
+                ? 'bg-gradient-to-r from-[#0B5A54] to-teal-800 text-white shadow-md shadow-teal-900/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
+            }`}
+          >
+            <Stethoscope className={`w-4 h-4 ${activeOperationsTab === 'cabins' ? 'text-teal-200' : 'text-[#0B5A54]'}`} />
+            <span>Physician Cabins</span>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeOperationsTab === 'cabins'
+                  ? 'bg-white/20 text-white border-white/30'
+                  : 'bg-teal-50 text-[#0B5A54] border-teal-200'
+              }`}
+            >
+              {cabinTelemetry.inSessionCount > 0 ? `${cabinTelemetry.inSessionCount} In Session` : `${cabinTelemetry.totalCabins} Cabins`}
+            </span>
+          </button>
+
+          {/* Tab 2: Waiting Hall Queue */}
+          <button
+            type="button"
+            onClick={() => setActiveOperationsTab('queue')}
+            className={`px-5 py-2.5 rounded-full text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeOperationsTab === 'queue'
+                ? 'bg-gradient-to-r from-[#0B5A54] to-teal-800 text-white shadow-md shadow-teal-900/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
+            }`}
+          >
+            <Clock className={`w-4 h-4 ${activeOperationsTab === 'queue' ? 'text-teal-200' : 'text-amber-600'}`} />
+            <span>Waiting Hall Queue</span>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeOperationsTab === 'queue'
+                  ? 'bg-white/20 text-white border-white/30'
+                  : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}
+            >
+              {waitingTokens.length} Waiting
+            </span>
+          </button>
+
+          {/* Tab 3: Pre-Booked Online */}
+          <button
+            type="button"
+            onClick={() => setActiveOperationsTab('prebooked')}
+            className={`px-5 py-2.5 rounded-full text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeOperationsTab === 'prebooked'
+                ? 'bg-gradient-to-r from-[#0B5A54] to-teal-800 text-white shadow-md shadow-teal-900/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90'
+            }`}
+          >
+            <Smartphone className={`w-4 h-4 ${activeOperationsTab === 'prebooked' ? 'text-teal-200' : 'text-purple-600'}`} />
+            <span>Pre-Booked Arrivals</span>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeOperationsTab === 'prebooked'
+                  ? 'bg-white/20 text-white border-white/30'
+                  : pendingOnlineArrivals.length > 0
+                  ? 'bg-purple-100 text-purple-900 border-purple-300 animate-pulse'
+                  : 'bg-purple-50 text-purple-700 border-purple-200'
+              }`}
+            >
+              {pendingOnlineArrivals.length > 0 ? `${pendingOnlineArrivals.length} Awaiting` : `${onlineTokens.length}`}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
           3.5 PRE-BOOKED ONLINE APPOINTMENTS & EXPECTED ARRIVALS
       ══════════════════════════════════════════════════════════════════ */}
+      {activeOperationsTab === 'prebooked' && (
       <div className="w-full bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="space-y-1">
@@ -967,10 +1103,12 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           4. WAITING HALL QUEUE STREAM (FULL PAGE WIDTH)
       ══════════════════════════════════════════════════════════════════ */}
+      {activeOperationsTab === 'queue' && (
       <div className="w-full bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="space-y-1">
@@ -1067,125 +1205,233 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
-          5. PHYSICIAN CABIN STATUS (PLACED DIRECTLY DOWN TO WAITING HALL QUEUE STREAM)
-          PREMIUM TELEMETRY & LIVE ROOM PRESENCE CONSOLE
+          5. PHYSICIAN CABIN STATUS & LIVE TELEMETRY CONSOLE
+          ULTRA-PREMIUM MEDICAL COMMAND CENTER & ROOM PRESENCE
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-md space-y-6">
-        {/* Header with Title, Live Telemetry Beacon, and Manage Shortcut */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] flex items-center justify-center shadow-xs">
-                <Stethoscope className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base sm:text-xl font-black text-slate-900 font-heading flex items-center gap-2">
-                  Physician Cabin Status
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live Presence
-                  </span>
+      {activeOperationsTab === 'cabins' && (
+      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-sm space-y-6 relative overflow-hidden">
+        {/* Subtle Ambient Decorative Gradient Glow */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-teal-100/30 via-emerald-100/20 to-transparent rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+
+        {/* ── Section Header with Telemetry Beacon, View Toggles & Actions ── */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-100 relative z-10">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0B5A54] to-teal-700 text-white flex items-center justify-center shadow-lg shadow-teal-900/15 shrink-0 ring-4 ring-teal-50">
+              <Stethoscope className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 font-heading tracking-tight">
+                  Physician Cabin Status & Telemetry
                 </h2>
-                <p className="text-xs text-slate-500 font-medium">
-                  Real-time consultation room occupancy, duty presence, and waiting load across hospital floors.
-                </p>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black uppercase tracking-wider shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Presence Console
+                </span>
               </div>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 max-w-2xl">
+                Real-time room occupancy, clinician duty presence, active in-cabin patient encounters, and waiting load across OPD wings.
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <div className="flex items-center gap-2.5 self-start lg:self-auto shrink-0 flex-wrap">
+            {/* View Mode Toggle: Grid vs Table */}
+            <div className="inline-flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/80 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setCabinViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  cabinViewMode === 'grid'
+                    ? 'bg-white text-[#0B5A54] shadow-xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Card Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCabinViewMode('table')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  cabinViewMode === 'table'
+                    ? 'bg-white text-[#0B5A54] shadow-xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Table Telemetry Board"
+              >
+                <ListFilter className="w-4 h-4" />
+                <span className="hidden sm:inline">Board</span>
+              </button>
+            </div>
+
             <button
               onClick={() => onNavigateTab?.('doctors')}
-              className="px-3.5 py-2 bg-slate-50 hover:bg-teal-50 text-[#0B5A54] hover:text-[#084540] border border-slate-200 hover:border-teal-200 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95"
+              className="px-4 py-2 bg-slate-50 hover:bg-teal-50 text-[#0B5A54] hover:text-[#084540] border border-slate-200 hover:border-teal-300 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs hover:shadow-xs hover:scale-105 active:scale-95"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Manage All Doctors</span>
+              <span>Manage Doctors & Slots</span>
             </button>
           </div>
         </div>
 
-        {/* Filter and Search Bar Controls */}
-        <div className="space-y-3">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            {/* Status Filter Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/60">
+        {/* ── High-Level Telemetry 4-Metric Bar ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
+          <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Cabins</span>
+              <p className="text-xl font-black text-slate-900 font-mono">{cabinTelemetry.totalCabins}</p>
+              <p className="text-[11px] text-slate-500 font-medium">Configured Rooms</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-white text-slate-700 border border-slate-200 flex items-center justify-center shadow-2xs">
+              <DoorOpen className="w-4 h-4 text-slate-600" />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">In Consultation</span>
+              <p className="text-xl font-black text-emerald-800 font-mono">{cabinTelemetry.inSessionCount}</p>
+              <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Active In-Cabin
+              </p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-white text-emerald-700 border border-emerald-200 flex items-center justify-center shadow-2xs">
+              <Activity className="w-4 h-4 text-emerald-600" />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/80 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#0B5A54]">Cabin Ready</span>
+              <p className="text-xl font-black text-[#0B5A54] font-mono">{cabinTelemetry.readyCount}</p>
+              <p className="text-[11px] text-teal-700 font-medium">Available for Intake</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-white text-[#0B5A54] border border-teal-200 flex items-center justify-center shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-[#0B5A54]" />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800">Waiting Load</span>
+              <p className="text-xl font-black text-amber-800 font-mono">{cabinTelemetry.totalQueuedPatients}</p>
+              <p className="text-[11px] text-amber-700 font-bold">Patients in Queue</p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-white text-amber-700 border border-amber-200 flex items-center justify-center shadow-2xs">
+              <Users className="w-4 h-4 text-amber-600" />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Filter Bar, Floor Selector & Search Console ── */}
+        <div className="space-y-3 relative z-10">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/70">
               <button
+                type="button"
                 onClick={() => setCabinStatusFilter('all')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   cabinStatusFilter === 'all'
-                    ? 'bg-white text-slate-900 shadow-xs'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                All Cabins ({doctors.length})
+                All Cabins ({cabinTelemetry.totalCabins})
               </button>
               <button
-                onClick={() => setCabinStatusFilter('active')}
+                type="button"
+                onClick={() => setCabinStatusFilter('in_session')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  cabinStatusFilter === 'active'
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                  cabinStatusFilter === 'in_session'
+                    ? 'bg-emerald-600 text-white shadow-xs font-black'
                     : 'text-emerald-700 hover:bg-white/60'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${cabinStatusFilter === 'active' ? 'bg-white' : 'bg-emerald-500'}`} />
-                <span>On-Duty ({activeDoctors.length})</span>
+                <span className={`w-2 h-2 rounded-full ${cabinStatusFilter === 'in_session' ? 'bg-white' : 'bg-emerald-500'}`} />
+                <span>In Session ({cabinTelemetry.inSessionCount})</span>
               </button>
               <button
+                type="button"
+                onClick={() => setCabinStatusFilter('ready')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  cabinStatusFilter === 'ready'
+                    ? 'bg-[#0B5A54] text-white shadow-xs font-black'
+                    : 'text-teal-800 hover:bg-white/60'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${cabinStatusFilter === 'ready' ? 'bg-white' : 'bg-teal-500'}`} />
+                <span>On-Duty • Ready ({cabinTelemetry.readyCount})</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setCabinStatusFilter('offline')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   cabinStatusFilter === 'offline'
-                    ? 'bg-slate-700 text-white shadow-xs'
+                    ? 'bg-slate-700 text-white shadow-xs font-black'
                     : 'text-slate-600 hover:bg-white/60'
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full ${cabinStatusFilter === 'offline' ? 'bg-white' : 'bg-slate-400'}`} />
-                <span>Off-Duty ({offDutyDoctors.length})</span>
+                <span>Off-Duty ({cabinTelemetry.offDutyCount})</span>
               </button>
             </div>
 
             {/* Floor Filter & Search Bar */}
-            <div className="flex items-center gap-2">
-              {/* Floor Dropdown/Selector */}
+            <div className="flex items-center gap-2.5 flex-1 lg:max-w-xl">
+              {/* Floor Dropdown */}
               <div className="relative shrink-0">
                 <select
                   value={cabinFloorFilter}
                   onChange={(e) => setCabinFloorFilter(e.target.value)}
-                  className="text-xs font-bold bg-white text-slate-700 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs appearance-none pr-8"
+                  className="text-xs font-bold bg-white text-slate-700 border border-slate-200 rounded-xl pl-3 pr-8 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs appearance-none"
                 >
                   <option value="all">All Floors</option>
                   {availableFloors.map((fl) => (
-                        <option key={fl} value={fl}>
-                          {fl}
-                        </option>
+                    <option key={fl} value={fl}>
+                      {fl}
+                    </option>
                   ))}
                 </select>
                 <Building2 className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
-              {/* Search Input */}
-              <div className="relative flex-1 md:w-64">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              {/* Wide Search Input with Clear Button */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search doctor or cabin..."
+                  placeholder="Search doctor name, cabin, specialty, or department..."
                   value={cabinSearchQuery}
                   onChange={(e) => setCabinSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50 hover:bg-white transition-all"
+                  className="w-full pl-9 pr-8 py-2.5 text-xs font-medium rounded-xl border border-slate-200/90 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/70 hover:bg-white transition-all shadow-2xs"
                 />
+                {cabinSearchQuery && (
+                  <button
+                    onClick={() => setCabinSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Cabin Cards Responsive Multi-Column Grid */}
+        {/* ── Content: Empty State, Grid View or Table View ── */}
         {filteredCabinDoctors.length === 0 ? (
-          <div className="p-10 text-center bg-slate-50/70 rounded-3xl border border-dashed border-slate-200 space-y-2.5">
-            <Building2 className="w-9 h-9 text-slate-300 mx-auto" />
-            <h4 className="text-sm font-black text-slate-700">No physician cabins match your criteria</h4>
+          <div className="p-12 text-center bg-slate-50/70 rounded-3xl border border-dashed border-slate-200 space-y-3">
+            <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
+            <h4 className="text-base font-black text-slate-700">No physician cabins match your criteria</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Try adjusting the floor, availability status, or search query filter to inspect other cabins.
+              Try adjusting the floor, duty status filter, or search keywords to view other consultation rooms.
             </p>
             <button
               onClick={() => {
@@ -1198,34 +1444,169 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
               Reset Filters
             </button>
           </div>
+        ) : cabinViewMode === 'table' ? (
+          /* ── High-Density Hospital Central Telemetry Table ── */
+          <div className="overflow-x-auto rounded-2xl border border-slate-200/90 shadow-2xs bg-white">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/80 text-slate-500 font-mono uppercase text-[10px] tracking-wider border-b border-slate-200/80">
+                <tr>
+                  <th className="py-3.5 px-4 font-bold">Cabin Room</th>
+                  <th className="py-3.5 px-4 font-bold">Attending Clinician</th>
+                  <th className="py-3.5 px-4 font-bold">Duty Status</th>
+                  <th className="py-3.5 px-4 font-bold">Current In-Cabin Encounter</th>
+                  <th className="py-3.5 px-4 font-bold">Queue Load</th>
+                  <th className="py-3.5 px-4 font-bold text-right">Quick Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredCabinDoctors.map((doctor) => {
+                  const activeConsultation = inConsultationTokens.find((t) => t.doctorId === doctor.id);
+                  const docWaitingTokens = waitingTokens.filter((t) => t.doctorId === doctor.id);
+                  const nextWaiting = docWaitingTokens[0];
+                  const isBusy = !!activeConsultation;
+
+                  return (
+                    <tr key={doctor.id} className="hover:bg-teal-50/30 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                        <div className="flex items-center gap-2">
+                          <DoorOpen className="w-4 h-4 text-[#0B5A54]" />
+                          <span>{doctor.roomNumber || 'Cabin 101'}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <DoctorAvatar
+                            photo={doctor.photo}
+                            name={doctor.name}
+                            specialty={doctor.specialty}
+                            size="sm"
+                            status={doctor.isAvailable ? 'active' : 'offline'}
+                          />
+                          <div>
+                            <div className="font-extrabold text-slate-900 text-sm">{doctor.name}</div>
+                            <div className="text-[11px] text-teal-800 font-bold">{doctor.specialty}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {isBusy ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            In Session
+                          </span>
+                        ) : doctor.isAvailable ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 text-[#0B5A54] border border-teal-200 text-[10px] font-black uppercase">
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                            On-Duty
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-black uppercase">
+                            Off-Duty
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {isBusy && activeConsultation ? (
+                          <div className="space-y-0.5">
+                            <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.2 bg-teal-100 text-teal-900 font-mono rounded text-[10px]">
+                                {activeConsultation.tokenNumber}
+                              </span>
+                              <span>{activeConsultation.patientName}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">Slot: {activeConsultation.timeSlot}</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">Room Free / Idle</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-lg font-mono font-bold text-[11px] ${
+                            docWaitingTokens.length > 0 ? 'bg-[#0B5A54] text-white' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {docWaitingTokens.length} Queued
+                          </span>
+                          {nextWaiting && (
+                            <span className="text-[11px] text-slate-600 font-medium">
+                              Next: <strong className="text-slate-900">{nextWaiting.tokenNumber}</strong>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {docWaitingTokens.length > 0 && doctor.isAvailable ? (
+                          <button
+                            onClick={() => handleCallNext(doctor.id)}
+                            className="px-3 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-[11px] rounded-xl transition-all cursor-pointer shadow-xs inline-flex items-center gap-1 hover:scale-105 active:scale-95"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>Call Next</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setInspectingCabinDoctor(doctor)}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                          >
+                            Inspect
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          /* ── Modern Executive Multi-Column Cabin Cards Grid ── */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
             {filteredCabinDoctors.map((doctor) => {
+              const activeConsultation = inConsultationTokens.find((t) => t.doctorId === doctor.id);
               const docWaitingTokens = waitingTokens.filter((t) => t.doctorId === doctor.id);
               const nextWaiting = docWaitingTokens[0];
+              const isBusy = !!activeConsultation;
 
               return (
                 <div
                   key={doctor.id}
-                  className={`group rounded-3xl p-5 border transition-all duration-200 relative overflow-hidden flex flex-col justify-between space-y-4 hover:shadow-lg hover:-translate-y-0.5 ${
-                    doctor.isAvailable
-                      ? 'bg-white border-slate-200/90 hover:border-emerald-300 shadow-2xs'
-                      : 'bg-slate-50/70 border-slate-200 opacity-90 hover:opacity-100 hover:border-slate-300'
+                  className={`group rounded-3xl p-5 sm:p-6 border transition-all duration-300 relative overflow-hidden flex flex-col justify-between space-y-4 hover:shadow-xl hover:-translate-y-1 ${
+                    isBusy
+                      ? 'bg-gradient-to-b from-teal-50/50 via-white to-white border-teal-300/90 shadow-xs'
+                      : doctor.isAvailable
+                      ? 'bg-white border-slate-200/90 hover:border-teal-300 shadow-2xs'
+                      : 'bg-slate-50/70 border-slate-200/90 opacity-90 hover:opacity-100 hover:border-slate-300'
                   }`}
                 >
+                  {/* Top Ambient Status Accent Bar */}
+                  <div
+                    className={`absolute top-0 left-0 right-0 h-1.5 ${
+                      isBusy
+                        ? 'bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-400'
+                        : doctor.isAvailable
+                        ? 'bg-gradient-to-r from-[#0B5A54] to-teal-400'
+                        : 'bg-slate-300'
+                    }`}
+                  />
+
                   {/* Top Header: Cabin Room Pill & Live State Badge */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 border border-slate-200/80 text-slate-800 text-xs font-black font-mono">
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/80 text-slate-800 text-xs font-black font-mono">
                       <DoorOpen className="w-3.5 h-3.5 text-[#0B5A54]" />
-                      <span className="truncate">{doctor.roomNumber || 'Cabin 101'}</span>
+                      <span>{doctor.roomNumber || 'Cabin 101'}</span>
                     </div>
 
                     {/* Status Beacon Badge */}
                     <div className="shrink-0">
-                      {doctor.isAvailable ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-black uppercase tracking-wider">
+                      {isBusy ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-black uppercase tracking-wider shadow-2xs">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          On-Duty
+                          In Session
+                        </span>
+                      ) : doctor.isAvailable ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-[#0B5A54] border border-teal-200 text-[11px] font-black uppercase tracking-wider">
+                          <span className="w-2 h-2 rounded-full bg-teal-500" />
+                          On-Duty • Ready
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-black uppercase tracking-wider">
@@ -1237,7 +1618,7 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                   </div>
 
                   {/* Doctor Profile Info Row */}
-                  <div className="flex items-center gap-3.5 pt-1">
+                  <div className="flex items-start gap-3.5 pt-1">
                     <DoctorAvatar
                       photo={doctor.photo}
                       name={doctor.name}
@@ -1246,97 +1627,204 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                       status={doctor.isAvailable ? 'active' : 'offline'}
                     />
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
-                          {doctor.name}
-                        </h3>
-                      </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h3 className="font-extrabold text-base text-slate-900 leading-snug">
+                        {doctor.name}
+                      </h3>
 
-                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                        <span className="text-[11px] font-bold text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 truncate">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs font-bold text-[#0B5A54] bg-teal-50/90 px-2.5 py-0.5 rounded-lg border border-teal-200/80">
                           {doctor.specialty}
                         </span>
                         {doctor.experienceYears && (
-                          <span className="text-[10px] font-semibold text-slate-500">
+                          <span className="text-[11px] font-semibold text-slate-500">
                             {doctor.experienceYears}y exp
                           </span>
                         )}
                       </div>
 
-                      {!doctor.isAvailable && (
-                        <div className="mt-2 p-2 bg-rose-50/90 rounded-xl border border-rose-200/80 text-[11px] text-rose-900 leading-tight">
-                          <span className="font-extrabold block">Reason: "{doctor.availabilityReason || 'Temporarily Stepped Out'}"</span>
-                          {doctor.unavailableUntil && <span className="text-[10px] text-rose-700 font-semibold">Expected back: {doctor.unavailableUntil}</span>}
-                        </div>
+                      {doctor.department && (
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          Dept: {doctor.department}
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Live Queue Count Status Box */}
+                  {/* ── Live In-Cabin Presence & Telemetry Center ── */}
+                  {isBusy && activeConsultation ? (
+                    /* Case 1: Active Encounter Ongoing in Room */
+                    <div className="p-3.5 rounded-2xl bg-teal-50/80 border border-teal-200/90 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono font-black uppercase text-[#0B5A54] tracking-wider flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                          In-Cabin Patient
+                        </span>
+                        <span className="px-2.5 py-0.5 bg-[#0B5A54] text-white rounded-lg font-mono text-[11px] font-black shadow-2xs">
+                          {activeConsultation.tokenNumber}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-extrabold text-sm text-slate-900 truncate">
+                            {activeConsultation.patientName}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                            Slot: {activeConsultation.timeSlot} • {activeConsultation.type}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleCompleteCurrentConsultation(activeConsultation.id, activeConsultation.patientName)}
+                          className="px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-800 hover:text-emerald-900 border border-emerald-200 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1 hover:scale-105 active:scale-95"
+                          title="Mark consultation completed"
+                        >
+                          <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                          <span>Done</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : doctor.isAvailable && nextWaiting ? (
+                    /* Case 2: Cabin Ready & Next Patient Waiting */
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono font-black uppercase text-amber-900 tracking-wider flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          Next Patient in Line
+                        </span>
+                        <span className="px-2.5 py-0.5 bg-amber-600 text-white rounded-lg font-mono text-[11px] font-black shadow-2xs">
+                          {nextWaiting.tokenNumber}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-extrabold text-sm text-slate-900 truncate">
+                            {nextWaiting.patientName}
+                          </h4>
+                          <p className="text-[11px] text-amber-800 font-semibold truncate mt-0.5">
+                            Waiting in Hall • Slot: {nextWaiting.timeSlot}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleAdmitNextPatient(doctor.id)}
+                          className="px-2.5 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1 hover:scale-105 active:scale-95"
+                          title="Admit patient directly into cabin"
+                        >
+                          <span>Admit In</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : doctor.isAvailable ? (
+                    /* Case 3: Cabin Ready & Queue Clear */
+                    <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/70 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#0B5A54] flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-800">Cabin Ready & Idle</p>
+                        <p className="text-[11px] text-slate-400 font-medium">Queue is clear for this doctor</p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Case 4: Doctor Off-Duty / Stepped Out */
+                    <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200/80 space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-rose-900">
+                        <Clock className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Doctor Stepped Out / Break</span>
+                      </div>
+                      <p className="text-xs text-rose-800 font-bold truncate">
+                        "{doctor.availabilityReason || 'Stepped out for rounds'}"
+                      </p>
+                      {doctor.unavailableUntil && (
+                        <p className="text-[11px] text-rose-700 font-medium">
+                          Expected back: <strong className="font-bold">{doctor.unavailableUntil}</strong>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Live Queue Count & Load Gauge ── */}
                   <div className="pt-1">
-                    <div
-                      className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
-                        docWaitingTokens.length > 0
-                          ? 'bg-teal-50/60 border-teal-200/80'
-                          : 'bg-slate-50/80 border-slate-200/70'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Users className={`w-4 h-4 shrink-0 ${docWaitingTokens.length > 0 ? 'text-[#0B5A54]' : 'text-slate-400'}`} />
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-200/70">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Users className="w-4 h-4 text-slate-500 shrink-0" />
                         <div className="min-w-0">
                           <span className="text-xs font-extrabold text-slate-800 block">
-                            Patients in Queue:
+                            Queue Load:
                           </span>
-                          {docWaitingTokens.length > 0 && nextWaiting && (
-                            <p className="text-[10.5px] text-[#0B5A54] font-extrabold truncate">
-                              Next: {nextWaiting.tokenNumber}
-                            </p>
-                          )}
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            {docWaitingTokens.length > 0 ? `~${docWaitingTokens.length * 10} mins wait time` : 'No backlog'}
+                          </span>
                         </div>
                       </div>
 
-                      <span
-                        className={`px-2.5 py-1 rounded-xl font-mono text-xs font-black shadow-2xs shrink-0 ${
-                          docWaitingTokens.length > 0
-                            ? 'bg-[#0B5A54] text-white'
-                            : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}
-                      >
-                        {docWaitingTokens.length} {docWaitingTokens.length === 1 ? 'Patient' : 'Patients'}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`px-2.5 py-1 rounded-xl font-mono text-xs font-black ${
+                            docWaitingTokens.length > 0
+                              ? 'bg-[#0B5A54] text-white shadow-2xs'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {docWaitingTokens.length} {docWaitingTokens.length === 1 ? 'Patient' : 'Patients'}
+                        </span>
+
+                        {docWaitingTokens.length > 0 && (
+                          <button
+                            onClick={() => setInspectingCabinDoctor(doctor)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+                            title="Inspect full queue for this cabin"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Card Footer: Action Controls & Duty Switcher */}
+                  {/* ── Card Footer: Primary Action & Live Duty Indicator ── */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                    {/* Quick Cabin-Specific Call Next Button */}
+                    {/* Primary Summon Button */}
                     {docWaitingTokens.length > 0 && doctor.isAvailable ? (
                       <button
                         onClick={() => handleCallNext(doctor.id)}
-                        className="flex-1 py-2 px-3 bg-[#0B5A54] hover:bg-[#084540] text-white text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs hover:scale-[1.02] active:scale-95"
+                        className="flex-1 py-2.5 px-4 bg-gradient-to-r from-[#0B5A54] to-teal-800 hover:from-[#084540] hover:to-[#0B5A54] text-white text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95"
                       >
-                        <Volume2 className="w-3.5 h-3.5" />
+                        <Volume2 className="w-4 h-4 text-teal-200" />
                         <span>Call Next ({nextWaiting?.tokenNumber})</span>
                       </button>
+                    ) : doctor.isAvailable ? (
+                      <button
+                        onClick={onOpenNewAppointment}
+                        className="flex-1 py-2.5 px-3 bg-teal-50 hover:bg-teal-100 text-[#0B5A54] border border-teal-200 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Assign Walk-In</span>
+                      </button>
                     ) : (
-                      <div className="flex-1 text-[11px] text-slate-400 font-medium">
-                        {doctor.isAvailable ? 'Cabin Ready' : 'Shift Paused'}
+                      <div className="flex-1 py-2 text-center text-xs text-slate-400 font-bold bg-slate-100 rounded-xl">
+                        Shift Paused
                       </div>
                     )}
 
-                    {/* Read-Only Live Duty Presence Indicator */}
+                    {/* Live Duty Presence Chip */}
                     <div
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-2xs select-none ${
-                        doctor.isAvailable
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 shadow-2xs select-none ${
+                        isBusy
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                          : doctor.isAvailable
+                          ? 'bg-teal-50 text-[#0B5A54] border border-teal-200'
                           : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
-                      title={`Doctor Duty Status: ${doctor.isAvailable ? 'Active On-Duty' : 'Off-Duty (Set by Doctor/Admin)'}`}
                     >
-                      {doctor.isAvailable ? (
+                      {isBusy ? (
                         <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>In Session</span>
+                        </>
+                      ) : doctor.isAvailable ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
                           <span>Active</span>
                         </>
                       ) : (
@@ -1353,6 +1841,106 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
           </div>
         )}
       </div>
+      )}
+
+      {/* ── Inspect Cabin Queue Modal ── */}
+      {inspectingCabinDoctor && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 border border-slate-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#0B5A54] border border-teal-200 flex items-center justify-center">
+                  <DoorOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    {inspectingCabinDoctor.roomNumber || 'Cabin 101'} Queue
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Dr. {inspectingCabinDoctor.name} • {inspectingCabinDoctor.specialty}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInspectingCabinDoctor(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {waitingTokens.filter((t) => t.doctorId === inspectingCabinDoctor.id).length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700">Queue is clear!</p>
+                  <p className="text-xs text-slate-400">No patients waiting for this cabin.</p>
+                </div>
+              ) : (
+                waitingTokens
+                  .filter((t) => t.doctorId === inspectingCabinDoctor.id)
+                  .map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between gap-3 hover:bg-teal-50/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-600 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-black text-xs text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                              {item.tokenNumber}
+                            </span>
+                            <span className="font-extrabold text-slate-900 text-xs truncate">
+                              {item.patientName}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Slot: {item.timeSlot} • {item.type}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => {
+                            handleCallNext(inspectingCabinDoctor.id);
+                            setInspectingCabinDoctor(null);
+                          }}
+                          className="px-2.5 py-1.5 bg-[#0B5A54] hover:bg-[#084540] text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                          <span>Call</span>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await updateTokenStatus(item.id, 'In Consultation');
+                            onShowToast?.(`Token ${item.tokenNumber} admitted into consultation.`);
+                            setInspectingCabinDoctor(null);
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-extrabold text-xs rounded-xl transition-all cursor-pointer"
+                        >
+                          Admit
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setInspectingCabinDoctor(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

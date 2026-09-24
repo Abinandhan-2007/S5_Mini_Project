@@ -309,6 +309,14 @@ export const ReceptionistLayout: React.FC = () => {
 
   const headerContext = getHeaderContext();
 
+  const hospitalDisplayName =
+    (currentStaff?.hospitalName && currentStaff.hospitalName !== 'CarePulse Medical Center' ? currentStaff.hospitalName : null) ||
+    (currentStaff?.hospital_name && currentStaff.hospital_name !== 'CarePulse Medical Center' ? currentStaff.hospital_name : null) ||
+    (profile?.hospitalName && profile.hospitalName !== 'CarePulse Medical Center' ? profile.hospitalName : null) ||
+    (profile?.clinicName && profile.clinicName !== 'CarePulse Medical Center' ? profile.clinicName : null) ||
+    (hospitalSettings?.name && hospitalSettings.name !== 'CarePulse Medical Center' ? hospitalSettings.name : null) ||
+    'BAG Hospital';
+
   return (
     <div className="min-h-screen bg-[#F8FAFB] flex font-sans text-slate-800 antialiased selection:bg-[#0B5A54] selection:text-white">
       {/* ── Toast Feedback Notification ── */}
@@ -331,24 +339,25 @@ export const ReceptionistLayout: React.FC = () => {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        className={`fixed top-0 bottom-0 left-0 z-40 w-72 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
           }`}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-teal-50/20 via-white to-white">
             <CarePulseLogo
               variant="horizontal"
               size="sm"
-              theme="auto"
+              theme="light"
               badge="Front Desk"
-              subtitle={currentStaff?.hospitalName || currentStaff?.hospital_name || profile?.clinicName || profile?.hospitalName || hospitalSettings.name || 'OPD Reception Center'}
+              subtitle={hospitalDisplayName}
+              subtitleClassName="font-extrabold text-slate-800 text-[11px]"
               onClick={() => setActiveTab('dashboard')}
             />
 
             <button
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 lg:hidden cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -392,12 +401,12 @@ export const ReceptionistLayout: React.FC = () => {
                           setActiveTab(item.id);
                           setIsMobileSidebarOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${isActive
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${isActive
                           ? 'bg-teal-50/90 text-[#0B5A54] font-black shadow-2xs border border-teal-200/70'
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                           }`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0 pr-1">
                           {/* Active Accent Bar */}
                           {isActive && (
                             <div className="w-1.5 h-4 bg-[#0B5A54] rounded-full shrink-0 -ml-0.5" />
@@ -415,7 +424,7 @@ export const ReceptionistLayout: React.FC = () => {
                         {/* Optional Count Badge */}
                         {item.badge && (
                           <span
-                            className={`text-[10px] font-black px-1.5 py-0.2 rounded-full border shadow-2xs shrink-0 ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-full border shadow-2xs shrink-0 ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
                               }`}
                           >
                             {item.badge}
@@ -430,14 +439,14 @@ export const ReceptionistLayout: React.FC = () => {
           </nav>
         </div>
 
-        {/* ── Sidebar Footer: Red Logout Button ── */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/40 shrink-0">
+        {/* ── Sidebar Footer: Sleek Logout Action ── */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50 shrink-0">
           <button
             onClick={() => setShowLogoutWarning(true)}
-            className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-red-600/20 hover:shadow-md hover:shadow-red-600/30 transition-all cursor-pointer"
+            className="w-full py-2.5 px-3.5 rounded-xl bg-slate-100/80 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200/80 hover:border-rose-200 font-bold text-xs flex items-center justify-center gap-2 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
           >
-            <LogOut className="w-4 h-4 text-white" />
-            <span>Logout</span>
+            <LogOut className="w-4 h-4 text-slate-400 group-hover:text-rose-600 group-hover:-translate-x-0.5 transition-all" />
+            <span>End Shift & Logout</span>
           </button>
         </div>
       </aside>
@@ -445,7 +454,7 @@ export const ReceptionistLayout: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════
           MAIN CONTENT AREA & TOP BAR
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen min-w-0 max-w-full overflow-x-hidden">
+      <div className="flex-1 lg:pl-72 flex flex-col min-h-screen min-w-0 max-w-full overflow-x-hidden">
         {/* ── Executive Top Bar ── */}
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">

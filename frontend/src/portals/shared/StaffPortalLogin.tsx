@@ -294,9 +294,12 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         email: 'rec@carepulse.com',
         department: 'Front Desk & Registrations',
         hospital_id: 'hosp-bag',
+        hospital_name: 'BAG Hospital',
+        hospitalName: 'BAG Hospital',
         staff_code: 'R001101',
       };
       const hospId = (rec as any).hospital_id || (rec as any).hospitalId || 'hosp-bag';
+      const hospName = (rec as any).hospitalName || (rec as any).hospital_name || 'BAG Hospital';
       setStaffAuth(
         {
           id: rec.id,
@@ -306,6 +309,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
           department: rec.department,
           hospitalId: hospId,
           hospital_id: hospId,
+          hospitalName: hospName,
+          hospital_name: hospName,
           staff_code: (rec as any).staff_code || (rec as any).staffCode || 'R001101',
           staffCode: (rec as any).staffCode || (rec as any).staff_code || 'R001101',
         },

@@ -63,7 +63,7 @@ const getStoredStaff = (): Staff | null => {
 export const getInitialReceptionistProfile = (): ReceptionistProfile => {
   const storedStaff = getStoredStaff();
   if (storedStaff && storedStaff.role === 'receptionist') {
-    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || 'CarePulse Medical Center';
+    const hospName = storedStaff.hospitalName || storedStaff.hospital_name || 'BAG Hospital';
     const empId = storedStaff.staffCode || storedStaff.staff_code || '';
     const emailPrefix = storedStaff.email ? storedStaff.email.split('@')[0] : 'receptionist';
     return {
@@ -77,7 +77,7 @@ export const getInitialReceptionistProfile = (): ReceptionistProfile => {
       staffCode: empId,
       clinicName: hospName,
       hospitalName: hospName,
-      hospitalId: storedStaff.hospitalId || undefined,
+      hospitalId: storedStaff.hospitalId || 'hosp-bag',
       deskName: storedStaff.deskName || 'Main Reception & OPD Desk',
       department: storedStaff.department || 'Front Desk & Patient Triage',
       shift: 'Morning Shift (08:00 AM - 04:00 PM)',
@@ -96,9 +96,9 @@ export const getInitialReceptionistProfile = (): ReceptionistProfile => {
     phone: '',
     employeeId: '',
     staffCode: '',
-    clinicName: 'CarePulse Medical Center',
-    hospitalName: 'CarePulse Medical Center',
-    hospitalId: '',
+    clinicName: 'BAG Hospital',
+    hospitalName: 'BAG Hospital',
+    hospitalId: 'hosp-bag',
     deskName: 'Main Reception & OPD Desk',
     department: 'Front Desk & Patient Triage',
     shift: 'Morning Shift (08:00 AM - 04:00 PM)',

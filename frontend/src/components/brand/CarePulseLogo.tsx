@@ -5,6 +5,7 @@ export interface CarePulseLogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   theme?: 'light' | 'dark' | 'auto';
   subtitle?: string;
+  subtitleClassName?: string;
   badge?: string;
   className?: string;
   onClick?: () => void;
@@ -15,6 +16,7 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
   size = 'md',
   theme = 'auto',
   subtitle = 'Empathetic Healthcare',
+  subtitleClassName,
   badge,
   className = '',
   onClick,
@@ -45,19 +47,12 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
   }[size];
 
   // Theme color definitions
-  const titleColor =
-    theme === 'dark'
-      ? 'text-white'
-      : theme === 'light'
-      ? 'text-[#0B5A54]'
-      : 'text-slate-900 dark:text-white';
-
-  const subtitleColor =
-    theme === 'dark'
-      ? 'text-teal-200/80'
-      : theme === 'light'
-      ? 'text-[#0B5A54]/70'
-      : 'text-slate-500 dark:text-teal-200/80';
+  const isDark = theme === 'dark';
+  const titleColor = isDark ? 'text-white' : 'text-slate-900';
+  const subtitleColor = isDark ? 'text-teal-200/90' : 'text-slate-500';
+  const badgeClasses = isDark
+    ? 'bg-teal-900/60 border-teal-500/40 text-teal-200'
+    : 'bg-teal-50/90 border-teal-200 text-[#0B5A54]';
 
   // Standalone vector hospital medical emblem
   const LogoMark = (
@@ -160,13 +155,15 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
         className={`flex flex-col items-center text-center group cursor-pointer ${className}`}
         onClick={onClick}
       >
-        <div className="mb-2.5 p-1 rounded-2xl bg-white/90 shadow-sm border border-slate-100">
+        <div className="mb-2.5 p-1 rounded-2xl bg-white shadow-xs border border-slate-200/90 ring-2 ring-teal-50/80">
           {LogoMark}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={`font-heading ${titleSizes} ${titleColor}`}>CAREPULSE</span>
+          <span className={`font-heading font-black tracking-tight ${titleSizes} ${titleColor}`}>
+            CAREPULSE
+          </span>
           {badge && (
-            <span className="px-1.5 py-0.5 text-[9px] uppercase font-black tracking-wider rounded-md bg-teal-50 border border-teal-200 text-[#0B5A54]">
+            <span className={`px-2 py-0.5 text-[9px] uppercase font-black tracking-wider rounded-full border shadow-2xs ${badgeClasses}`}>
               {badge}
             </span>
           )}
@@ -187,29 +184,25 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
       className={`inline-flex items-center gap-3 group select-none ${onClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
     >
-      <div className="p-0.5 rounded-2xl bg-white shadow-xs border border-slate-200/80 shrink-0 transition-transform group-hover:scale-102">
+      <div className="p-1 rounded-2xl bg-white shadow-xs border border-slate-200/90 ring-2 ring-teal-50/80 shrink-0 transition-transform group-hover:scale-105">
         {LogoMark}
       </div>
 
       <div className="flex flex-col justify-center min-w-0">
         <div className="flex items-center gap-2 leading-none">
-          <span className={`font-heading tracking-tight ${titleSizes} ${titleColor}`}>
+          <span className={`font-heading font-black tracking-tight ${titleSizes} ${titleColor}`}>
             CAREPULSE
           </span>
           {badge && (
             <span
-              className={`px-2 py-0.5 text-[10px] uppercase font-extrabold tracking-wider rounded-md shrink-0 ${
-                theme === 'dark'
-                  ? 'bg-teal-400/20 border border-teal-300/40 text-teal-200'
-                  : 'bg-teal-50 border border-teal-200 text-[#0F766E]'
-              }`}
+              className={`px-2 py-0.5 text-[9.5px] uppercase font-black tracking-wider rounded-full border shadow-2xs shrink-0 ${badgeClasses}`}
             >
               {badge}
             </span>
           )}
         </div>
         {subtitle && (
-          <p className={`font-medium tracking-wide mt-0.5 truncate ${subSizes} ${subtitleColor}`}>
+          <p className={`tracking-normal mt-0.5 truncate ${subSizes} ${subtitleClassName || `${subtitleColor} font-bold`}`}>
             {subtitle}
           </p>
         )}
