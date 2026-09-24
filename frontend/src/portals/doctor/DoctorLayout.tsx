@@ -467,11 +467,11 @@ export const DoctorLayout: React.FC = () => {
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* ── CarePulse Brand Header ── */}
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-teal-50/20 via-white to-white">
             <CarePulseLogo
               variant="horizontal"
               size="sm"
-              theme="auto"
+              theme="light"
               badge="MD"
               subtitle="Doctor Workspace"
               onClick={() => setActiveTab('dashboard')}
