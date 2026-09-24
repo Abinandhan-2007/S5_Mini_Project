@@ -483,11 +483,32 @@ def create_doctor_consultation(
     if not derived_hospital_id:
         derived_hospital_id = "hosp-1"
 
-    meds_list = data.soapData.get("prescriptions", []) if isinstance(data.soapData, dict) else []
+    soap_dict = data.soapData if isinstance(data.soapData, dict) else {}
+    target_appt_id = data.appointmentId or soap_dict.get("appointment_id") or soap_dict.get("appointmentId")
+    if target_appt_id:
+        soap_dict["appointment_id"] = str(target_appt_id)
+        soap_dict["appointmentId"] = str(target_appt_id)
+
+    if target_appt_id and database.use_pg:
+        try:
+            with get_pg_connection() as c_conn:
+                with c_conn.cursor() as c_cur:
+                    c_cur.execute("SELECT ticket_number, date FROM appointments WHERE id::text = %s LIMIT 1", (str(target_appt_id),))
+                    app_meta = c_cur.fetchone()
+                    if app_meta:
+                        if app_meta.get("ticket_number"):
+                            soap_dict["ticket_number"] = app_meta.get("ticket_number")
+                            soap_dict["ticketNumber"] = app_meta.get("ticket_number")
+                        if not data.date and app_meta.get("date"):
+                            date_val = str(app_meta["date"])
+        except Exception:
+            pass
+
+    meds_list = soap_dict.get("prescriptions", []) if isinstance(soap_dict, dict) else []
 
     if database.use_pg:
         new_id = str(uuid.uuid4())
-        soap_json = json.dumps(data.soapData)
+        soap_json = json.dumps(soap_dict)
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 # 1. Safely resolve patient_id

@@ -88,7 +88,25 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     return () => clearInterval(timer);
   }, [fetchBookings, loadTrackerQueue]);
 
-  const allAvailableAppointments = bookings.length > 0 ? bookings : tokens;
+  const allAvailableAppointments = useMemo(() => {
+    const map = new Map<string, TokenQueueItem>();
+    tokens.forEach((t) => {
+      const key = String(t.id || t.appointmentId || t.ticketNumber || t.tokenNumber);
+      if (key) map.set(key, t);
+    });
+    bookings.forEach((b) => {
+      const key = String(b.id || b.appointmentId || b.ticketNumber || b.tokenNumber);
+      if (key) {
+        const existing = map.get(key);
+        if (existing && (existing.isCheckedIn || existing.status === 'Checked In') && !b.isCheckedIn) {
+          map.set(key, existing);
+        } else {
+          map.set(key, b);
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [tokens, bookings]);
 
   const handlePatientQrScanned = (patientData: any) => {
     setIsQrScannerOpen(false);
@@ -174,13 +192,18 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     if (match) {
       handleSelectPatient(match);
       setViewMode('intake');
-    } else {
+      const rawTok = item.token_number ? String(item.token_number) : '';
+      const displayTok = rawTok
+        ? (rawTok.startsWith('#') || rawTok.startsWith('TK-') ? rawTok : `#TOK-${rawTok}`)
+        : `#APT-${item.appointment_id.slice(-4)}`;
       const syntheticToken: TokenQueueItem = {
         id: item.appointment_id,
         appointmentId: item.appointment_id,
-        tokenNumber: item.token_number ? `#TOK-${item.token_number}` : `#APT-${item.appointment_id.slice(-4)}`,
-        ticketNumber: item.token_number ? `#TOK-${item.token_number}` : `#APT-${item.appointment_id.slice(-4)}`,
+        tokenNumber: displayTok,
+        ticketNumber: item.token_number ? String(item.token_number) : displayTok,
         patientId: item.patient?.id,
+        patientCode: item.patient?.patient_code,
+        patient_code: item.patient?.patient_code,
         patientName: item.patient?.name || 'Patient',
         patientPhone: item.patient?.phone || '',
         doctorId: item.doctor?.id || 'doc-1',
@@ -219,27 +242,100 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
     if (!selectedToken) return;
 
     setIsCheckingIn(true);
+    const targetId = selectedToken.id || selectedToken.appointmentId || selectedToken.ticketNumber;
     try {
-      await checkInAppointment(selectedToken.id);
+      await checkInAppointment(targetId);
     } catch {
       await updateTokenStatus(selectedToken.id, 'Checked In');
     } finally {
       setIsCheckingIn(false);
     }
 
+    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setSelectedToken((prev) =>
+      prev
+        ? {
+            ...prev,
+            isCheckedIn: true,
+            status: 'Checked In',
+            checkInTime: nowStr,
+            arrivalTime: prev.arrivalTime || nowStr,
+          }
+        : null
+    );
+
     onShowToast?.(
       `Patient ${selectedToken.patientName} marked as checked in! Transferred to Nurse Station for triage vitals & lab tests.`
     );
-    loadTrackerQueue();
-    fetchBookings();
+    await Promise.all([loadTrackerQueue(), fetchBookings()]);
   };
 
   // Base checked-in patients: ONLY patients who have been checked in by reception or have vitals
   const checkedInTrackerPatients = useMemo(() => {
-    return trackerPatients.filter(
-      (item) => item.is_checked_in || item.queue_status === 'Checked In' || !!item.vitals
-    );
-  }, [trackerPatients]);
+    const list: NurseQueueItem[] = [
+      ...trackerPatients.filter(
+        (item) => item.is_checked_in || item.queue_status === 'Checked In' || !!item.vitals
+      )
+    ];
+
+    const existingKeys = new Set<string>();
+    list.forEach((item) => {
+      if (item.appointment_id) existingKeys.add(String(item.appointment_id).toLowerCase());
+      if (item.token_number) existingKeys.add(String(item.token_number).replace('#', '').toLowerCase());
+      if (item.patient?.name) existingKeys.add(item.patient.name.trim().toLowerCase());
+    });
+
+    // Fallback/immediate optimistic inclusion from allAvailableAppointments
+    allAvailableAppointments.forEach((t) => {
+      const idStr = String(t.id || t.appointmentId || '').toLowerCase();
+      const ticketStr = String(t.ticketNumber || t.tokenNumber || '').replace('#', '').toLowerCase();
+      const nameStr = (t.patientName || '').trim().toLowerCase();
+
+      const isChecked = t.isCheckedIn || t.status === 'Checked In';
+      const alreadyPresent =
+        (idStr && existingKeys.has(idStr)) ||
+        (ticketStr && existingKeys.has(ticketStr)) ||
+        (nameStr && existingKeys.has(nameStr));
+
+      if (isChecked && !alreadyPresent) {
+        list.push({
+          appointment_id: String(t.id || t.appointmentId || ''),
+          token_number: t.ticketNumber || t.tokenNumber,
+          queue_status: 'Checked In',
+          is_checked_in: true,
+          checked_in_at: t.checkedInAt || new Date().toISOString(),
+          vitals_status: 'pending',
+          date: t.date || new Date().toISOString().split('T')[0],
+          time: t.timeSlot || '10:00 AM',
+          appointment_type: t.type || 'In-Person',
+          chief_complaint: t.healthIssue || 'Routine consultation',
+          patient: {
+            id: t.patientId || '',
+            name: t.patientName || 'Patient',
+            dob: '',
+            gender: 'Not specified',
+            blood_group: t.bloodGroup || '',
+            phone: t.patientPhone || '',
+            patient_code: t.patientCode || (t as any).patient_code || '',
+          },
+          doctor: {
+            id: t.doctorId || '',
+            name: t.doctorName || 'Attending Physician',
+            specialty: t.doctorSpecialty || 'General Medicine',
+            room_number: 'Cabin 101',
+          },
+          vitals: null,
+          abnormal_flags: [],
+          lab_test_count: 0,
+        });
+        if (idStr) existingKeys.add(idStr);
+        if (ticketStr) existingKeys.add(ticketStr);
+        if (nameStr) existingKeys.add(nameStr);
+      }
+    });
+
+    return list;
+  }, [trackerPatients, allAvailableAppointments]);
 
   // Filtered tracker patients
   const filteredTrackerPatients = useMemo(() => {
@@ -279,22 +375,28 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
   // Match the currently selected patient with live nurse triage record
   const matchingTrackerItem = useMemo(() => {
     if (!selectedToken) return null;
+    const targetId = String(selectedToken.id || selectedToken.appointmentId || '').toLowerCase();
+    const targetTicket = String(selectedToken.ticketNumber || selectedToken.tokenNumber || '').replace('#', '').toLowerCase();
+    const targetName = (selectedToken.patientName || '').toLowerCase().trim();
+
     return (
-      trackerPatients.find(
-        (tp) =>
-          tp.appointment_id === selectedToken.id ||
-          tp.appointment_id === selectedToken.appointmentId ||
-          (selectedToken.patientName && tp.patient?.name?.toLowerCase() === selectedToken.patientName.toLowerCase()) ||
+      checkedInTrackerPatients.find((tp) => {
+        const tpId = String(tp.appointment_id || '').toLowerCase();
+        const tpTicket = String(tp.token_number || '').replace('#', '').toLowerCase();
+        const tpName = (tp.patient?.name || '').toLowerCase().trim();
+        return (
+          (targetId && tpId === targetId) ||
+          (targetTicket && tpTicket === targetTicket) ||
+          (targetName && tpName === targetName) ||
           (selectedToken.patientPhone && tp.patient?.phone === selectedToken.patientPhone)
-      ) || null
+        );
+      }) || null
     );
-  }, [selectedToken, trackerPatients]);
+  }, [selectedToken, checkedInTrackerPatients]);
 
   const recentlyCheckedInItems = useMemo(() => {
-    return trackerPatients
-      .filter((p) => p.is_checked_in || p.queue_status === 'Checked In')
-      .slice(0, 5);
-  }, [trackerPatients]);
+    return checkedInTrackerPatients.slice(0, 5);
+  }, [checkedInTrackerPatients]);
 
   return (
     <div className="space-y-6 pb-12 text-left">
@@ -456,9 +558,16 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
                         : 'bg-white hover:bg-slate-50 border-slate-200/80'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs text-slate-900">{t.patientName}</span>
-                      <span className="font-mono text-xs font-black text-[#0B5A54]">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-extrabold text-xs text-slate-900 truncate">{t.patientName}</span>
+                        {t.patientCode && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-teal-800 text-[10px] font-mono font-bold border border-teal-200 shrink-0">
+                            {t.patientCode}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono text-xs font-black text-[#0B5A54] shrink-0">
                         {t.tokenNumber}
                       </span>
                     </div>
@@ -484,13 +593,18 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
                       {selectedToken.patientName.charAt(0)}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base font-black text-slate-900 font-heading">
                           {selectedToken.patientName}
                         </h3>
                         <span className="px-2 py-0.5 bg-white text-[#0B5A54] font-mono text-[11px] font-black rounded-lg border border-teal-200">
                           {selectedToken.tokenNumber}
                         </span>
+                        {selectedToken.patientCode && (
+                          <span className="px-2 py-0.5 bg-teal-50 text-teal-800 font-mono text-[11px] font-black rounded-lg border border-teal-200">
+                            {selectedToken.patientCode}
+                          </span>
+                        )}
                         {selectedToken.isCheckedIn || selectedToken.status === 'Checked In' ? (
                           <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-full border border-emerald-300 flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -946,13 +1060,18 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
                                   {(item.patient?.name || 'P').charAt(0)}
                                 </div>
                                 <div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="font-black text-xs text-slate-900 font-heading">
                                       {item.patient?.name || 'Patient'}
                                     </span>
                                     {item.token_number && (
-                                      <span className="px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-700 text-[10px] font-mono font-bold border border-slate-200">
-                                        #{item.token_number}
+                                      <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-mono font-bold border border-slate-200">
+                                        {String(item.token_number).startsWith('#') ? item.token_number : `#${item.token_number}`}
+                                      </span>
+                                    )}
+                                    {item.patient?.patient_code && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-[#0B5A54] text-[10px] font-mono font-bold border border-teal-200">
+                                        {item.patient.patient_code}
                                       </span>
                                     )}
                                   </div>
@@ -1034,19 +1153,10 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleInspectDetails(item)}
-                                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                               >
                                 <Eye className="w-3.5 h-3.5 text-slate-500" />
                                 <span>Inspect Vitals & Labs</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleSelectPatientFromTracker(item)}
-                                className="px-3.5 py-1.5 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                              >
-                                <UserCheck className="w-3.5 h-3.5" />
-                                <span>Check-In / Log</span>
                               </button>
                             </div>
                           </div>
@@ -1359,19 +1469,10 @@ export const PatientCheckIn: React.FC<PatientCheckInProps> = ({
                         <button
                           type="button"
                           onClick={() => handleInspectDetails(item)}
-                          className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
                         >
                           <Eye className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Inspect</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPatientFromTracker(item)}
-                          className="px-3 py-1.5 rounded-xl bg-[#0B5A54] hover:bg-teal-800 text-white font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
-                        >
-                          <UserCheck className="w-3.5 h-3.5" />
-                          <span>Check-In</span>
+                          <span>Inspect Vitals & Labs</span>
                         </button>
                       </div>
                     </div>

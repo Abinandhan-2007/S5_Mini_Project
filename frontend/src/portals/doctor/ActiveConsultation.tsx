@@ -861,6 +861,8 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
       // Save to longitudinal EMR archive
       await staffConsultationService.createConsultation({
         patientId: patient.patientId || patient.id,
+        appointmentId: patient.appointmentId || patient.id,
+        ticketNumber: patient.ticketNumber,
         patientName: patient.patientName || (patient as any).name || 'Patient',
         age: patient.age || 32,
         gender: patient.bloodGroup ? 'Recorded' : 'Adult',
@@ -980,6 +982,12 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
               <span>Token <strong className="text-slate-900 font-mono font-black">{patient.tokenNumber}</strong></span>
               <span>•</span>
               <span>Ticket <strong className="text-slate-900 font-mono">{patient.ticketNumber || '#CP-4820'}</strong></span>
+              {(patient.patientCode || (patient as any).patient_code) && (
+                <>
+                  <span>•</span>
+                  <span>Patient ID <strong className="text-[#0B5A54] font-mono font-bold">{patient.patientCode || (patient as any).patient_code}</strong></span>
+                </>
+              )}
               <span>•</span>
               <span>Slot <strong className="text-slate-800">{patient.timeSlot || (patient as any).slot || '09:00 AM - 10:00 AM'}</strong></span>
             </p>
@@ -1061,6 +1069,11 @@ export const ActiveConsultation: React.FC<ActiveConsultationProps> = ({
                   {patient.tokenNumber}
                 </span>
                 <p className="text-[10px] text-slate-400 font-mono mt-0.5">{patient.ticketNumber || '#CP-4820'}</p>
+                {(patient.patientCode || (patient as any).patient_code) && (
+                  <span className="inline-block mt-1 px-2 py-0.5 bg-teal-50 text-[#0B5A54] font-mono font-bold text-[10px] rounded-md border border-teal-200">
+                    {patient.patientCode || (patient as any).patient_code}
+                  </span>
+                )}
               </div>
             </div>
 

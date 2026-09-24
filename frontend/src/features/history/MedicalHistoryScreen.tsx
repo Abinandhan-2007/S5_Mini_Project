@@ -100,42 +100,81 @@ export const MedicalHistoryScreen: React.FC = () => {
       isAppointment?: boolean;
       doctorPhoto?: string;
     })[] = [];
+    const mergedHistoryIds = new Set<string>();
 
-    // 1. Add all booked appointments
+    // 1. Add all booked appointments, merging with matching consultation if available
     (appointments || []).forEach((apt) => {
+      const matchedHist = (historyItems || []).find((h) => {
+        if (h.id === apt.id) return true;
+        const hAppId = (h as any).appointmentId || (h as any).appointment_id || h.soapData?.appointment_id || h.soapData?.appointmentId;
+        if (hAppId && String(hAppId) === String(apt.id)) return true;
+        const hTicket = (h as any).ticketNumber || (h as any).ticket_number || h.soapData?.ticket_number || h.soapData?.ticketNumber;
+        if (hTicket && apt.ticketNumber && String(hTicket).replace('#', '').toLowerCase() === String(apt.ticketNumber).replace('#', '').toLowerCase()) return true;
+        const docMatch = (h.doctorId && apt.doctorId && h.doctorId === apt.doctorId) ||
+                         (h.doctorName && apt.doctorName && h.doctorName.toLowerCase().trim() === apt.doctorName.toLowerCase().trim());
+        if (docMatch) {
+          const hDate = new Date(h.date).getTime();
+          const aptDate = new Date(apt.date).getTime();
+          if (!isNaN(hDate) && !isNaN(aptDate) && Math.abs(hDate - aptDate) <= 86400000 * 2) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (matchedHist) {
+        mergedHistoryIds.add(matchedHist.id);
+      }
+
+      const status = (apt.status === 'Completed' || Boolean(matchedHist)) ? 'Completed' : (apt.status || 'Upcoming');
+      const docDiagnosis =
+        matchedHist?.diagnosis ||
+        matchedHist?.soapData?.assessment ||
+        (apt as any).diagnosis ||
+        (apt as any).assessment ||
+        (status === 'Completed'
+          ? `Clinical Consultation Completed (${apt.ticketNumber || 'Ticket'})`
+          : apt.status === 'Cancelled'
+            ? `Appointment Cancelled (${apt.ticketNumber || 'Ticket'})`
+            : `Confirmed OPD Consultation (${apt.ticketNumber || 'Ticket'}) - Ready for digital check-in.`);
+
+      const prescriptionDetails =
+        matchedHist?.prescriptionDetails ||
+        (apt as any).prescriptionDetails ||
+        `Status: ${status} • Ticket: ${apt.ticketNumber || '#CP-0000'}`;
+
       records.push({
         id: apt.id,
-        date: apt.date || 'Today',
-        time: apt.timeSlot || 'Scheduled Slot',
-        doctorId: apt.doctorId,
-        doctorName: apt.doctorName || 'Specialist Doctor',
-        specialty: apt.doctorSpecialty || 'General Consultation',
-        hospitalId: apt.hospitalId,
-        hospital_id: apt.hospitalId,
-        hospitalName: apt.hospitalName || 'CarePulse Partner Hospital',
-        diagnosis:
-          apt.status === 'Upcoming'
-            ? `Confirmed OPD Consultation (${apt.ticketNumber || 'Ticket'}) - Ready for digital check-in.`
-            : apt.status === 'Cancelled'
-              ? `Appointment Cancelled (${apt.ticketNumber || 'Ticket'})`
-              : `Clinical Consultation Completed (${apt.ticketNumber || 'Ticket'})`,
-        prescriptionDetails: `Status: ${apt.status || 'Upcoming'} • Ticket: ${apt.ticketNumber || '#CP-0000'}`,
-        status: apt.status || 'Upcoming',
+        date: apt.date || matchedHist?.date || 'Today',
+        time: apt.timeSlot || (matchedHist as any)?.timeSlot || 'Scheduled Slot',
+        doctorId: apt.doctorId || matchedHist?.doctorId,
+        doctorName: apt.doctorName || matchedHist?.doctorName || 'Specialist Doctor',
+        specialty: apt.doctorSpecialty || matchedHist?.specialty || 'General Consultation',
+        hospitalId: apt.hospitalId || matchedHist?.hospitalId,
+        hospital_id: apt.hospitalId || matchedHist?.hospital_id,
+        hospitalName: apt.hospitalName || matchedHist?.hospitalName || 'CarePulse Partner Hospital',
+        diagnosis: docDiagnosis,
+        prescriptionDetails,
+        prescriptions: matchedHist?.prescriptions,
+        soapData: matchedHist?.soapData,
+        status: status as any,
         specialtyIcon: 'stethoscope',
-        ticketNumber: apt.ticketNumber,
+        ticketNumber: apt.ticketNumber || (matchedHist as any)?.ticketNumber,
         doctorPhoto:
           apt.doctorPhoto ||
+          matchedHist?.doctorPhoto ||
           'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
         isAppointment: true,
       });
     });
 
-    // 2. Add clinical consultations
+    // 2. Add remaining standalone clinical consultations
     (historyItems || []).forEach((h) => {
-      if (!records.some((r) => r.id === h.id)) {
+      if (!mergedHistoryIds.has(h.id) && !records.some((r) => r.id === h.id)) {
         records.push({
           ...h,
           doctorPhoto:
+            h.doctorPhoto ||
             'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
           isAppointment: false,
         });

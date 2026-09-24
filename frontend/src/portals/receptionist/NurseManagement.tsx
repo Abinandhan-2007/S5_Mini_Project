@@ -33,12 +33,6 @@ const DEPARTMENTS = [
   'Day Surgery Pre-Op',
 ];
 
-const SHIFTS = [
-  'Morning (07:00 AM - 03:30 PM)',
-  'Evening (03:00 PM - 11:30 PM)',
-  'Night (11:00 PM - 07:30 AM)',
-  'Rotational (12-hr Duty)',
-];
 
 export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast }) => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
@@ -52,9 +46,7 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('Triage & Vitals');
-  const [shift, setShift] = useState('Morning (07:00 AM - 03:30 PM)');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -106,9 +98,7 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
       await receptionistService.createNurseRequest({
         fullName: name,
         email,
-        phone,
         department,
-        shift,
         notes,
       });
 
@@ -116,7 +106,6 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
       setIsModalOpen(false);
       setName('');
       setEmail('');
-      setPhone('');
       setNotes('');
       await fetchNurseRequests();
       setActiveTab('requests');
@@ -354,10 +343,12 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
                         <span className="text-slate-500">Department:</span>
                         <span className="font-bold text-slate-900">{req.department}</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Shift:</span>
-                        <span className="font-bold text-slate-900">{req.shift}</span>
-                      </div>
+                      {req.shift && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Shift:</span>
+                          <span className="font-bold text-slate-900">{req.shift}</span>
+                        </div>
+                      )}
                       {req.phone && (
                         <div className="flex items-center justify-between">
                           <span className="text-slate-500">Phone:</span>
@@ -457,43 +448,17 @@ export const NurseManagement: React.FC<NurseManagementProps> = ({ onShowToast })
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 text-slate-700">Department</label>
-                  <select
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
-                  >
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block mb-1 text-slate-700">Shift</label>
-                  <select
-                    value={shift}
-                    onChange={(e) => setShift(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
-                  >
-                    {SHIFTS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="block mb-1 text-slate-700">Contact Phone</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 00000"
+                <label className="block mb-1 text-slate-700">Department</label>
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0B5A54]/20"
-                />
+                >
+                  {DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

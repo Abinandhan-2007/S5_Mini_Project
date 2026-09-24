@@ -52,6 +52,8 @@ export interface TokenQueueItem {
   id: string;
   tokenNumber: string; // e.g. "#TOK-001"
   patientId?: string;
+  patientCode?: string;
+  patient_code?: string;
   patientName: string;
   patientPhone: string;
   doctorId: string;

@@ -147,19 +147,31 @@ def get_nurse_queue(
     Nurses have a read-only view of the patient appointment queue with
     computed vitals status ('pending', 'recorded', 'abnormal_flagged').
     """
+    database.check_pg_health_and_sync()
     staff_ctx = get_current_staff(authorization) if authorization else None
     is_superadmin = bool(staff_ctx and staff_ctx.get("role") == "superadmin")
     effective_hosp_id = hospital_id
     if staff_ctx and staff_ctx.get("hospital_id"):
         effective_hosp_id = staff_ctx["hospital_id"]
 
-    if not is_superadmin and not effective_hosp_id:
-        return {"success": True, "queue": []}
-
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # Validate effective_hosp_id or resolve to the active hospital in DB
+                    if effective_hosp_id:
+                        cur.execute("SELECT id FROM hospitals WHERE id = %s AND is_active = true", (effective_hosp_id,))
+                        if not cur.fetchone():
+                            cur.execute("SELECT id FROM hospitals WHERE is_active = true ORDER BY created_at ASC LIMIT 1")
+                            h_row = cur.fetchone()
+                            if h_row:
+                                effective_hosp_id = h_row["id"]
+                    elif not is_superadmin:
+                        cur.execute("SELECT id FROM hospitals WHERE is_active = true ORDER BY created_at ASC LIMIT 1")
+                        h_row = cur.fetchone()
+                        if h_row:
+                            effective_hosp_id = h_row["id"]
+
                     query = """
                         SELECT 
                             a.id AS appointment_id,
@@ -209,7 +221,7 @@ def get_nurse_queue(
                     """
                     params = []
                     if effective_hosp_id:
-                        query += " AND (a.hospital_id = %s OR (a.hospital_id IS NULL AND d.hospital_id = %s))"
+                        query += " AND (a.hospital_id = %s OR a.hospital_id IS NULL OR (d.hospital_id IS NOT NULL AND d.hospital_id = %s))"
                         params.extend([effective_hosp_id, effective_hosp_id])
                     elif not is_superadmin:
                         return {"success": True, "queue": []}

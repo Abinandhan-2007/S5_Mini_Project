@@ -129,61 +129,92 @@ export const VisitDetailScreen: React.FC = () => {
 
   // Match the active visit record from live consultation, state, history store, or appointments
   const visit = useMemo<VisitRecord>(() => {
+    // 1. If passed via navigation state and matches id or consultationId, use it as baseline
+    if (passedVisit && (passedVisit.id === id || (passedVisit as any).consultationId === id)) {
+      return {
+        ...passedVisit,
+        ticketNumber: passedVisit.ticketNumber || (liveConsultation as any)?.ticketNumber || (liveConsultation as any)?.ticket_number,
+        diagnosis: liveConsultation?.diagnosis || liveConsultation?.soapData?.assessment || passedVisit.diagnosis,
+        prescriptionDetails: liveConsultation?.prescriptionDetails || passedVisit.prescriptionDetails,
+        soapData: liveConsultation?.soapData || passedVisit.soapData,
+        prescriptions: liveConsultation?.prescriptions || passedVisit.prescriptions,
+        vitals: liveConsultation?.vitals || passedVisit.vitals,
+      };
+    }
+
+    // 2. If live consultation is directly available
     if (liveConsultation) {
       return {
         id: liveConsultation.id || id || 'rec-consult-01',
+        consultationId: liveConsultation.id,
         doctorName: liveConsultation.doctorName || 'Consulting Physician',
         doctorSpecialty: liveConsultation.doctorSpecialty || 'General Medicine',
         doctorAvatarUrl: liveConsultation.doctorPhoto || '/doctor_default.jpg',
         hospitalName: liveConsultation.hospitalName || 'CarePulse Medical Center',
         date: liveConsultation.date || '2026-08-25',
-        time: liveConsultation.time || '10:30 AM',
+        time: liveConsultation.time || liveConsultation.timeSlot || '10:30 AM',
         visitType: 'In-Person',
         status: liveConsultation.status || 'Completed',
         summaryAvailable: true,
         diagnosis: liveConsultation.diagnosis || liveConsultation.soapData?.assessment || 'Clinical Consultation Record',
         prescriptionDetails: liveConsultation.prescriptionDetails,
-        ticketNumber: liveConsultation.ticketNumber || 'TKT-892',
+        ticketNumber: liveConsultation.ticketNumber || liveConsultation.ticket_number || passedVisit?.ticketNumber,
+        soapData: liveConsultation.soapData,
+        prescriptions: liveConsultation.prescriptions,
+        vitals: liveConsultation.vitals || liveConsultation.soapData?.vitals,
       };
     }
 
-    if (passedVisit && passedVisit.id === id) return passedVisit;
+    // 3. Match from storeAppointments and storeHistory
+    const matchedApt = storeAppointments.find((a) => a.id === id);
+    const matchedHist = storeHistory.find((h) => {
+      if (h.id === id) return true;
+      if (matchedApt && ((h as any).appointmentId === matchedApt.id || (h as any).appointment_id === matchedApt.id || h.soapData?.appointment_id === matchedApt.id)) return true;
+      if (matchedApt?.ticketNumber && ((h as any).ticketNumber === matchedApt.ticketNumber || (h as any).ticket_number === matchedApt.ticketNumber)) return true;
+      return false;
+    });
 
-    const matchedHist = storeHistory.find((h) => h.id === id);
+    if (matchedApt) {
+      return {
+        id: matchedApt.id,
+        consultationId: matchedHist?.id,
+        doctorName: matchedApt.doctorName || matchedHist?.doctorName || 'Doctor Specialist',
+        doctorSpecialty: matchedApt.doctorSpecialty || matchedHist?.specialty || 'General Care',
+        doctorAvatarUrl: matchedApt.doctorPhoto || matchedHist?.doctorPhoto || '/doctor_default.jpg',
+        hospitalName: matchedApt.hospitalName || matchedHist?.hospitalName || 'CarePulse Partner Hospital',
+        date: matchedApt.date || matchedHist?.date || '2026-08-25',
+        time: matchedApt.timeSlot || (matchedHist as any)?.timeSlot || '10:00 AM',
+        visitType: matchedApt.type === 'Telehealth' ? 'Video Consult' : 'In-Person',
+        status: matchedApt.status === 'Cancelled' ? 'Cancelled' : 'Completed',
+        summaryAvailable: true,
+        diagnosis: matchedHist?.diagnosis || matchedHist?.soapData?.assessment || (matchedApt as any).diagnosis || (matchedApt as any).healthIssue || 'Clinical Consultation Record',
+        prescriptionDetails: matchedHist?.prescriptionDetails || (matchedApt as any).prescriptionDetails,
+        ticketNumber: matchedApt.ticketNumber || (matchedHist as any)?.ticketNumber || (matchedHist as any)?.ticket_number,
+        soapData: matchedHist?.soapData,
+        prescriptions: matchedHist?.prescriptions,
+        vitals: matchedHist?.soapData?.vitals,
+      };
+    }
+
     if (matchedHist) {
       return {
         id: matchedHist.id,
+        consultationId: matchedHist.id,
         doctorName: matchedHist.doctorName || 'Consulting Physician',
         doctorSpecialty: matchedHist.specialty || 'General Medicine',
         doctorAvatarUrl: matchedHist.doctorPhoto || '/doctor_default.jpg',
         hospitalName: matchedHist.hospitalName || 'CarePulse Medical Center',
         date: matchedHist.date || '2026-08-25',
-        time: '10:30 AM',
+        time: (matchedHist as any).timeSlot || (matchedHist as any).time || '10:30 AM',
         visitType: 'In-Person',
         status: 'Completed',
         summaryAvailable: true,
-        diagnosis: matchedHist.diagnosis || 'Clinical Consultation Record',
+        diagnosis: matchedHist.diagnosis || matchedHist.soapData?.assessment || 'Clinical Consultation Record',
         prescriptionDetails: matchedHist.prescriptionDetails,
-        ticketNumber: 'TKT-892',
-      };
-    }
-
-    const matchedApt = storeAppointments.find((a) => a.id === id);
-    if (matchedApt) {
-      return {
-        id: matchedApt.id,
-        doctorName: matchedApt.doctorName || 'Doctor Specialist',
-        doctorSpecialty: matchedApt.doctorSpecialty || 'General Care',
-        doctorAvatarUrl: matchedApt.doctorPhoto || '/doctor_default.jpg',
-        hospitalName: matchedApt.hospitalName || 'CarePulse Partner Hospital',
-        date: matchedApt.date || '2026-08-25',
-        time: matchedApt.timeSlot || '10:00 AM',
-        visitType: matchedApt.type === 'Telehealth' ? 'Video Consult' : 'In-Person',
-        status: 'Completed',
-        summaryAvailable: true,
-        diagnosis: (matchedApt as any).diagnosis || (matchedApt as any).healthIssue || 'General Medical Review',
-        prescriptionDetails: (matchedApt as any).prescriptionDetails,
-        ticketNumber: matchedApt.ticketNumber || 'TKT-412',
+        ticketNumber: (matchedHist as any).ticketNumber || (matchedHist as any).ticket_number,
+        soapData: matchedHist.soapData,
+        prescriptions: matchedHist.prescriptions,
+        vitals: matchedHist.soapData?.vitals,
       };
     }
 
@@ -209,8 +240,18 @@ export const VisitDetailScreen: React.FC = () => {
 
   // Extract SOAP notes from storeHistory if available
   const historyItem = useMemo(() => {
-    return storeHistory.find((h) => h.id === id);
-  }, [storeHistory, id]);
+    return storeHistory.find((h) => {
+      if (h.id === id) return true;
+      if ((passedVisit as any)?.consultationId && h.id === (passedVisit as any).consultationId) return true;
+      if ((visit as any)?.consultationId && h.id === (visit as any).consultationId) return true;
+      const hAppId = (h as any).appointmentId || (h as any).appointment_id || h.soapData?.appointment_id || h.soapData?.appointmentId;
+      if (hAppId && String(hAppId) === String(id)) return true;
+      const hTicket = (h as any).ticketNumber || (h as any).ticket_number || h.soapData?.ticket_number || h.soapData?.ticketNumber;
+      const passTicket = passedVisit?.ticketNumber || (visit as any)?.ticketNumber;
+      if (hTicket && passTicket && String(hTicket).replace('#', '').toLowerCase() === String(passTicket).replace('#', '').toLowerCase()) return true;
+      return false;
+    });
+  }, [storeHistory, id, passedVisit, visit]);
 
   // Fetch live nurse vitals & live doctor consultation linked to this visit from backend portals
   useEffect(() => {
@@ -219,17 +260,30 @@ export const VisitDetailScreen: React.FC = () => {
       try {
         setLoadingClinical(true);
         const targetId = id || visit.id;
+        const consultId = (visit as any)?.consultationId || (historyItem as any)?.id;
 
         // 1. Fetch live consultation details from backend API
-        if (targetId) {
+        if (targetId || consultId) {
           try {
-            const res = await apiFetch(`/consultations/detail/${encodeURIComponent(targetId)}`);
+            const queryId = consultId || targetId;
+            const res = await apiFetch(`/consultations/detail/${encodeURIComponent(queryId)}`);
             if (res.ok) {
               const data = await res.json();
               if (isMounted && data.success && data.consultation) {
                 setLiveConsultation(data.consultation);
                 if (data.vitals) {
                   setLiveVitals(data.vitals);
+                }
+              }
+            } else if (targetId && targetId !== queryId) {
+              const res2 = await apiFetch(`/consultations/detail/${encodeURIComponent(targetId)}`);
+              if (res2.ok) {
+                const data2 = await res2.json();
+                if (isMounted && data2.success && data2.consultation) {
+                  setLiveConsultation(data2.consultation);
+                  if (data2.vitals) {
+                    setLiveVitals(data2.vitals);
+                  }
                 }
               }
             }
@@ -333,7 +387,7 @@ export const VisitDetailScreen: React.FC = () => {
 
   // Check if real clinical evaluation data was entered in Doctor Portal
   const hasEvaluationData = useMemo(() => {
-    const activeSoap = liveConsultation?.soapData || historyItem?.soapData;
+    const activeSoap = liveConsultation?.soapData || historyItem?.soapData || (visit as any)?.soapData;
     if (!activeSoap) return false;
     return Boolean(
       (activeSoap.subjective && String(activeSoap.subjective).trim().length > 0) ||
@@ -341,12 +395,12 @@ export const VisitDetailScreen: React.FC = () => {
       (activeSoap.assessment && String(activeSoap.assessment).trim().length > 0) ||
       (activeSoap.plan && String(activeSoap.plan).trim().length > 0)
     );
-  }, [liveConsultation, historyItem]);
+  }, [liveConsultation, historyItem, visit]);
 
   // Doctor Portal Added Clinical Data (SOAP & Notes) - ONLY if entered
   const soapData = useMemo(() => {
     if (!hasEvaluationData) return null;
-    const activeSoap = liveConsultation?.soapData || historyItem?.soapData || {};
+    const activeSoap = liveConsultation?.soapData || historyItem?.soapData || (visit as any)?.soapData || {};
     return {
       subjective: activeSoap.subjective || 'No chief complaint recorded.',
       objective: activeSoap.objective || 'No physical examination findings recorded.',
@@ -354,14 +408,16 @@ export const VisitDetailScreen: React.FC = () => {
       plan: activeSoap.plan || 'No treatment plan recorded.',
       followUp: activeSoap.followUp || activeSoap.follow_up || 'As needed / SOS',
     };
-  }, [hasEvaluationData, liveConsultation, historyItem, visit.diagnosis]);
+  }, [hasEvaluationData, liveConsultation, historyItem, visit]);
 
   // Structured Prescriptions - ONLY if entered in Doctor Portal
   const prescriptionList = useMemo<PrescriptionItem[]>(() => {
     const rawList =
       liveConsultation?.prescriptions ||
       liveConsultation?.soapData?.prescriptions ||
-      historyItem?.prescriptions;
+      historyItem?.prescriptions ||
+      (visit as any)?.prescriptions ||
+      (visit as any)?.soapData?.prescriptions;
 
     if (rawList && Array.isArray(rawList) && rawList.length > 0) {
       return rawList.map((m: any, idx: number): PrescriptionItem => ({
@@ -382,38 +438,49 @@ export const VisitDetailScreen: React.FC = () => {
 
     // No prescriptions if none were entered
     return [];
-  }, [liveConsultation, historyItem]);
+  }, [liveConsultation, historyItem, visit]);
 
   const hasPrescriptionData = prescriptionList.length > 0;
 
+  // Active vitals resolution from live fetch, passed visit, or history
+  const activeVitals = useMemo(() => {
+    if (liveVitals && (liveVitals.bp_systolic != null || liveVitals.heart_rate != null || liveVitals.temperature != null)) {
+      return liveVitals;
+    }
+    if ((visit as any)?.vitals) return (visit as any).vitals;
+    if ((visit as any)?.soapData?.vitals) return (visit as any).soapData.vitals;
+    if (historyItem?.soapData?.vitals) return historyItem.soapData.vitals;
+    return liveVitals;
+  }, [liveVitals, visit, historyItem]);
+
   // Check if real vitals were entered in Nurse Portal
   const hasVitalsData = useMemo(() => {
-    if (!liveVitals) return false;
+    if (!activeVitals) return false;
     return Boolean(
-      liveVitals.bp_systolic != null ||
-      liveVitals.bp_diastolic != null ||
-      liveVitals.heart_rate != null ||
-      liveVitals.temperature != null ||
-      liveVitals.spo2 != null ||
-      liveVitals.respiratory_rate != null ||
-      liveVitals.blood_glucose != null ||
-      liveVitals.weight_kg != null ||
-      liveVitals.height_cm != null
+      activeVitals.bp_systolic != null ||
+      activeVitals.bp_diastolic != null ||
+      activeVitals.heart_rate != null ||
+      activeVitals.temperature != null ||
+      activeVitals.spo2 != null ||
+      activeVitals.respiratory_rate != null ||
+      activeVitals.blood_glucose != null ||
+      activeVitals.weight_kg != null ||
+      activeVitals.height_cm != null
     );
-  }, [liveVitals]);
+  }, [activeVitals]);
 
   // Vitals Metrics Resolution from Nurse Portal - ONLY if entered
   const vitals = useMemo(() => {
-    if (!hasVitalsData || !liveVitals) return null;
+    if (!hasVitalsData || !activeVitals) return null;
 
-    const rawTemp = liveVitals.temperature;
-    const unit = (liveVitals.temperature_unit || 'C').toUpperCase();
+    const rawTemp = activeVitals.temperature;
+    const unit = (activeVitals.temperature_unit || 'C').toUpperCase();
     const formattedTemp = rawTemp != null ? (unit === 'C' ? `${rawTemp}°C` : `${rawTemp}°F`) : '—';
 
-    const bmiVal = liveVitals.bmi != null
-      ? Number(liveVitals.bmi)
-      : (liveVitals.weight_kg && liveVitals.height_cm
-          ? Number((liveVitals.weight_kg / Math.pow(liveVitals.height_cm / 100, 2)).toFixed(1))
+    const bmiVal = activeVitals.bmi != null
+      ? Number(activeVitals.bmi)
+      : (activeVitals.weight_kg && activeVitals.height_cm
+          ? Number((activeVitals.weight_kg / Math.pow(activeVitals.height_cm / 100, 2)).toFixed(1))
           : null);
 
     let bmiLabel = 'Normal Weight';
@@ -434,8 +501,8 @@ export const VisitDetailScreen: React.FC = () => {
       }
     }
 
-    const sys = liveVitals.bp_systolic;
-    const dia = liveVitals.bp_diastolic;
+    const sys = activeVitals.bp_systolic;
+    const dia = activeVitals.bp_diastolic;
     let bpStatus = 'Normal';
     let bpColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
     if (sys != null && dia != null) {
@@ -448,7 +515,7 @@ export const VisitDetailScreen: React.FC = () => {
       }
     }
 
-    const hr = liveVitals.heart_rate;
+    const hr = activeVitals.heart_rate;
     let hrStatus = 'Normal Rhythm';
     let hrColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
     if (hr != null) {
@@ -461,7 +528,7 @@ export const VisitDetailScreen: React.FC = () => {
       }
     }
 
-    const ox = liveVitals.spo2;
+    const ox = activeVitals.spo2;
     let oxStatus = 'Normal';
     let oxColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
     if (ox != null && ox < 95) {
@@ -469,7 +536,7 @@ export const VisitDetailScreen: React.FC = () => {
       oxColor = 'bg-rose-50 text-rose-800 border-rose-200';
     }
 
-    const rawCtx = liveVitals.glucose_context || 'random';
+    const rawCtx = activeVitals.glucose_context || 'random';
     const ctxFormatted = rawCtx === 'post_prandial' ? 'Post-Prandial' : rawCtx.charAt(0).toUpperCase() + rawCtx.slice(1);
 
     return {
@@ -486,22 +553,22 @@ export const VisitDetailScreen: React.FC = () => {
       temperature: rawTemp,
       tempUnit: unit,
       formattedTemp,
-      respiratoryRate: liveVitals.respiratory_rate ?? '—',
-      bloodGlucose: liveVitals.blood_glucose ?? '—',
+      respiratoryRate: activeVitals.respiratory_rate ?? '—',
+      bloodGlucose: activeVitals.blood_glucose ?? '—',
       glucoseContext: ctxFormatted,
-      weightKg: liveVitals.weight_kg ?? '—',
-      heightCm: liveVitals.height_cm ?? '—',
+      weightKg: activeVitals.weight_kg ?? '—',
+      heightCm: activeVitals.height_cm ?? '—',
       bmi: bmiVal ?? '—',
       bmiLabel: bmiVal != null ? bmiLabel : 'Not calculated',
       bmiBadgeColor: bmiVal != null ? bmiBadgeColor : 'bg-slate-50 text-slate-600 border-slate-200',
-      notes: liveVitals.notes || 'No triage clinical notes entered.',
-      abnormalFlags: Array.isArray(liveVitals.abnormal_flags) ? liveVitals.abnormal_flags : [],
-      nurseName: liveVitals.recorded_by_name || 'Triage Staff Nurse',
-      recordedAt: liveVitals.recorded_at
-        ? new Date(liveVitals.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      notes: activeVitals.notes || 'No triage clinical notes entered.',
+      abnormalFlags: Array.isArray(activeVitals.abnormal_flags) ? activeVitals.abnormal_flags : [],
+      nurseName: activeVitals.recorded_by_name || 'Triage Staff Nurse',
+      recordedAt: activeVitals.recorded_at
+        ? new Date(activeVitals.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : 'Triage Check-in',
     };
-  }, [liveVitals, hasVitalsData]);
+  }, [activeVitals, hasVitalsData]);
 
 
   // Show skeleton loader while fetching clinical data from backend

@@ -452,9 +452,16 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                             <User className="w-5 h-5" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-extrabold text-base text-slate-900 truncate">
-                              {item.patientName}
-                            </h3>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h3 className="font-extrabold text-base text-slate-900 truncate">
+                                {item.patientName}
+                              </h3>
+                              {item.patientCode && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-[#0B5A54] text-[10px] font-mono font-bold border border-teal-200">
+                                  {item.patientCode}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
                               Arrival: {item.arrivalTime || 'On Schedule'} • {item.type}
                             </p>
@@ -833,13 +840,18 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                   <div className="space-y-2.5">
                     {/* Header: Ticket & Status Badge */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono text-xs font-black px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
                           {item.ticketNumber}
                         </span>
                         {item.tokenNumber && isCheckedIn && (
                           <span className="font-mono text-xs font-black px-2 py-0.5 rounded-lg bg-teal-50 text-[#0B5A54] border border-teal-200">
                             {item.tokenNumber}
+                          </span>
+                        )}
+                        {item.patientCode && (
+                          <span className="font-mono text-xs font-black px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200">
+                            {item.patientCode}
                           </span>
                         )}
                       </div>
@@ -1004,6 +1016,11 @@ export const ReceptionistDashboard: React.FC<ReceptionistDashboardProps> = ({
                     <span className="px-3 py-1 bg-teal-50 text-[#0B5A54] font-mono font-black text-xs rounded-xl border border-teal-200">
                       {item.tokenNumber}
                     </span>
+                    {item.patientCode && (
+                      <span className="px-2 py-0.5 bg-teal-50 text-teal-800 font-mono font-bold text-[10px] rounded-lg border border-teal-200">
+                        {item.patientCode}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5">

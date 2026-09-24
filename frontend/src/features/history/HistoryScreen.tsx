@@ -30,6 +30,7 @@ export type VisitStatus = 'Completed' | 'Cancelled' | 'No-Show';
 
 export interface VisitRecord {
   id: string;
+  consultationId?: string;
   doctorName: string;
   doctorSpecialty: string;
   doctorAvatarUrl?: string;
@@ -42,6 +43,9 @@ export interface VisitRecord {
   diagnosis?: string;
   prescriptionDetails?: string;
   ticketNumber?: string;
+  prescriptions?: any[];
+  soapData?: any;
+  vitals?: any;
 }
 
 export interface HistoryScreenProps {
@@ -99,51 +103,98 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
     }
 
     const records: VisitRecord[] = [];
+    const mergedHistoryIds = new Set<string>();
 
-    // Map store appointments
+    // 1. Process store appointments and merge with matching consultation clinical data
     if (storeAppointments && storeAppointments.length > 0) {
       storeAppointments.forEach((apt) => {
+        // Find matching clinical consultation from storeHistory
+        const matchedHist = (storeHistory || []).find((h) => {
+          if (h.id === apt.id) return true;
+          const hAppId = (h as any).appointmentId || (h as any).appointment_id || h.soapData?.appointment_id || h.soapData?.appointmentId;
+          if (hAppId && String(hAppId) === String(apt.id)) return true;
+          const hTicket = (h as any).ticketNumber || (h as any).ticket_number || h.soapData?.ticket_number || h.soapData?.ticketNumber;
+          if (hTicket && apt.ticketNumber && String(hTicket).replace('#', '').toLowerCase() === String(apt.ticketNumber).replace('#', '').toLowerCase()) return true;
+          const docMatch = (h.doctorId && apt.doctorId && h.doctorId === apt.doctorId) ||
+                           (h.doctorName && apt.doctorName && h.doctorName.toLowerCase().trim() === apt.doctorName.toLowerCase().trim());
+          if (docMatch) {
+            const hDate = new Date(h.date).getTime();
+            const aptDate = new Date(apt.date).getTime();
+            if (!isNaN(hDate) && !isNaN(aptDate) && Math.abs(hDate - aptDate) <= 86400000 * 2) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (matchedHist) {
+          mergedHistoryIds.add(matchedHist.id);
+        }
+
+        // Only display in History if completed, or has consultation notes, or is Cancelled
+        const isCompleted = apt.status === 'Completed' || Boolean(matchedHist);
+        if (!isCompleted && apt.status !== 'Cancelled') {
+          return;
+        }
+
         const docDiagnosis =
+          matchedHist?.diagnosis ||
+          matchedHist?.soapData?.assessment ||
           (apt as any).diagnosis ||
           (apt as any).assessment ||
           (apt as any).healthIssue ||
-          'Clinical OPD Consultation';
+          'Clinical Consultation Completed';
+
+        const prescriptionDetails =
+          matchedHist?.prescriptionDetails ||
+          (apt as any).prescriptionDetails ||
+          (apt as any).prescriptions?.join(', ') ||
+          matchedHist?.prescriptions?.join(', ');
 
         records.push({
           id: apt.id,
-          doctorName: apt.doctorName || 'Doctor Specialist',
-          doctorSpecialty: apt.doctorSpecialty || 'General Care',
-          doctorAvatarUrl: apt.doctorPhoto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
-          hospitalName: apt.hospitalName || 'CarePulse Partner Hospital',
-          date: apt.date || '2026-08-25',
-          time: apt.timeSlot || '10:00 AM',
+          consultationId: matchedHist?.id,
+          doctorName: apt.doctorName || matchedHist?.doctorName || 'Doctor Specialist',
+          doctorSpecialty: apt.doctorSpecialty || matchedHist?.specialty || 'General Care',
+          doctorAvatarUrl: apt.doctorPhoto || matchedHist?.doctorPhoto || '/doctor_default.jpg',
+          hospitalName: apt.hospitalName || matchedHist?.hospitalName || 'CarePulse Partner Hospital',
+          date: apt.date || matchedHist?.date || '2026-08-25',
+          time: apt.timeSlot || (matchedHist as any)?.timeSlot || '10:00 AM',
           visitType: apt.type === 'Telehealth' ? 'Video Consult' : 'In-Person',
-          status: apt.status === 'Completed' ? 'Completed' : 'Completed',
+          status: apt.status === 'Cancelled' ? 'Cancelled' : 'Completed',
           summaryAvailable: true,
           diagnosis: docDiagnosis,
-          prescriptionDetails: (apt as any).prescriptionDetails || (apt as any).prescriptions?.join(', '),
-          ticketNumber: apt.ticketNumber,
+          prescriptionDetails,
+          ticketNumber: apt.ticketNumber || (matchedHist as any)?.ticketNumber,
+          soapData: matchedHist?.soapData,
+          prescriptions: matchedHist?.prescriptions,
+          vitals: matchedHist?.soapData?.vitals,
         });
       });
     }
 
-    // Map store clinical history items
+    // 2. Add remaining standalone clinical history items (that were NOT merged into an appointment)
     if (storeHistory && storeHistory.length > 0) {
       storeHistory.forEach((h, idx) => {
-        if (!records.some((r) => r.id === h.id)) {
+        if (!mergedHistoryIds.has(h.id) && !records.some((r) => r.id === h.id || r.consultationId === h.id)) {
           records.push({
             id: h.id || `hist-${idx}`,
+            consultationId: h.id,
             doctorName: h.doctorName || 'Consulting Physician',
             doctorSpecialty: h.specialty || 'General Medicine',
-            doctorAvatarUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+            doctorAvatarUrl: h.doctorPhoto || '/doctor_default.jpg',
             hospitalName: h.hospitalName || 'CarePulse Medical Center',
             date: h.date || '2026-07-20',
-            time: '11:00 AM',
+            time: (h as any).timeSlot || (h as any).time || 'Completed Visit',
             visitType: 'In-Person',
             status: 'Completed',
             summaryAvailable: Boolean(h.prescriptionDetails || h.diagnosis),
             diagnosis: h.diagnosis || 'Clinical Consultation Record',
             prescriptionDetails: h.prescriptionDetails,
+            ticketNumber: (h as any).ticketNumber || (h as any).ticket_number,
+            soapData: h.soapData,
+            prescriptions: h.prescriptions,
+            vitals: h.soapData?.vitals,
           });
         }
       });

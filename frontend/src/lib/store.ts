@@ -574,6 +574,8 @@ export const useCarePulseStore = create<CarePulseState>((set, get) => ({
         if (Array.isArray(data)) {
           const mapped: MedicalHistoryItem[] = data.map((c: any) => ({
             id: c.id,
+            appointmentId: c.appointmentId || c.appointment_id || c.soapData?.appointment_id || c.soapData?.appointmentId,
+            ticketNumber: c.ticketNumber || c.ticket_number || c.soapData?.ticket_number || c.soapData?.ticketNumber,
             date: c.date,
             time: 'Consultation',
             doctorId: c.doctorId,

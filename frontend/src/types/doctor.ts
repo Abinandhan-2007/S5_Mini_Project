@@ -35,6 +35,8 @@ export interface PrescriptionMedicine {
 export interface PatientEMRRecord {
   id: string;
   patientId: string;
+  appointmentId?: string;
+  ticketNumber?: string;
   patientName: string;
   age: number;
   gender: string;

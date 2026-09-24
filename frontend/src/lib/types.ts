@@ -214,6 +214,8 @@ export interface ChatMessage {
 
 export interface MedicalHistoryItem {
   id: string;
+  appointmentId?: string;
+  ticketNumber?: string;
   date: string;
   time: string;
   doctorId?: string;

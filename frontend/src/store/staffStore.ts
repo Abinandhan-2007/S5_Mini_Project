@@ -673,10 +673,22 @@ export const useStaffStore = create<StaffState>((set, get) => ({
       hours = hours ? hours : 12;
       const nowTimeStr = `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
 
+      const normTarget = String(appointmentId).replace('#', '').trim().toLowerCase();
+      const isMatch = (item: any) => {
+        if (!item) return false;
+        if (item.id === appointmentId || item.appointmentId === appointmentId) return true;
+        if (item.ticketNumber === appointmentId || item.tokenNumber === appointmentId) return true;
+        const normId = String(item.id || '').replace('#', '').trim().toLowerCase();
+        const normAppId = String(item.appointmentId || '').replace('#', '').trim().toLowerCase();
+        const normTicket = String(item.ticketNumber || '').replace('#', '').trim().toLowerCase();
+        const normToken = String(item.tokenNumber || '').replace('#', '').trim().toLowerCase();
+        return normTarget === normId || normTarget === normAppId || normTarget === normTicket || normTarget === normToken;
+      };
+
       // Optimistically update bookings and tokens
       set((state) => ({
         bookings: state.bookings.map((b) =>
-          b.id === appointmentId
+          isMatch(b)
             ? {
                 ...b,
                 isCheckedIn: true,
@@ -689,7 +701,7 @@ export const useStaffStore = create<StaffState>((set, get) => ({
             : b
         ),
         tokens: state.tokens.map((t) =>
-          t.id === appointmentId
+          isMatch(t)
             ? {
                 ...t,
                 isCheckedIn: true,
@@ -774,8 +786,39 @@ export const useStaffStore = create<StaffState>((set, get) => ({
   },
 
   bookWalkInAppointment: async (payload) => {
-    const todayIso = new Date().toISOString().split('T')[0];
+    const localNow = new Date();
+    const todayIso = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, '0')}-${String(localNow.getDate()).padStart(2, '0')}`;
     const targetDate = payload.date || todayIso;
+    const isToday = !payload.date || payload.date === todayIso;
+
+    const targetDoc = get().doctors.find((d) => d.id === payload.doctorId);
+    const isDocAvail = targetDoc ? (targetDoc.isAvailable !== false && targetDoc.is_available !== false) : true;
+    if (targetDoc && !isDocAvail && isToday) {
+      const reason = targetDoc.availabilityReason || targetDoc.availability_reason || 'Lunch / Clinical Break';
+      throw new Error(`Dr. ${targetDoc.name} is currently marked NOT AVAILABLE (${reason}). Offline registration cannot be issued for today.`);
+    }
+
+    if (isToday && payload.timeSlot) {
+      const slotStr = String(payload.timeSlot).trim();
+      const endStr = slotStr.includes('-') ? slotStr.split('-')[1].trim() : slotStr;
+      const m = endStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      let endMins: number | null = null;
+      if (m) {
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        const p = m[3].toUpperCase();
+        if (p === 'PM' && h < 12) h += 12;
+        if (p === 'AM' && h === 12) h = 0;
+        endMins = h * 60 + min;
+      }
+      if (endMins !== null) {
+        const curMins = localNow.getHours() * 60 + localNow.getMinutes();
+        if (curMins >= endMins) {
+          throw new Error(`The time slot '${payload.timeSlot}' has already passed for today. Please select an active or upcoming time slot.`);
+        }
+      }
+    }
+
     const ticketNumber = `#CP-${Math.floor(1000 + Math.random() * 9000)}`;
     const tokenNumber = `#TOK-${String(get().tokens.length + 1).padStart(3, '0')}`;
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -856,8 +899,34 @@ export const useStaffStore = create<StaffState>((set, get) => ({
 
         return finalToken;
       }
-    } catch (e) {
-      console.warn('Backend sync failed, using optimistic walk-in token', e);
+    } catch (e: any) {
+      // Rollback optimistic token and seat counts if server rejected
+      set((state) => ({
+        tokens: state.tokens.filter((t) => t.id !== tempToken.id),
+        doctors: state.doctors.map((doc) => {
+          if (doc.id !== payload.doctorId) return doc;
+          return {
+            ...doc,
+            slotCapacities: (doc.slotCapacities || []).map((slot) => {
+              if (slot.timeSlot !== payload.timeSlot) return slot;
+              const offlineBooked = Math.max(0, (slot.offlineBookedSeats || 0) - 1);
+              const offlineMax = slot.offlineMaxSeats || 3;
+              const offlineAvail = Math.min(offlineMax, offlineMax - offlineBooked);
+              const totalBooked = Math.max(0, (slot.bookedSeats || 0) - 1);
+              const totalAvail = (slot.maxSeats || 6) - totalBooked;
+              return {
+                ...slot,
+                offlineBookedSeats: offlineBooked,
+                offlineAvailableSeats: offlineAvail,
+                bookedSeats: totalBooked,
+                availableSeats: totalAvail,
+              };
+            }),
+          };
+        }),
+      }));
+      console.warn('Backend rejected walk-in appointment:', e);
+      throw e;
     }
 
     return tempToken;

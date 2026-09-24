@@ -2327,15 +2327,21 @@ def resolve_staff_password_reset(
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # Ensure doctors password columns exist
+                    cur.execute("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password VARCHAR(255);")
+                    cur.execute("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+
                     # Update staff table
                     cur.execute(
                         """
                         UPDATE staff
                         SET password = %s, password_hash = %s
-                        WHERE id::text = %s OR LOWER(email) = %s
+                        WHERE id::text = %s OR doctor_id = %s OR LOWER(email) = %s
                         """,
-                        (temp_pass, hashed_pass, staff_id, staff_email)
+                        (temp_pass, hashed_pass, staff_id, staff_id, staff_email)
                     )
+                    staff_updated = cur.rowcount > 0
+
                     # Also update doctors table if doctor
                     if staff_role == "doctor":
                         cur.execute(
@@ -2346,6 +2352,20 @@ def resolve_staff_password_reset(
                             """,
                             (temp_pass, hashed_pass, staff_id, staff_email)
                         )
+                        # If doctor was not already present in staff table, insert now
+                        if not staff_updated:
+                            new_staff_id = str(uuid.uuid4())
+                            cur.execute(
+                                """
+                                INSERT INTO staff (
+                                    id, doctor_id, staff_code, full_name, email, username,
+                                    password, password_hash, role, specialization, hospital_id, is_active
+                                ) VALUES (%s, %s, 'DOC', %s, %s, %s, %s, %s, 'doctor', 'General Medicine', %s, true)
+                                ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, password_hash = EXCLUDED.password_hash, doctor_id = EXCLUDED.doctor_id
+                                """,
+                                (new_staff_id, staff_id, staff_name, staff_email, staff_email.split("@")[0], temp_pass, hashed_pass, hosp_id)
+                            )
+
                     # Update reset request status
                     cur.execute(
                         """
@@ -2435,14 +2455,18 @@ def direct_admin_reset_staff_password(
         try:
             with get_pg_connection() as conn:
                 with conn.cursor() as cur:
+                    # Ensure doctors password columns exist
+                    cur.execute("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password VARCHAR(255);")
+                    cur.execute("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+
                     cur.execute(
                         """
                         UPDATE staff
                         SET password = %s, password_hash = %s
-                        WHERE id::text = %s
+                        WHERE id::text = %s OR doctor_id = %s
                         RETURNING full_name, role, email
                         """,
-                        (temp_pass, hashed_pass, clean_staff_id)
+                        (temp_pass, hashed_pass, clean_staff_id, clean_staff_id)
                     )
                     row = cur.fetchone()
                     if row:
@@ -2454,7 +2478,7 @@ def direct_admin_reset_staff_password(
                         UPDATE doctors
                         SET password = %s, password_hash = %s
                         WHERE id::text = %s
-                        RETURNING name, specialty
+                        RETURNING name, specialty, email, hospital_id
                         """,
                         (temp_pass, hashed_pass, clean_staff_id)
                     )
@@ -2462,6 +2486,19 @@ def direct_admin_reset_staff_password(
                     if doc_row:
                         updated = True
                         staff_name = doc_row["name"]
+                        if not row:
+                            new_staff_id = str(uuid.uuid4())
+                            doc_email = (doc_row.get("email") or f"{clean_staff_id}@carepulse.com").strip().lower()
+                            cur.execute(
+                                """
+                                INSERT INTO staff (
+                                    id, doctor_id, staff_code, full_name, email, username,
+                                    password, password_hash, role, specialization, hospital_id, is_active
+                                ) VALUES (%s, %s, 'DOC', %s, %s, %s, %s, %s, 'doctor', %s, %s, true)
+                                ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, password_hash = EXCLUDED.password_hash, doctor_id = EXCLUDED.doctor_id
+                                """,
+                                (new_staff_id, clean_staff_id, doc_row["name"], doc_email, doc_email.split("@")[0], temp_pass, hashed_pass, doc_row.get("specialty") or "General Medicine", doc_row.get("hospital_id"))
+                            )
                     conn.commit()
         except Exception as e:
             logger.warning(f"Error directly resetting staff password in PostgreSQL: {e}")

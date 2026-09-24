@@ -152,18 +152,37 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
     return () => clearInterval(timer);
   }, [fetchBookings, fetchTokens, loadNurseQueue]);
 
-  const rawBookings = bookings.length > 0 ? bookings : tokens;
+  const rawBookings = useMemo(() => {
+    const map = new Map<string, TokenQueueItem>();
+    tokens.forEach((t) => {
+      const key = String(t.id || t.appointmentId || t.ticketNumber || t.tokenNumber);
+      if (key) map.set(key, t);
+    });
+    bookings.forEach((b) => {
+      const key = String(b.id || b.appointmentId || b.ticketNumber || b.tokenNumber);
+      if (key) {
+        const existing = map.get(key);
+        if (existing && (existing.isCheckedIn || existing.status === 'Checked In') && !b.isCheckedIn) {
+          map.set(key, existing);
+        } else {
+          map.set(key, b);
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [tokens, bookings]);
 
   const handleCheckIn = async (item: TokenQueueItem) => {
     setCheckingInId(item.id);
     try {
-      const success = await checkInAppointment(item.id);
+      const targetId = item.id || item.appointmentId || item.ticketNumber;
+      const success = await checkInAppointment(targetId);
       if (success) {
         onShowToast?.(`Patient ${item.patientName} checked in! Transferred to Nurse Station for triage vitals & lab tests.`);
       } else {
         onShowToast?.(`Check-in completed for ${item.patientName}. Transferred to Nurse Station.`);
       }
-      loadNurseQueue();
+      await loadNurseQueue();
     } catch (err) {
       onShowToast?.(`Failed to check in ${item.patientName}`);
     } finally {
@@ -719,9 +738,16 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                     </div>
                     <div className="flex-1 min-w-0 space-y-0.5">
                       <div className="flex items-center justify-between gap-1">
-                        <h4 className="font-black text-slate-900 text-sm truncate">
-                          {item.patientName}
-                        </h4>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h4 className="font-black text-slate-900 text-sm truncate">
+                            {item.patientName}
+                          </h4>
+                          {item.patientCode && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-teal-800 text-[10px] font-mono font-bold border border-teal-200 shrink-0">
+                              {item.patientCode}
+                            </span>
+                          )}
+                        </div>
                         {item.age && (
                           <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-1.5 rounded shrink-0">
                             {item.age}y
@@ -908,8 +934,13 @@ export const PatientBookings: React.FC<PatientBookingsProps> = ({
                       </td>
 
                       <td className="p-4">
-                        <div className="font-extrabold text-slate-900 text-sm">
-                          {item.patientName}
+                        <div className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                          <span>{item.patientName}</span>
+                          {item.patientCode && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-teal-800 text-[10px] font-mono font-bold border border-teal-200">
+                              {item.patientCode}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                           {item.patientPhone} {item.bloodGroup && `• ${item.bloodGroup}`}

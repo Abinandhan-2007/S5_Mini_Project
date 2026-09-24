@@ -272,7 +272,7 @@ def staff_login(request: StaffLoginRequest):
                     if not found_staff:
                         cur.execute(
                             """
-                            SELECT id, name, specialty, department, hospital_id, hospital_name, phone, email, photo, is_available
+                            SELECT id, name, specialty, department, hospital_id, hospital_name, phone, email, photo, is_available, password, password_hash
                             FROM doctors
                             WHERE LOWER(TRIM(id)) = %s
                                OR LOWER(TRIM(COALESCE(email, ''))) = %s
@@ -293,6 +293,8 @@ def staff_login(request: StaffLoginRequest):
                                 "email": doc_row.get("email") or f"{raw_prefix}@carepulse.com",
                                 "username": (doc_row.get("email") or raw_prefix).split("@")[0],
                                 "role": "doctor",
+                                "password": doc_row.get("password"),
+                                "password_hash": doc_row.get("password_hash"),
                                 "specialization": doc_row.get("specialty") or doc_row.get("department") or "General Medicine",
                                 "department": doc_row.get("department") or doc_row.get("specialty") or "General Medicine",
                                 "phone": doc_row.get("phone", "+91 98765 00000"),
