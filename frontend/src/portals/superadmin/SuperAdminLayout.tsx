@@ -36,7 +36,7 @@ export const SuperAdminLayout: React.FC = () => {
 
   // Auth Guard: Only SuperAdmin permitted
   if (!currentStaff || currentStaff.role !== 'superadmin') {
-    return <Navigate to="/staff/login" replace />;
+    return <Navigate to="/superadmin/login" replace />;
   }
 
   const handleOpenAddAdmin = (hospId?: string) => {
@@ -56,7 +56,7 @@ export const SuperAdminLayout: React.FC = () => {
     sessionStorage.removeItem('active_staff_token');
     sessionStorage.removeItem('active_staff_role');
     logoutStaff();
-    navigate('/staff/login');
+    navigate('/superadmin/login');
   };
 
   const navItems: { id: SuperAdminTab; label: string; icon: React.FC<{ className?: string }>; tag: string }[] = [

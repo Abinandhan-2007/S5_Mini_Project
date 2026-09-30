@@ -350,7 +350,7 @@ export const AdminStaffResetsModal: React.FC<AdminStaffResetsModalProps> = ({
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              Resetting updates credentials in PostgreSQL and triggers a security confirmation dispatch.
+              Resetting updates credentials securely on the central server and triggers a security confirmation dispatch.
             </span>
           </div>
           <button

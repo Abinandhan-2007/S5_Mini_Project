@@ -29,6 +29,7 @@ import { DoctorLayout } from '../portals/doctor/DoctorLayout';
 import { DoctorLogin } from '../portals/doctor/DoctorLogin';
 import { AdminLayout } from '../portals/admin/AdminLayout';
 import { SuperAdminLayout } from '../portals/superadmin/SuperAdminLayout';
+import { SuperAdminLogin } from '../portals/superadmin/SuperAdminLogin';
 import { NurseLayout, NurseQueueDashboard, NurseLogin } from '../portals/nurse';
 import { StaffPortalLogin } from '../portals/shared/StaffPortalLogin';
 import { PageTransition } from '../components/ui/PageTransition';
@@ -407,11 +408,23 @@ export const AppRoutes: React.FC = () => {
         />
         <Route
           path="/superadmin/login"
-          element={<Navigate to="/staff/login" replace />}
+          element={
+            currentStaff?.role === 'superadmin' ? (
+              <Navigate to="/superadmin" replace />
+            ) : (
+              <PageTransition>
+                <SuperAdminLogin />
+              </PageTransition>
+            )
+          }
+        />
+        <Route
+          path="/superadmin-login"
+          element={<Navigate to="/superadmin/login" replace />}
         />
         <Route
           path="/staff/superadmin"
-          element={<Navigate to="/staff/login" replace />}
+          element={<Navigate to="/superadmin/login" replace />}
         />
 
         {/* Admin Portal Routes */}
