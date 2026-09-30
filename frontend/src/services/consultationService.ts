@@ -106,6 +106,8 @@ export const staffConsultationService = {
   // 4. Save a completed Clinical Consultation
   createConsultation: async (data: {
     patientId: string;
+    appointmentId?: string;
+    ticketNumber?: string;
     patientName: string;
     age?: number;
     gender?: string;
@@ -127,6 +129,8 @@ export const staffConsultationService = {
     const newRecord: PatientEMRRecord = {
       id: `emr-${Date.now()}`,
       patientId: data.patientId || `pat-${Date.now()}`,
+      appointmentId: data.appointmentId,
+      ticketNumber: data.ticketNumber,
       patientName: data.patientName || 'Patient',
       age: data.age || 35,
       gender: data.gender || 'Unknown',
@@ -160,6 +164,7 @@ export const staffConsultationService = {
     try {
       await apiPost('/doctor/consultations', {
         patientId: newRecord.patientId,
+        appointmentId: data.appointmentId,
         doctorId: newRecord.doctorId,
         doctorName: newRecord.doctorName,
         date: new Date().toISOString().split('T')[0],
@@ -171,6 +176,10 @@ export const staffConsultationService = {
           vitals: newRecord.vitals,
           prescriptions: newRecord.prescriptions,
           chiefComplaint: newRecord.chiefComplaint,
+          appointmentId: data.appointmentId,
+          appointment_id: data.appointmentId,
+          ticketNumber: data.ticketNumber,
+          ticket_number: data.ticketNumber,
         },
       });
     } catch (err) {

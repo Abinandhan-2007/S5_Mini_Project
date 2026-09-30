@@ -1357,6 +1357,7 @@ def fetch_all_tokens_from_db(
                 with conn.cursor() as cur:
                     query = """
                         SELECT a.*, 
+                               p.patient_code,
                                p.full_name as patient_full_name, 
                                p.phone as patient_phone_db, 
                                p.blood_group as patient_blood_group,
@@ -1530,6 +1531,8 @@ def fetch_all_tokens_from_db(
                             "id": app_id,
                             "tokenNumber": token_num,
                             "patientId": str(app_dict.get("patient_id") or ""),
+                            "patientCode": app_dict.get("patient_code") or j_app.get("patientCode") or j_app.get("patient_code") or "",
+                            "patient_code": app_dict.get("patient_code") or j_app.get("patientCode") or j_app.get("patient_code") or "",
                             "patientName": p_name,
                             "patientPhone": p_phone,
                             "doctorId": str(app_dict.get("doctor_id") or "doc-current"),
@@ -1658,8 +1661,10 @@ def fetch_all_tokens_from_db(
 
                 tokens.append({
                     "id": app_id,
-                    "tokenNumber": "",
+                    "tokenNumber": app_dict.get("token_number") or app_dict.get("tokenNumber") or app_dict.get("ticket_number") or f"#TOK-{len(tokens)+1:03d}",
                     "patientId": p_id,
+                    "patientCode": p_obj.get("patient_code") or p_obj.get("patientCode") or "",
+                    "patient_code": p_obj.get("patient_code") or p_obj.get("patientCode") or "",
                     "patientName": p_name,
                     "patientPhone": p_phone,
                     "doctorId": str(app_doc_id or doc_obj.get("id") or "doc-current"),
@@ -1840,29 +1845,19 @@ def checkin_appointment(
         try:
             with database.get_pg_connection() as conn:
                 with conn.cursor() as cur:
-                    if is_uuid:
-                        cur.execute("""
-                            UPDATE appointments
-                            SET is_checked_in = TRUE,
-                                checked_in_at = %s,
-                                status = 'Checked In'
-                            WHERE id::text = %s
-                            RETURNING *
-                        """, (now_dt, clean_app_id))
-                    else:
-                        cur.execute("""
-                            UPDATE appointments
-                            SET is_checked_in = TRUE,
-                                checked_in_at = %s,
-                                status = 'Checked In'
-                            WHERE id = (
-                                SELECT id FROM appointments
-                                WHERE ticket_number = %s
-                                ORDER BY (is_checked_in IS TRUE) ASC, date ASC, time_slot ASC
-                                LIMIT 1
-                            )
-                            RETURNING *
-                        """, (now_dt, clean_app_id))
+                    no_hash_id = clean_app_id.replace("#", "").strip()
+                    with_hash_id = f"#{no_hash_id}"
+                    cur.execute("""
+                        UPDATE appointments
+                        SET is_checked_in = TRUE,
+                            checked_in_at = %s,
+                            status = 'Checked In'
+                        WHERE id::text = %s
+                           OR ticket_number = %s
+                           OR ticket_number = %s
+                           OR REPLACE(ticket_number, '#', '') = %s
+                        RETURNING *
+                    """, (now_dt, clean_app_id, clean_app_id, with_hash_id, no_hash_id))
                     row = cur.fetchone()
                     conn.commit()
                     if row:
@@ -2033,6 +2028,87 @@ def create_walkin_appointment(
     today_str = payload.date if payload.date else datetime.now().strftime("%Y-%m-%d")
     app_id = str(uuid.uuid4())
 
+    # 0. Doctor availability & past time-slot validation for today
+    current_date_str = datetime.now().strftime("%Y-%m-%d")
+    is_booking_for_today = (today_str == current_date_str or str(today_str).lower() == "today")
+
+    if is_booking_for_today and payload.doctorId:
+        doc_is_avail = True
+        doc_avail_reason = "Break / Inactive"
+        doc_display_name = payload.doctorName or "Doctor"
+        if database.use_pg:
+            try:
+                with database.get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            SELECT name, is_available, availability_reason, unavailable_until 
+                            FROM doctors 
+                            WHERE id = %s 
+                               OR LOWER(email) = LOWER(%s)
+                               OR id IN (
+                                   SELECT doctor_id FROM staff 
+                                   WHERE (
+                                       LOWER(staff_code) = LOWER(%s) 
+                                       OR id::text = %s 
+                                       OR LOWER(email) = LOWER(%s)
+                                   ) AND doctor_id IS NOT NULL
+                               )
+                            LIMIT 1
+                            """,
+                            (payload.doctorId, payload.doctorId, payload.doctorId, payload.doctorId, payload.doctorId)
+                        )
+                        doc_chk = cur.fetchone()
+                        if doc_chk:
+                            doc_display_name = doc_chk.get("name") or doc_display_name
+                            doc_is_avail = doc_chk.get("is_available") is not False
+                            doc_avail_reason = doc_chk.get("availability_reason") or "Doctor is currently unavailable"
+            except Exception as e_chk:
+                logger.warning(f"Doctor availability check note: {e_chk}")
+        else:
+            db_chk = database.read_json_db()
+            for d in db_chk.get("doctors", []):
+                if d.get("id") == payload.doctorId or d.get("email", "").lower() == str(payload.doctorId).lower():
+                    doc_display_name = d.get("name") or doc_display_name
+                    doc_is_avail = d.get("is_available") is not False and d.get("isAvailable") is not False
+                    doc_avail_reason = d.get("availability_reason") or "Doctor is currently unavailable"
+                    break
+
+        if not doc_is_avail:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Dr. {doc_display_name} is currently marked NOT AVAILABLE ({doc_avail_reason}). Offline registrations cannot be issued right now."
+            )
+
+        # 0b. Validate that the time slot has not already ended today
+        if payload.timeSlot:
+            slot_str = str(payload.timeSlot).strip()
+            end_time_str = slot_str.split("-")[1].strip() if "-" in slot_str else slot_str
+            try:
+                import re
+                cleaned_end_time = re.sub(r'\s+', ' ', end_time_str.strip().upper())
+                slot_dt = None
+                for fmt in ("%I:%M %p", "%I:%M%p", "%H:%M", "%I %p"):
+                    try:
+                        slot_dt = datetime.strptime(cleaned_end_time, fmt)
+                        break
+                    except ValueError:
+                        continue
+
+                if slot_dt:
+                    slot_minutes = slot_dt.hour * 60 + slot_dt.minute
+                    now_dt = datetime.now()
+                    now_minutes = now_dt.hour * 60 + now_dt.minute
+                    if now_minutes >= slot_minutes:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"The time slot '{slot_str}' has already passed for today. Please select an active or upcoming time slot."
+                        )
+            except HTTPException:
+                raise
+            except Exception as parse_e:
+                logger.warning(f"Could not parse slot end time '{end_time_str}': {parse_e}")
+
     # 1. Authoritative hospital derivation
     derived_hospital_id = payload.hospital_id or payload.hospitalId
     derived_hospital_name = payload.hospitalName or "CarePulse Central Hospital"
@@ -2083,13 +2159,29 @@ def create_walkin_appointment(
             pass
 
     # 2. Determine sequential queue token number
-    db = database.read_json_db()
-    existing_today_tokens = [
-        a for a in db.get("appointments", [])
-        if str(a.get("hospital_id") or a.get("hospitalId")) == str(derived_hospital_id)
-        and (str(a.get("date") or "") == today_str or str(a.get("date") or "") == "Today")
-    ]
-    token_idx = len(existing_today_tokens) + 1
+    token_idx = 1
+    if database.use_pg:
+        try:
+            with database.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) as cnt FROM appointments WHERE (hospital_id = %s OR hospital_id IS NULL) AND date = %s",
+                        (derived_hospital_id, today_str)
+                    )
+                    c_row = cur.fetchone()
+                    if c_row and c_row.get("cnt") is not None:
+                        token_idx = int(c_row["cnt"]) + 1
+        except Exception as e:
+            logger.warning(f"Walk-in token count note: {e}")
+
+    if token_idx == 1:
+        db = database.read_json_db()
+        existing_today_tokens = [
+            a for a in db.get("appointments", [])
+            if str(a.get("hospital_id") or a.get("hospitalId")) == str(derived_hospital_id)
+            and (str(a.get("date") or "") == today_str or str(a.get("date") or "") == "Today")
+        ]
+        token_idx = max(token_idx, len(existing_today_tokens) + 1)
     token_num = f"#TOK-{token_idx:03d}"
 
     token_item = {

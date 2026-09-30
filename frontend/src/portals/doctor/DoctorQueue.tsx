@@ -568,9 +568,16 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                           {(patient.patientName || (patient as any).name || 'P').charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-[#0B5A54] transition-colors truncate font-heading">
-                            {patient.patientName || (patient as any).name}
-                          </h4>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-[#0B5A54] transition-colors truncate font-heading">
+                              {patient.patientName || (patient as any).name}
+                            </h4>
+                            {(patient.patientCode || (patient as any).patient_code) && (
+                              <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-[#0B5A54] text-[10px] font-mono font-bold border border-teal-200 shrink-0">
+                                {patient.patientCode || (patient as any).patient_code}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-slate-400 font-medium truncate">
                             {patient.age || 32} Yrs · Blood {patient.bloodGroup || 'O+'} · {patient.type || 'In-Person'}
                           </p>
@@ -665,7 +672,14 @@ export const DoctorQueue: React.FC<DoctorQueueProps> = ({
                       className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                     >
                       <td className="py-3.5 px-4 font-mono font-black text-slate-900">
-                        {patient.tokenNumber}
+                        <div className="flex items-center gap-1.5">
+                          <span>{patient.tokenNumber}</span>
+                          {(patient.patientCode || (patient as any).patient_code) && (
+                            <span className="px-1.5 py-0.5 rounded bg-teal-50 text-[#0B5A54] text-[10px] font-mono font-bold border border-teal-200">
+                              {patient.patientCode || (patient as any).patient_code}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="font-extrabold text-slate-900 group-hover:text-[#0B5A54] transition-colors font-heading">

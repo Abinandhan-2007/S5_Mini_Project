@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus } from 'lucide-react';
+import { Activity, Lock, ArrowRight, AlertCircle, User, UserPlus, ShieldCheck } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -650,6 +650,21 @@ export const LoginScreen: React.FC = () => {
               </Button>
             </div>
           </form>
+
+          {/* Security Notice & Staff Portal Link */}
+          <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center gap-2 text-center">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Authorized clinical and administrative personnel only</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/staff/login')}
+              className="text-xs font-bold text-[#0B5A54] hover:underline cursor-pointer"
+            >
+              Are you a staff member? Go to Staff Portal &rarr;
+            </button>
+          </div>
         </Card>
 
         {/* Footer */}

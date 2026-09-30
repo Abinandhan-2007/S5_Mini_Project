@@ -110,7 +110,7 @@ export interface NurseQueueDoctor {
 
 export interface NurseQueueItem {
   appointment_id: string;
-  token_number?: number;
+  token_number?: number | string;
   queue_status: string;
   is_checked_in?: boolean;
   checked_in_at?: string | null;
@@ -118,7 +118,7 @@ export interface NurseQueueItem {
   date: string;
   time: string;
   appointment_type: string;
-  chief_complaint: string;
+  chief_complaint?: string;
   patient: NurseQueuePatient;
   doctor: NurseQueueDoctor;
   vitals?: VitalsRecord | null;

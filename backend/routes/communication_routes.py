@@ -843,20 +843,7 @@ def get_staff_contacts_for_chat(
     contacts = []
     seen_ids = set()
 
-    # 1. Hospital Administration contact (always available for non-admins)
-    if caller_role not in ("admin", "superadmin"):
-        contacts.append({
-            "id": "admin",
-            "name": "Hospital Administration",
-            "role": "admin",
-            "department": "Executive Management",
-            "staffCode": "HQ-ADMIN",
-            "avatarUrl": "",
-            "online": True
-        })
-        seen_ids.add("admin")
-
-    # 2. Query PostgreSQL if enabled
+    # 1. Query PostgreSQL if enabled
     if database.use_pg:
         try:
             with safe_pg_connection() as conn:
@@ -907,7 +894,7 @@ def get_staff_contacts_for_chat(
         except Exception as e:
             logger.warning(f"Error fetching staff contacts from PG: {e}")
 
-    # 3. Query JSON DB (fallback or supplement)
+    # 2. Query JSON DB (fallback or supplement)
     db = read_json_db()
     for doc in db.get("doctors", []):
         d_id = str(doc.get("id"))
@@ -943,6 +930,19 @@ def get_staff_contacts_for_chat(
                 "avatarUrl": s.get("avatar_url") or s.get("avatarUrl") or "",
                 "online": True
             })
+
+    # 3. Fallback: Only add generic Hospital Administration if no real admin exists and caller is not an admin
+    has_admin = any(c.get("role") in ("admin", "superadmin") for c in contacts)
+    if not has_admin and caller_role not in ("admin", "superadmin"):
+        contacts.insert(0, {
+            "id": "admin",
+            "name": "Hospital Administration",
+            "role": "admin",
+            "department": "Executive Management",
+            "staffCode": "HQ-ADMIN",
+            "avatarUrl": "",
+            "online": True
+        })
 
     return {"success": True, "contacts": contacts}
 

@@ -290,10 +290,13 @@ export const receptionistService = {
       if (res.ok) {
         return await res.json();
       }
+      const errData = await res.json().catch(() => null);
+      const errMsg = errData?.detail || errData?.message || `Failed to book walk-in appointment (Status: ${res.status})`;
+      throw new Error(errMsg);
     } catch (e) {
-      console.warn('Failed to book walkin appointment', e);
+      console.warn('Failed to book walkin appointment:', e);
+      throw e;
     }
-    return null;
   },
 
   async getProfile(): Promise<ReceptionistProfile | null> {

@@ -3173,6 +3173,10 @@ def get_patient_consultations(patient_id: str):
 
                     result.append({
                         "id": str(r["id"]),
+                        "appointmentId": soap.get("appointment_id") or soap.get("appointmentId"),
+                        "appointment_id": soap.get("appointment_id") or soap.get("appointmentId"),
+                        "ticketNumber": soap.get("ticket_number") or soap.get("ticketNumber"),
+                        "ticket_number": soap.get("ticket_number") or soap.get("ticketNumber"),
                         "doctorId": r.get("doctor_id"),
                         "doctorName": r.get("doctor_name") or "Specialist Doctor",
                         "doctorSpecialty": r.get("doctor_specialty") or "General Medicine",
@@ -3218,6 +3222,10 @@ def get_patient_consultations(patient_id: str):
 
                 result.append({
                     "id": str(c.get("id")),
+                    "appointmentId": soap.get("appointment_id") or soap.get("appointmentId") or c.get("appointment_id") or c.get("appointmentId"),
+                    "appointment_id": soap.get("appointment_id") or soap.get("appointmentId") or c.get("appointment_id") or c.get("appointmentId"),
+                    "ticketNumber": soap.get("ticket_number") or soap.get("ticketNumber") or c.get("ticket_number") or c.get("ticketNumber"),
+                    "ticket_number": soap.get("ticket_number") or soap.get("ticketNumber") or c.get("ticket_number") or c.get("ticketNumber"),
                     "doctorId": c.get("doctor_id"),
                     "doctorName": c.get("doctor_name", "Specialist Doctor"),
                     "doctorSpecialty": d_info.get("specialty", "General Medicine"),
