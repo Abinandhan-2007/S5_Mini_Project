@@ -20,7 +20,6 @@ import {
   Check,
   RefreshCw,
   Sparkles,
-  Globe2,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { apiPost, apiFetch } from '../../lib/apiFetch';
@@ -501,7 +500,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               CarePulse Staff
             </h1>
             <p className="text-sm text-teal-100/70 font-medium leading-relaxed">
-              Single sign-on for SuperAdmin, Hospital Administrators, Clinical Physicians, Nurses, and Front-Desk Receptionists.
+              Single sign-on for Hospital Administrators, Clinical Physicians, Nurses, and Front-Desk Receptionists.
             </p>
           </motion.div>
 
@@ -707,22 +706,13 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Authorized clinical and administrative personnel only</span>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs pt-0.5">
+              <div className="flex items-center justify-center text-xs pt-0.5">
                 <button
                   type="button"
                   onClick={() => navigate('/patient/login')}
                   className="font-bold text-[#0B5A54] hover:underline cursor-pointer"
                 >
                   Are you a patient? Patient App &rarr;
-                </button>
-                <span className="text-slate-300">•</span>
-                <button
-                  type="button"
-                  onClick={() => navigate('/superadmin/login')}
-                  className="font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer flex items-center gap-1 hover:underline"
-                >
-                  <Globe2 className="w-3.5 h-3.5 text-[#0B5A54]" />
-                  <span>SuperAdmin Console &rarr;</span>
                 </button>
               </div>
             </div>
