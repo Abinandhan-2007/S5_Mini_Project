@@ -699,23 +699,6 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                 )}
               </button>
             </form>
-
-            {/* Security Notice & Portal Links */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center gap-2 text-center">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Authorized clinical and administrative personnel only</span>
-              </div>
-              <div className="flex items-center justify-center text-xs pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => navigate('/patient/login')}
-                  className="font-bold text-[#0B5A54] hover:underline cursor-pointer"
-                >
-                  Are you a patient? Patient App &rarr;
-                </button>
-              </div>
-            </div>
           </div>
         </motion.div>
       </div>
