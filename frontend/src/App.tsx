@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
-import { AppRoutes } from './app/routes';
+import { AppRoutes, isStaffDomain } from './app/routes';
 import { useCarePulseStore } from './lib/store';
 import { SplashScreen } from './components/ui/SplashScreen';
 import { OfflineBanner } from './components/ui/OfflineBanner';
@@ -109,8 +109,22 @@ export const App: React.FC = () => {
           return false;
         }
 
-        // On desktop web, if user has an active session, skip splash on reload
+        // On desktop web or staff host (e.g. carepulse5.vercel.app), skip splash completely
         if (!Capacitor.isNativePlatform()) {
+          const hostname = window.location.hostname.toLowerCase();
+          const isStaffHost =
+            hostname.startsWith('staff.') ||
+            hostname.startsWith('admin.') ||
+            hostname.startsWith('doctor.') ||
+            hostname.includes('carepulse5.vercel.app') ||
+            hostname.endsWith('.vercel.app') ||
+            hostname === 'vercel.app';
+
+          if (isStaffHost || isStaffDomain()) {
+            sessionStorage.setItem('carepulse_skip_splash', 'true');
+            return false;
+          }
+
           const path = window.location.pathname.toLowerCase();
           const hasStaff = !!localStorage.getItem('carepulse_staff') || !!sessionStorage.getItem('carepulse_staff');
           const hasPatient = !!localStorage.getItem('carepulse_user') || localStorage.getItem('has_logged_in') === 'true';

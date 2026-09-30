@@ -55,7 +55,9 @@ export const isStaffDomain = (): boolean => {
     hostname.startsWith('staff.') ||
     hostname.startsWith('admin.') ||
     hostname.startsWith('doctor.') ||
-    hostname.includes('carepulse5.vercel.app')
+    hostname.includes('carepulse5.vercel.app') ||
+    hostname.endsWith('.vercel.app') ||
+    hostname === 'vercel.app'
   ) {
     return true;
   }
@@ -118,10 +120,10 @@ export const AppRoutes: React.FC = () => {
               to={
                 currentStaff
                   ? getStaffPortalRoute(currentStaff.role)
-                  : isAuthenticated
-                    ? '/home'
-                    : isStaffDomain()
-                      ? '/staff/login'
+                  : isStaffDomain()
+                    ? '/staff/login'
+                    : isAuthenticated
+                      ? '/home'
                       : '/login'
               }
               replace
@@ -133,7 +135,33 @@ export const AppRoutes: React.FC = () => {
           element={
             currentStaff ? (
               <Navigate to={getStaffPortalRoute(currentStaff.role)} replace />
+            ) : isStaffDomain() ? (
+              <Navigate to="/staff/login" replace />
             ) : isAuthenticated ? (
+              <Navigate to="/home" replace />
+            ) : (
+              <PageTransition>
+                <LoginScreen />
+              </PageTransition>
+            )
+          }
+        />
+        <Route
+          path="/patient/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/home" replace />
+            ) : (
+              <PageTransition>
+                <LoginScreen />
+              </PageTransition>
+            )
+          }
+        />
+        <Route
+          path="/patient-login"
+          element={
+            isAuthenticated ? (
               <Navigate to="/home" replace />
             ) : (
               <PageTransition>
@@ -523,11 +551,13 @@ export const AppRoutes: React.FC = () => {
           element={
             <Navigate
               to={
-                isStaffDomain()
-                  ? '/staff/login'
-                  : isAuthenticated
-                    ? '/home'
-                    : '/login'
+                currentStaff
+                  ? getStaffPortalRoute(currentStaff.role)
+                  : isStaffDomain()
+                    ? '/staff/login'
+                    : isAuthenticated
+                      ? '/home'
+                      : '/login'
               }
               replace
             />

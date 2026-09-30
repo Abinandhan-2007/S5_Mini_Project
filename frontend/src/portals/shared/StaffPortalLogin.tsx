@@ -710,7 +710,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
               <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs pt-0.5">
                 <button
                   type="button"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/patient/login')}
                   className="font-bold text-[#0B5A54] hover:underline cursor-pointer"
                 >
                   Are you a patient? Patient App &rarr;
