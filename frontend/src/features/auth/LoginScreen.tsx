@@ -275,6 +275,39 @@ export const LoginScreen: React.FC = () => {
 
     setIsLoading(true);
 
+    const inputLower = inputVal.toLowerCase();
+
+    // Guard: Prevent SuperAdmin / Staff logins on the Patient App Login screen
+    if (
+      inputLower === 'superadmin' ||
+      inputLower.startsWith('superadmin@') ||
+      inputLower === 'sa101' ||
+      inputLower === 'sa'
+    ) {
+      setErrorMessage('SuperAdmin accounts cannot log in through the Patient App. Please use the SuperAdmin Console (/superadmin/login).');
+      setIsLoading(false);
+      return;
+    }
+
+    if (
+      inputLower === 'admin' ||
+      inputLower === 'admin@carepulse.com' ||
+      inputLower === 'bag' ||
+      inputLower === 'bag@carepulse.com' ||
+      inputLower === 'doc' ||
+      inputLower === 'doc@carepulse.com' ||
+      inputLower === 'doctor' ||
+      inputLower === 'rec' ||
+      inputLower === 'rec@carepulse.com' ||
+      inputLower === 'receptionist' ||
+      inputLower === 'nurse' ||
+      inputLower === 'nurse@carepulse.com'
+    ) {
+      setErrorMessage('Hospital staff and administrators cannot log in through the Patient App. Please use the Staff Portal (/staff/login).');
+      setIsLoading(false);
+      return;
+    }
+
     const payload = {
       username: inputVal,
       email: inputVal,
@@ -294,57 +327,11 @@ export const LoginScreen: React.FC = () => {
     if (res) {
       data = await res.json().catch(() => ({}));
 
-      // 404 Not Found: Check if this user is a staff member (Admin, Doctor, Nurse, Receptionist, SuperAdmin)
+      // 404 Not Found: Prompt user to Sign Up (Patient App only)
       if (res.status === 404 || (data.detail && data.detail.toLowerCase().includes('not found'))) {
-        try {
-          const staffRes = await apiPost('/staff/login', {
-            identifier: inputVal,
-            email: inputVal,
-            username: inputVal,
-            password: passVal,
-          });
-          if (staffRes.ok) {
-            const staffData = await staffRes.json();
-            if (staffData.success && staffData.staff) {
-              const userRole = staffData.staff.role;
-              const hospId = staffData.staff.hospitalId || staffData.staff.hospital_id || (staffData.staff.role === 'superadmin' ? 'hosp-1' : undefined);
-              const hospName = staffData.staff.hospitalName || staffData.staff.hospital_name || 'CarePulse Medical Center';
-              useStaffStore.getState().setStaffAuth(
-                {
-                  id: staffData.staff.id,
-                  name: staffData.staff.name,
-                  email: staffData.staff.email,
-                  role: userRole,
-                  department: staffData.staff.department,
-                  avatarUrl: staffData.staff.avatarUrl,
-                  hospitalId: hospId,
-                  hospital_id: hospId,
-                  hospitalName: hospName,
-                  hospital_name: hospName,
-                  doctorId: staffData.staff.doctorId || staffData.staff.doctor_id,
-                  doctor_id: staffData.staff.doctor_id || staffData.staff.doctorId,
-                  staff_code: staffData.staff.staff_code || staffData.staff.staffCode,
-                  staffCode: staffData.staff.staffCode || staffData.staff.staff_code,
-                  phone: staffData.staff.phone,
-                },
-                staffData.token
-              );
-              setIsLoading(false);
-              if (userRole === 'superadmin') navigate('/superadmin');
-              else if (userRole === 'admin') navigate('/admin');
-              else if (userRole === 'doctor') navigate('/doctor');
-              else if (userRole === 'nurse') navigate('/nurse');
-              else navigate('/receptionist');
-              return;
-            }
-          }
-        } catch {
-          // If staff login fails, continue to patient unregistered prompt below
-        }
-
         setUnregisteredIdentifier(inputVal);
         setShowSignupPrompt(true);
-        setErrorMessage(`No account found for "${inputVal}". Click below to Sign Up.`);
+        setErrorMessage(`No patient account found for "${inputVal}". Click below to Sign Up.`);
         setIsLoading(false);
         return;
       } else if (!res.ok) {
@@ -361,7 +348,6 @@ export const LoginScreen: React.FC = () => {
       }
 
       // Fallback check: 1. Default Demo Patient (Sarah Jenkins) - only on explicit Sarah credentials
-      const inputLower = inputVal.toLowerCase();
       const isSarah =
         inputLower === 'sarah' ||
         inputLower === 'sarah jenkins' ||
@@ -395,69 +381,7 @@ export const LoginScreen: React.FC = () => {
         return;
       }
 
-      // Fallback check: 2. Staff roles entered on Patient Login
-      if (inputLower === 'admin' && (passVal === 'Admin@123' || passVal === 'admin123' || passVal === 'admin')) {
-        useStaffStore.getState().setStaffAuth(
-          {
-            id: 'admin-1',
-            name: 'Hospital Administrator',
-            email: 'admin@carepulse.com',
-            role: 'admin',
-            department: 'Chief Medical Administration',
-            hospitalId: 'hosp-bag',
-            hospital_id: 'hosp-bag',
-          },
-          'token-admin-session'
-        );
-        setIsLoading(false);
-        navigate('/admin');
-        return;
-      }
-
-      if (inputLower === 'doc' && passVal === 'doc123') {
-        useStaffStore.getState().setStaffAuth(
-          {
-            id: 'doc-1',
-            name: 'Dr. Olivia Wilson',
-            email: 'doc@carepulse.com',
-            role: 'doctor',
-            department: 'Cardiology',
-            avatarUrl: '/doctor_default.jpg',
-            hospitalId: 'hosp-bag',
-            hospital_id: 'hosp-bag',
-            doctorId: 'doc-1',
-            doctor_id: 'doc-1',
-            staff_code: 'D001101',
-            staffCode: 'D001101',
-          },
-          'token-doctor-doc-1'
-        );
-        setIsLoading(false);
-        navigate('/doctor');
-        return;
-      }
-
-      if (inputLower === 'rec' && passVal === 'rec123') {
-        useStaffStore.getState().setStaffAuth(
-          {
-            id: 'rec-1',
-            name: 'Front Desk Receptionist',
-            email: 'rec@carepulse.com',
-            role: 'receptionist',
-            department: 'Front Desk & Registrations',
-            hospitalId: 'hosp-bag',
-            hospital_id: 'hosp-bag',
-            staff_code: 'R001101',
-            staffCode: 'R001101',
-          },
-          'token-receptionist-rec-1'
-        );
-        setIsLoading(false);
-        navigate('/receptionist');
-        return;
-      }
-
-      // Fallback check: 3. Local registered users in storage
+      // Fallback check: 2. Local registered users in storage
       const storedUsersStr = localStorage.getItem('carepulse_registered_users');
       const registeredUsers: any[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
       const inputDigits = inputVal.replace(/\D/g, '').slice(-10);
@@ -650,6 +574,21 @@ export const LoginScreen: React.FC = () => {
               </Button>
             </div>
           </form>
+
+          {/* Cross-Portal Staff Link */}
+          <div className="pt-4 mt-4 border-t border-slate-100 flex flex-col items-center justify-center gap-1 text-center text-xs">
+            <p className="text-slate-500 font-medium">
+              Are you a receptionist, doctor, or admin?{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/staff/login')}
+                className="font-bold text-[#0B5A54] hover:text-[#094843] hover:underline cursor-pointer transition-colors inline-flex items-center gap-0.5"
+              >
+                <span>Staff Portal</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </p>
+          </div>
         </Card>
 
         {/* Footer */}

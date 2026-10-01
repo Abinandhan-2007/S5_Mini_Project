@@ -328,7 +328,20 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         const data = await res.json();
         if (data.success && data.staff) {
           const userRole = data.staff.role;
-          const hospId = data.staff.hospitalId || data.staff.hospital_id || (data.staff.role === 'superadmin' ? 'hosp-1' : undefined);
+          // Guard: SuperAdmin accounts are not allowed in Staff Login
+          if (userRole === 'superadmin') {
+            setError('SuperAdmin accounts cannot sign in through the Staff Portal. Please use the SuperAdmin Console (/superadmin/login).');
+            triggerShake();
+            setIsLoading(false);
+            return;
+          }
+          if (!['admin', 'doctor', 'receptionist', 'nurse'].includes(userRole)) {
+            setError('Access restricted to authorized hospital staff only.');
+            triggerShake();
+            setIsLoading(false);
+            return;
+          }
+          const hospId = data.staff.hospitalId || data.staff.hospital_id;
           const hospName = data.staff.hospitalName || data.staff.hospital_name || 'CarePulse Medical Center';
           setStaffAuth(
             {
@@ -353,8 +366,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
           setIsLoading(false);
           setSuccessInfo({ role: userRole, name: data.staff.name || 'Staff Member' });
           setTimeout(() => {
-            if (userRole === 'superadmin') navigate('/superadmin');
-            else if (userRole === 'admin') navigate('/admin');
+            if (userRole === 'admin') navigate('/admin');
             else if (userRole === 'doctor') navigate('/doctor');
             else if (userRole === 'nurse') navigate('/nurse');
             else navigate('/receptionist');
@@ -371,73 +383,32 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       // Fallback to client-side store verification
     }
 
-    // 2. Check SuperAdmin Credentials (API or Local Fallback)
+    // 2. Guard: SuperAdmin Accounts must use the dedicated SuperAdmin Console
     if (
       cleanId === 'superadmin' ||
       cleanId === 'superadmin@carepulse.com' ||
       cleanId === 'sa101' ||
       cleanId === 'sa'
     ) {
-      try {
-        const saRes = await apiPost('/superadmin/login', {
-          email: cleanId,
-          username: cleanId,
-          identifier: cleanId,
-          password: cleanPassword,
-        });
-        if (saRes.ok) {
-          const saData = await saRes.json();
-          if (saData && saData.staff) {
-            const token = saData.token || 'token-superadmin-session';
-            localStorage.setItem('superadmin_token', token);
-            sessionStorage.setItem('superadmin_token', token);
-            setStaffAuth(
-              {
-                id: saData.staff.id || 'superadmin-1',
-                name: saData.staff.name || 'Platform SuperAdmin',
-                email: saData.staff.email || 'superadmin@carepulse.com',
-                role: 'superadmin',
-                department: saData.staff.department || 'Global Platform Operations',
-                avatarUrl: saData.staff.avatarUrl,
-                staff_code: saData.staff.staff_code || 'SA101',
-                staffCode: saData.staff.staff_code || 'SA101',
-                phone: saData.staff.phone,
-                hospital_id: undefined,
-                hospitalId: undefined,
-              },
-              token
-            );
-            setIsLoading(false);
-            setSuccessInfo({ role: 'superadmin', name: saData.staff.name || 'Platform SuperAdmin' });
-            setTimeout(() => navigate('/superadmin'), 650);
-            return;
-          }
-        }
-      } catch {}
+      setError('SuperAdmin accounts cannot sign in through the Staff Portal. Please use the SuperAdmin Console (/superadmin/login).');
+      triggerShake();
+      setIsLoading(false);
+      return;
+    }
 
-      if (cleanPassword === 'SuperAdmin@123' || cleanPassword === 'superadmin' || cleanPassword === 'superaadmin') {
-        const fallbackToken = 'token-superadmin-session';
-        localStorage.setItem('superadmin_token', fallbackToken);
-        sessionStorage.setItem('superadmin_token', fallbackToken);
-        setStaffAuth(
-          {
-            id: 'superadmin-1',
-            name: 'Platform SuperAdmin',
-            email: 'superadmin@carepulse.com',
-            role: 'superadmin',
-            department: 'Global Platform Operations',
-            staff_code: 'SA101',
-            staffCode: 'SA101',
-            hospitalId: undefined,
-            hospital_id: undefined,
-          },
-          fallbackToken
-        );
-        setIsLoading(false);
-        setSuccessInfo({ role: 'superadmin', name: 'Platform SuperAdmin' });
-        setTimeout(() => navigate('/superadmin'), 650);
-        return;
-      }
+    // Guard: Patient Accounts must use the Patient App
+    if (
+      cleanId === 'sarah' ||
+      cleanId === 'sarah jenkins' ||
+      cleanId === 'sarah.j@carepulse.com' ||
+      cleanId === 'sarah.jenkins@example.com' ||
+      cleanId === '+91 98765 43210' ||
+      cleanId === '9876543210'
+    ) {
+      setError('Patient accounts cannot sign in through the Staff Portal. Please use the Patient App.');
+      triggerShake();
+      setIsLoading(false);
+      return;
     }
 
     // 3. Check Admin Credentials (Username or Email)
@@ -447,7 +418,6 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
 
     if (
       (cleanId === 'admin' ||
-        cleanId === 'superadmin' ||
         cleanId === 'bag' ||
         cleanId === 'bag@carepulse.com' ||
         cleanId === 'a001101' ||
@@ -1118,6 +1088,19 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                 Need access? Contact your hospital administrator.
               </p>
             </form>
+
+            {/* Cross-Portal Patient Link */}
+            <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center text-xs">
+              <span className="text-slate-500 font-medium">Are you a patient?</span>
+              <button
+                type="button"
+                onClick={() => navigate('/patient/login')}
+                className="ml-1.5 font-bold text-[#0F5A52] hover:text-[#0B3F3A] hover:underline cursor-pointer transition-colors inline-flex items-center gap-1"
+              >
+                <span>Patient App</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </div>
           </motion.div>
         </div>
       </div>
