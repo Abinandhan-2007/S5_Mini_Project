@@ -211,6 +211,42 @@
       "iconType": "inhaler",
       "status": "Active",
       "created_at": "2026-10-02T20:41:37.551578"
+    },
+    {
+      "id": "7ffe8b53-b675-4472-8b56-94ea6f1cb324",
+      "patient_id": "f73b9fe8-897f-4c1a-8e32-357cdd9ed319",
+      "patientId": "f73b9fe8-897f-4c1a-8e32-357cdd9ed319",
+      "drug_name": "Azithromycin 500mg",
+      "drugName": "Azithromycin 500mg",
+      "dosage": "1 Tab",
+      "frequency": "Once daily (OD)",
+      "duration": "5 Days",
+      "meal_timing": "Take after meals",
+      "mealTiming": "Take after meals",
+      "instructions": "Take after meals",
+      "prescriber": "Dr. Test Specialist",
+      "icon_type": "pill",
+      "iconType": "pill",
+      "status": "Active",
+      "created_at": "2026-10-02T21:16:58.050062"
+    },
+    {
+      "id": "2034fe9f-062d-47f1-8603-9fc063e6e42b",
+      "patient_id": "f73b9fe8-897f-4c1a-8e32-357cdd9ed319",
+      "patientId": "f73b9fe8-897f-4c1a-8e32-357cdd9ed319",
+      "drug_name": "Levosalbutamol Inhaler",
+      "drugName": "Levosalbutamol Inhaler",
+      "dosage": "2 Puffs",
+      "frequency": "Twice daily as needed",
+      "duration": "7 Days",
+      "meal_timing": "Inhale with spacer",
+      "mealTiming": "Inhale with spacer",
+      "instructions": "Inhale with spacer",
+      "prescriber": "Dr. Test Specialist",
+      "icon_type": "inhaler",
+      "iconType": "inhaler",
+      "status": "Active",
+      "created_at": "2026-10-02T21:16:58.050062"
     }
   ],
   "doctors": [

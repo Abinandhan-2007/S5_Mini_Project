@@ -399,6 +399,7 @@ interface LoginFormPanelProps {
   handleLogin: (e: React.FormEvent) => void;
   onOpenForgotModal: () => void;
   onSelectPreset: (role: 'admin' | 'doctor' | 'receptionist') => void;
+  onGoToPatientLogin?: () => void;
 }
 
 const LoginFormPanel: React.FC<LoginFormPanelProps> = ({
@@ -419,6 +420,7 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({
   handleLogin,
   onOpenForgotModal,
   onSelectPreset,
+  onGoToPatientLogin,
 }) => {
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
 
@@ -638,6 +640,47 @@ const LoginFormPanel: React.FC<LoginFormPanelProps> = ({
               </>
             )}
           </button>
+
+          {/* Quick Role Selection Links */}
+          <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-500">
+            <span>Are you:</span>
+            <button
+              type="button"
+              onClick={() => onSelectPreset('doctor')}
+              className="font-bold text-[#0B5A54] hover:underline cursor-pointer"
+            >
+              Doctor
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => onSelectPreset('admin')}
+              className="font-bold text-[#0B5A54] hover:underline cursor-pointer"
+            >
+              Admin
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => onSelectPreset('receptionist')}
+              className="font-bold text-[#0B5A54] hover:underline cursor-pointer"
+            >
+              Receptionist
+            </button>
+          </div>
+
+          {/* Cross-Portal Patient Link */}
+          <div className="mt-5 pt-4 border-t border-slate-200/80 flex items-center justify-center text-xs">
+            <span className="text-slate-500 font-medium">Are you a patient?</span>
+            <button
+              type="button"
+              onClick={onGoToPatientLogin}
+              className="ml-1.5 font-bold text-[#0B5A54] hover:text-[#08423D] hover:underline cursor-pointer transition-colors inline-flex items-center gap-1"
+            >
+              <span>Patient App</span>
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
         </form>
       </div>
 
@@ -1337,6 +1380,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ defaultRole 
               setIsForgotModalOpen(true);
             }}
             onSelectPreset={handleSelectPreset}
+            onGoToPatientLogin={() => navigate('/patient/login')}
           />
         </div>
       </div>
