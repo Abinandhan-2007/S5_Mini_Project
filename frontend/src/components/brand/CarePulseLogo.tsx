@@ -54,49 +54,43 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
     ? 'bg-teal-900/60 border-teal-500/40 text-teal-200'
     : 'bg-teal-50/90 border-teal-200 text-[#0B5A54]';
 
-  // Standalone vector hospital medical emblem
+  // Standalone hospital medical emblem (official high-res 3D brand asset with resilient SVG fallback)
   const LogoMark = (
     <div
-      className={`relative flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 select-none`}
+      className="relative flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 select-none"
       style={{ width: markDimensions.w, height: markDimensions.h }}
     >
+      <img
+        src="/logo-icon.png"
+        alt="CarePulse Logo"
+        className="w-full h-full object-contain drop-shadow-[0_2px_8px_rgba(11,90,84,0.18)]"
+        onError={(e) => {
+          const imgEl = e.currentTarget;
+          imgEl.style.display = 'none';
+          const fallback = imgEl.nextElementSibling as HTMLElement | null;
+          if (fallback) fallback.style.display = 'block';
+        }}
+      />
       <svg
         viewBox="0 0 100 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-[0_2px_8px_rgba(11,90,84,0.18)]"
+        className="w-full h-full hidden"
       >
-        <defs>
-          <linearGradient id="cpCenterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#084C45" />
-            <stop offset="45%" stopColor="#0B5A54" />
-            <stop offset="100%" stopColor="#10B981" />
-          </linearGradient>
-          <linearGradient id="cpWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0A4D46" />
-            <stop offset="100%" stopColor="#059669" />
-          </linearGradient>
-          <filter id="softGlow" x="-15%" y="-15%" width="130%" height="130%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#062E2A" floodOpacity="0.25" />
-          </filter>
-        </defs>
-
-        {/* Soft rounded container squircle */}
-        <rect width="100" height="100" rx="24" fill="#FFFFFF" className="transition-colors" />
-
+        <rect width="100" height="100" rx="24" fill="#FFFFFF" />
         <g transform="translate(6, 11) scale(0.88)">
-          {/* Left Wing (2 Windows) */}
+          {/* Left Wing */}
           <path
             d="M12,40 C12,28 20,24 28,24 L28,78 C20,78 12,72 12,62 Z"
-            fill="url(#cpWingGrad)"
+            fill="#0A4D46"
           />
           <rect x="16" y="38" width="8" height="9" rx="2.5" fill="#D1FAE5" />
           <rect x="16" y="52" width="8" height="9" rx="2.5" fill="#D1FAE5" />
 
-          {/* Right Wing (2 Windows) */}
+          {/* Right Wing */}
           <path
             d="M72,24 C80,24 88,28 88,40 L88,62 C88,72 80,78 72,78 Z"
-            fill="url(#cpWingGrad)"
+            fill="#0A4D46"
           />
           <rect x="76" y="38" width="8" height="9" rx="2.5" fill="#D1FAE5" />
           <rect x="76" y="52" width="8" height="9" rx="2.5" fill="#D1FAE5" />
@@ -104,7 +98,7 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
           {/* Center Main Building Pavilion */}
           <path
             d="M26,28 C26,15 36,11 50,11 C64,11 74,15 74,28 L74,80 C74,80 62,80 58,80 C58,66 56,58 50,58 C44,58 42,66 42,80 L26,80 Z"
-            fill="url(#cpCenterGrad)"
+            fill="#0B5A54"
           />
 
           {/* Top-Left Accent Dot */}
@@ -116,7 +110,7 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
             fill="#FFFFFF"
           />
 
-          {/* 4 Large Center Facade Windows (2x2 Grid) */}
+          {/* Windows */}
           <rect x="31" y="38" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
           <rect x="58.5" y="38" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
           <rect x="31" y="52" width="10.5" height="9" rx="2.5" fill="#FFFFFF" />
@@ -127,11 +121,10 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
             d="M42.5,80 C42.5,67 45.5,59.5 50,59.5 C54.5,59.5 57.5,67 57.5,80"
             fill="none"
             stroke="#10B981"
-            strokeWidth="1.6"
+            strokeWidth="2"
             opacity="0.9"
           />
-          {/* Double-door central divider line */}
-          <line x1="50" y1="60" x2="50" y2="80" stroke="#10B981" strokeWidth="1.2" opacity="0.8" />
+          <line x1="50" y1="60" x2="50" y2="80" stroke="#10B981" strokeWidth="1.5" opacity="0.8" />
         </g>
       </svg>
     </div>
@@ -155,7 +148,13 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
         className={`flex flex-col items-center text-center group cursor-pointer ${className}`}
         onClick={onClick}
       >
-        <div className="mb-2.5 p-1 rounded-2xl bg-white shadow-xs border border-slate-200/90 ring-2 ring-teal-50/80">
+        <div
+          className={`mb-2.5 p-1 rounded-2xl shrink-0 transition-transform group-hover:scale-105 ${
+            isDark
+              ? 'bg-white shadow-md border border-white/60 ring-2 ring-teal-400/30'
+              : 'bg-white shadow-xs border border-slate-200/90 ring-2 ring-teal-50/80'
+          }`}
+        >
           {LogoMark}
         </div>
         <div className="flex items-center gap-1.5">
@@ -184,7 +183,13 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
       className={`inline-flex items-center gap-3 group select-none ${onClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
     >
-      <div className="p-1 rounded-2xl bg-white shadow-xs border border-slate-200/90 ring-2 ring-teal-50/80 shrink-0 transition-transform group-hover:scale-105">
+      <div
+        className={`p-1 rounded-2xl shrink-0 transition-transform group-hover:scale-105 ${
+          isDark
+            ? 'bg-white shadow-md border border-white/60 ring-2 ring-teal-400/30'
+            : 'bg-white shadow-xs border border-slate-200/90 ring-2 ring-teal-50/80'
+        }`}
+      >
         {LogoMark}
       </div>
 

@@ -273,5 +273,17 @@
       "resolvedBy": "kmchadmin",
       "resolvedAt": "2026-09-24T11:44:54.000863"
     }
+  ],
+  "notification_log": [
+    {
+      "patient_id": "a18dee6b-a5a5-4810-afe0-9d3b4bd1bda4",
+      "notification_type": "med_reminder_2000_20261002",
+      "reference_id": "81b88d2c-14d9-49c7-aa1a-4b1c30d71dc4"
+    },
+    {
+      "patient_id": "6ed66f3f-3781-490e-ae19-d03cd59d6aba",
+      "notification_type": "med_reminder_2000_20261002",
+      "reference_id": "bcb0d88e-b4b5-4a6a-8970-45e9c0b62d3f"
+    }
   ]
 }
