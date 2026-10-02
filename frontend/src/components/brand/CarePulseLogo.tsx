@@ -84,7 +84,7 @@ export const CarePulseLogo: React.FC<CarePulseLogoProps> = ({
         {/* Soft rounded container squircle */}
         <rect width="100" height="100" rx="24" fill="#FFFFFF" className="transition-colors" />
 
-        <g transform="translate(6, 11) scale(0.88)" filter="url(#softGlow)">
+        <g transform="translate(6, 11) scale(0.88)">
           {/* Left Wing (2 Windows) */}
           <path
             d="M12,40 C12,28 20,24 28,24 L28,78 C20,78 12,72 12,62 Z"

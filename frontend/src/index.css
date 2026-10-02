@@ -161,4 +161,19 @@ body::-webkit-scrollbar {
 
 .animate-shake {
   animation: cardShake 0.45s ease-in-out;
-}
+}
+
+@keyframes ecgPulse {
+  0% {
+    stroke-dashoffset: 800;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-ecg-pulse {
+  stroke-dasharray: 400 400;
+  animation: ecgPulse 7s linear infinite;
+}
+
