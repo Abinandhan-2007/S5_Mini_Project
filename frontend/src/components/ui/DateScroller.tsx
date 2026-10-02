@@ -1,6 +1,7 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import { motion } from 'framer-motion';
+import { Lock } from 'lucide-react';
 
 export interface DateOption {
   fullDate: string; // e.g. "2026-08-07"
@@ -13,10 +14,18 @@ export interface DateOption {
   slotsAvailableCount?: number;
 }
 
+export interface ApprovedLeaveRange {
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
 export interface DateScrollerProps {
   selectedDate: string;
   onSelectDate: (dateStr: string) => void;
   hideToday?: boolean;
+  approvedLeaves?: ApprovedLeaveRange[];
+  frozenDates?: string[];
 }
 
 // Generate upcoming 8 rolling days starting from today or tomorrow
@@ -69,6 +78,8 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
   selectedDate,
   onSelectDate,
   hideToday = false,
+  approvedLeaves = [],
+  frozenDates = [],
 }) => {
   const dates = React.useMemo(() => generateUpcomingDates(hideToday), [hideToday]);
 
@@ -78,6 +89,21 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
         {dates.map((item) => {
           const isSelected = selectedDate === item.fullDate;
 
+          const isDateFrozen = Boolean(
+            frozenDates?.includes(item.fullDate) ||
+            approvedLeaves?.some((l) => {
+              const s = l.startDate ? l.startDate.split('T')[0] : '';
+              const e = l.endDate ? l.endDate.split('T')[0] : '';
+              return s && e && item.fullDate >= s && item.fullDate <= e;
+            })
+          );
+
+          const matchedLeave = approvedLeaves?.find((l) => {
+            const s = l.startDate ? l.startDate.split('T')[0] : '';
+            const e = l.endDate ? l.endDate.split('T')[0] : '';
+            return s && e && item.fullDate >= s && item.fullDate <= e;
+          });
+
           return (
             <motion.button
               key={item.fullDate}
@@ -85,25 +111,51 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => onSelectDate(item.fullDate)}
+              title={
+                isDateFrozen
+                  ? `Doctor on Approved Leave (${matchedLeave?.reason || 'Schedule Frozen'})`
+                  : undefined
+              }
               className={clsx(
-                'group relative flex flex-col items-center justify-between min-w-[70px] sm:min-w-[76px] h-[100px] p-2.5 rounded-2xl transition-all duration-200 shrink-0 border focus:outline-none cursor-pointer snap-start select-none shadow-xs',
-                isSelected
+                'group relative flex flex-col items-center justify-between min-w-[72px] sm:min-w-[78px] h-[102px] p-2.5 rounded-2xl transition-all duration-200 shrink-0 border focus:outline-none cursor-pointer snap-start select-none shadow-xs',
+                isDateFrozen
+                  ? isSelected
+                    ? 'bg-rose-50/95 text-rose-900 border-2 border-rose-500 shadow-md ring-2 ring-rose-200'
+                    : 'bg-rose-50/40 hover:bg-rose-50/80 text-rose-700/80 border-rose-200/90 hover:border-rose-400/90 shadow-2xs'
+                  : isSelected
                   ? 'bg-[#E3F3F1] text-[#0B5A54] border-2 border-[#0B5A54] shadow-sm'
                   : 'bg-white hover:bg-slate-50/90 text-slate-700 border-slate-200/80 hover:border-[#14B8A6]/40 shadow-xs'
               )}
             >
-              {/* Top: Month / Today / Tomorrow Tag */}
+              {/* Top: Month / Today / Tomorrow / FROZEN Tag */}
               <div className="w-full flex justify-between items-center px-0.5">
-                <span
-                  className={clsx(
-                    'text-[10px] font-black tracking-wider uppercase',
-                    isSelected ? 'text-[#0B5A54]' : 'text-slate-400 group-hover:text-slate-600'
-                  )}
-                >
-                  {item.isToday ? 'TODAY' : item.isTomorrow ? 'TOM' : item.month}
-                </span>
+                {isDateFrozen ? (
+                  <span
+                    className={clsx(
+                      'text-[9.5px] font-black tracking-wider uppercase flex items-center gap-0.5',
+                      isSelected ? 'text-rose-700' : 'text-rose-500'
+                    )}
+                  >
+                    <Lock className="w-2.5 h-2.5 inline shrink-0" />
+                    FROZEN
+                  </span>
+                ) : (
+                  <span
+                    className={clsx(
+                      'text-[10px] font-black tracking-wider uppercase',
+                      isSelected ? 'text-[#0B5A54]' : 'text-slate-400 group-hover:text-slate-600'
+                    )}
+                  >
+                    {item.isToday ? 'TODAY' : item.isTomorrow ? 'TOM' : item.month}
+                  </span>
+                )}
 
-                {(item.isToday || (hideToday && item.isTomorrow)) && (
+                {isDateFrozen ? (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-rose-500"
+                    title="Doctor on Approved Leave"
+                  />
+                ) : item.isToday || (hideToday && item.isTomorrow) ? (
                   <span
                     className={clsx(
                       'w-1.5 h-1.5 rounded-full',
@@ -111,14 +163,20 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
                     )}
                     title={item.isToday ? 'Today' : 'Tomorrow'}
                   />
-                )}
+                ) : null}
               </div>
 
               {/* Middle: Big Day Number */}
               <span
                 className={clsx(
-                  'text-xl sm:text-2xl font-black font-heading tracking-tight -my-1',
-                  isSelected ? 'text-[#0B5A54]' : 'text-slate-800'
+                  'text-xl sm:text-2xl font-black font-heading tracking-tight -my-1 transition-colors',
+                  isDateFrozen
+                    ? isSelected
+                      ? 'text-rose-900 font-black'
+                      : 'text-rose-400 line-through decoration-rose-400/80 decoration-2'
+                    : isSelected
+                    ? 'text-[#0B5A54]'
+                    : 'text-slate-800'
                 )}
               >
                 {item.dayNumber}
@@ -127,13 +185,17 @@ export const DateScroller: React.FC<DateScrollerProps> = ({
               {/* Bottom: Day of Week Pill */}
               <div
                 className={clsx(
-                  'w-full py-1 rounded-xl flex items-center justify-center font-bold text-[11px] transition-colors',
-                  isSelected
+                  'w-full py-1 rounded-xl flex items-center justify-center font-bold text-[10.5px] transition-colors',
+                  isDateFrozen
+                    ? isSelected
+                      ? 'bg-rose-600 text-white font-black shadow-xs'
+                      : 'bg-rose-100/70 text-rose-700 font-extrabold border border-rose-200/60'
+                    : isSelected
                     ? 'bg-[#0B5A54] text-white font-extrabold'
                     : 'bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-[#0B5A54]'
                 )}
               >
-                {item.dayNameShort}
+                {isDateFrozen ? (isSelected ? 'ON LEAVE' : 'LEAVE') : item.dayNameShort}
               </div>
             </motion.button>
           );

@@ -54,8 +54,8 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
     receptionDesksCount: 2,
     logoUrl: '/hospital_default.jpg',
     isActive: true,
-    latitude: 11.0505,
-    longitude: 77.0373,
+    latitude: 11.0264,
+    longitude: 77.0270,
   });
 
   const handleDetectGps = () => {
@@ -117,8 +117,8 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
       receptionDesksCount: 2,
       logoUrl: '/hospital_default.jpg',
       isActive: true,
-      latitude: 11.0505,
-      longitude: 77.0373,
+      latitude: 11.0264,
+      longitude: 77.0270,
     });
     setIsAddModalOpen(true);
   };
@@ -135,8 +135,8 @@ export const AdminHospitalManagement: React.FC<AdminHospitalManagementProps> = (
       receptionDesksCount: h.receptionDesksCount,
       logoUrl: h.logoUrl,
       isActive: h.isActive,
-      latitude: h.latitude || 11.0505,
-      longitude: h.longitude || 77.0373,
+      latitude: h.latitude || 11.0264,
+      longitude: h.longitude || 77.0270,
     });
     setIsEditModalOpen(true);
   };

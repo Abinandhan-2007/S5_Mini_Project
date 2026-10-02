@@ -479,6 +479,12 @@ export const HospitalDetailScreen: React.FC = () => {
           onClose={() => setIsRouteModalOpen(false)}
           hospitalName={hospital.name}
           facilityAddress={hospital.address}
+          facilityPhone={(hospital as any).phone}
+          coordinates={
+            hospital.latitude && hospital.longitude
+              ? { lat: hospital.latitude, lng: hospital.longitude }
+              : hospital.coordinates
+          }
         />
       )}
 

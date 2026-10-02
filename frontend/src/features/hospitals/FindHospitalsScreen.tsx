@@ -19,12 +19,12 @@ import {
 import { clsx } from 'clsx';
 
 import { BottomNav } from '../../components/ui/BottomNav';
-import { requestNativeLocation } from '../../lib/locationService';
+import { requestNativeLocation, getCachedLocation } from '../../lib/locationService';
 import { hospitalService } from '../../services/hospitalService';
 import { doctorService } from '../../services/doctorService';
 import type { Hospital, Doctor } from '../../lib/types';
 import { useLocalizedEntities } from '../../i18n';
-import { HospitalRouteModal } from '../../components/hospitals/HospitalRouteModal';
+import { HospitalRouteModal, estimateRoadDistanceKm } from '../../components/hospitals/HospitalRouteModal';
 
 type HospitalSortOption = 'rating' | 'distance' | 'reviews' | 'name';
 
@@ -71,6 +71,28 @@ export const FindHospitalsScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<HospitalSortOption>('rating');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [selectedRouteHospital, setSelectedRouteHospital] = useState<Hospital | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(() => {
+    const cached = getCachedLocation();
+    return cached && cached.latitude && cached.longitude ? { lat: cached.latitude, lng: cached.longitude } : null;
+  });
+
+  // Calculate live road distance in km from current device position
+  const calculateHospDistance = (hosp: Hospital): number | null => {
+    if (!userCoords) return null;
+    const hLat = hosp.latitude || (hosp.coordinates?.lat) || 11.0264;
+    const hLng = hosp.longitude || (hosp.coordinates?.lng) || 77.0270;
+    const R = 6371;
+    const dLat = ((hLat - userCoords.lat) * Math.PI) / 180;
+    const dLon = ((hLng - userCoords.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((userCoords.lat * Math.PI) / 180) *
+        Math.cos((hLat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return estimateRoadDistanceKm(R * c);
+  };
 
   // Load hospitals & doctors from database
   useEffect(() => {
@@ -118,6 +140,10 @@ export const FindHospitalsScreen: React.FC = () => {
     const res = await requestNativeLocation();
     setIsLocating(false);
 
+    if (res.latitude && res.longitude) {
+      setUserCoords({ lat: res.latitude, lng: res.longitude });
+    }
+
     if (res.placeName) {
       setSearchQuery(res.placeName);
       setLocationStatus(`📍 Detected: ${res.placeName}`);
@@ -146,7 +172,9 @@ export const FindHospitalsScreen: React.FC = () => {
 
     return [...list].sort((a, b) => {
       if (sortBy === 'distance') {
-        return (a.distanceMiles || 0) - (b.distanceMiles || 0);
+        const distA = calculateHospDistance(a) ?? a.distanceMiles ?? 999;
+        const distB = calculateHospDistance(b) ?? b.distanceMiles ?? 999;
+        return distA - distB;
       }
       if (sortBy === 'name') {
         return a.name.localeCompare(b.name);
@@ -156,7 +184,7 @@ export const FindHospitalsScreen: React.FC = () => {
       }
       return (b.rating || 0) - (a.rating || 0);
     });
-  }, [hospitals, doctors, searchQuery, sortBy]);
+  }, [hospitals, doctors, searchQuery, sortBy, userCoords]);
 
   return (
     <div className="min-h-screen bg-[#FAFCFD] pb-28 w-full relative select-none">
@@ -340,10 +368,15 @@ export const FindHospitalsScreen: React.FC = () => {
 
                     {/* Bottom Right Distance Pill Overlay */}
                     <div className="absolute bottom-3 right-3">
-                      <span className="bg-white/95 backdrop-blur-md text-[#0B5A54] font-black text-[10.5px] px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 border border-white/60">
-                        <MapPin className="w-3 h-3 text-[#0B5A54]" />
-                        <span>{hosp.distanceMiles} {t('hospitals.distanceMi', 'mi')}</span>
-                      </span>
+                      {(() => {
+                        const distKm = calculateHospDistance(hosp);
+                        return (
+                          <span className="bg-white/95 backdrop-blur-md text-[#0B5A54] font-black text-[10.5px] px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 border border-white/60">
+                            <MapPin className="w-3 h-3 text-[#0B5A54]" />
+                            <span>{distKm !== null ? `${distKm} km` : `${hosp.distanceMiles} ${t('hospitals.distanceMi', 'mi')}`}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -444,6 +477,12 @@ export const FindHospitalsScreen: React.FC = () => {
           onClose={() => setSelectedRouteHospital(null)}
           hospitalName={selectedRouteHospital.name}
           facilityAddress={selectedRouteHospital.address}
+          facilityPhone={(selectedRouteHospital as any).phone}
+          coordinates={
+            selectedRouteHospital.latitude && selectedRouteHospital.longitude
+              ? { lat: selectedRouteHospital.latitude, lng: selectedRouteHospital.longitude }
+              : selectedRouteHospital.coordinates
+          }
         />
       )}
 

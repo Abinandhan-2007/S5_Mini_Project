@@ -146,9 +146,6 @@ const SPRING_TRANSITION = {
 const MAX_VISIBLE_PEEK = 3;
 const BASE_CARD_HEIGHT = 300;
 
-// Storage key prefix for daily dose tracking (fresh clean start with all doses untaken)
-const DOSE_STORAGE_PREFIX = 'carepulse_med_dose_v3_';
-
 // Helper to get today's calendar date in YYYY-MM-DD format
 const getTodayDateKey = () => new Date().toISOString().split('T')[0];
 
@@ -270,20 +267,41 @@ const parseDurationDays = (duration: string): number => {
   return 7;
 };
 
-/** Compute how many days have elapsed since prescription was created */
-const computeDaysCompleted = (createdAt: string | undefined, totalDays: number): number => {
-  if (!createdAt) return 0;
+// Storage key prefixes
+const DOSE_HISTORY_PREFIX = 'carepulse_med_history_v4_';
+const LEGACY_DOSE_PREFIX = 'carepulse_med_dose_v3_';
+
+interface MedDailyHistory {
+  // map of date (YYYY-MM-DD) -> { slotId: timeStr }
+  dates: Record<string, Record<string, string>>;
+}
+
+const loadMedHistory = (medId: string): MedDailyHistory => {
   try {
-    const datePart = createdAt.slice(0, 10);
-    const start = new Date(datePart);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    start.setHours(0, 0, 0, 0);
-    const elapsed = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
-    return Math.max(0, Math.min(elapsed, totalDays));
-  } catch {
-    return 0;
+    const modern = localStorage.getItem(`${DOSE_HISTORY_PREFIX}${medId}`);
+    if (modern) {
+      const parsed = JSON.parse(modern);
+      if (parsed && typeof parsed.dates === 'object') {
+        return parsed;
+      }
+    }
+    const legacy = localStorage.getItem(`${LEGACY_DOSE_PREFIX}${medId}`);
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (parsed && parsed.date && parsed.slots && Object.keys(parsed.slots).length > 0) {
+        const migrated: MedDailyHistory = {
+          dates: { [parsed.date]: parsed.slots },
+        };
+        try {
+          localStorage.setItem(`${DOSE_HISTORY_PREFIX}${medId}`, JSON.stringify(migrated));
+        } catch {}
+        return migrated;
+      }
+    }
+  } catch (e) {
+    console.warn('Initial dose load note:', e);
   }
+  return { dates: {} };
 };
 
 // Default prescribed course lengths — only used when duration string is missing
@@ -306,46 +324,25 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   const { t } = useTranslation();
   const { formatDoctorName, formatHospitalName } = useLocalizedEntities();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [takenSlotsMap, setTakenSlotsMap] = useState<
-    Record<string, { date: string; slots: Record<string, string> }>
-  >(() => {
-    const today = getTodayDateKey();
-    const loadedMap: Record<string, { date: string; slots: Record<string, string> }> = {};
+  const [medHistoryMap, setMedHistoryMap] = useState<Record<string, MedDailyHistory>>(() => {
+    const loadedMap: Record<string, MedDailyHistory> = {};
     const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : [];
     sourceList.forEach((m, idx) => {
       const medId = m.id || `rx-${idx}`;
-      try {
-        const stored = localStorage.getItem(`${DOSE_STORAGE_PREFIX}${medId}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.date === today && parsed.slots) {
-            loadedMap[medId] = { date: today, slots: parsed.slots };
-          }
-        }
-      } catch (e) {
-        console.warn('Initial dose load note:', e);
-      }
+      loadedMap[medId] = loadMedHistory(medId);
     });
     return loadedMap;
   });
   const isScrollingRef = useRef(false);
 
-  // Normalize data with memoization to eliminate recalculations on every drag frame
+  // Normalize data with memoization
   const normalizedMeds: MedicationItem[] = React.useMemo(() => {
     const sourceList = prescriptions && prescriptions.length > 0 ? prescriptions : [];
     return sourceList.map((p, idx) => {
       const courseDefaults = DEFAULT_COURSE_DAYS[idx % DEFAULT_COURSE_DAYS.length];
-      // Derive totalDays: prefer explicit backend field, then parse duration string, then fallback
       const resolvedTotal: number =
         p.totalDays ??
         ((p as any).duration ? parseDurationDays((p as any).duration as string) : courseDefaults.total);
-      // Derive daysCompleted: prefer explicit backend field, then compute from createdAt, then 0
-      const resolvedCompleted: number =
-        p.daysCompleted !== undefined && p.daysCompleted !== null
-          ? p.daysCompleted
-          : ((p as any).createdAt
-              ? computeDaysCompleted((p as any).createdAt as string, resolvedTotal)
-              : 0);
       return {
         id: p.id || `rx-${idx}`,
         drugName: (p.drugName || 'Prescription Medication')
@@ -359,7 +356,7 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
         iconType: p.iconType || 'pill',
         nextDose: p.nextDose || undefined,
         totalDays: resolvedTotal,
-        daysCompleted: resolvedCompleted,
+        daysCompleted: p.daysCompleted !== undefined && p.daysCompleted !== null ? p.daysCompleted : 0,
       };
     });
   }, [prescriptions]);
@@ -376,26 +373,13 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
   const totalCards = normalizedMeds.length;
   const hasPrescriptions = totalCards > 0;
 
-  // On mount or list change: sync taken dose slots
+  // On mount or list change: sync taken dose history
   useEffect(() => {
-    const today = getTodayDateKey();
-    const loadedMap: Record<string, { date: string; slots: Record<string, string> }> = {};
-
+    const loadedMap: Record<string, MedDailyHistory> = {};
     normalizedMeds.forEach((m) => {
-      try {
-        const stored = localStorage.getItem(`${DOSE_STORAGE_PREFIX}${m.id}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.date === today && parsed.slots) {
-            loadedMap[m.id] = { date: today, slots: parsed.slots };
-          }
-        }
-      } catch (e) {
-        console.warn('Multi-dose check note:', e);
-      }
+      loadedMap[m.id] = loadMedHistory(m.id);
     });
-
-    setTakenSlotsMap(loadedMap);
+    setMedHistoryMap(loadedMap);
   }, [normalizedMeds]);
 
   // Live update when a dose is taken via notification prompt ("Yes, I Ate It")
@@ -405,17 +389,23 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
       if (custom.detail) {
         const { medId, slotId, timeStr } = custom.detail;
         const today = getTodayDateKey();
-        setTakenSlotsMap((prev) => {
-          const currentMed = prev[medId]?.date === today ? prev[medId] : { date: today, slots: {} };
+        setMedHistoryMap((prev) => {
+          const currentHist = prev[medId] || { dates: {} };
+          const todaySlots = { ...(currentHist.dates[today] || {}) };
+          todaySlots[slotId] = timeStr;
+          const updated: MedDailyHistory = {
+            dates: {
+              ...currentHist.dates,
+              [today]: todaySlots,
+            },
+          };
+          try {
+            localStorage.setItem(`${DOSE_HISTORY_PREFIX}${medId}`, JSON.stringify(updated));
+            localStorage.setItem(`${LEGACY_DOSE_PREFIX}${medId}`, JSON.stringify({ date: today, slots: todaySlots }));
+          } catch {}
           return {
             ...prev,
-            [medId]: {
-              date: today,
-              slots: {
-                ...currentMed.slots,
-                [slotId]: timeStr,
-              },
-            },
+            [medId]: updated,
           };
         });
       }
@@ -425,43 +415,51 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
     return () => window.removeEventListener('carepulse:dose_taken', handleDoseTakenEvent);
   }, []);
 
-  // Handle recording a dose slot (one-way: once taken, it cannot be unmarked)
+  // Handle recording or toggling a dose slot
   const handleTakeSlotDose = (med: MedicationItem, slotId: string) => {
     const today = getTodayDateKey();
     const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let wasAlreadyTaken = false;
 
-    setTakenSlotsMap((prev) => {
-      const currentMedEntry = prev[med.id]?.date === today ? prev[med.id] : { date: today, slots: {} };
-      const isAlreadyTaken = Boolean(currentMedEntry.slots[slotId]);
+    setMedHistoryMap((prev) => {
+      const currentHist = prev[med.id] || { dates: {} };
+      const currentTodaySlots = { ...(currentHist.dates[today] || {}) };
+      wasAlreadyTaken = Boolean(currentTodaySlots[slotId]);
 
-      // If already recorded as taken, permanently keep it taken (cannot be unmarked)
-      if (isAlreadyTaken) {
-        return prev;
+      if (wasAlreadyTaken) {
+        // Toggle OFF (unmark / undo accidental tap)
+        delete currentTodaySlots[slotId];
+      } else {
+        // Mark as taken
+        currentTodaySlots[slotId] = nowTimeStr;
       }
 
-      const updatedSlots = {
-        ...currentMedEntry.slots,
-        [slotId]: nowTimeStr,
+      const updatedHist: MedDailyHistory = {
+        dates: {
+          ...currentHist.dates,
+          [today]: currentTodaySlots,
+        },
       };
 
-      const updatedRecord = { date: today, slots: updatedSlots };
       try {
-        localStorage.setItem(`${DOSE_STORAGE_PREFIX}${med.id}`, JSON.stringify(updatedRecord));
+        localStorage.setItem(`${DOSE_HISTORY_PREFIX}${med.id}`, JSON.stringify(updatedHist));
+        localStorage.setItem(`${LEGACY_DOSE_PREFIX}${med.id}`, JSON.stringify({ date: today, slots: currentTodaySlots }));
       } catch (e) {
         console.warn('Save dose slots storage note:', e);
       }
 
       return {
         ...prev,
-        [med.id]: updatedRecord,
+        [med.id]: updatedHist,
       };
     });
 
-    // Also call markDoseAsAte to cancel active snoozes/notifications and broadcast across the app
-    markDoseAsAte(med.id, slotId, med.drugName);
+    if (!wasAlreadyTaken) {
+      markDoseAsAte(med.id, slotId, med.drugName);
+    }
 
     if (onMarkTaken) {
-      onMarkTaken(med, true);
+      onMarkTaken(med, !wasAlreadyTaken);
     }
   };
 
@@ -597,19 +595,34 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
 
               const theme = WALLET_CARD_THEMES[actualIndex % WALLET_CARD_THEMES.length];
               const todayKey = getTodayDateKey();
-              const medEntry = takenSlotsMap[med.id];
-              const todaySlots = medEntry?.date === todayKey ? medEntry.slots : {};
+              const medHistory = medHistoryMap[med.id] || { dates: {} };
+              const todaySlots = medHistory.dates[todayKey] || {};
 
               const doseSlots = doseSlotsMap[med.id] || [];
               const completedSlotsCount = doseSlots.filter((s) => Boolean(todaySlots[s.id])).length;
               const allDosesTakenToday = completedSlotsCount === doseSlots.length && doseSlots.length > 0;
 
-              const baseTotal = med.totalDays || 7;
-              // Use nullish coalescing (??) NOT logical OR (||) — 0 days completed is valid!
-              const baseCompleted = med.daysCompleted ?? 0;
-              const effectiveCompleted = allDosesTakenToday ? Math.min(baseTotal, baseCompleted + 1) : baseCompleted;
-              const progressPercent = Math.round((effectiveCompleted / baseTotal) * 100);
-              const isCourseFinished = effectiveCompleted >= baseTotal;
+              const baseTotalDays = med.totalDays || 7;
+              const slotsPerDay = Math.max(1, doseSlots.length);
+              const totalCourseDoses = baseTotalDays * slotsPerDay;
+
+              // Actual doses taken across all dates in history
+              const totalDosesTaken = Object.values(medHistory.dates).reduce(
+                (sum, slotObj) => sum + Object.keys(slotObj).length,
+                0
+              );
+
+              // Full days where all slots were taken
+              const fullDaysCompleted = Object.values(medHistory.dates).filter(
+                (slotObj) => Object.keys(slotObj).length >= slotsPerDay
+              ).length;
+
+              // Progress percentage directly reflects actual marked doses out of total course doses
+              const progressPercent =
+                totalCourseDoses > 0
+                  ? Math.min(100, Math.round((totalDosesTaken / totalCourseDoses) * 100))
+                  : 0;
+              const isCourseFinished = progressPercent >= 100;
 
               let targetY = 0;
               let targetScale = 1.0;
@@ -716,7 +729,13 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                       <div className="flex items-center justify-between text-xs sm:text-[13.5px] mb-2">
                         <div className="flex items-center gap-1.5 text-slate-800 font-extrabold">
                           <Calendar className={clsx('w-4 h-4', theme.accentColor)} />
-                          <span>{t('prescriptions.dayOfDays', `Day ${effectiveCompleted} of ${baseTotal} Days Prescribed`, { day: effectiveCompleted, total: baseTotal })}</span>
+                          <span>
+                            {totalDosesTaken === 0
+                              ? `0 of ${baseTotalDays} Days Completed`
+                              : isCourseFinished
+                              ? `${baseTotalDays} of ${baseTotalDays} Days Completed (Course Finished 🎉)`
+                              : `Day ${Math.min(baseTotalDays, fullDaysCompleted + 1)} of ${baseTotalDays} Days (${totalDosesTaken}/${totalCourseDoses} doses taken)`}
+                          </span>
                         </div>
                         <span className={clsx('text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs', theme.tagBg)}>
                           {progressPercent}% {t('prescriptions.done', 'Done')}
@@ -753,30 +772,32 @@ export const MedicationCardStack: React.FC<MedicationCardStackProps> = ({
                             <button
                               key={slot.id}
                               type="button"
-                              disabled={isCourseFinished || isSlotTaken}
+                              disabled={isCourseFinished && !isSlotTaken}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!isSlotTaken && !isCourseFinished) {
-                                  handleTakeSlotDose(med, slot.id);
-                                }
+                                handleTakeSlotDose(med, slot.id);
                               }}
                               className={clsx(
-                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold',
-                                isCourseFinished
-                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
-                                  : isSlotTaken
-                                    ? clsx(slotTheme.taken, 'cursor-default opacity-95')
-                                    : clsx(slotTheme.unrecorded, 'cursor-pointer active:scale-95')
+                                'py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-xs min-w-0 font-bold cursor-pointer active:scale-95',
+                                isSlotTaken
+                                  ? clsx(slotTheme.taken, 'ring-2 ring-emerald-500/50 shadow-sm')
+                                  : isCourseFinished
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-0 outline-none'
+                                    : clsx(slotTheme.unrecorded)
                               )}
-                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Completed)` : `Click to record ${slotTheme.label} dose`}
+                              title={isSlotTaken ? `${slotTheme.label} dose recorded at ${slotTime} (Click to undo)` : `Click to record ${slotTheme.label} dose`}
                             >
                               <span className="text-base sm:text-lg leading-none shrink-0 select-none" role="img" aria-label={slotTheme.label}>
                                 {slotTheme.emoji}
                               </span>
 
-                              {isSlotTaken && (
+                              {isSlotTaken ? (
                                 <span className="text-[11px] sm:text-xs font-black font-mono shrink-0 truncate">
                                   ✓ {slotTime}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] sm:text-xs font-bold shrink-0 truncate">
+                                  {slot.label}
                                 </span>
                               )}
                             </button>

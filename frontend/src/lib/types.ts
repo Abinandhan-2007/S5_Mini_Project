@@ -56,6 +56,9 @@ export interface Doctor {
   available_days?: string[];
   slotCapacities?: any[];
   slot_capacities?: any[];
+  onLeave?: boolean;
+  leaveReason?: string;
+  approvedLeaves?: any[];
 }
 
 export interface Hospital {

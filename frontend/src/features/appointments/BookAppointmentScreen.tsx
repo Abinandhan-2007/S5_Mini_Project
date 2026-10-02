@@ -6,10 +6,10 @@ import {
   Calendar as CalendarIcon,
   CheckCircle2,
   Ticket,
-  X,
   Sparkles,
   AlertCircle,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DateScroller } from '../../components/ui/DateScroller';
@@ -104,8 +104,38 @@ export const BookAppointmentScreen: React.FC = () => {
               ? liveSlots
               : (doc as any).slotCapacities || (doc as any).slot_capacities || [];
 
+          const approvedLeaves =
+            (liveSlots as any)?.approvedLeaves ||
+            (doc as any)?.approvedLeaves ||
+            [];
+
+          const isOnLeave = Boolean(
+            (liveSlots as any)?.onLeave ||
+            (effectiveSlots as any)?.onLeave ||
+            effectiveSlots.some((s: any) => s.onLeave) ||
+            approvedLeaves.some(
+              (l: any) =>
+                selectedDate >= (l.startDate ? l.startDate.split('T')[0] : '') &&
+                selectedDate <= (l.endDate ? l.endDate.split('T')[0] : '')
+            )
+          );
+
+          const leaveReason =
+            (liveSlots as any)?.leaveReason ||
+            (effectiveSlots as any)?.leaveReason ||
+            effectiveSlots.find((s: any) => s.onLeave)?.leaveReason ||
+            approvedLeaves.find(
+              (l: any) =>
+                selectedDate >= (l.startDate ? l.startDate.split('T')[0] : '') &&
+                selectedDate <= (l.endDate ? l.endDate.split('T')[0] : '')
+            )?.reason ||
+            'Doctor on Leave';
+
           setDoctor({
             ...doc,
+            onLeave: isOnLeave,
+            leaveReason: leaveReason,
+            approvedLeaves: approvedLeaves,
             slotCapacities: effectiveSlots,
             slot_capacities: effectiveSlots,
           });
@@ -406,7 +436,15 @@ export const BookAppointmentScreen: React.FC = () => {
               <span>{t('booking.appointmentDate', 'Select Appointment Date')}</span>
             </h3>
             <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-              {formattedSelectedDate} • <span className="text-[#0B5A54] font-black">{selectedSlot || t('booking.selectSlotPrompt', 'Select Slot')}</span>
+              {formattedSelectedDate} •{' '}
+              {(doctor as any)?.onLeave ? (
+                <span className="text-rose-600 font-black inline-flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-rose-500" />
+                  Specialist on Leave (Schedule Frozen)
+                </span>
+              ) : (
+                <span className="text-[#0B5A54] font-black">{selectedSlot || t('booking.selectSlotPrompt', 'Select Slot')}</span>
+              )}
             </p>
           </div>
 
@@ -419,6 +457,7 @@ export const BookAppointmentScreen: React.FC = () => {
               selectedDate={selectedDate}
               onSelectDate={(d) => setSelectedDate(d)}
               hideToday={isTodayCompleted}
+              approvedLeaves={(doctor as any)?.approvedLeaves}
             />
           </div>
 
@@ -447,7 +486,12 @@ export const BookAppointmentScreen: React.FC = () => {
                 {t('booking.consultationSummary', 'Appointment Schedule')}
               </p>
               <p className="text-xs font-black text-slate-800 font-heading">
-                {formattedSelectedDate} • <span className="text-[#0B5A54]">{selectedSlot}</span>
+                {formattedSelectedDate} •{' '}
+                {(doctor as any)?.onLeave ? (
+                  <span className="text-rose-600 font-bold">Schedule Frozen</span>
+                ) : (
+                  <span className="text-[#0B5A54]">{selectedSlot}</span>
+                )}
               </p>
             </div>
           </div>
@@ -459,8 +503,8 @@ export const BookAppointmentScreen: React.FC = () => {
                 disabled
                 className="w-full py-3.5 px-6 rounded-2xl bg-rose-50 text-rose-700 font-black text-xs sm:text-sm tracking-wide cursor-not-allowed font-heading flex items-center justify-center gap-2 select-none border border-rose-200 shadow-2xs"
               >
-                <X className="w-4 h-4 text-rose-500 shrink-0" />
-                <span className="truncate">Doctor on Leave ({(doctor as any)?.leaveReason || 'Booking Closed'})</span>
+                <Lock className="w-4 h-4 text-rose-500 shrink-0" />
+                <span className="truncate">Schedule Frozen: Specialist on Leave ({(doctor as any)?.leaveReason || 'Booking Closed'})</span>
               </button>
             ) : !((doctor as any)?.slotCapacities?.length > 0 || (doctor as any)?.slot_capacities?.length > 0) ? (
               <button

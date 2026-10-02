@@ -52,14 +52,19 @@ def test_prescription_flow_end_to_end():
                 """, (test_patient_id, f"test_flow_{test_patient_id[:8]}@carepulse.local"))
                 
                 # Also create an active appointment for this patient
+                cur.execute("SELECT id, name FROM hospitals LIMIT 1")
+                h_row = cur.fetchone()
+                h_id = str(h_row["id"]) if h_row else "hosp-kmch-5fd04b"
+                h_name = str(h_row["name"]) if h_row else "KMCH"
+
                 cur.execute("""
                     INSERT INTO appointments (
                         id, patient_id, ticket_number, doctor_id, doctor_name, doctor_specialty,
                         hospital_id, hospital_name, date, time_slot, type, status, is_checked_in
                     )
-                    VALUES (%s, %s, '#CP-FLOW-1', %s, %s, 'Cardiology', 'hosp-1', 'Test Hospital', CURRENT_DATE, '10:00 AM', 'In-Person', 'In Consultation', TRUE)
+                    VALUES (%s, %s, '#CP-FLOW-1', %s, %s, 'Cardiology', %s, %s, CURRENT_DATE, '10:00 AM', 'In-Person', 'In Consultation', TRUE)
                     ON CONFLICT DO NOTHING
-                """, (str(uuid.uuid4()), test_patient_id, test_doc_id, test_doc_name))
+                """, (str(uuid.uuid4()), test_patient_id, test_doc_id, test_doc_name, h_id, h_name))
                 conn.commit()
 
     consultation_payload = ConsultationCreate(

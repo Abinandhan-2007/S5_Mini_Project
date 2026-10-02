@@ -16,7 +16,7 @@ import {
   Minimize2,
   RefreshCw,
 } from 'lucide-react';
-import { requestNativeLocation } from '../../lib/locationService';
+import { requestNativeLocation, getCachedLocation } from '../../lib/locationService';
 
 export interface HospitalRouteModalProps {
   isOpen: boolean;
@@ -28,21 +28,27 @@ export interface HospitalRouteModalProps {
   coordinates?: { lat: number; lng: number };
 }
 
-// Well-known hospital coordinates in regional hub (fallback if not provided in DB)
+// Authoritative hospital GPS coordinates (KMCH Peelamedu, Coimbatore campus)
 const KNOWN_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  kmch: { lat: 11.0505, lng: 77.0373 },
-  kovai: { lat: 11.0505, lng: 77.0373 },
+  kmch: { lat: 11.0264, lng: 77.0270 },
+  kovai: { lat: 11.0264, lng: 77.0270 },
   psg: { lat: 11.0267, lng: 77.0028 },
   gknm: { lat: 11.0118, lng: 76.9856 },
   royal: { lat: 11.0664, lng: 77.0691 },
   ramakrishna: { lat: 11.0205, lng: 76.9821 },
   ganga: { lat: 11.0193, lng: 76.9511 },
-  carepulse: { lat: 11.0168, lng: 76.9558 },
-  default: { lat: 11.0168, lng: 76.9558 },
+  carepulse: { lat: 11.0264, lng: 77.0270 },
+  default: { lat: 11.0264, lng: 77.0270 },
 };
 
 function resolveHospitalCoords(name: string, fallback?: { lat: number; lng: number }): { lat: number; lng: number } {
-  if (fallback && fallback.lat && fallback.lng) return fallback;
+  // If coordinates provided, filter out the old buggy Kalapatti residential coordinates
+  if (fallback && fallback.lat && fallback.lng && fallback.lat !== 0 && fallback.lng !== 0) {
+    if (Math.abs(fallback.lat - 11.0505) < 0.002 && Math.abs(fallback.lng - 77.0373) < 0.002) {
+      return KNOWN_COORDINATES.kmch;
+    }
+    return fallback;
+  }
   const lower = (name || '').toLowerCase();
   for (const [k, coords] of Object.entries(KNOWN_COORDINATES)) {
     if (lower.includes(k)) return coords;
@@ -50,8 +56,8 @@ function resolveHospitalCoords(name: string, fallback?: { lat: number; lng: numb
   return KNOWN_COORDINATES.default;
 }
 
-// Haversine distance in kilometers
-function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+// Great-circle Haversine distance in kilometers
+function calculateStraightDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -62,7 +68,24 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10;
+  return R * c;
+}
+
+// Realistic road distance with highway/terrain route winding factor (~1.32x for intercity)
+export function estimateRoadDistanceKm(straightKm: number): number {
+  if (straightKm <= 2) return Math.round(straightKm * 1.15 * 10) / 10;
+  if (straightKm <= 10) return Math.round(straightKm * 1.25 * 10) / 10;
+  return Math.round(straightKm * 1.32 * 10) / 10;
+}
+
+// Human readable duration formatting (e.g. 99 min -> "1 hr 39 min", 900 min -> "15 hr")
+export function formatDuration(minutes: number): string {
+  if (minutes < 1) return '< 1 min';
+  if (minutes < 60) return `~${minutes} min`;
+  const hrs = Math.floor(minutes / 60);
+  const remMins = minutes % 60;
+  if (remMins === 0) return `~${hrs} hr`;
+  return `~${hrs} hr ${remMins} min`;
 }
 
 export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
@@ -77,6 +100,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number; placeName?: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [routeDriveMinutes, setRouteDriveMinutes] = useState<number | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [travelMode, setTravelMode] = useState<'drive' | 'bike' | 'walk'>('drive');
@@ -84,15 +108,42 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
 
   const hospCoords = resolveHospitalCoords(hospitalName, coordinates);
 
-  // Fetch user location
+  // Background real road routing via OSRM
+  const fetchOsrmRoute = async (uLat: number, uLng: number, hLat: number, hLng: number) => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${uLng},${uLat};${hLng},${hLat}?overview=false`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.code === 'Ok' && data.routes?.[0]) {
+          const r = data.routes[0];
+          const osrmKm = Math.round((r.distance / 1000) * 10) / 10;
+          const osrmMinutes = Math.round(r.duration / 60);
+          setDistanceKm(osrmKm);
+          setRouteDriveMinutes(osrmMinutes);
+        }
+      }
+    } catch {
+      // Graceful fallback to accurate road estimation
+    }
+  };
+
+  // Live GPS detection
   const detectLocation = async () => {
     setIsLocating(true);
     try {
       const res = await requestNativeLocation();
       if (res.latitude && res.longitude) {
         setUserLoc({ lat: res.latitude, lng: res.longitude, placeName: res.placeName });
-        const d = calculateDistanceKm(res.latitude, res.longitude, hospCoords.lat, hospCoords.lng);
-        setDistanceKm(d);
+        const straight = calculateStraightDistanceKm(res.latitude, res.longitude, hospCoords.lat, hospCoords.lng);
+        const road = estimateRoadDistanceKm(straight);
+        setDistanceKm(road);
+        fetchOsrmRoute(res.latitude, res.longitude, hospCoords.lat, hospCoords.lng);
       }
     } catch (err) {
       console.warn('Location detection note:', err);
@@ -101,55 +152,68 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
     }
   };
 
+  // Immediate initialize on open: check cached GPS fix first for zero lag, then refresh
   useEffect(() => {
     if (isOpen) {
+      const cached = getCachedLocation();
+      if (cached && cached.latitude && cached.longitude) {
+        setUserLoc({ lat: cached.latitude, lng: cached.longitude, placeName: cached.placeName });
+        const straight = calculateStraightDistanceKm(cached.latitude, cached.longitude, hospCoords.lat, hospCoords.lng);
+        const road = estimateRoadDistanceKm(straight);
+        setDistanceKm(road);
+        fetchOsrmRoute(cached.latitude, cached.longitude, hospCoords.lat, hospCoords.lng);
+      }
       detectLocation();
     }
   }, [isOpen, hospitalName, coordinates]);
 
   if (!isOpen) return null;
 
-  // Travel time calculations
-  const effectiveKm = distanceKm ?? 4.2;
-  const driveMinutes = Math.max(3, Math.round((effectiveKm / 28) * 60)); // ~28 km/h city avg
-  const bikeMinutes = Math.max(2, Math.round((effectiveKm / 35) * 60)); // ~35 km/h bike avg
-  const walkMinutes = Math.max(8, Math.round((effectiveKm / 4.8) * 60)); // ~4.8 km/h walk avg
+  // Realistic travel time calculations based on road distance
+  const calculateDurations = (km: number | null) => {
+    if (km === null) {
+      return { drive: null, bike: null, walk: null };
+    }
+    // Driving speed curve: ~41 km/h highway for >25km, ~28 km/h city for <=25km
+    const defaultDrive = km > 25 ? Math.round((km / 41) * 60) : Math.max(3, Math.round((km / 28) * 60));
+    const drive = routeDriveMinutes !== null ? routeDriveMinutes : defaultDrive;
+    // 2-Wheeler: ~41 km/h highway, ~32 km/h city
+    const bike = km > 25 ? Math.round((km / 41) * 60) : Math.max(2, Math.round((km / 32) * 60));
+    // Walking: ~4.5 km/h
+    const walk = Math.max(5, Math.round((km / 4.5) * 60));
 
-  // Map Embed URLs (Satellite via Google Maps embed `t=k`, Street via OpenStreetMap)
-  const delta = 0.012;
+    return { drive, bike, walk };
+  };
+
+  const durations = calculateDurations(distanceKm);
+
+  // Map Embed URLs (Satellite via Google Maps, Street via OpenStreetMap)
+  const delta = 0.008;
   const bbox = `${hospCoords.lng - delta}%2C${hospCoords.lat - delta}%2C${hospCoords.lng + delta}%2C${hospCoords.lat + delta}`;
   const streetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${hospCoords.lat}%2C${hospCoords.lng}`;
   const satelliteMapUrl = `https://maps.google.com/maps?q=${hospCoords.lat},${hospCoords.lng}&t=k&z=17&ie=UTF8&iwloc=&output=embed`;
   const mapEmbedUrl = mapLayer === 'satellite' ? satelliteMapUrl : streetMapUrl;
 
-  // Launch Google Maps GPS Turn-by-Turn
-  const handleLaunchGoogleMaps = () => {
-    const originParam = userLoc ? `&origin=${userLoc.lat},${userLoc.lng}` : '';
-    const dest = encodeURIComponent(`${hospitalName}, ${facilityAddress}`);
-    const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${dest}&travelmode=driving`;
+  // Launch Google Maps GPS Turn-by-Turn Navigation directly
+  const handleLaunchGoogleMaps = (mode?: 'drive' | 'bike' | 'walk') => {
+    const selectedMode = mode || travelMode;
+    const travelParam = selectedMode === 'bike' ? 'bicycling' : selectedMode === 'walk' ? 'walking' : 'driving';
+    const originParam = userLoc?.lat && userLoc?.lng ? `&origin=${userLoc.lat},${userLoc.lng}` : '';
+    // Use destination coordinates so Google Maps navigation pin lands precisely on hospital campus
+    const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${hospCoords.lat},${hospCoords.lng}&travelmode=${travelParam}`;
     window.open(gmapsUrl, '_blank');
-  };
-
-  // Launch OpenStreetMap (Free, never blocked by school Google Workspace accounts)
-  const handleLaunchOpenStreetMap = () => {
-    const route = userLoc
-      ? `${userLoc.lat}%2C${userLoc.lng}%3B${hospCoords.lat}%2C${hospCoords.lng}`
-      : `${hospCoords.lat}%2C${hospCoords.lng}`;
-    const osmUrl = `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${route}`;
-    window.open(osmUrl, '_blank');
   };
 
   // Launch Apple Maps
   const handleLaunchAppleMaps = () => {
     const saddrParam = userLoc ? `saddr=${userLoc.lat},${userLoc.lng}&` : '';
-    const daddr = encodeURIComponent(`${hospitalName}, ${facilityAddress}`);
-    const appleUrl = `https://maps.apple.com/?${saddrParam}daddr=${daddr}&dirflg=d`;
+    const appleUrl = `https://maps.apple.com/?${saddrParam}daddr=${hospCoords.lat},${hospCoords.lng}&dirflg=d`;
     window.open(appleUrl, '_blank');
   };
 
-  // Copy Address
+  // Copy Address & GPS
   const handleCopyAddress = () => {
-    const fullText = `${hospitalName}\n${facilityAddress}\nCoordinates: ${hospCoords.lat}, ${hospCoords.lng}`;
+    const fullText = `${hospitalName}\n${facilityAddress}\nGPS: ${hospCoords.lat}, ${hospCoords.lng}`;
     navigator.clipboard.writeText(fullText).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2500);
@@ -183,14 +247,14 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
+              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
               title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
+              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
               title="Close"
             >
               <X className="w-5 h-5" />
@@ -200,7 +264,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
 
         {/* Modal Body: Scrollable */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-4 text-left">
-          {/* Interactive OpenStreetMap Container */}
+          {/* Interactive Map Container */}
           <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 shadow-inner bg-slate-100 h-56 sm:h-72">
             <iframe
               title="Hospital Location Map"
@@ -222,7 +286,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
               </span>
             </div>
 
-            {/* Satellite / Street Map Toggle Pill */}
+            {/* Satellite / Road Map Toggle Pill */}
             <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200/80 flex items-center gap-1 z-10">
               <button
                 type="button"
@@ -248,13 +312,13 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
               </button>
             </div>
 
-            {/* Open Full Google Maps Floating Badge */}
+            {/* Open in Google Maps Floating Badge */}
             <button
-              onClick={handleLaunchGoogleMaps}
-              className="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-[#0B5A54] border border-teal-300/80 text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 z-10"
+              onClick={() => handleLaunchGoogleMaps(travelMode)}
+              className="absolute bottom-3 right-3 bg-white/95 hover:bg-white text-[#0B5A54] border border-teal-300 text-[11px] font-black px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer active:scale-95 z-10 transition-all"
             >
               <span>Open in Google Maps</span>
-              <ExternalLink className="w-3 h-3 text-[#0B5A54]" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#0B5A54]" />
             </button>
           </div>
 
@@ -267,7 +331,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-black text-emerald-950">
-                    {distanceKm !== null ? `${distanceKm} km away` : 'Estimating route...'}
+                    {distanceKm !== null ? `${distanceKm} km away` : isLocating ? 'Detecting GPS location...' : 'Calculating route...'}
                   </span>
                   {userLoc?.placeName && (
                     <span className="text-[10.5px] text-emerald-700 truncate font-medium max-w-[180px]">
@@ -276,7 +340,11 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
                   )}
                 </div>
                 <p className="text-[11px] text-emerald-700 font-semibold">
-                  Fastest route via highway (~{driveMinutes} mins driving)
+                  {durations.drive !== null
+                    ? `Fastest route via highway (${formatDuration(durations.drive)})`
+                    : isLocating
+                    ? 'Acquiring satellite fix from your device...'
+                    : 'Tap Open Directions to view live route in Google Maps'}
                 </p>
               </div>
             </div>
@@ -298,7 +366,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
               onClick={() => setTravelMode('drive')}
               className={`p-2.5 rounded-xl text-center border transition-all cursor-pointer ${
                 travelMode === 'drive'
-                  ? 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-xs'
+                  ? 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-xs ring-1 ring-[#0B5A54]'
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -306,7 +374,9 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
                 <Car className="w-3.5 h-3.5" />
                 <span>Car / Cab</span>
               </div>
-              <p className="text-[11px] font-extrabold mt-0.5">~{driveMinutes} min</p>
+              <p className="text-[11px] font-extrabold mt-0.5">
+                {durations.drive !== null ? formatDuration(durations.drive) : 'Auto route'}
+              </p>
             </button>
 
             <button
@@ -314,7 +384,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
               onClick={() => setTravelMode('bike')}
               className={`p-2.5 rounded-xl text-center border transition-all cursor-pointer ${
                 travelMode === 'bike'
-                  ? 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-xs'
+                  ? 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-xs ring-1 ring-[#0B5A54]'
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -322,7 +392,9 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>2-Wheeler</span>
               </div>
-              <p className="text-[11px] font-extrabold mt-0.5">~{bikeMinutes} min</p>
+              <p className="text-[11px] font-extrabold mt-0.5">
+                {durations.bike !== null ? formatDuration(durations.bike) : 'Auto route'}
+              </p>
             </button>
 
             <button
@@ -330,7 +402,7 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
               onClick={() => setTravelMode('walk')}
               className={`p-2.5 rounded-xl text-center border transition-all cursor-pointer ${
                 travelMode === 'walk'
-                  ? 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-xs'
+                  ? 'bg-teal-50 border-[#0B5A54] text-[#0B5A54] shadow-xs ring-1 ring-[#0B5A54]'
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -338,7 +410,9 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
                 <Footprints className="w-3.5 h-3.5" />
                 <span>Walking</span>
               </div>
-              <p className="text-[11px] font-extrabold mt-0.5">~{walkMinutes} min</p>
+              <p className="text-[11px] font-extrabold mt-0.5">
+                {durations.walk !== null ? formatDuration(durations.walk) : 'Auto route'}
+              </p>
             </button>
           </div>
 
@@ -377,30 +451,32 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
 
         {/* Footer Action Bar */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row gap-2 shrink-0">
+          {/* Prominent Open Directions button opens Google Maps navigation */}
           <button
             type="button"
-            onClick={handleLaunchGoogleMaps}
-            className="flex-1 py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-[#0B5A54] to-[#14B8A6] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-98"
-            title="Opens Google Maps Navigation (requires Google Maps enabled on your account)"
+            onClick={() => handleLaunchGoogleMaps(travelMode)}
+            className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#0B5A54] via-[#0E6C65] to-[#14B8A6] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-98"
+            title="Open Turn-by-Turn GPS Navigation in Google Maps"
           >
-            <Navigation className="w-4 h-4" />
+            <Navigation className="w-4 h-4 fill-white/20" />
+            <span>Open Directions</span>
+          </button>
+
+          {/* Google Maps button directly launches Google Maps */}
+          <button
+            type="button"
+            onClick={() => handleLaunchGoogleMaps(travelMode)}
+            className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
+            title="Open in Google Maps App or Web"
+          >
+            <MapPin className="w-4 h-4 text-emerald-400" />
             <span>Google Maps</span>
           </button>
 
           <button
             type="button"
-            onClick={handleLaunchOpenStreetMap}
-            className="flex-1 py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98"
-            title="OpenRoute / OpenStreetMap (Works on school & restricted accounts)"
-          >
-            <MapPin className="w-4 h-4 text-emerald-400" />
-            <span>Open Directions</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handleLaunchAppleMaps}
-            className="py-2.5 px-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+            className="py-3 px-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
           >
             <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
             <span>Apple Maps</span>
@@ -410,3 +486,4 @@ export const HospitalRouteModal: React.FC<HospitalRouteModalProps> = ({
     </div>
   );
 };
+

@@ -2622,20 +2622,15 @@ def get_patient_prescriptions(patient_id: str):
             return int(m.group(1))
         return 7
 
-    def compute_days_completed(created_at_str: str, total_days: int) -> int:
-        """Compute how many days have elapsed since the prescription was created."""
-        from datetime import date as date_cls
-        today = date_cls.today()
-        if not created_at_str:
-            return 0
-        try:
-            # Handle ISO datetime strings and plain date strings
-            date_part = str(created_at_str)[:10]  # 'YYYY-MM-DD'
-            start = date_cls.fromisoformat(date_part)
-            elapsed = (today - start).days
-            return max(0, min(elapsed, total_days))
-        except Exception:
-            return 0
+    def get_days_completed(r: dict) -> int:
+        """Return explicitly recorded days_completed, or 0 if none has been marked."""
+        val = r.get("days_completed") or r.get("daysCompleted")
+        if val is not None:
+            try:
+                return max(0, int(val))
+            except (ValueError, TypeError):
+                pass
+        return 0
 
 
     # 1. PostgreSQL Prescriptions Table
@@ -2679,7 +2674,7 @@ def get_patient_prescriptions(patient_id: str):
                                 "instructions": r.get("meal_timing") or "Take as directed by doctor",
                                 "duration": _dur_str,
                                 "totalDays": _total,
-                                "daysCompleted": compute_days_completed(_created, _total),
+                                "daysCompleted": get_days_completed(r),
                                 "prescriber": r.get("prescriber") or "Treating Physician",
                                 "iconType": r.get("icon_type") or "pill",
                                 "status": r.get("status") or "Active",
@@ -2689,43 +2684,42 @@ def get_patient_prescriptions(patient_id: str):
             logger.warning(f"Error fetching PG prescriptions: {e}")
             database.use_pg = False
 
-    # 2. Resilient JSON DB fallback (only when PostgreSQL is offline or un-synced)
-    if not pg_queried:
-        try:
-            db = read_json_db()
-            for r in db.get("prescriptions", []):
-                r_pid = str(r.get("patient_id") or r.get("patientId") or "")
-                if r_pid == target_pid:
-                    st = (r.get("status") or "Active").lower().strip()
-                    if st in ["discontinued", "cancelled", "deleted"]:
-                        continue
-                    d_name = r.get("drug_name") or r.get("drugName") or ""
-                    if not d_name:
-                        continue
-                    k = d_name.lower().strip()
-                    if k not in seen_drugs:
-                        seen_drugs.add(k)
-                        _dur_str = r.get("duration") or "3 Days"
-                        _total = parse_duration_days(_dur_str)
-                        _created = str(r.get("created_at") or "")
-                        result.append({
-                            "id": str(r.get("id")),
-                            "patientId": target_pid,
-                            "drugName": d_name,
-                            "dosage": r.get("dosage") or "1 Tab",
-                            "frequency": r.get("frequency") or "Twice daily",
-                            "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
-                            "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
-                            "duration": _dur_str,
-                            "totalDays": _total,
-                            "daysCompleted": compute_days_completed(_created, _total),
-                            "prescriber": r.get("prescriber") or "Treating Physician",
-                            "iconType": r.get("icon_type") or r.get("iconType") or "pill",
-                            "status": r.get("status") or "Active",
-                            "createdAt": _created
-                        })
-        except Exception as e:
-            logger.warning(f"Error reading JSON prescriptions: {e}")
+    # 2. Resilient JSON DB sync (deduplicated by seen_drugs so all prescribed medications appear)
+    try:
+        db = read_json_db()
+        for r in db.get("prescriptions", []):
+            r_pid = str(r.get("patient_id") or r.get("patientId") or "")
+            if r_pid == target_pid:
+                st = (r.get("status") or "Active").lower().strip()
+                if st in ["discontinued", "cancelled", "deleted"]:
+                    continue
+                d_name = r.get("drug_name") or r.get("drugName") or ""
+                if not d_name:
+                    continue
+                k = d_name.lower().strip()
+                if k not in seen_drugs:
+                    seen_drugs.add(k)
+                    _dur_str = r.get("duration") or "3 Days"
+                    _total = parse_duration_days(_dur_str)
+                    _created = str(r.get("created_at") or "")
+                    result.append({
+                        "id": str(r.get("id")),
+                        "patientId": target_pid,
+                        "drugName": d_name,
+                        "dosage": r.get("dosage") or "1 Tab",
+                        "frequency": r.get("frequency") or "Twice daily",
+                        "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
+                        "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
+                        "duration": _dur_str,
+                        "totalDays": _total,
+                        "daysCompleted": get_days_completed(r),
+                        "prescriber": r.get("prescriber") or "Treating Physician",
+                        "iconType": r.get("icon_type") or r.get("iconType") or "pill",
+                        "status": r.get("status") or "Active",
+                        "createdAt": _created
+                    })
+    except Exception as e:
+        logger.warning(f"Error reading JSON prescriptions: {e}")
 
     return result
 
@@ -3809,39 +3803,51 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
     if not doc:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    # 1. Check for Approved Doctor Leave for this date
+    # 1. Check for Approved Doctor Leave for this date & collect all approved leaves
     is_on_leave = False
     leave_reason = ""
-    if date:
-        if database.use_pg:
-            try:
-                with get_pg_connection() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute("""
-                            SELECT * FROM doctor_leaves
-                            WHERE (doctor_id = %s OR doctor_id = %s)
-                              AND status = 'Approved'
-                              AND start_date <= %s::date AND end_date >= %s::date
-                            LIMIT 1
-                        """, (doctor_id, str(doc.get("id") or ""), date, date))
-                        row = cur.fetchone()
-                        if row:
-                            is_on_leave = True
-                            leave_reason = row.get("reason") or "Doctor on Leave"
-            except Exception as e:
-                logger.warning(f"Error checking leave in pg: {e}")
+    approved_leaves = []
 
-        if not is_on_leave:
-            db = read_json_db()
-            for l in db.get("doctor_leaves", []):
-                l_doc = l.get("doctor_id") or l.get("doctorId")
-                if l_doc in [doctor_id, str(doc.get("id") or "")] and l.get("status") == "Approved":
-                    l_start = str(l.get("start_date") or l.get("startDate") or "")
-                    l_end = str(l.get("end_date") or l.get("endDate") or "")
-                    if l_start <= date <= l_end:
-                        is_on_leave = True
-                        leave_reason = l.get("reason") or "Doctor on Leave"
-                        break
+    if database.use_pg:
+        try:
+            with get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT start_date, end_date, reason FROM doctor_leaves
+                        WHERE (doctor_id = %s OR doctor_id = %s)
+                          AND status = 'Approved'
+                    """, (doctor_id, str(doc.get("id") or "")))
+                    for row in cur.fetchall():
+                        s_str = str(row.get("start_date"))
+                        e_str = str(row.get("end_date"))
+                        r_str = row.get("reason") or "Doctor on Leave"
+                        approved_leaves.append({
+                            "startDate": s_str,
+                            "endDate": e_str,
+                            "reason": r_str
+                        })
+                        if date and s_str <= date <= e_str:
+                            is_on_leave = True
+                            leave_reason = r_str
+        except Exception as e:
+            logger.warning(f"Error checking leave in pg: {e}")
+
+    if not approved_leaves:
+        db = read_json_db()
+        for l in db.get("doctor_leaves", []):
+            l_doc = l.get("doctor_id") or l.get("doctorId")
+            if l_doc in [doctor_id, str(doc.get("id") or "")] and l.get("status") == "Approved":
+                s_str = str(l.get("start_date") or l.get("startDate") or "")
+                e_str = str(l.get("end_date") or l.get("endDate") or "")
+                r_str = l.get("reason") or "Doctor on Leave"
+                approved_leaves.append({
+                    "startDate": s_str,
+                    "endDate": e_str,
+                    "reason": r_str
+                })
+                if date and s_str <= date <= e_str:
+                    is_on_leave = True
+                    leave_reason = r_str
 
     raw_slots = doc.get("slot_capacities") or doc.get("slotCapacities") or []
     if isinstance(raw_slots, str):
@@ -3856,6 +3862,8 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
             "date": date,
             "onLeave": is_on_leave,
             "leaveReason": leave_reason,
+            "isDoctorAvailable": is_doc_avail if 'is_doc_avail' in locals() else True,
+            "approvedLeaves": approved_leaves,
             "slots": []
         }
 
@@ -4007,6 +4015,7 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
         "onLeave": is_on_leave,
         "leaveReason": leave_reason,
         "isDoctorAvailable": is_doc_avail,
+        "approvedLeaves": approved_leaves,
         "slots": computed_slots
     }
 

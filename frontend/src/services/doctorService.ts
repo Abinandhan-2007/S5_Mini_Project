@@ -168,6 +168,7 @@ export const doctorService = {
           }));
           (slots as any).onLeave = data.onLeave || false;
           (slots as any).leaveReason = data.leaveReason || '';
+          (slots as any).approvedLeaves = data.approvedLeaves || [];
           return slots;
         }
       }

@@ -24,6 +24,36 @@
   "consultations": [],
   "appointments": [
     {
+      "id": "7e1aff23-2829-4f89-a59f-ca8b4da31ced",
+      "patient_id": "8353b8d1-9412-4706-8308-c3378d616eff",
+      "patientId": "8353b8d1-9412-4706-8308-c3378d616eff",
+      "patient_uuid": "8353b8d1-9412-4706-8308-c3378d616eff",
+      "patient_name": "SIVANAGU E",
+      "patientName": "SIVANAGU E",
+      "ticket_number": "TK-91125843",
+      "ticketNumber": "TK-91125843",
+      "doctor_id": "doc-2863cf",
+      "doctorId": "doc-2863cf",
+      "doctor_name": "Dr. DOCTEST1",
+      "doctorName": "Dr. DOCTEST1",
+      "doctor_specialty": "General Medicine",
+      "doctorSpecialty": "General Medicine",
+      "doctor_photo": "/doctor_default.jpg",
+      "doctorPhoto": "/doctor_default.jpg",
+      "hospital_id": "hosp-kmch-5fd04b",
+      "hospitalId": "hosp-kmch-5fd04b",
+      "hospital_name": "KMCH",
+      "hospitalName": "KMCH",
+      "date": "2026-10-03",
+      "time_slot": "09:00 AM - 10:00 AM",
+      "timeSlot": "09:00 AM - 10:00 AM",
+      "type": "In-Person",
+      "status": "Upcoming",
+      "is_checked_in": false,
+      "checked_in_at": null,
+      "created_at": "2026-10-02T20:27:50.488142"
+    },
+    {
       "id": "2643df05-31bc-447f-80a6-b6c7dc3ee15f",
       "patient_id": "9973c81a-4127-421a-bbe7-d71155633e6d",
       "patientId": "9973c81a-4127-421a-bbe7-d71155633e6d",
@@ -127,9 +157,238 @@
       "iconType": "pill",
       "status": "Active",
       "created_at": "2026-09-24T11:48:28.462894"
+    },
+    {
+      "id": "8f711033-65bc-4bad-b2b5-2165517ef3e6",
+      "patient_id": "e4bd8dc5-20f7-4f25-bac5-e2cd25bc3573",
+      "patientId": "e4bd8dc5-20f7-4f25-bac5-e2cd25bc3573",
+      "drug_name": "Paracetamol 650mg",
+      "drugName": "Paracetamol 650mg",
+      "dosage": "1 Tab",
+      "frequency": "TDS (Thrice daily)",
+      "duration": "3 Days",
+      "meal_timing": "Take after meals for fever/body ache",
+      "mealTiming": "Take after meals for fever/body ache",
+      "instructions": "Take after meals for fever/body ache",
+      "prescriber": "sivanagu",
+      "icon_type": "pill",
+      "iconType": "pill",
+      "status": "Active",
+      "created_at": "2026-10-02T20:39:12.966716"
+    },
+    {
+      "id": "b6393acc-7ab0-408a-8917-2f1fb55377bd",
+      "patient_id": "f0a6a21c-07bf-4599-94e6-073a072e33bf",
+      "patientId": "f0a6a21c-07bf-4599-94e6-073a072e33bf",
+      "drug_name": "Azithromycin 500mg",
+      "drugName": "Azithromycin 500mg",
+      "dosage": "1 Tab",
+      "frequency": "Once daily (OD)",
+      "duration": "5 Days",
+      "meal_timing": "Take after meals",
+      "mealTiming": "Take after meals",
+      "instructions": "Take after meals",
+      "prescriber": "Dr. Test Specialist",
+      "icon_type": "pill",
+      "iconType": "pill",
+      "status": "Active",
+      "created_at": "2026-10-02T20:41:37.551578"
+    },
+    {
+      "id": "812ebad7-15d4-4908-8cd4-cbd9af7ee655",
+      "patient_id": "f0a6a21c-07bf-4599-94e6-073a072e33bf",
+      "patientId": "f0a6a21c-07bf-4599-94e6-073a072e33bf",
+      "drug_name": "Levosalbutamol Inhaler",
+      "drugName": "Levosalbutamol Inhaler",
+      "dosage": "2 Puffs",
+      "frequency": "Twice daily as needed",
+      "duration": "7 Days",
+      "meal_timing": "Inhale with spacer",
+      "mealTiming": "Inhale with spacer",
+      "instructions": "Inhale with spacer",
+      "prescriber": "Dr. Test Specialist",
+      "icon_type": "inhaler",
+      "iconType": "inhaler",
+      "status": "Active",
+      "created_at": "2026-10-02T20:41:37.551578"
     }
   ],
-  "doctors": [],
+  "doctors": [
+    {
+      "id": "doc-alpha-001",
+      "name": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "specialty": "General Medicine",
+      "is_available": true,
+      "isAvailable": true,
+      "slot_capacities": [
+        {
+          "timeSlot": "09:23 PM - 10:23 PM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "isAvailable": true
+        },
+        {
+          "timeSlot": "10:53 PM - 11:53 PM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "isAvailable": true
+        }
+      ],
+      "slotCapacities": [
+        {
+          "timeSlot": "09:23 PM - 10:23 PM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "isAvailable": true
+        },
+        {
+          "timeSlot": "10:53 PM - 11:53 PM",
+          "maxSeats": 5,
+          "bookedSeats": 0,
+          "isAvailable": true
+        }
+      ],
+      "availabilityReason": "",
+      "availability_reason": "",
+      "unavailableUntil": "",
+      "unavailable_until": ""
+    },
+    {
+      "id": "doc-beta-001",
+      "name": "Dr. Beta Specialist",
+      "hospital_id": "hosp-beta",
+      "hospitalId": "hosp-beta",
+      "specialty": "General Medicine",
+      "is_available": true,
+      "isAvailable": true,
+      "slot_capacities": [
+        {
+          "id": "doc-beta-001-s1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s4",
+          "timeSlot": "12:00 PM - 01:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s5",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s6",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s7",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s8",
+          "timeSlot": "06:00 PM - 07:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s9",
+          "timeSlot": "08:00 PM - 09:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s10",
+          "timeSlot": "10:00 PM - 11:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        }
+      ],
+      "slotCapacities": [
+        {
+          "id": "doc-beta-001-s1",
+          "timeSlot": "09:00 AM - 10:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s2",
+          "timeSlot": "10:00 AM - 11:00 AM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s3",
+          "timeSlot": "11:00 AM - 12:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s4",
+          "timeSlot": "12:00 PM - 01:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s5",
+          "timeSlot": "02:00 PM - 03:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s6",
+          "timeSlot": "03:00 PM - 04:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s7",
+          "timeSlot": "04:00 PM - 05:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s8",
+          "timeSlot": "06:00 PM - 07:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s9",
+          "timeSlot": "08:00 PM - 09:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        },
+        {
+          "id": "doc-beta-001-s10",
+          "timeSlot": "10:00 PM - 11:00 PM",
+          "maxSeats": 6,
+          "isAvailable": true
+        }
+      ]
+    }
+  ],
   "hospitals": [
     {
       "id": "hosp-kmch-5fd04b",
@@ -154,8 +413,8 @@
       "is_suspended": false,
       "lifecycle_state": "Pending Setup",
       "distance_miles": 1.0,
-      "latitude": 11.492472,
-      "longitude": 77.280788
+      "latitude": 11.0264,
+      "longitude": 77.027
     }
   ],
   "staff": [
@@ -180,7 +439,69 @@
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
     }
   ],
-  "doctor_leaves": [],
+  "doctor_leaves": [
+    {
+      "id": "leave-44796d63",
+      "doctor_id": "doc-alpha-001",
+      "doctorId": "doc-alpha-001",
+      "doctor_name": "Dr. Alpha Specialist",
+      "doctorName": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "start_date": "2026-10-07",
+      "startDate": "2026-10-07",
+      "end_date": "2026-10-07",
+      "endDate": "2026-10-07",
+      "days_count": 1,
+      "daysCount": 1,
+      "reason": "Conference",
+      "status": "Approved",
+      "applied_at": "2026-10-02T20:53:17.193799",
+      "appliedAt": "2026-10-02T20:53:17.193799",
+      "approvedBy": "Admin Alpha",
+      "approvedAt": "2026-10-02T20:53:18.063157"
+    },
+    {
+      "id": "leave-78d5819a",
+      "doctor_id": "doc-alpha-001",
+      "doctorId": "doc-alpha-001",
+      "doctor_name": "Dr. Alpha Specialist",
+      "doctorName": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "start_date": "2026-10-12",
+      "startDate": "2026-10-12",
+      "end_date": "2026-10-12",
+      "endDate": "2026-10-12",
+      "days_count": 1,
+      "daysCount": 1,
+      "reason": "Alpha Hospital CME",
+      "status": "Pending",
+      "applied_at": "2026-10-02T20:53:19.612740",
+      "appliedAt": "2026-10-02T20:53:19.612740"
+    },
+    {
+      "id": "leave-b9b5a651",
+      "doctor_id": "doc-alpha-001",
+      "doctorId": "doc-alpha-001",
+      "doctor_name": "Dr. Alpha Specialist",
+      "doctorName": "Dr. Alpha Specialist",
+      "hospital_id": "hosp-alpha",
+      "hospitalId": "hosp-alpha",
+      "start_date": "2026-10-17",
+      "startDate": "2026-10-17",
+      "end_date": "2026-10-17",
+      "endDate": "2026-10-17",
+      "days_count": 1,
+      "daysCount": 1,
+      "reason": "Family Function",
+      "status": "Cancelled",
+      "applied_at": "2026-10-02T20:53:20.329749",
+      "appliedAt": "2026-10-02T20:53:20.329749",
+      "approvedBy": "Admin Alpha",
+      "approvedAt": "2026-10-02T20:53:20.751967"
+    }
+  ],
   "patient_devices": [
     {
       "id": "5895e528-49a8-4458-a873-e8674659c1e6",
@@ -272,6 +593,184 @@
       "temporaryPassword": "CarePulse#2026",
       "resolvedBy": "kmchadmin",
       "resolvedAt": "2026-09-24T11:44:54.000863"
+    }
+  ],
+  "staff_messages": [
+    {
+      "id": "sys-msg-3d8911a461a0",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "nurse",
+      "recipient_role": "nurse",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-17 to 2026-10-17 (1 days). Reason: Family Function. Consultation slots are frozen. Please update OPD triage queues and pre-op vitals scheduling accordingly.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:23:21.396062+00:00",
+      "created_at": "2026-10-02T15:23:21.396062+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-bc93ab5696d4",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "receptionist",
+      "recipient_role": "receptionist",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-17 to 2026-10-17 (1 days). Reason: Family Function. Consultation slots for these dates have been automatically frozen. Please adjust front-desk appointment schedules and inform arriving patients.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:23:21.150963+00:00",
+      "created_at": "2026-10-02T15:23:21.150963+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-52ebada75f5a",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "nurse",
+      "recipient_role": "nurse",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-07 to 2026-10-07 (1 days). Reason: Conference. Consultation slots are frozen. Please update OPD triage queues and pre-op vitals scheduling accordingly.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:23:18.942196+00:00",
+      "created_at": "2026-10-02T15:23:18.942196+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-97381e5fcbbf",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "receptionist",
+      "recipient_role": "receptionist",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-07 to 2026-10-07 (1 days). Reason: Conference. Consultation slots for these dates have been automatically frozen. Please adjust front-desk appointment schedules and inform arriving patients.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:23:18.378845+00:00",
+      "created_at": "2026-10-02T15:23:18.378845+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-5f36569fdd49",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "nurse",
+      "recipient_role": "nurse",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-17 to 2026-10-17 (1 days). Reason: Family Function. Consultation slots are frozen. Please update OPD triage queues and pre-op vitals scheduling accordingly.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:18:05.432414+00:00",
+      "created_at": "2026-10-02T15:18:05.432414+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-fda431efa687",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "receptionist",
+      "recipient_role": "receptionist",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-17 to 2026-10-17 (1 days). Reason: Family Function. Consultation slots for these dates have been automatically frozen. Please adjust front-desk appointment schedules and inform arriving patients.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:18:05.160466+00:00",
+      "created_at": "2026-10-02T15:18:05.160466+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-a310d414b782",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "nurse",
+      "recipient_role": "nurse",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-07 to 2026-10-07 (1 days). Reason: Conference. Consultation slots are frozen. Please update OPD triage queues and pre-op vitals scheduling accordingly.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:18:02.829411+00:00",
+      "created_at": "2026-10-02T15:18:02.829411+00:00",
+      "replies": []
+    },
+    {
+      "id": "sys-msg-10eaac944c4f",
+      "hospitalId": "hosp-alpha",
+      "hospital_id": "hosp-alpha",
+      "senderId": "system-admin",
+      "sender_id": "system-admin",
+      "senderName": "Admin Alpha",
+      "senderRole": "admin",
+      "senderCode": "ADM001",
+      "recipientRole": "receptionist",
+      "recipient_role": "receptionist",
+      "recipientId": null,
+      "subject": "Doctor Leave Approved: Dr. Dr. Alpha Specialist",
+      "message": "Doctor Leave Approved: Dr. Dr. Alpha Specialist is on approved leave from 2026-10-07 to 2026-10-07 (1 days). Reason: Conference. Consultation slots for these dates have been automatically frozen. Please adjust front-desk appointment schedules and inform arriving patients.",
+      "priority": "high",
+      "isRead": false,
+      "is_read": false,
+      "parentId": null,
+      "createdAt": "2026-10-02T15:18:02.199281+00:00",
+      "created_at": "2026-10-02T15:18:02.199281+00:00",
+      "replies": []
     }
   ]
 }

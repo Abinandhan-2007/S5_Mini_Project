@@ -480,8 +480,19 @@ def create_doctor_consultation(
                 derived_hospital_id = doc.get("hospital_id") or doc.get("hospitalId")
                 break
 
-    if not derived_hospital_id:
-        derived_hospital_id = "hosp-1"
+    if not derived_hospital_id or derived_hospital_id == "hosp-1":
+        if database.use_pg:
+            try:
+                with get_pg_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT id FROM hospitals LIMIT 1")
+                        h_first = cur.fetchone()
+                        if h_first and h_first.get("id"):
+                            derived_hospital_id = str(h_first["id"])
+            except Exception:
+                pass
+        if not derived_hospital_id or derived_hospital_id == "hosp-1":
+            derived_hospital_id = "hosp-kmch-5fd04b"
 
     soap_dict = data.soapData if isinstance(data.soapData, dict) else {}
     target_appt_id = data.appointmentId or soap_dict.get("appointment_id") or soap_dict.get("appointmentId")
