@@ -7,8 +7,8 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  ShieldCheck,
   AlertCircle,
+  AlertTriangle,
   ClipboardList,
   Stethoscope,
   Building2,
@@ -20,34 +20,36 @@ import {
   Check,
   RefreshCw,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Zap,
 } from 'lucide-react';
 import { useStaffStore } from '../../store/staffStore';
 import { apiPost, apiFetch } from '../../lib/apiFetch';
+import { CarePulseLogo } from '../../components/brand/CarePulseLogo';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATION TIMINGS & DESIGN SYSTEM CONFIG
+// DESIGN TOKENS & CONFIGURATION
 // ─────────────────────────────────────────────────────────────────────────────
-export const STAFF_LOGIN_CONFIG = {
-  introDurationMs: 2800,
-  taglineDelayMs: 600,
-  transitionDurationMs: 800,
-  blobBreathingDuration: 7,
-  staggerDelay: 0.08,
-  microTransitionMs: 200,
-  tokens: {
-    primaryTeal: '#0F5A52',
-    darkTeal: '#0B3F3A',
-    deepTealStart: '#0B4F4A',
-    deepTealMid: '#0F6B5E',
-    deepTealEnd: '#0A3D3A',
-    accentEmerald: '#14B8A6',
-    mintTint: '#E6F6F3',
-    backgroundLight: '#F7FAFA',
-    textMain: '#0F172A',
-    textMuted: '#64748B',
-    errorRed: '#DC2626',
-    successGreen: '#16A34A',
-  },
+export const STAFF_THEME = {
+  primary: '#0B5A54',
+  primaryDark: '#062E29',
+  primaryLight: '#0F766E',
+  accent: '#14B8A6',
+  accentCyan: '#2DD4BF',
+  mint: '#E3F3F1',
+  bgCanvas: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  text: '#0F172A',
+  muted: '#64748B',
+  error: '#DC2626',
+  success: '#16A34A',
+};
+
+export const STAFF_ANIMATION_CONFIG = {
+  introDurationMs: 2400,
+  logoDelayMs: 300,
+  transitionDurationMs: 600,
 };
 
 interface StaffPortalLoginProps {
@@ -55,165 +57,604 @@ interface StaffPortalLoginProps {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STAGE 1: WELCOME INTRO SCREEN COMPONENT
+// STAGE 1: WELCOME SCREEN (SOPHISTICATED LUMINOUS MEDICAL AURA)
 // ─────────────────────────────────────────────────────────────────────────────
-interface WelcomeIntroProps {
-  onTransitionComplete: () => void;
+interface WelcomeOverlayProps {
+  onDismiss: () => void;
 }
 
-const WelcomeIntro: React.FC<WelcomeIntroProps> = ({ onTransitionComplete }) => {
-  const [isExpanding, setIsExpanding] = useState(false);
+const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({ onDismiss }) => {
+  const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
-    // Stage 1 lasts ~2.8 seconds, then initiates the seamless expansion dissolve
     const timer = setTimeout(() => {
-      setIsExpanding(true);
-    }, STAFF_LOGIN_CONFIG.introDurationMs);
+      setIsFading(true);
+    }, STAFF_ANIMATION_CONFIG.introDurationMs);
 
     return () => clearTimeout(timer);
   }, []);
 
   const handleAnimationEnd = () => {
-    if (isExpanding) {
-      onTransitionComplete();
+    if (isFading) {
+      onDismiss();
     }
   };
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#FAFCFC] overflow-hidden select-none"
+      onClick={() => setIsFading(true)}
+      className="fixed inset-0 z-50 flex flex-col justify-between items-center bg-[#031A17] p-8 sm:p-12 select-none overflow-hidden cursor-pointer"
       initial={{ opacity: 1 }}
-      animate={{ opacity: isExpanding ? 0 : 1 }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      animate={{ opacity: isFading ? 0 : 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
       onAnimationComplete={handleAnimationEnd}
     >
-      {/* Dynamic Ambient Background Elements */}
-      <div className="absolute inset-0 bg-radial from-transparent via-[#FAFCFC]/60 to-[#F2F8F7] pointer-events-none" />
-
-      {/* ── Center Soft Blurred Gradient "Aura" Blob ── */}
-      <motion.div
-        className="absolute w-[360px] h-[360px] sm:w-[500px] sm:h-[500px] md:w-[620px] md:h-[620px] rounded-full pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(circle at 35% 35%, rgba(20, 184, 166, 0.78) 0%, transparent 55%),
-            radial-gradient(circle at 65% 30%, rgba(45, 212, 191, 0.72) 0%, transparent 50%),
-            radial-gradient(circle at 45% 70%, rgba(15, 90, 82, 0.85) 0%, transparent 60%),
-            radial-gradient(circle at 75% 70%, rgba(56, 189, 248, 0.55) 0%, transparent 55%),
-            radial-gradient(circle at 25% 65%, rgba(254, 240, 138, 0.45) 0%, transparent 45%)
-          `,
-          filter: 'blur(75px)',
-        }}
-        initial={{ scale: 0.92, opacity: 0, rotate: 0 }}
-        animate={
-          isExpanding
-            ? {
-                scale: 3.2,
-                opacity: 0,
-                transition: { duration: 0.85, ease: [0.4, 0, 0.2, 1] },
-              }
-            : {
-                scale: [1, 1.07, 0.98, 1.05, 1],
-                opacity: 0.9,
-                rotate: [0, 6, -5, 4, 0],
-                transition: {
-                  duration: STAFF_LOGIN_CONFIG.blobBreathingDuration,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                },
-              }
-        }
-      />
-
-      {/* ── Subtle Secondary Atmospheric Mint Halo ── */}
-      <motion.div
-        className="absolute w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] rounded-full pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle, rgba(167, 243, 208, 0.6) 0%, rgba(15, 90, 82, 0.2) 60%, transparent 80%)',
-          filter: 'blur(50px)',
-        }}
-        animate={{
-          scale: isExpanding ? 2.5 : [1.02, 0.96, 1.04, 1.02],
-          opacity: isExpanding ? 0 : [0.6, 0.85, 0.6],
-        }}
-        transition={{
-          duration: isExpanding ? 0.8 : 5,
-          repeat: isExpanding ? 0 : Infinity,
-          ease: 'easeInOut',
-        }}
-      />
-
-      {/* ── Center Typography Content ── */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center px-6">
-        {/* Main "Welcome" Heading */}
-        <motion.h1
-          className="text-5xl sm:text-6xl md:text-7xl font-black text-white tracking-tight drop-shadow-[0_10px_35px_rgba(11,79,74,0.45)] font-heading"
-          initial={{ opacity: 0, y: 24, filter: 'blur(10px)' }}
-          animate={
-            isExpanding
-              ? {
-                  opacity: 0,
-                  y: -20,
-                  scale: 1.06,
-                  filter: 'blur(6px)',
-                  transition: { duration: 0.5, ease: 'easeIn' },
-                }
-              : {
-                  opacity: 1,
-                  y: 0,
-                  filter: 'blur(0px)',
-                  transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
-                }
-          }
-        >
-          Welcome
-        </motion.h1>
-
-        {/* Tagline Subtext */}
-        <motion.p
-          className="mt-3.5 text-xs sm:text-sm md:text-base font-bold text-[#0D9488] tracking-widest uppercase bg-white/70 backdrop-blur-md px-4 py-1.5 rounded-full border border-teal-100/80 shadow-xs"
-          initial={{ opacity: 0, y: 14 }}
-          animate={
-            isExpanding
-              ? {
-                  opacity: 0,
-                  y: -10,
-                  transition: { duration: 0.4 },
-                }
-              : {
-                  opacity: 1,
-                  y: 0,
-                  transition: {
-                    delay: STAFF_LOGIN_CONFIG.taglineDelayMs / 1000,
-                    duration: 0.8,
-                    ease: [0.16, 1, 0.3, 1],
-                  },
-                }
-          }
-        >
-          CarePulse Staff Portal
-        </motion.p>
+      {/* Top Bar: Brand Logo */}
+      <div className="w-full max-w-6xl flex items-center justify-start relative z-20">
+        <CarePulseLogo
+          variant="horizontal"
+          size="sm"
+          theme="dark"
+          subtitle="Hospital Staff Workspace"
+          subtitleClassName="text-teal-200/90 font-bold text-xs"
+        />
       </div>
 
-      {/* Optional Quick Skip Button for Repeat Visits */}
-      <motion.button
-        type="button"
-        onClick={() => setIsExpanding(true)}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.6 }}
-        whileHover={{ opacity: 1, scale: 1.04 }}
-        className="absolute bottom-8 text-xs font-semibold text-slate-400 hover:text-[#0F5A52] px-3 py-1.5 rounded-lg border border-slate-200/60 bg-white/50 backdrop-blur-xs transition-all cursor-pointer"
-      >
-        Skip intro &rarr;
-      </motion.button>
+      {/* Centerpiece: Luminous Multi-Color Medical Fluid Core */}
+      <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full">
+        <div className="relative flex items-center justify-center">
+          <motion.div
+            className="relative w-[340px] h-[340px] sm:w-[460px] sm:h-[460px] md:w-[540px] md:h-[540px] flex items-center justify-center"
+            animate={
+              isFading
+                ? { scale: 1.25, opacity: 0, transition: { duration: 0.6 } }
+                : { rotate: [0, 360], scale: [0.97, 1.04, 0.97] }
+            }
+            transition={{
+              rotate: { duration: 22, repeat: Infinity, ease: 'linear' },
+              scale: { duration: 5.5, repeat: Infinity, ease: 'easeInOut' },
+            }}
+          >
+            {/* Luminous glow circles */}
+            <div
+              className="absolute -top-6 left-12 w-64 h-64 sm:w-80 sm:h-80 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, #F59E0B 0%, #D97706 50%, transparent 100%)',
+                filter: 'blur(65px)',
+                opacity: 0.8,
+              }}
+            />
+            <div
+              className="absolute top-10 left-8 w-72 h-72 sm:w-96 sm:h-96 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, #0B5A54 0%, #0F766E 55%, transparent 100%)',
+                filter: 'blur(70px)',
+                opacity: 0.95,
+              }}
+            />
+            <div
+              className="absolute bottom-2 left-6 w-60 h-60 sm:w-80 sm:h-80 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, #10B981 0%, #059669 60%, transparent 100%)',
+                filter: 'blur(65px)',
+                opacity: 0.88,
+              }}
+            />
+            <div
+              className="absolute top-6 -right-6 w-64 h-64 sm:w-80 sm:h-80 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, #06B6D4 0%, #14B8A6 60%, transparent 100%)',
+                filter: 'blur(65px)',
+                opacity: 0.9,
+              }}
+            />
+          </motion.div>
+
+          {/* Typography Over Aura */}
+          <motion.div
+            className="absolute z-20 flex flex-col items-center text-center pointer-events-none"
+            initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }}
+            animate={
+              isFading
+                ? { opacity: 0, y: -16, filter: 'blur(6px)', transition: { duration: 0.35 } }
+                : { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.8 } }
+            }
+          >
+            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight font-heading drop-shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+              Welcome
+            </h1>
+            <p className="text-teal-200/90 text-sm sm:text-base font-medium mt-2 tracking-wide">
+              Initializing Clinical Workspace…
+            </p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Bottom Spacer */}
+      <div className="w-full h-8 relative z-20" />
     </motion.div>
   );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STAGE 2: MAIN SPLIT-SCREEN STAFF PORTAL LOGIN COMPONENT
+// STAGE 2: LEFT 50% CLINICAL COMMAND CENTER SHOWCASE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
-  // Determine if intro has already been shown this session or if reduced motion is requested
+interface ShowcasePanelProps {
+  detectedRole: 'admin' | 'doctor' | 'receptionist' | null;
+  onSelectRole: (role: 'admin' | 'doctor' | 'receptionist') => void;
+}
+
+const CAROUSEL_SLIDES = [
+  {
+    tag: 'CLINICAL EXCELLENCE',
+    title: 'Precision patient care with zero department friction.',
+    desc: 'Unified workspaces coordinating physicians, hospital administrators, and front-desk triage in real time.',
+  },
+  {
+    tag: 'INTELLIGENT TRIAGE',
+    title: 'Algorithmic token ticketing & live vital telemetry.',
+    desc: 'Instant zero-wait routing with automated specialty assignments and live bedside status monitors.',
+  },
+  {
+    tag: 'ENTERPRISE SECURITY',
+    title: 'Role-enforced cryptographic boundaries & 256-bit AES.',
+    desc: 'Strict compliance with healthcare confidentiality standards, complete audit trails, and HIPAA protocols.',
+  },
+];
+
+const ShowcasePanel: React.FC<ShowcasePanelProps> = ({ detectedRole, onSelectRole }) => {
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div
+      className="w-full h-full min-h-screen flex flex-col justify-between p-8 sm:p-12 lg:p-14 relative overflow-hidden select-none"
+      style={{
+        background: 'radial-gradient(ellipse 90% 70% at 20% -10%, #0D5B51 0%, #063834 40%, #021C19 100%)',
+      }}
+    >
+      {/* Background Precision Engineering Dot Pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.07] pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, #FFFFFF 1.2px, transparent 1.2px)',
+          backgroundSize: '24px 24px',
+        }}
+      />
+
+      {/* Ambient Volumetric Glow Orbs */}
+      <div
+        className="absolute -top-28 -left-28 w-[450px] h-[450px] rounded-full pointer-events-none opacity-30 animate-glow-pulse"
+        style={{
+          background: 'radial-gradient(circle, rgba(45, 212, 191, 0.45) 0%, transparent 70%)',
+          filter: 'blur(90px)',
+        }}
+      />
+      <div
+        className="absolute -bottom-28 -right-28 w-[500px] h-[500px] rounded-full pointer-events-none opacity-25"
+        style={{
+          background: 'radial-gradient(circle, #14B8A6 0%, transparent 70%)',
+          filter: 'blur(100px)',
+        }}
+      />
+
+      {/* Top Bar: Brand Logo */}
+      <div className="relative z-10 flex items-center justify-start w-full">
+        <CarePulseLogo
+          variant="horizontal"
+          size="sm"
+          theme="dark"
+          subtitle="Hospital Enterprise Workspace"
+          subtitleClassName="text-teal-200/90 font-bold text-xs"
+        />
+      </div>
+
+      {/* ── Center: Clean & Simple Hospital Showcase Card ── */}
+      <div className="relative z-10 my-auto py-8 flex flex-col items-center justify-center w-full max-w-md mx-auto">
+        <motion.div
+          className="w-full rounded-3xl bg-white/[0.08] backdrop-blur-2xl border border-white/20 shadow-[0_24px_64px_rgba(0,0,0,0.45)] p-7 sm:p-8 text-white relative overflow-hidden flex flex-col items-center text-center"
+          initial={{ scale: 0.96, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          {/* Top specular highlight line */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+
+          {/* 3D Hospital Emblem */}
+          <div className="relative p-3 rounded-2xl bg-white/10 border border-white/20 shadow-xl backdrop-blur-md">
+            <img
+              src="/logo-icon.png"
+              alt="CarePulse"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_4px_16px_rgba(16,185,129,0.3)]"
+            />
+          </div>
+
+          {/* Headline & Subtitle */}
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight font-heading mt-5">
+            CarePulse Platform
+          </h2>
+          <p className="text-xs sm:text-sm text-teal-200/90 font-medium mt-1.5 max-w-xs leading-relaxed">
+            Unified healthcare operating workspace for clinical encounters, triage routing, and hospital administration.
+          </p>
+
+          {/* Clean Role Context Badges */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+            <button
+              type="button"
+              onClick={() => onSelectRole('doctor')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                detectedRole === 'doctor'
+                  ? 'bg-emerald-400 text-slate-950 shadow-md ring-2 ring-emerald-300/40'
+                  : 'bg-white/10 text-teal-100 hover:bg-white/20 border border-white/10'
+              }`}
+            >
+              Doctor OPD
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectRole('admin')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                detectedRole === 'admin'
+                  ? 'bg-emerald-400 text-slate-950 shadow-md ring-2 ring-emerald-300/40'
+                  : 'bg-white/10 text-teal-100 hover:bg-white/20 border border-white/10'
+              }`}
+            >
+              Hospital Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectRole('receptionist')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                detectedRole === 'receptionist'
+                  ? 'bg-emerald-400 text-slate-950 shadow-md ring-2 ring-emerald-300/40'
+                  : 'bg-white/10 text-teal-100 hover:bg-white/20 border border-white/10'
+              }`}
+            >
+              Triage Reception
+            </button>
+          </div>
+
+          {/* Card Footer Status */}
+          <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between w-full text-xs text-teal-200/80">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-white">All Systems Operational</span>
+            </div>
+            <span className="font-mono text-[11px] text-teal-300 font-bold">256-bit AES</span>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── Bottom Section: Narrative Highlights Carousel & Compliance Trust Strip ── */}
+      <div className="relative z-10 space-y-4 max-w-lg">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSlide}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35 }}
+            className="space-y-2 text-left"
+          >
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-white/10 border border-white/15 text-[10px] font-extrabold uppercase tracking-widest text-teal-200">
+              <Sparkles className="w-3 h-3 text-emerald-300" />
+              <span>{CAROUSEL_SLIDES[activeSlide].tag}</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug font-heading">
+              {CAROUSEL_SLIDES[activeSlide].title}
+            </h3>
+            <p className="text-xs sm:text-sm text-teal-100/80 font-normal leading-relaxed">
+              {CAROUSEL_SLIDES[activeSlide].desc}
+            </p>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Carousel Pagination Progress Bars */}
+        <div className="flex items-center gap-2 pt-1">
+          {CAROUSEL_SLIDES.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setActiveSlide(idx)}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                activeSlide === idx
+                  ? 'w-10 bg-gradient-to-r from-emerald-400 to-teal-200'
+                  : 'w-2.5 bg-white/25 hover:bg-white/50'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STAGE 2: RIGHT 50% ENTERPRISE EXECUTIVE LOGIN FORM PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+interface LoginFormPanelProps {
+  identifier: string;
+  setIdentifier: (val: string) => void;
+  password: string;
+  setPassword: (val: string) => void;
+  showPassword: boolean;
+  setShowPassword: (fn: (prev: boolean) => boolean) => void;
+  rememberDevice: boolean;
+  setRememberDevice: (val: boolean) => void;
+  isLoading: boolean;
+  error: string | null;
+  setError: (val: string | null) => void;
+  shakeError: boolean;
+  successInfo: { role: string; name: string } | null;
+  detectedRole: 'admin' | 'doctor' | 'receptionist' | null;
+  handleLogin: (e: React.FormEvent) => void;
+  onOpenForgotModal: () => void;
+  onSelectPreset: (role: 'admin' | 'doctor' | 'receptionist') => void;
+}
+
+const LoginFormPanel: React.FC<LoginFormPanelProps> = ({
+  identifier,
+  setIdentifier,
+  password,
+  setPassword,
+  showPassword,
+  setShowPassword,
+  rememberDevice,
+  setRememberDevice,
+  isLoading,
+  error,
+  setError,
+  shakeError,
+  successInfo,
+  detectedRole,
+  handleLogin,
+  onOpenForgotModal,
+  onSelectPreset,
+}) => {
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+
+  const handleKeyModifier = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.getModifierState) {
+      setIsCapsLockOn(e.getModifierState('CapsLock'));
+    }
+  };
+
+  return (
+    <div className="w-full h-full min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-[#F8FAFC] select-none overflow-y-auto relative">
+      {/* Background Ambient Subtle Highlight */}
+      <div
+        className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none opacity-40"
+        style={{
+          background: 'radial-gradient(circle, rgba(20, 184, 166, 0.08) 0%, transparent 70%)',
+        }}
+      />
+
+      <div className="max-w-[420px] w-full mx-auto my-auto relative z-10 py-4 sm:py-6">
+        {/* Heading & Subtitle */}
+        <div className="space-y-1.5 mb-7 text-left">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-heading">
+            Staff Sign In
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
+            Enter your credentials to access your hospital workspace and patient records.
+          </p>
+        </div>
+
+        {/* Error Alert */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              role="alert"
+              aria-live="assertive"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-5 flex items-start gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold shadow-xs"
+            >
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="text-left leading-snug">
+                <span>{error}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Success Feedback */}
+        <AnimatePresence>
+          {successInfo && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-5 flex items-center gap-3 p-3.5 rounded-2xl bg-teal-50 border border-teal-200 text-[#0B5A54] text-xs font-bold shadow-xs"
+            >
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div className="text-left">
+                <p className="leading-tight">Welcome, {successInfo.name}!</p>
+                <p className="text-[11px] font-medium text-teal-700 mt-0.5">
+                  Redirecting to {successInfo.role.toUpperCase()} Workspace…
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Sign In Form ── */}
+        <form onSubmit={handleLogin} className={`space-y-4 ${shakeError ? 'animate-shake' : ''}`}>
+          {/* Field 1: Username / Email */}
+          <div className="space-y-1.5 text-left">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="staff-username"
+                className="block text-xs font-bold text-slate-700"
+              >
+                Staff Username or Email
+              </label>
+              {detectedRole && (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#0B5A54] bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                  {detectedRole} account
+                </span>
+              )}
+            </div>
+            <div className="relative group">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0B5A54] transition-colors pointer-events-none">
+                {detectedRole === 'doctor' ? (
+                  <Stethoscope className="w-4 h-4 text-[#0B5A54]" />
+                ) : detectedRole === 'admin' ? (
+                  <Building2 className="w-4 h-4 text-[#0B5A54]" />
+                ) : detectedRole === 'receptionist' ? (
+                  <ClipboardList className="w-4 h-4 text-[#0B5A54]" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+              </div>
+
+              <input
+                id="staff-username"
+                type="text"
+                required
+                disabled={isLoading}
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setError(null);
+                }}
+                placeholder="e.g. kmchadmin@gmail.com, doc, rec"
+                className="w-full h-12 pl-10 pr-9 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#0B5A54] focus:ring-4 focus:ring-[#14B8A6]/20 transition-all shadow-2xs disabled:bg-slate-50 disabled:cursor-not-allowed"
+              />
+
+              {identifier && (
+                <button
+                  type="button"
+                  onClick={() => setIdentifier('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors cursor-pointer"
+                  aria-label="Clear username"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Field 2: Password */}
+          <div className="space-y-1.5 text-left">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="staff-password"
+                className="block text-xs font-bold text-slate-700"
+              >
+                Security Password
+              </label>
+              <button
+                type="button"
+                onClick={onOpenForgotModal}
+                className="text-xs font-bold text-[#0B5A54] hover:text-[#08423D] hover:underline cursor-pointer transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
+            <div className="relative group">
+              <Lock className="w-4 h-4 text-slate-400 group-focus-within:text-[#0B5A54] absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors pointer-events-none" />
+              <input
+                id="staff-password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                disabled={isLoading}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={handleKeyModifier}
+                onKeyUp={handleKeyModifier}
+                placeholder="••••••••••••"
+                className="w-full h-12 pl-10 pr-11 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#0B5A54] focus:ring-4 focus:ring-[#14B8A6]/20 transition-all shadow-2xs disabled:bg-slate-50 disabled:cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((p) => !p)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Caps Lock Alert Banner */}
+            {isCapsLockOn && (
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 mt-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Caps Lock is ON</span>
+              </div>
+            )}
+          </div>
+
+          {/* Remember this device */}
+          <div className="flex items-center justify-between pt-1">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberDevice}
+                onChange={(e) => setRememberDevice(e.target.checked)}
+                className="w-4 h-4 rounded-md border-slate-300 text-[#0B5A54] focus:ring-[#0B5A54]/25 cursor-pointer accent-[#0B5A54]"
+              />
+              <span className="text-xs font-semibold text-slate-600">
+                Keep me signed in on this workstation (30 days)
+              </span>
+            </label>
+          </div>
+
+          {/* Submit CTA Button with High-End Styling */}
+          <button
+            type="submit"
+            disabled={isLoading || !!successInfo}
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#0B5A54] via-[#0D6E66] to-[#0F766E] hover:from-[#08423D] hover:to-[#0D5B51] text-white font-black text-sm shadow-md hover:shadow-lg hover:shadow-teal-950/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed group relative overflow-hidden"
+          >
+            {/* Top subtle highlight shimmer */}
+            <div className="absolute inset-x-0 top-0 h-px bg-white/30" />
+
+            {isLoading ? (
+              <div className="flex items-center gap-2.5">
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <span>Verifying credentials…</span>
+              </div>
+            ) : successInfo ? (
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-300 stroke-[3]" />
+                <span>Authorized · Redirecting…</span>
+              </div>
+            ) : (
+              <>
+                <span>Sign In to Workspace</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {/* Footer Line */}
+      <div className="text-center pt-4 select-none relative z-10">
+        <p className="text-[11px] text-slate-400 font-medium">
+          © 2026 CarePulse
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN FULL-SCREEN STAFF PORTAL LOGIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = ({ defaultRole }) => {
   const [showIntro, setShowIntro] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -256,6 +697,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [successInfo, setSuccessInfo] = useState<{ role: string; name: string } | null>(null);
   const [shakeError, setShakeError] = useState(false);
+  const [showMobileRoles, setShowMobileRoles] = useState(false);
 
   // Forgot Password Modal State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -280,6 +722,22 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
   const setStaffAuth = useStaffStore((s) => s.setStaffAuth);
   const navigate = useNavigate();
 
+  // If defaultRole was specified via props and identifier is blank, pre-fill
+  useEffect(() => {
+    if (defaultRole && !identifier) {
+      if (defaultRole === 'doctor') {
+        setIdentifier('doc@carepulse.com');
+        setPassword('doc123');
+      } else if (defaultRole === 'admin') {
+        setIdentifier('kmchadmin@gmail.com');
+        setPassword('Admin@123');
+      } else if (defaultRole === 'receptionist') {
+        setIdentifier('rec@carepulse.com');
+        setPassword('password123');
+      }
+    }
+  }, [defaultRole]);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (currentStaff) {
@@ -291,9 +749,63 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
     }
   }, [currentStaff, navigate]);
 
+  // Determine role pattern match from username for real-time highlighting
+  const getDetectedRole = (idStr: string): 'admin' | 'doctor' | 'receptionist' | null => {
+    const clean = idStr.trim().toLowerCase();
+    if (!clean) return null;
+    if (
+      clean.includes('admin') ||
+      clean.includes('bag') ||
+      clean.startsWith('a00') ||
+      clean.includes('kmch') ||
+      clean.includes('superadmin') ||
+      clean.startsWith('sa')
+    ) {
+      return 'admin';
+    }
+    if (
+      clean.includes('doc') ||
+      clean.includes('dr') ||
+      clean.startsWith('d00') ||
+      clean.includes('wilson') ||
+      clean.includes('cardio')
+    ) {
+      return 'doctor';
+    }
+    if (
+      clean.includes('rec') ||
+      clean.includes('rep') ||
+      clean.startsWith('r00') ||
+      clean.includes('front') ||
+      clean.includes('desk')
+    ) {
+      return 'receptionist';
+    }
+    return null;
+  };
+
+  const detectedRole = successInfo
+    ? (successInfo.role as 'admin' | 'doctor' | 'receptionist')
+    : getDetectedRole(identifier);
+
   const triggerShake = () => {
     setShakeError(true);
     setTimeout(() => setShakeError(false), 500);
+  };
+
+  // Quick Preset Role Handler
+  const handleSelectPreset = (role: 'admin' | 'doctor' | 'receptionist') => {
+    setError(null);
+    if (role === 'doctor') {
+      setIdentifier('doc@carepulse.com');
+      setPassword('doc123');
+    } else if (role === 'admin') {
+      setIdentifier('kmchadmin@gmail.com');
+      setPassword('Admin@123');
+    } else if (role === 'receptionist') {
+      setIdentifier('rec@carepulse.com');
+      setPassword('password123');
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -317,7 +829,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
 
     let serverError: string | null = null;
     try {
-      // 1. Attempt API backend staff login if available (accepts username or email)
+      // 1. Attempt API backend staff login
       const res = await apiPost('/staff/login', {
         email: cleanId,
         username: cleanId,
@@ -328,9 +840,10 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         const data = await res.json();
         if (data.success && data.staff) {
           const userRole = data.staff.role;
-          // Guard: SuperAdmin accounts are not allowed in Staff Login
           if (userRole === 'superadmin') {
-            setError('SuperAdmin accounts cannot sign in through the Staff Portal. Please use the SuperAdmin Console (/superadmin/login).');
+            setError(
+              'SuperAdmin accounts cannot sign in through the Staff Portal. Please use the SuperAdmin Console (/superadmin/login).'
+            );
             triggerShake();
             setIsLoading(false);
             return;
@@ -342,7 +855,8 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
             return;
           }
           const hospId = data.staff.hospitalId || data.staff.hospital_id;
-          const hospName = data.staff.hospitalName || data.staff.hospital_name || 'CarePulse Medical Center';
+          const hospName =
+            data.staff.hospitalName || data.staff.hospital_name || 'CarePulse Medical Center';
           setStaffAuth(
             {
               id: data.staff.id,
@@ -380,23 +894,25 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         }
       }
     } catch {
-      // Fallback to client-side store verification
+      // Continue to local verification
     }
 
-    // 2. Guard: SuperAdmin Accounts must use the dedicated SuperAdmin Console
+    // 2. Guard: SuperAdmin Accounts
     if (
       cleanId === 'superadmin' ||
       cleanId === 'superadmin@carepulse.com' ||
       cleanId === 'sa101' ||
       cleanId === 'sa'
     ) {
-      setError('SuperAdmin accounts cannot sign in through the Staff Portal. Please use the SuperAdmin Console (/superadmin/login).');
+      setError(
+        'SuperAdmin accounts cannot sign in through the Staff Portal. Please use the SuperAdmin Console (/superadmin/login).'
+      );
       triggerShake();
       setIsLoading(false);
       return;
     }
 
-    // Guard: Patient Accounts must use the Patient App
+    // Guard: Patient Accounts
     if (
       cleanId === 'sarah' ||
       cleanId === 'sarah jenkins' ||
@@ -411,7 +927,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
       return;
     }
 
-    // 3. Check Admin Credentials (Username or Email)
+    // 3. Check Admin Credentials
     const adminEmail = (adminProfile.email || 'admin@carepulse.com').toLowerCase();
     const adminPass = adminProfile.password || 'Admin@123';
     const adminUser = (adminProfile.username || 'admin').toLowerCase();
@@ -421,6 +937,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         cleanId === 'bag' ||
         cleanId === 'bag@carepulse.com' ||
         cleanId === 'a001101' ||
+        cleanId === 'kmchadmin@gmail.com' ||
         cleanId === adminEmail ||
         cleanId === adminUser ||
         cleanId === 'admin@carepulse.com') &&
@@ -430,21 +947,29 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         cleanPassword === 'admin123' ||
         cleanPassword === 'admin')
     ) {
-      const isBag = cleanId === 'bag' || cleanId === 'bag@carepulse.com' || cleanPassword === 'bitsathy';
+      const isBag =
+        cleanId === 'bag' || cleanId === 'bag@carepulse.com' || cleanPassword === 'bitsathy';
       setStaffAuth(
         {
           id: isBag ? 'admin-bag' : 'admin-1',
-          name: isBag ? 'BAG Hospital Administrator' : (adminProfile.name || 'Hospital Administrator'),
-          email: isBag ? 'bag@carepulse.com' : (adminProfile.email || 'admin@carepulse.com'),
+          name: isBag
+            ? 'BAG Hospital Administrator'
+            : adminProfile.name || 'Hospital Administrator',
+          email: isBag ? 'bag@carepulse.com' : adminProfile.email || 'admin@carepulse.com',
           role: 'admin',
-          department: isBag ? 'Hospital Administration & Operations' : 'Chief Medical Administration',
+          department: isBag
+            ? 'Hospital Administration & Operations'
+            : 'Chief Medical Administration',
           hospitalId: isBag ? 'hosp-bag' : undefined,
           hospital_id: isBag ? 'hosp-bag' : undefined,
         },
         'token-admin-session'
       );
       setIsLoading(false);
-      setSuccessInfo({ role: 'admin', name: isBag ? 'BAG Administrator' : 'Hospital Administrator' });
+      setSuccessInfo({
+        role: 'admin',
+        name: isBag ? 'BAG Administrator' : 'Hospital Administrator',
+      });
       setTimeout(() => navigate('/admin'), 650);
       return;
     }
@@ -461,8 +986,16 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
     );
     if (
       (matchedDoc && cleanPassword === (matchedDoc.password || 'doc123')) ||
-      ((cleanId === 'doc' || cleanId === 'doc@carepulse.com' || cleanId === 'doctor' || cleanId === 'doctor@carepulse.com' || cleanId === 'd001101' || cleanId === 'doc-1') &&
-        (cleanPassword === 'doc123' || cleanPassword === 'bitsathy' || cleanPassword === 'Doctor@123' || cleanPassword === 'doctor'))
+      ((cleanId === 'doc' ||
+        cleanId === 'doc@carepulse.com' ||
+        cleanId === 'doctor' ||
+        cleanId === 'doctor@carepulse.com' ||
+        cleanId === 'd001101' ||
+        cleanId === 'doc-1') &&
+        (cleanPassword === 'doc123' ||
+          cleanPassword === 'bitsathy' ||
+          cleanPassword === 'Doctor@123' ||
+          cleanPassword === 'doctor'))
     ) {
       const doc = matchedDoc || {
         id: 'doc-1',
@@ -509,8 +1042,18 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
     );
     if (
       (matchedRec && cleanPassword === (matchedRec.password || 'password123')) ||
-      ((cleanId === 'rec' || cleanId === 'rec@carepulse.com' || cleanId === 'receptionist' || cleanId === 'receptionist@carepulse.com' || cleanId === 'rep1' || cleanId === 'rep1@carepulse.com' || cleanId === 'r001101' || cleanId === 'rec-1') &&
-        (cleanPassword === 'password123' || cleanPassword === 'bitsathy' || cleanPassword === 'rep123' || cleanPassword === 'receptionist'))
+      ((cleanId === 'rec' ||
+        cleanId === 'rec@carepulse.com' ||
+        cleanId === 'receptionist' ||
+        cleanId === 'receptionist@carepulse.com' ||
+        cleanId === 'rep1' ||
+        cleanId === 'rep1@carepulse.com' ||
+        cleanId === 'r001101' ||
+        cleanId === 'rec-1') &&
+        (cleanPassword === 'password123' ||
+          cleanPassword === 'bitsathy' ||
+          cleanPassword === 'rep123' ||
+          cleanPassword === 'receptionist'))
     ) {
       const rec = matchedRec || {
         id: 'rec-1',
@@ -548,7 +1091,10 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
 
     // 6. Check Nurse Credentials
     if (
-      (cleanId === 'nurse' || cleanId === 'nurse@carepulse.com' || cleanId.startsWith('n00') || cleanId === 'sarah') &&
+      (cleanId === 'nurse' ||
+        cleanId === 'nurse@carepulse.com' ||
+        cleanId.startsWith('n00') ||
+        cleanId === 'sarah') &&
       (cleanPassword === 'Nurse@123' || cleanPassword === 'nurse123' || cleanPassword === 'nurse')
     ) {
       setStaffAuth(
@@ -641,7 +1187,9 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
         } else {
           setResolvedResult(null);
           setPendingNotice(
-            `Ticket status: Pending review by Hospital Administrator. Submitted: ${data.createdAt || 'recently'}. Please ask your on-duty Admin or check again shortly.`
+            `Ticket status: Pending review by Hospital Administrator. Submitted: ${
+              data.createdAt || 'recently'
+            }. Please ask your on-duty Admin or check again shortly.`
           );
         }
       } else {
@@ -678,453 +1226,141 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
   };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] w-full flex flex-col font-sans bg-[#F7FAFA] text-slate-900 selection:bg-[#0F5A52] selection:text-white relative overflow-x-hidden">
+    <div className="min-h-screen min-h-[100dvh] w-full flex flex-col font-sans bg-[#F8FAFC] text-slate-900 selection:bg-[#0B5A54] selection:text-white relative overflow-x-hidden">
       {/* ─────────────────────────────────────────────────────────────────
-          STAGE 1: WELCOME INTRO OVERLAY
+          STAGE 1: FULL-SCREEN WELCOME INTRO OVERLAY
       ───────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {showIntro && <WelcomeIntro onTransitionComplete={onIntroComplete} />}
+        {showIntro && <WelcomeOverlay onDismiss={onIntroComplete} />}
       </AnimatePresence>
 
       {/* ─────────────────────────────────────────────────────────────────
-          STAGE 2: SPLIT-SCREEN SAAS LOGIN WORKSPACE
+          STAGE 2: SPLIT-SCREEN ENTERPRISE LAYOUT
       ───────────────────────────────────────────────────────────────── */}
-      <div className="min-h-screen min-h-[100dvh] flex flex-col lg:flex-row w-full flex-1">
-        {/* ═══════════════════════════════════════════════════════════════
-            LEFT PANEL — Premium Brand Hero (50% Width on Desktop)
-        ═══════════════════════════════════════════════════════════════ */}
-        <motion.div
-          className="relative lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 lg:p-14 overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #0B4F4A 0%, #0F6B5E 45%, #0A3D3A 100%)',
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      {/* Mobile Top Header (< 1024px) */}
+      <div className="lg:hidden w-full bg-[#063834] px-5 py-4 flex items-center justify-between text-white shrink-0 border-b border-teal-900/40 shadow-sm">
+        <CarePulseLogo
+          variant="horizontal"
+          size="sm"
+          theme="dark"
+          subtitle="Hospital Staff Workspace"
+          subtitleClassName="text-teal-200/90 font-bold text-[10px]"
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowMobileRoles((prev) => !prev)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/15 transition-colors cursor-pointer"
         >
-          {/* Subtle Precision Grid Texture */}
-          <div
-            className="absolute inset-0 opacity-[0.07] pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(circle, #FFFFFF 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-            }}
-          />
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <span>Quick Roles</span>
+          {showMobileRoles ? (
+            <ChevronUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
 
-          {/* Atmospheric Radial Glows for Layered Depth */}
-          <div
-            className="absolute -top-32 -left-32 w-96 h-96 rounded-full pointer-events-none opacity-40"
-            style={{
-              background: 'radial-gradient(circle, rgba(45, 212, 191, 0.4) 0%, transparent 70%)',
-              filter: 'blur(60px)',
-            }}
-          />
-          <div
-            className="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full pointer-events-none opacity-30"
-            style={{
-              background: 'radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, transparent 70%)',
-              filter: 'blur(70px)',
-            }}
-          />
-
-          {/* Floating Faint Glass Orb Micro-animation */}
+      {/* Collapsed Mobile Roles Drawer */}
+      <AnimatePresence>
+        {showMobileRoles && (
           <motion.div
-            className="absolute top-1/3 right-12 w-44 h-44 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-3xl pointer-events-none hidden lg:block"
-            animate={{
-              y: [-12, 14, -12],
-              rotate: [0, 10, -8, 0],
-            }}
-            transition={{
-              duration: 9,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
-
-          {/* ── TOP BAR: Header & Role-Based Access Tag ── */}
-          <motion.div
-            className="relative z-10 flex items-center justify-between w-full"
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="lg:hidden bg-[#0A443C] px-5 py-3 border-b border-teal-800/80 space-y-2 overflow-hidden text-left shrink-0 text-white"
           >
-            {/* Top-Left Logo Block */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center border border-white/80 shrink-0">
-                <svg
-                  className="w-5 h-5 text-[#0F5A52]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 21h18" />
-                  <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
-                  <path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" />
-                  <path d="M10 9h4" />
-                  <path d="M12 7v4" />
-                </svg>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-black tracking-wider text-sm font-heading">
-                    CAREPULSE
-                  </span>
-                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-teal-400/20 text-teal-200 border border-teal-300/30 tracking-widest">
-                    STAFF
-                  </span>
-                </div>
-                <p className="text-[11px] text-teal-100/70 font-medium">Unified Staff Portal</p>
-              </div>
-            </div>
-
-            {/* Top-Right Glass Pill */}
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-md text-[10px] font-bold text-white/90 tracking-wider shadow-xs">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>ROLE-BASED ACCESS</span>
-            </div>
-          </motion.div>
-
-          {/* ── CENTER HERO: Branding & Role Capabilities ── */}
-          <div className="relative z-10 my-auto py-8 lg:py-12 flex flex-col items-start max-w-xl">
-            {/* Center Logo Emblem */}
-            <motion.div
-              className="w-14 h-14 rounded-2xl bg-white shadow-xl shadow-teal-950/25 flex items-center justify-center mb-6 border border-white/90"
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.25, duration: 0.6 }}
-            >
-              <svg
-                className="w-7 h-7 text-[#0F5A52]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 21h18" />
-                <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
-                <path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" />
-                <path d="M10 9h4" />
-                <path d="M12 7v4" />
-              </svg>
-            </motion.div>
-
-            <motion.h2
-              className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-tight font-heading"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.32, duration: 0.6 }}
-            >
-              CarePulse Staff
-            </motion.h2>
-
-            <motion.p
-              className="mt-3 text-sm sm:text-base text-teal-100/80 font-medium leading-relaxed max-w-md"
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.38, duration: 0.6 }}
-            >
-              Single sign-on for Hospital Administrators, Clinical Physicians, Nurses, and Front-Desk Receptionists.
-            </motion.p>
-
-            {/* Three Glassmorphism Role Cards */}
-            <div className="mt-8 sm:mt-10 w-full space-y-3">
-              {[
-                {
-                  id: 'admin',
-                  title: 'Hospital Admin Command',
-                  desc: 'KPI intelligence, staff oversight & wings',
-                  icon: <Building2 className="w-4 h-4 text-emerald-300" />,
-                },
-                {
-                  id: 'doctor',
-                  title: 'Doctor Clinical Workspace',
-                  desc: 'Patient queues, diagnostics & Rx notes',
-                  icon: <Stethoscope className="w-4 h-4 text-teal-300" />,
-                },
-                {
-                  id: 'receptionist',
-                  title: 'Receptionist Front-Desk',
-                  desc: 'Fast token ticketing & patient check-in',
-                  icon: <ClipboardList className="w-4 h-4 text-cyan-300" />,
-                },
-              ].map((role, idx) => (
-                <motion.div
-                  key={role.id}
-                  className="group flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.07] hover:bg-white/[0.12] border border-white/12 backdrop-blur-md shadow-xs transition-all duration-200 cursor-default hover:-translate-y-0.5"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.44 + idx * STAFF_LOGIN_CONFIG.staggerDelay, duration: 0.55 }}
-                >
-                  <div className="w-9 h-9 rounded-xl bg-teal-400/20 border border-teal-300/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                    {role.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold text-white tracking-wide leading-tight">
-                      {role.title}
-                    </h4>
-                    <p className="text-[11px] text-teal-100/70 font-medium leading-tight truncate mt-0.5">
-                      {role.desc}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── BOTTOM FOOTER: Encryption & Version ── */}
-          <motion.div
-            className="relative z-10 flex items-center justify-between text-teal-200/60 text-xs pt-6 border-t border-white/10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7, duration: 0.6 }}
-          >
-            <div className="flex items-center gap-1.5 font-medium">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>256-bit encrypted authentication</span>
-            </div>
-            <span className="font-mono text-[11px] tracking-wider text-teal-300/70">
-              Role Router v2.0
-            </span>
-          </motion.div>
-        </motion.div>
-
-        {/* ═══════════════════════════════════════════════════════════════
-            RIGHT PANEL — Pure Light Floating Login Form (50% Width)
-        ═══════════════════════════════════════════════════════════════ */}
-        <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-10 lg:p-14 relative bg-[#F7FAFA]">
-          {/* Faint Pastel Wash Background */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-50"
-            style={{
-              background: 'radial-gradient(ellipse at 80% 20%, rgba(20, 184, 166, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(56, 189, 248, 0.06) 0%, transparent 60%)',
-            }}
-          />
-
-          {/* ── Centered Floating White Card ── */}
-          <motion.div
-            className={`relative z-10 w-full max-w-[460px] bg-white rounded-[26px] p-7 sm:p-9 md:p-10 border border-slate-100 shadow-[0_20px_50px_rgba(15,90,82,0.08),0_1px_3px_rgba(0,0,0,0.04)] ${
-              shakeError ? 'animate-shake' : ''
-            }`}
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {/* Header */}
-            <div className="space-y-1.5 text-left mb-7">
-              <h3 className="text-2xl sm:text-[26px] font-black text-slate-900 tracking-tight font-heading">
-                Staff Sign In
-              </h3>
-              <p className="text-xs sm:text-[13px] text-slate-500 font-medium leading-relaxed">
-                Enter your work credentials. System auto-routes to your portal.
-              </p>
-            </div>
-
-            {/* Error Alert Row */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  role="alert"
-                  aria-live="assertive"
-                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  className="mb-5 flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold"
-                >
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <span className="leading-snug">{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Success Toast State */}
-            <AnimatePresence>
-              {successInfo && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mb-5 flex items-center gap-3 p-3.5 rounded-xl bg-teal-50 border border-teal-200 text-[#0F5A52] text-xs font-bold"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="leading-tight">Welcome back, {successInfo.name}!</p>
-                    <p className="text-[11px] font-medium text-teal-700 mt-0.5">
-                      Routing to {successInfo.role.toUpperCase()} workspace...
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Sign-In Form */}
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Field 1: Username / Work Email */}
-              <div className="space-y-1.5 text-left">
-                <label
-                  htmlFor="staff-identifier"
-                  className="block text-xs font-bold text-slate-700 tracking-wide"
-                >
-                  Username or Work Email
-                </label>
-                <div className="relative group">
-                  <User className="w-4 h-4 text-slate-400 group-focus-within:text-[#0F5A52] absolute left-4 top-1/2 -translate-y-1/2 transition-colors pointer-events-none" />
-                  <input
-                    id="staff-identifier"
-                    type="text"
-                    required
-                    value={identifier}
-                    onChange={(e) => {
-                      setIdentifier(e.target.value);
-                      setError(null);
-                    }}
-                    placeholder="e.g. kmchadmin@gmail.com, doc, rec"
-                    className="w-full h-[52px] pl-11 pr-4 bg-slate-50/80 hover:bg-slate-50 border border-slate-200/90 rounded-[14px] text-xs sm:text-[13px] font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#0F5A52] focus:ring-4 focus:ring-[#0F5A52]/10 focus:bg-white transition-all shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              {/* Field 2: Password */}
-              <div className="space-y-1.5 text-left">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="staff-password"
-                    className="block text-xs font-bold text-slate-700 tracking-wide"
-                  >
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotIdentifier(identifier);
-                      setIsForgotModalOpen(true);
-                    }}
-                    className="text-xs font-bold text-[#0F5A52] hover:text-[#0B3F3A] hover:underline cursor-pointer transition-colors"
-                  >
-                    Forgot?
-                  </button>
-                </div>
-                <div className="relative group">
-                  <Lock className="w-4 h-4 text-slate-400 group-focus-within:text-[#0F5A52] absolute left-4 top-1/2 -translate-y-1/2 transition-colors pointer-events-none" />
-                  <input
-                    id="staff-password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError(null);
-                    }}
-                    placeholder="••••••••••••"
-                    className="w-full h-[52px] pl-11 pr-12 bg-slate-50/80 hover:bg-slate-50 border border-slate-200/90 rounded-[14px] text-xs sm:text-[13px] font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#0F5A52] focus:ring-4 focus:ring-[#0F5A52]/10 focus:bg-white transition-all shadow-2xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition-colors cursor-pointer"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember This Device Checkbox */}
-              <div className="flex items-center justify-between pt-0.5">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberDevice}
-                    onChange={(e) => setRememberDevice(e.target.checked)}
-                    className="w-4 h-4 rounded-md border-slate-300 text-[#0F5A52] focus:ring-[#0F5A52]/20 cursor-pointer accent-[#0F5A52]"
-                  />
-                  <span className="text-xs font-semibold text-slate-600">
-                    Remember this device
-                  </span>
-                </label>
-              </div>
-
-              {/* Primary Action Button */}
-              <button
-                type="submit"
-                disabled={isLoading || !!successInfo}
-                className="group relative w-full h-[52px] rounded-[14px] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:shadow-[#0F5A52]/25 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]"
-                style={{
-                  background: 'linear-gradient(135deg, #0B4F4A 0%, #0F5A52 50%, #0A3D3A 100%)',
-                }}
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 animate-spin text-white"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                      <path d="M12 2a10 10 0 0 1 10 10" />
-                    </svg>
-                    <span>Verifying credentials…</span>
-                  </div>
-                ) : successInfo ? (
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-300 stroke-[3]" />
-                    <span>Signing in…</span>
-                  </div>
-                ) : (
-                  <>
-                    <span>SIGN IN TO PORTAL</span>
-                    <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
-                  </>
-                )}
-              </button>
-
-              {/* Helper Subtext */}
-              <p className="text-center text-[11px] text-slate-400 font-medium pt-1">
-                Need access? Contact your hospital administrator.
-              </p>
-            </form>
-
-            {/* Cross-Portal Patient Link */}
-            <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center text-xs">
-              <span className="text-slate-500 font-medium">Are you a patient?</span>
+            <div className="grid grid-cols-3 gap-2 py-1">
               <button
                 type="button"
-                onClick={() => navigate('/patient/login')}
-                className="ml-1.5 font-bold text-[#0F5A52] hover:text-[#0B3F3A] hover:underline cursor-pointer transition-colors inline-flex items-center gap-1"
+                onClick={() => {
+                  handleSelectPreset('doctor');
+                  setShowMobileRoles(false);
+                }}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs font-bold transition-colors cursor-pointer"
               >
-                <span>Patient App</span>
-                <span aria-hidden="true">&rarr;</span>
+                Doctor (doc123)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectPreset('admin');
+                  setShowMobileRoles(false);
+                }}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs font-bold transition-colors cursor-pointer"
+              >
+                Admin (Admin@123)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectPreset('receptionist');
+                  setShowMobileRoles(false);
+                }}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs font-bold transition-colors cursor-pointer"
+              >
+                Reception (pwd123)
               </button>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edge-to-Edge Full Screen 50% / 50% Split */}
+      <div className="flex-1 flex flex-col lg:flex-row w-full min-h-screen min-h-[100dvh]">
+        {/* LEFT 50%: Clinical Command Center Showcase Panel */}
+        <div className="hidden lg:flex lg:w-1/2 min-h-screen">
+          <ShowcasePanel detectedRole={detectedRole} onSelectRole={handleSelectPreset} />
+        </div>
+
+        {/* RIGHT 50%: Clean Executive SaaS Login Form Panel */}
+        <div className="w-full lg:w-1/2 min-h-screen flex flex-col">
+          <LoginFormPanel
+            identifier={identifier}
+            setIdentifier={setIdentifier}
+            password={password}
+            setPassword={setPassword}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            rememberDevice={rememberDevice}
+            setRememberDevice={setRememberDevice}
+            isLoading={isLoading}
+            error={error}
+            setError={setError}
+            shakeError={shakeError}
+            successInfo={successInfo}
+            detectedRole={detectedRole}
+            handleLogin={handleLogin}
+            onOpenForgotModal={() => {
+              setForgotIdentifier(identifier);
+              setIsForgotModalOpen(true);
+            }}
+            onSelectPreset={handleSelectPreset}
+          />
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────
-          FORGOT PASSWORD ASSISTANCE MODAL
+          FORGOT PASSWORD ASSISTANCE MODAL (MODERN EXECUTIVE WORKFLOW)
       ───────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {isForgotModalOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-4">
             <motion.div
-              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-slate-200 shadow-2xl space-y-4"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200/90 shadow-2xl space-y-4"
+              initial={{ scale: 0.94, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 10 }}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#0F5A52] flex items-center justify-center border border-teal-100">
-                    <KeyRound className="w-4 h-4" />
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#0B5A54] flex items-center justify-center border border-teal-100 shadow-2xs">
+                    <KeyRound className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900 font-heading">
+                  <div className="text-left">
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 font-heading">
                       Staff Password Assistance
                     </h4>
                     <p className="text-[11px] text-slate-500 font-medium">
@@ -1143,7 +1379,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
 
               {/* Resolved Credentials Card */}
               {resolvedResult ? (
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3">
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3 text-left">
                   <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Your Administrator approved temporary access!</span>
@@ -1179,7 +1415,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                   <button
                     type="button"
                     onClick={handleApplyTemporaryPassword}
-                    className="w-full h-11 rounded-xl bg-[#0F5A52] hover:bg-[#0B3F3A] text-white text-xs font-black shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    className="w-full h-11 rounded-xl bg-[#0B5A54] hover:bg-[#08423D] text-white text-xs font-black shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Auto-Fill Credentials & Sign In</span>
@@ -1189,29 +1425,29 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
 
               {/* Status Notices */}
               {forgotSuccessMessage && !resolvedResult && (
-                <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#0F5A52] shrink-0 mt-0.5" />
+                <div className="p-3 rounded-2xl bg-teal-50 border border-teal-200 text-xs text-teal-900 font-medium flex items-start gap-2 text-left">
+                  <CheckCircle2 className="w-4 h-4 text-[#0B5A54] shrink-0 mt-0.5" />
                   <span>{forgotSuccessMessage}</span>
                 </div>
               )}
 
               {pendingNotice && !resolvedResult && (
-                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium flex items-start gap-2">
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium flex items-start gap-2 text-left">
                   <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <span>{pendingNotice}</span>
                 </div>
               )}
 
               {forgotError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium flex items-start gap-2">
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium flex items-start gap-2 text-left">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <span>{forgotError}</span>
                 </div>
               )}
 
               {/* Action Form */}
-              <form onSubmit={handleForgotSubmit} className="space-y-3.5 text-xs">
-                <div className="space-y-1 text-left">
+              <form onSubmit={handleForgotSubmit} className="space-y-3.5 text-xs text-left">
+                <div className="space-y-1">
                   <label className="text-slate-700 font-bold block text-[11px]">
                     Staff Username, Work Email, or Staff ID
                   </label>
@@ -1224,7 +1460,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                       setForgotError(null);
                     }}
                     placeholder="e.g. kmchadmin@gmail.com, D001101, doc"
-                    className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F5A52] focus:bg-white transition-all"
+                    className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0B5A54] focus:bg-white transition-all shadow-2xs"
                   />
                 </div>
 
@@ -1232,7 +1468,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                   <button
                     type="submit"
                     disabled={forgotLoading}
-                    className="flex-1 h-11 rounded-xl bg-[#0F5A52] hover:bg-[#0B3F3A] text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                    className="flex-1 h-11 rounded-xl bg-[#0B5A54] hover:bg-[#08423D] text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
                   >
                     {forgotLoading ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1245,7 +1481,7 @@ export const StaffPortalLogin: React.FC<StaffPortalLoginProps> = () => {
                     type="button"
                     onClick={handleCheckStatus}
                     disabled={checkingStatus}
-                    className="px-3.5 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                    className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
                   >
                     {checkingStatus ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
