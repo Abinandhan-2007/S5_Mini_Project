@@ -266,3 +266,5 @@ Language selection is accessible via the patient header profile modal (`Language
 
 ## 📄 License & Academic Note
 Developed as part of the S5 Mini Project Curriculum. CarePulse is intended for healthcare educational and administrative demonstration purposes.
+#   C a r e p u l s e  
+ 
