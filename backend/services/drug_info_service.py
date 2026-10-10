@@ -294,58 +294,62 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
             search_term
         ]
 
-        with httpx.Client(timeout=6.0) as client:
+        with httpx.Client(timeout=2.5) as client:
             for query in search_candidates:
-                res = client.get(url, params={"search": query, "limit": 1})
-                if res.status_code == 200:
-                    data = res.json()
-                    results = data.get("results", [])
-                    if results:
-                        first_item = results[0]
+                try:
+                    res = client.get(url, params={"search": query, "limit": 1})
+                    if res.status_code == 200:
+                        data = res.json()
+                        results = data.get("results", [])
+                        if results:
+                            first_item = results[0]
 
-                        # Extract raw fields (all OpenFDA fields are arrays of strings)
-                        raw_purpose = _extract_first(first_item, "purpose")
-                        raw_indications = _extract_first(first_item, "indications_and_usage")
-                        raw_dosage = _extract_first(first_item, "dosage_and_administration")
-                        raw_warnings = _extract_first(first_item, "warnings_and_cautions") or _extract_first(first_item, "warnings")
-                        raw_adverse = _extract_first(first_item, "adverse_reactions")
-                        raw_boxed = _extract_first(first_item, "boxed_warning")
+                            # Extract raw fields (all OpenFDA fields are arrays of strings)
+                            raw_purpose = _extract_first(first_item, "purpose")
+                            raw_indications = _extract_first(first_item, "indications_and_usage")
+                            raw_dosage = _extract_first(first_item, "dosage_and_administration")
+                            raw_warnings = _extract_first(first_item, "warnings_and_cautions") or _extract_first(first_item, "warnings")
+                            raw_adverse = _extract_first(first_item, "adverse_reactions")
+                            raw_boxed = _extract_first(first_item, "boxed_warning")
 
-                        # Tokenize into clean, sectioned bullet points without truncation
-                        main_uses = split_into_bullets(raw_indications, max_bullets=5, section_type="mainUses")
-                        how_to_take = split_into_bullets(raw_dosage, max_bullets=5, section_type="howToTake")
-                        warnings = split_into_bullets(raw_warnings, section_type="warnings")
-                        side_effects = split_into_bullets(raw_adverse, section_type="sideEffects")
-                        boxed_warning = split_into_bullets(raw_boxed, section_type="boxed_warning")
+                            # Tokenize into clean, sectioned bullet points without truncation
+                            main_uses = split_into_bullets(raw_indications, max_bullets=5, section_type="mainUses")
+                            how_to_take = split_into_bullets(raw_dosage, max_bullets=5, section_type="howToTake")
+                            warnings = split_into_bullets(raw_warnings, section_type="warnings")
+                            side_effects = split_into_bullets(raw_adverse, section_type="sideEffects")
+                            boxed_warning = split_into_bullets(raw_boxed, section_type="boxed_warning")
 
-                        clean_p = clean_clinical_text(raw_purpose) if raw_purpose else ""
-                        clean_ind = clean_clinical_text(raw_indications) if raw_indications else ""
+                            clean_p = clean_clinical_text(raw_purpose) if raw_purpose else ""
+                            clean_ind = clean_clinical_text(raw_indications) if raw_indications else ""
 
-                        summary_parts = []
-                        if clean_p:
-                            summary_parts.append(clean_p)
-                        if clean_ind and (not clean_p or clean_p.lower() not in clean_ind.lower()):
-                            summary_parts.append(clean_text_snippet(clean_ind, max_chars=350))
+                            summary_parts = []
+                            if clean_p:
+                                summary_parts.append(clean_p)
+                            if clean_ind and (not clean_p or clean_p.lower() not in clean_ind.lower()):
+                                summary_parts.append(clean_text_snippet(clean_ind, max_chars=350))
 
-                        final_summary = " ".join(summary_parts).strip()
-                        if not final_summary:
-                            final_summary = "General therapeutic medication."
+                            final_summary = " ".join(summary_parts).strip()
+                            if not final_summary:
+                                final_summary = "General therapeutic medication."
 
-                        result_payload = {
-                            "drug_name": raw_name,
-                            "found": True,
-                            "purpose": clean_p or None,
-                            "indications_and_usage": clean_text_snippet(clean_ind, max_chars=400) if clean_ind else final_summary,
-                            "summary": final_summary,
-                            "source": "OpenFDA",
-                            "mainUses": main_uses,
-                            "howToTake": how_to_take,
-                            "warnings": warnings,
-                            "sideEffects": side_effects,
-                            "boxedWarning": boxed_warning,
-                        }
-                        _DRUG_INFO_CACHE[norm_name] = result_payload
-                        return result_payload
+                            result_payload = {
+                                "drug_name": raw_name,
+                                "found": True,
+                                "purpose": clean_p or None,
+                                "indications_and_usage": clean_text_snippet(clean_ind, max_chars=400) if clean_ind else final_summary,
+                                "summary": final_summary,
+                                "source": "OpenFDA",
+                                "mainUses": main_uses,
+                                "howToTake": how_to_take,
+                                "warnings": warnings,
+                                "sideEffects": side_effects,
+                                "boxedWarning": boxed_warning,
+                            }
+                            _DRUG_INFO_CACHE[norm_name] = result_payload
+                            return result_payload
+                except (httpx.ConnectTimeout, httpx.ConnectError):
+                    logger.info(f"OpenFDA host unreachable or timed out for '{search_term}'. Proceeding to next provider.")
+                    break
 
             logger.info(f"OpenFDA returned no results for '{search_term}'. Using fallback.")
     except Exception as e:
@@ -367,6 +371,27 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
     }
     _DRUG_INFO_CACHE[norm_name] = fallback_payload
     return fallback_payload
+
+
+def _flatten_to_bullets(val: Any) -> List[str]:
+    """Recursively converts nested dictionaries, lists, or strings from AI JSON into clean bullet points."""
+    bullets: List[str] = []
+    if isinstance(val, list):
+        for item in val:
+            if isinstance(item, (dict, list)):
+                bullets.extend(_flatten_to_bullets(item))
+            elif item and str(item).strip():
+                bullets.append(str(item).strip())
+    elif isinstance(val, dict):
+        for k, v in val.items():
+            if isinstance(v, (dict, list)):
+                bullets.extend(_flatten_to_bullets(v))
+            elif v and str(v).strip():
+                label = k.replace("_", " ").capitalize()
+                bullets.append(f"{label}: {str(v).strip()}")
+    elif val and str(val).strip():
+        bullets.append(str(val).strip())
+    return bullets
 
 
 LANGUAGE_NAMES = {
@@ -438,9 +463,9 @@ def get_clinical_ai_medicine_summary(
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.1,
-                "max_tokens": 500
+                "max_tokens": 2400
             }
-            with httpx.Client(timeout=12.0) as client:
+            with httpx.Client(timeout=14.0) as client:
                 res = client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -450,36 +475,30 @@ def get_clinical_ai_medicine_summary(
                         content = re.sub(r"\s*```$", "", content)
                     parsed = json.loads(content)
 
-                    how_to_take = parsed.get("how_to_take")
-                    how_to_take_list = []
-                    if isinstance(how_to_take, list):
-                        how_to_take_list = [str(h).strip() for h in how_to_take if str(h).strip()]
-                    elif isinstance(how_to_take, dict):
-                        desc = f"{how_to_take.get('administration', '')} {how_to_take.get('dosage_form', '')}".strip()
-                        if desc:
-                            how_to_take_list = [desc]
-                    elif how_to_take:
-                        how_to_take_list = [str(how_to_take).strip()]
+                    how_to_take_list = _flatten_to_bullets(parsed.get("how_to_take"))
+                    warnings_list = _flatten_to_bullets(parsed.get("warnings"))
+                    side_effects_list = _flatten_to_bullets(parsed.get("side_effects"))
+                    main_uses_list = _flatten_to_bullets(parsed.get("indications_and_usage"))
 
-                    warnings = parsed.get("warnings")
-                    warnings_list = []
-                    if isinstance(warnings, list):
-                        warnings_list = [str(w).strip() for w in warnings if str(w).strip()]
-                    elif warnings:
-                        warnings_list = [str(warnings).strip()]
+                    raw_purpose = parsed.get("purpose")
+                    if isinstance(raw_purpose, (dict, list)):
+                        raw_purpose = " ".join(_flatten_to_bullets(raw_purpose))
+                    purpose_str = str(raw_purpose or "").strip()
 
-                    side_effects = parsed.get("side_effects") or []
-                    if isinstance(side_effects, str):
-                        side_effects = [s.strip() for s in side_effects.split(",")]
+                    raw_ind = parsed.get("indications_and_usage")
+                    if isinstance(raw_ind, (dict, list)):
+                        raw_ind = "; ".join(_flatten_to_bullets(raw_ind))
+                    ind_str = str(raw_ind or "").strip()
 
                     result = {
                         "found": True,
-                        "purpose": str(parsed.get("purpose") or "").strip(),
-                        "indications_and_usage": str(parsed.get("indications_and_usage") or "").strip(),
-                        "summary": str(parsed.get("purpose") or "").strip(),
+                        "purpose": purpose_str,
+                        "indications_and_usage": ind_str,
+                        "summary": purpose_str or "General therapeutic clinical medication.",
+                        "mainUses": main_uses_list or None,
                         "howToTake": how_to_take_list or None,
                         "warnings": warnings_list or None,
-                        "sideEffects": [str(s) for s in side_effects if str(s).strip()] or None,
+                        "sideEffects": side_effects_list or None,
                         "source": f"CarePulse Clinical AI ({lang_name})"
                     }
                     _DRUG_INFO_CACHE[cache_key] = result
