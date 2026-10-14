@@ -87,18 +87,54 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
       const res = await apiFetch('/communication/staff-contacts', { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
-        const list: ChatContact[] = data.contacts || [];
-        setContacts(list);
-        if (!selectedContact && list.length > 0) {
-          setSelectedContact(list[0]);
-        }
+        const rawList: ChatContact[] = data.contacts || [];
+
+        // Defensive client-side deduplication & caller filtering
+        const seenIds = new Set<string>();
+        const seenCodes = new Set<string>();
+        const seenKeys = new Set<string>();
+
+        const cleanList = rawList.filter((c) => {
+          // Exclude self if matches currentStaffId or currentStaffName + role
+          if (currentStaffId && (c.id === currentStaffId || (c.staffCode && c.staffCode === currentStaffId))) {
+            return false;
+          }
+          const cleanName = c.name.replace(/^(dr\.?|doctor)\s+/i, '').trim().toLowerCase();
+          const cleanCurrentName = (currentStaffName || '').replace(/^(dr\.?|doctor)\s+/i, '').trim().toLowerCase();
+          if (cleanCurrentName && cleanName && cleanName === cleanCurrentName && c.role === currentRole) {
+            return false;
+          }
+
+          // Deduplicate by ID
+          if (c.id && seenIds.has(c.id)) return false;
+          // Deduplicate by staffCode
+          if (c.staffCode && seenCodes.has(c.staffCode.toLowerCase())) return false;
+          // Deduplicate by role + name
+          const identityKey = `${c.role}:${cleanName}`;
+          if (cleanName && seenKeys.has(identityKey)) return false;
+
+          if (c.id) seenIds.add(c.id);
+          if (c.staffCode) seenCodes.add(c.staffCode.toLowerCase());
+          if (cleanName) seenKeys.add(identityKey);
+          return true;
+        });
+
+        setContacts(cleanList);
+        setSelectedContact((prev) => {
+          if (!prev && cleanList.length > 0) return cleanList[0];
+          if (prev) {
+            const stillExists = cleanList.find((c) => c.id === prev.id || (prev.staffCode && c.staffCode === prev.staffCode));
+            return stillExists || (cleanList.length > 0 ? cleanList[0] : null);
+          }
+          return null;
+        });
       }
     } catch (err) {
       console.warn('Failed to load chat contacts', err);
     } finally {
       setIsLoadingContacts(false);
     }
-  }, [selectedContact]);
+  }, [currentStaffId, currentStaffName, currentRole]);
 
   // 2. Fetch Messages
   const fetchMessages = useCallback(async () => {
@@ -163,7 +199,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
         const isFromContact =
           m.senderId === selectedContact.id ||
           (selectedContact.id === 'admin' && m.senderRole === 'admin') ||
-          (selectedContact.staffCode && m.senderCode === selectedContact.staffCode);
+          Boolean(selectedContact.staffCode && m.senderCode && m.senderCode === selectedContact.staffCode);
 
         const isToContact =
           m.recipientId === selectedContact.id ||
@@ -172,31 +208,30 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
 
         const isFromMe =
           Boolean(currentStaffId && (m.senderId === currentStaffId || m.senderCode === currentStaffId)) ||
-          (m.senderRole === currentRole);
+          Boolean(currentStaffName && m.senderName && m.senderName.toLowerCase() === currentStaffName.toLowerCase() && m.senderRole === currentRole);
 
         const isToMe =
           Boolean(currentStaffId && m.recipientId === currentStaffId) ||
-          m.recipientRole === currentRole ||
-          m.recipientRole === 'all';
+          (!m.recipientId && (m.recipientRole === currentRole || m.recipientRole === 'all'));
 
         // 1. Direct exchange between me and selected contact
         if (isFromContact && isToMe) return true;
         if (isFromMe && isToContact) return true;
 
-        // 2. If contact is Admin, include general admin announcements/alerts
+        // 2. If contact is Admin, include general admin announcements/alerts targeted to me
         if (selectedContact.id === 'admin' && (m.senderRole === 'admin' || m.recipientRole === 'admin' || m.recipientRole === 'all')) {
-          return true;
+          if (isToMe || isFromMe) return true;
         }
 
         // 3. Automated system notifications
-        if (m.senderId === 'system-admin' && (m.recipientId === currentStaffId || m.recipientRole === currentRole || m.recipientRole === 'all')) {
+        if (m.senderId === 'system-admin' && isToMe) {
           return true;
         }
 
         return false;
       })
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, [messages, selectedContact, currentStaffId, currentRole]);
+  }, [messages, selectedContact, currentStaffId, currentStaffName, currentRole]);
 
   // Map of unread incoming messages grouped by sender contact id / role
   const contactUnreadMap = useMemo(() => {
@@ -213,18 +248,26 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
     allFlat.forEach((m) => {
       const isFromMe = Boolean(
         (currentStaffId && (m.senderId === currentStaffId || m.senderCode === currentStaffId)) ||
-        (m.senderRole === currentRole)
+        (currentStaffName && m.senderName && m.senderName.toLowerCase() === currentStaffName.toLowerCase() && m.senderRole === currentRole)
       );
       if (isFromMe || m.isRead) return;
+
+      const isToMe =
+        Boolean(currentStaffId && m.recipientId === currentStaffId) ||
+        (!m.recipientId && (m.recipientRole === currentRole || m.recipientRole === 'all'));
+      if (!isToMe) return;
 
       const senderKey = m.senderId || (m.senderRole === 'admin' ? 'admin' : '');
       if (senderKey) {
         map.set(senderKey, (map.get(senderKey) || 0) + 1);
       }
+      if (m.senderCode) {
+        map.set(m.senderCode, (map.get(m.senderCode) || 0) + 1);
+      }
     });
 
     return map;
-  }, [messages, currentStaffId, currentRole]);
+  }, [messages, currentStaffId, currentStaffName, currentRole]);
 
   // Automatically mark incoming messages from active selectedContact as read
   useEffect(() => {
@@ -232,13 +275,13 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
     activeConversationMessages.forEach((m) => {
       const isFromMe = Boolean(
         (currentStaffId && (m.senderId === currentStaffId || m.senderCode === currentStaffId)) ||
-        (m.senderRole === currentRole)
+        (currentStaffName && m.senderName && m.senderName.toLowerCase() === currentStaffName.toLowerCase() && m.senderRole === currentRole)
       );
       if (!isFromMe && !m.isRead) {
         markStaffMessageRead(m.id);
       }
     });
-  }, [selectedContact, activeConversationMessages, currentStaffId, currentRole, markStaffMessageRead]);
+  }, [selectedContact, activeConversationMessages, currentStaffId, currentStaffName, currentRole, markStaffMessageRead]);
 
   // Handle Send Message
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -431,7 +474,7 @@ export const StaffChatHub: React.FC<StaffChatHubProps> = ({
               const isSelected = selectedContact?.id === contact.id;
               const badge = getRoleBadge(contact.role);
               const BadgeIcon = badge.icon;
-              const contactUnread = contactUnreadMap.get(contact.id) || 0;
+              const contactUnread = contactUnreadMap.get(contact.id) || (contact.staffCode ? contactUnreadMap.get(contact.staffCode) || 0 : 0);
 
               return (
                 <div

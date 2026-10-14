@@ -33,6 +33,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { useTranslation } from '../../i18n';
 import { SCAN_LANGUAGES } from './MedicineInfoLookupScreen';
+import { AgeDosageLimitsCard } from '../../components/medicines/AgeDosageLimitsCard';
 
 export const ScanMedicineScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -117,6 +118,8 @@ export const ScanMedicineScreen: React.FC = () => {
           howToTake: baseline.howToTake,
           warnings: baseline.warnings,
           sideEffects: baseline.sideEffects,
+          ageDosageLimits: baseline.ageDosageLimits,
+          maxDailyDose: baseline.maxDailyDose,
         }),
       });
 
@@ -133,6 +136,8 @@ export const ScanMedicineScreen: React.FC = () => {
           howToTake: data.howToTake,
           warnings: data.warnings,
           sideEffects: data.sideEffects,
+          ageDosageLimits: data.ageDosageLimits || baseline.ageDosageLimits,
+          maxDailyDose: data.maxDailyDose || baseline.maxDailyDose,
         };
 
         if (newLang === 'en') {
@@ -879,16 +884,40 @@ export const ScanMedicineScreen: React.FC = () => {
                               </div>
                             )}
 
+                            {/* Age-Based Dosage Limits Card */}
+                            {dInfo.ageDosageLimits && (
+                              <div className="pt-2">
+                                <AgeDosageLimitsCard
+                                  guide={dInfo.ageDosageLimits}
+                                  maxDailyDose={dInfo.maxDailyDose}
+                                  drugName={scanResult.match?.drugName}
+                                  patientDob={user?.dob}
+                                  accentColor="teal"
+                                />
+                              </div>
+                            )}
+
                             <p className="text-[10px] text-slate-400 font-medium italic pt-0.5">
                               * General clinical background provided for educational awareness. Always adhere strictly to your personal doctor instructions.
                             </p>
                           </div>
                         ) : (
-                          <div className="bg-[#F8FAFC] border border-slate-100 rounded-2xl p-3.5 text-left space-y-1.5">
+                          <div className="bg-[#F8FAFC] border border-slate-100 rounded-2xl p-3.5 text-left space-y-2">
                             <p className="text-xs font-semibold text-slate-700 leading-relaxed">
                               {dInfo?.summary ||
                                 'General information not available for this medication — please consult your doctor or pharmacist.'}
                             </p>
+                            {dInfo?.ageDosageLimits && (
+                              <div className="pt-1">
+                                <AgeDosageLimitsCard
+                                  guide={dInfo.ageDosageLimits}
+                                  maxDailyDose={dInfo.maxDailyDose}
+                                  drugName={scanResult.match?.drugName}
+                                  patientDob={user?.dob}
+                                  accentColor="teal"
+                                />
+                              </div>
+                            )}
                             <p className="text-[10px] text-slate-400 font-medium italic">
                               * General clinical background provided for educational awareness. Always adhere strictly to your personal doctor instructions.
                             </p>
@@ -1069,11 +1098,22 @@ export const ScanMedicineScreen: React.FC = () => {
                           )}
                         </div>
 
-                        <div className="bg-[#F8FAFC] border border-slate-100 rounded-2xl p-3.5 text-left space-y-1">
+                        <div className="bg-[#F8FAFC] border border-slate-100 rounded-2xl p-3.5 text-left space-y-2">
                           <p className="text-xs font-semibold text-slate-700 leading-relaxed">
                             {candidateDrugInfo?.summary ||
                               'General information not available for this medication — please consult your doctor or pharmacist.'}
                           </p>
+                          {candidateDrugInfo?.ageDosageLimits && (
+                            <div className="pt-1">
+                              <AgeDosageLimitsCard
+                                guide={candidateDrugInfo.ageDosageLimits}
+                                maxDailyDose={candidateDrugInfo.maxDailyDose}
+                                drugName={selectedCandidate.drugName}
+                                patientDob={user?.dob}
+                                accentColor="teal"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -80,7 +80,7 @@ from auth import verify_google_token, process_google_login, generate_patient_jwt
 from email_service import send_otp_email
 from core.security import hash_password, verify_password, needs_rehash
 from core.ocr_matcher import extract_text_from_image, fuzzy_match_prescription, extract_drug_candidate_from_ocr, scan_medicine_packaging_vision
-from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary, translate_medicine_info
+from services.drug_info_service import get_drug_info, get_clinical_ai_medicine_summary, translate_medicine_info, get_age_dosage_limits
 from services.medicine_search_service import search_medicines
 from routes.receptionist_routes import router as receptionist_router
 from routes.admin_routes import router as admin_router
@@ -2982,6 +2982,11 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
 
     # 2.5 Fast-path: Single-shot Vision AI already extracted verified clinical purpose & instructions
     if req.image and (vision_res.get("purpose") or vision_res.get("main_uses")):
+        fast_age_limits = get_age_dosage_limits(
+            drug_name=candidate_name,
+            generic_name=generic_name,
+            lang=target_lang
+        )
         return MedicineInfoLookupResponse(
             status="FOUND",
             drugName=candidate_name,
@@ -2996,6 +3001,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=vision_res.get("warnings") if vision_res.get("warnings") else None,
             sideEffects=vision_res.get("side_effects") if vision_res.get("side_effects") else None,
             boxedWarning=None,
+            ageDosageLimits=fast_age_limits,
+            maxDailyDose=fast_age_limits.get("maxDailyDoseGeneral") if fast_age_limits else None,
             lang=target_lang
         )
 
@@ -3033,6 +3040,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=info.get("warnings"),
             sideEffects=info.get("sideEffects"),
             boxedWarning=info.get("boxedWarning"),
+            ageDosageLimits=info.get("ageDosageLimits"),
+            maxDailyDose=info.get("maxDailyDose"),
             lang=target_lang
         )
     else:
@@ -3054,6 +3063,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
                     warnings=ai_info.get("warnings"),
                     sideEffects=ai_info.get("sideEffects"),
                     boxedWarning=None,
+                    ageDosageLimits=ai_info.get("ageDosageLimits"),
+                    maxDailyDose=ai_info.get("maxDailyDose"),
                     lang=target_lang
                 )
 
@@ -3078,6 +3089,14 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
                 "warnings": ["Consult physician or pharmacist before modifying dosage."],
                 "sideEffects": ["Mild gastrointestinal discomfort (rare)"]
             }
+            pharm_age_limits = get_age_dosage_limits(
+                drug_name=candidate_name,
+                generic_name=generic_name or top_med.get("generic_name"),
+                lang=target_lang
+            )
+            med_payload["ageDosageLimits"] = pharm_age_limits
+            med_payload["maxDailyDose"] = pharm_age_limits.get("maxDailyDoseGeneral")
+
             if target_lang not in ("en", "english"):
                 med_payload = translate_medicine_info(med_payload, target_lang=target_lang)
 
@@ -3095,6 +3114,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
                 warnings=med_payload.get("warnings") or ["Consult physician or pharmacist before modifying dosage."],
                 sideEffects=med_payload.get("sideEffects") or ["Mild gastrointestinal discomfort (rare)"],
                 boxedWarning=None,
+                ageDosageLimits=med_payload.get("ageDosageLimits") or pharm_age_limits,
+                maxDailyDose=med_payload.get("maxDailyDose") or (pharm_age_limits.get("maxDailyDoseGeneral") if pharm_age_limits else None),
                 lang=target_lang
             )
 
@@ -3112,6 +3133,8 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
             warnings=None,
             sideEffects=None,
             boxedWarning=None,
+            ageDosageLimits=None,
+            maxDailyDose=None,
             lang=target_lang
         )
 
@@ -3134,6 +3157,8 @@ def translate_medicine_info_endpoint(req: MedicineTranslateRequest):
         "warnings": req.warnings or [],
         "sideEffects": req.sideEffects or [],
         "disclaimer": req.disclaimer or "Informational reference only. Consult your doctor or pharmacist.",
+        "ageDosageLimits": (req.ageDosageLimits.model_dump() if hasattr(req.ageDosageLimits, "model_dump") else req.ageDosageLimits.dict()) if req.ageDosageLimits else None,
+        "maxDailyDose": req.maxDailyDose,
     }
     translated = translate_medicine_info(data_dict, target_lang=target_lang)
     return MedicineInfoLookupResponse(
@@ -3150,6 +3175,8 @@ def translate_medicine_info_endpoint(req: MedicineTranslateRequest):
         warnings=translated.get("warnings"),
         sideEffects=translated.get("sideEffects"),
         boxedWarning=None,
+        ageDosageLimits=translated.get("ageDosageLimits"),
+        maxDailyDose=translated.get("maxDailyDose"),
         lang=target_lang,
         disclaimer=translated.get("disclaimer"),
     )

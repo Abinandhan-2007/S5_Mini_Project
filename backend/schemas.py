@@ -344,6 +344,20 @@ class ScanMatchRequest(BaseModel):
     patient_id: Optional[str] = None
     lang: Optional[str] = "en"
 
+class AgeDosageLimitItem(BaseModel):
+    ageGroup: str
+    standardDose: str
+    maxDailyLimit: str
+    frequency: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = "safe"  # safe, caution, not_recommended
+
+class AgeDosageGuide(BaseModel):
+    maxDailyDoseGeneral: Optional[str] = None
+    unit: Optional[str] = "mg"
+    limits: List[AgeDosageLimitItem] = []
+    clinicalSafetyWarning: Optional[str] = None
+
 class DrugInfoSchema(BaseModel):
     drug_name: str
     found: bool
@@ -356,6 +370,8 @@ class DrugInfoSchema(BaseModel):
     warnings: Optional[List[str]] = None
     sideEffects: Optional[List[str]] = None
     boxedWarning: Optional[List[str]] = None
+    ageDosageLimits: Optional[AgeDosageGuide] = None
+    maxDailyDose: Optional[str] = None
 
 class PrescriptionMatchedItem(BaseModel):
     id: str
@@ -403,6 +419,8 @@ class MedicineTranslateRequest(BaseModel):
     warnings: Optional[List[str]] = None
     sideEffects: Optional[List[str]] = None
     disclaimer: Optional[str] = None
+    ageDosageLimits: Optional[AgeDosageGuide] = None
+    maxDailyDose: Optional[str] = None
 
 class MedicineInfoLookupResponse(BaseModel):
     status: str  # FOUND, UNCLEAR_TEXT, NO_INFO_AVAILABLE
@@ -418,6 +436,8 @@ class MedicineInfoLookupResponse(BaseModel):
     warnings: Optional[List[str]] = None
     sideEffects: Optional[List[str]] = None
     boxedWarning: Optional[List[str]] = None
+    ageDosageLimits: Optional[AgeDosageGuide] = None
+    maxDailyDose: Optional[str] = None
     lang: Optional[str] = "en"
     disclaimer: Optional[str] = "General Information Only — This is NOT a verification against your prescriptions. For personal dosage instructions, use 'Check My Prescription'."
 

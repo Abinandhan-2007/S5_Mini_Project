@@ -35,6 +35,8 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { speakText, stopSpeaking } from '../../lib/speechUtils';
 import { useTranslation } from '../../i18n';
+import { AgeDosageLimitsCard } from '../../components/medicines/AgeDosageLimitsCard';
+import { useCarePulseStore } from '../../lib/store';
 
 // Supported Medical Information Languages
 export const SCAN_LANGUAGES = [
@@ -232,6 +234,7 @@ const SAMPLE_MEDICATIONS: Record<string, MedicineInfoLookupResponse> = {
 export const MedicineInfoLookupScreen: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useTranslation();
+  const user = useCarePulseStore((s) => s.user);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -1100,6 +1103,19 @@ export const MedicineInfoLookupScreen: React.FC = () => {
                     <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 sm:p-4.5 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed">
                       <p>{lookupResult.indicationsAndUsage}</p>
                     </div>
+                  </div>
+                )}
+
+                {/* Age-Based Dosage Limits & Ceilings Card */}
+                {lookupResult.ageDosageLimits && (
+                  <div className="pt-1">
+                    <AgeDosageLimitsCard
+                      guide={lookupResult.ageDosageLimits}
+                      maxDailyDose={lookupResult.maxDailyDose}
+                      drugName={lookupResult.drugName}
+                      patientDob={user?.dob}
+                      accentColor="blue"
+                    />
                   </div>
                 )}
 

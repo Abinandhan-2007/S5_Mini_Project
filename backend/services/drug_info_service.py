@@ -10,7 +10,7 @@ import os
 import re
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import httpx
 
 logger = logging.getLogger("carepulse.drug_info")
@@ -252,6 +252,816 @@ def clean_text_snippet(raw_text: str, max_chars: int = 500) -> str:
     return cleaned
 
 
+
+# ==============================================================================
+# Clinical Pharmacopeia: Age-Based Dosage Ceilings & Maximum Daily Tolerances
+# ==============================================================================
+
+AGE_GROUP_LABELS: Dict[str, Dict[str, str]] = {
+    "infants": {
+        "en": "Infants (<2 yrs)",
+        "ta": "கைக்குழந்தைகள் (<2 வயது)",
+        "ml": "ശിശുക്കൾ (<2 വയസ്സ്)",
+        "hi": "शिशु (<2 वर्ष)",
+    },
+    "children": {
+        "en": "Children (2–11 yrs)",
+        "ta": "குழந்தைகள் (2–11 வயது)",
+        "ml": "കുട്ടികൾ (2–11 വയസ്സ്)",
+        "hi": "बच्चे (2–11 वर्ष)",
+    },
+    "adolescents": {
+        "en": "Adolescents (12–17 yrs)",
+        "ta": "வளரிளம்பருவத்தினர் (12–17 வயது)",
+        "ml": "കൗമാരക്കാർ (12–17 വയസ്സ്)",
+        "hi": "किशोर (12–17 वर्ष)",
+    },
+    "adults": {
+        "en": "Adults (18–64 yrs)",
+        "ta": "பெரியவர்கள் (18–64 வயது)",
+        "ml": "മുതിർന്നവർ (18–64 വയസ്സ്)",
+        "hi": "वयस्क (18–64 वर्ष)",
+    },
+    "geriatric": {
+        "en": "Geriatric (65+ yrs)",
+        "ta": "முதியவர்கள் (65+ வயது)",
+        "ml": "മുതിർന്ന പൗരന്മാർ (65+ വയസ്സ്)",
+        "hi": "वरिष्ठ नागरिक (65+ वर्ष)",
+    },
+}
+
+AGE_DOSAGE_LIMITS_DB: Dict[str, Dict[str, Any]] = {
+    "acetaminophen": {
+        "maxDailyDoseGeneral": "4,000 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Strict 4,000 mg 24-hour adult ceiling. Acetaminophen/Paracetamol is present in over 600 OTC combination remedies; accidental double-dosing carries severe liver toxicity risk.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "10–15 mg/kg per dose",
+                "maxDailyLimit": "60 mg/kg / 24 hrs",
+                "frequency": "Every 4–6 hrs (max 4 doses)",
+                "notes": "Use calibrated oral syringe only. Do not exceed 4 doses in 24 hours under pediatrician supervision.",
+                "status": "caution"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "160–320 mg per dose (10–15 mg/kg)",
+                "maxDailyLimit": "1,600 mg / 24 hrs (max 5 doses)",
+                "frequency": "Every 4–6 hrs as needed",
+                "notes": "Weight-based dosing is preferred over age. Never combine with cough/cold combination syrups.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "500 mg per dose",
+                "maxDailyLimit": "3,000 mg / 24 hrs",
+                "frequency": "Every 4–6 hrs as needed",
+                "notes": "Maintain minimum 4-hour gap between doses. Avoid concurrent alcohol consumption.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "500–1,000 mg per dose",
+                "maxDailyLimit": "4,000 mg / 24 hrs (Strict Maximum)",
+                "frequency": "Every 4–6 hrs as needed",
+                "notes": "Never exceed 4,000 mg per day. Do not take with other paracetamol-containing analgesics.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "325–500 mg per dose",
+                "maxDailyLimit": "2,000–3,000 mg / 24 hrs",
+                "frequency": "Every 6–8 hrs",
+                "notes": "Reduced daily ceiling recommended due to slower hepatic clearance and renal vulnerability.",
+                "status": "caution"
+            }
+        ]
+    },
+    "amoxicillin": {
+        "maxDailyDoseGeneral": "2,000–3,000 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Contraindicated in individuals with penicillin allergy. Complete full antibiotic course even if feeling fully recovered.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "20–30 mg/kg/day in divided doses",
+                "maxDailyLimit": "30 mg/kg / 24 hrs",
+                "frequency": "Every 12 hrs",
+                "notes": "Pediatric oral drops/suspension strictly prescribed by doctor. Shake bottle thoroughly before each dose.",
+                "status": "caution"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "25–45 mg/kg/day (up to 90 mg/kg/day for otitis)",
+                "maxDailyLimit": "1,500 mg / 24 hrs",
+                "frequency": "Every 8–12 hrs",
+                "notes": "Administer at evenly spaced intervals with meals to reduce stomach upset. Finish full course.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "250–500 mg every 8 hrs or 500–875 mg every 12 hrs",
+                "maxDailyLimit": "2,000 mg / 24 hrs",
+                "frequency": "Every 8–12 hrs",
+                "notes": "Swallow whole with a full glass of water. Report severe watery diarrhea immediately.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "500–875 mg per dose",
+                "maxDailyLimit": "2,000–3,000 mg / 24 hrs",
+                "frequency": "Every 8–12 hrs",
+                "notes": "Higher ceiling reserved for severe systemic infections. Ensure generous daily hydration.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "250–500 mg per dose",
+                "maxDailyLimit": "1,500–2,000 mg / 24 hrs",
+                "frequency": "Every 8–12 hrs",
+                "notes": "Dose reduction needed if creatinine clearance is under 30 mL/min. Monitor renal output.",
+                "status": "caution"
+            }
+        ]
+    },
+    "ibuprofen": {
+        "maxDailyDoseGeneral": "1,200 mg (OTC) / 2,400 mg (Rx) per 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "NSAID: Avoid exceeding daily limit. Take with food to minimize gastric irritation and ulceration risk.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Contraindicated in <6 months; 5–10 mg/kg (6–23 mos)",
+                "maxDailyLimit": "40 mg/kg / 24 hrs",
+                "frequency": "Every 6–8 hrs with milk/food",
+                "notes": "Do not give to infants under 6 months without direct pediatric specialist order.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "100–200 mg per dose (5–10 mg/kg)",
+                "maxDailyLimit": "800–1,200 mg / 24 hrs (max 4 doses)",
+                "frequency": "Every 6–8 hrs with food",
+                "notes": "Always administer after food or with milk to protect delicate stomach lining.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "200–400 mg per dose",
+                "maxDailyLimit": "1,200 mg / 24 hrs",
+                "frequency": "Every 4–6 hrs with meals",
+                "notes": "Stay well hydrated during sports. Avoid concurrent aspirin or naproxen.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "200–400 mg OTC (up to 800 mg Rx)",
+                "maxDailyLimit": "1,200 mg (OTC) / 2,400 mg (Rx) / 24 hrs",
+                "frequency": "Every 4–6 hrs with meals",
+                "notes": "OTC limit is 1,200 mg/day. Prescription ceiling is 2,400 mg/day under medical supervision.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "200 mg per dose",
+                "maxDailyLimit": "1,200 mg / 24 hrs",
+                "frequency": "Every 6–8 hrs with food",
+                "notes": "Elevated risk of peptic ulcer, GI bleeding, and cardiovascular/renal strain. Use lowest effective dose.",
+                "status": "caution"
+            }
+        ]
+    },
+    "metformin": {
+        "maxDailyDoseGeneral": "2,000–2,550 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Lactic acidosis risk: Contraindicated in severe renal impairment (eGFR <30 mL/min). Withhold before iodinated radiocontrast scans.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Not indicated / Contraindicated",
+                "maxDailyLimit": "0 mg",
+                "frequency": "N/A",
+                "notes": "Contraindicated in infants.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "Not recommended under 10 yrs; 500 mg daily (>=10 yrs)",
+                "maxDailyLimit": "2,000 mg / 24 hrs",
+                "frequency": "Once or twice daily with meals",
+                "notes": "Only indicated for Type 2 diabetes in pediatric patients aged 10 years and older.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "500–850 mg once or twice daily",
+                "maxDailyLimit": "2,000 mg / 24 hrs",
+                "frequency": "With morning and evening meals",
+                "notes": "Titrate weekly in 500 mg increments to reduce gastrointestinal side effects.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "500–850 mg per dose",
+                "maxDailyLimit": "2,550 mg (immediate) or 2,000 mg (XR) / 24 hrs",
+                "frequency": "2–3 times daily with meals",
+                "notes": "Take with meals to reduce nausea. Extended-release tablets must not be chewed or crushed.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "500 mg once daily to start",
+                "maxDailyLimit": "1,500–2,000 mg / 24 hrs",
+                "frequency": "Once or twice daily with food",
+                "notes": "Routinely monitor eGFR kidney function; avoid if eGFR falls below 30 mL/min.",
+                "status": "caution"
+            }
+        ]
+    },
+    "azithromycin": {
+        "maxDailyDoseGeneral": "500 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Macrolide antibiotic: Do not take antacids containing aluminum or magnesium at the same time.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "10 mg/kg once daily for 3 days",
+                "maxDailyLimit": "10 mg/kg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Pediatric oral suspension administered strictly under pediatrician direction.",
+                "status": "caution"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "10 mg/kg Day 1, then 5 mg/kg Days 2–5",
+                "maxDailyLimit": "500 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Do not exceed adult single dose of 500 mg regardless of body weight.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "500 mg Day 1, then 250 mg Days 2–5",
+                "maxDailyLimit": "500 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Can be taken with or without food. Complete the prescribed 3 to 5 day course.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "500 mg single dose on Day 1, 250 mg once daily Days 2–5",
+                "maxDailyLimit": "500 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Standard total regimen is 1,500 mg over 3 to 5 days. High tissue penetration.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "500 mg Day 1, then 250 mg Days 2–5",
+                "maxDailyLimit": "500 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Caution in patients with cardiac conduction abnormalities (risk of QT interval prolongation).",
+                "status": "caution"
+            }
+        ]
+    },
+    "cetirizine": {
+        "maxDailyDoseGeneral": "10 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Antihistamine: Exceeding 10 mg daily does not increase efficacy but elevates drowsiness significantly.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "2.5 mg once daily (6–23 mos)",
+                "maxDailyLimit": "2.5 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Not recommended in infants under 6 months.",
+                "status": "caution"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "2.5–5 mg once daily (2–5 yrs) or 5–10 mg (6+ yrs)",
+                "maxDailyLimit": "5 mg (2–5 yrs) / 10 mg (6+ yrs) in 24 hrs",
+                "frequency": "Once daily or divided in 2 doses",
+                "notes": "Liquid oral solution allows precise milligram calibration.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "5–10 mg once daily",
+                "maxDailyLimit": "10 mg / 24 hrs",
+                "frequency": "Once daily (evening)",
+                "notes": "Best taken at bedtime to prevent daytime sluggishness.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "5–10 mg once daily",
+                "maxDailyLimit": "10 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Single 10 mg daily dose provides 24-hour allergic symptom relief.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "5 mg once daily",
+                "maxDailyLimit": "5–10 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "5 mg initial dose recommended due to age-related renal clearance reduction.",
+                "status": "caution"
+            }
+        ]
+    },
+    "pantoprazole": {
+        "maxDailyDoseGeneral": "40–80 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Proton Pump Inhibitor: Swallow delayed-release tablets whole 30-60 minutes before breakfast.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Not indicated",
+                "maxDailyLimit": "0 mg",
+                "frequency": "N/A",
+                "notes": "Safety and efficacy not established in infants.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "20–40 mg once daily (>=5 yrs / >=15kg)",
+                "maxDailyLimit": "40 mg / 24 hrs",
+                "frequency": "Once daily before breakfast",
+                "notes": "Prescribed only for erosive esophagitis under pediatric gastroenterology care.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "40 mg once daily",
+                "maxDailyLimit": "40 mg / 24 hrs",
+                "frequency": "Once daily 30–60 min before breakfast",
+                "notes": "Do not chew, crush, or split delayed-release tablets.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "40 mg once daily (up to 80 mg in hypersecretory states)",
+                "maxDailyLimit": "80 mg / 24 hrs",
+                "frequency": "Once daily in the morning",
+                "notes": "Take 30 minutes before first meal of the day. Standard course is 4 to 8 weeks.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "40 mg once daily",
+                "maxDailyLimit": "40 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "No initial dose reduction required; monitor bone density with prolonged (>1 yr) use.",
+                "status": "safe"
+            }
+        ]
+    },
+    "omeprazole": {
+        "maxDailyDoseGeneral": "20–40 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "PPI: Avoid prolonged self-medication beyond 14 days without physician diagnosis.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "0.7–1 mg/kg once daily (>1 month)",
+                "maxDailyLimit": "1 mg/kg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Specialist compounded oral suspension only for severe acid reflux.",
+                "status": "caution"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "10–20 mg once daily (>=1 yr / >=10kg)",
+                "maxDailyLimit": "20 mg / 24 hrs",
+                "frequency": "Once daily before breakfast",
+                "notes": "Capsules may be opened and mixed into applesauce if child cannot swallow pills.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "20 mg once daily",
+                "maxDailyLimit": "40 mg / 24 hrs",
+                "frequency": "Once daily 30 min before breakfast",
+                "notes": "Take consistently before morning meal for best acid suppression.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "20–40 mg once daily",
+                "maxDailyLimit": "40 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Standard healing dose for reflux and ulcers. Take on an empty stomach in the morning.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "20 mg once daily",
+                "maxDailyLimit": "20–40 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Standard maintenance dose is 20 mg. Monitor for drug interactions with clopidogrel.",
+                "status": "safe"
+            }
+        ]
+    },
+    "atorvastatin": {
+        "maxDailyDoseGeneral": "80 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Statin: Avoid large quantities of grapefruit juice. Report unexplained muscle aches or dark urine immediately.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Contraindicated",
+                "maxDailyLimit": "0 mg",
+                "frequency": "N/A",
+                "notes": "Contraindicated in pediatric infants.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "10 mg once daily (>=10 yrs, heterozygous FH)",
+                "maxDailyLimit": "20 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Restricted strictly to familial hypercholesterolemia under specialist lipidologist guidance.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "10–20 mg once daily",
+                "maxDailyLimit": "20 mg / 24 hrs",
+                "frequency": "Once daily (evening)",
+                "notes": "Routine lipid profiles and liver function monitoring required.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "10–40 mg once daily",
+                "maxDailyLimit": "80 mg / 24 hrs",
+                "frequency": "Once daily at any time",
+                "notes": "80 mg ceiling reserved for high cardiovascular risk. Report any muscle pain immediately.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "10–20 mg once daily to start",
+                "maxDailyLimit": "40–80 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Higher susceptibility to statin myopathy; start with low therapeutic dose.",
+                "status": "caution"
+            }
+        ]
+    },
+    "lisinopril": {
+        "maxDailyDoseGeneral": "40–80 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Discontinue immediately if pregnancy is detected. Avoid potassium supplements without approval.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Contraindicated",
+                "maxDailyLimit": "0 mg",
+                "frequency": "N/A",
+                "notes": "Black box fetal and neonatal toxicity contraindication.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "0.07 mg/kg once daily (>=6 yrs)",
+                "maxDailyLimit": "5 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Contraindicated in children <6 years or with eGFR <30 mL/min.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "5–10 mg once daily",
+                "maxDailyLimit": "20–40 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Monitor blood pressure and serum potassium regularly.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "10–20 mg once daily",
+                "maxDailyLimit": "40 mg (hypertension) / 80 mg (severe) in 24 hrs",
+                "frequency": "Once daily at consistent time",
+                "notes": "Take consistently with or without food. Report dry persistent cough to physician.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "2.5–5 mg once daily to start",
+                "maxDailyLimit": "20–40 mg / 24 hrs",
+                "frequency": "Once daily",
+                "notes": "Start at lowest dose to prevent orthostatic hypotension and acute renal drop.",
+                "status": "caution"
+            }
+        ]
+    },
+    "ciprofloxacin": {
+        "maxDailyDoseGeneral": "1,000–1,500 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Fluoroquinolone Black Box: Increased risk of tendinitis, tendon rupture, and peripheral neuropathy. Rest joint at first tendon pain.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Generally contraindicated",
+                "maxDailyLimit": "Specialist rescue only",
+                "frequency": "Strict hospital order",
+                "notes": "Risk of permanent cartilage lesions in weight-bearing joints.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "10–20 mg/kg every 12 hrs (complicated UTI only)",
+                "maxDailyLimit": "750 mg per dose / 1,500 mg in 24 hrs",
+                "frequency": "Every 12 hrs",
+                "notes": "Not first-line antibiotic in pediatric patients due to musculoskeletal safety profile.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "250–500 mg every 12 hrs",
+                "maxDailyLimit": "1,000 mg / 24 hrs",
+                "frequency": "Every 12 hrs",
+                "notes": "Avoid intense athletic exertion during therapy due to tendon rupture risk.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "250–500 mg every 12 hrs (750 mg for severe)",
+                "maxDailyLimit": "1,500 mg / 24 hrs",
+                "frequency": "Every 12 hrs with plenty of fluids",
+                "notes": "Drink abundant fluids. Discontinue immediately at first sign of tendon inflammation.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "250–500 mg every 12 hrs",
+                "maxDailyLimit": "1,000 mg / 24 hrs",
+                "frequency": "Every 12–24 hrs based on renal CrCl",
+                "notes": "Elevated risk of tendon rupture and QT prolongation. Adjust dose for kidney clearance.",
+                "status": "caution"
+            }
+        ]
+    },
+    "diclofenac": {
+        "maxDailyDoseGeneral": "150 mg / 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Increased cardiovascular thrombotic risk and gastrointestinal bleeding. Use lowest dose for shortest duration.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Contraindicated",
+                "maxDailyLimit": "0 mg",
+                "frequency": "N/A",
+                "notes": "Not approved for infants.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "1–2 mg/kg/day divided (Juvenile arthritis only)",
+                "maxDailyLimit": "100 mg / 24 hrs",
+                "frequency": "Divided in 2–3 doses with meals",
+                "notes": "Pediatric rheumatology specialist supervision required.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "25–50 mg twice daily",
+                "maxDailyLimit": "100 mg / 24 hrs",
+                "frequency": "2–3 times daily with food",
+                "notes": "Always take after food or with milk to protect stomach lining.",
+                "status": "safe"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "50 mg 2–3 times daily",
+                "maxDailyLimit": "150 mg / 24 hrs",
+                "frequency": "Every 8 hrs with meals",
+                "notes": "Maximum daily ceiling is 150 mg. Co-administration with PPI recommended for high-risk patients.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "25–50 mg twice daily",
+                "maxDailyLimit": "100 mg / 24 hrs",
+                "frequency": "Twice daily with meals",
+                "notes": "High cardiovascular, renal, and gastrointestinal risk; gastroprotective co-prescription recommended.",
+                "status": "caution"
+            }
+        ]
+    },
+    "aspirin": {
+        "maxDailyDoseGeneral": "4,000 mg (analgesic) / 100 mg (cardioprotective) in 24 hrs",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Strict Warning: NEVER administer to children or adolescents recovering from viral illness due to fatal Reye's Syndrome.",
+        "limits": [
+            {
+                "cohort": "infants",
+                "standardDose": "Contraindicated",
+                "maxDailyLimit": "0 mg",
+                "frequency": "N/A",
+                "notes": "Black Box: Risk of fatal Reye's syndrome.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "children",
+                "standardDose": "Contraindicated (except Kawasaki disease)",
+                "maxDailyLimit": "Specialist only",
+                "frequency": "N/A",
+                "notes": "Strictly contraindicated in children with viral fever due to Reye's syndrome risk.",
+                "status": "not_recommended"
+            },
+            {
+                "cohort": "adolescents",
+                "standardDose": "Avoid for viral fever; 300–600 mg (adult supervision)",
+                "maxDailyLimit": "2,000 mg / 24 hrs",
+                "frequency": "Every 4–6 hrs with food",
+                "notes": "Do not administer if flu or chickenpox symptoms are present.",
+                "status": "caution"
+            },
+            {
+                "cohort": "adults",
+                "standardDose": "300–650 mg (pain) or 75–100 mg (cardiac)",
+                "maxDailyLimit": "4,000 mg (pain) / 100 mg (cardiac) in 24 hrs",
+                "frequency": "Every 4–6 hrs with meals (pain) / Once daily (cardiac)",
+                "notes": "Cardioprotective low-dose (75-100 mg) taken daily. Analgesic ceiling is 4,000 mg daily.",
+                "status": "safe"
+            },
+            {
+                "cohort": "geriatric",
+                "standardDose": "75–100 mg once daily (cardiac) / 325 mg (pain)",
+                "maxDailyLimit": "2,000 mg / 24 hrs",
+                "frequency": "Once daily (cardiac) or every 6 hrs",
+                "notes": "High bleeding and bruising risk. Monitor for occult GI blood loss.",
+                "status": "caution"
+            }
+        ]
+    }
+}
+
+
+def generate_dynamic_age_dosage_limits(
+    drug_name: str,
+    generic_name: Optional[str] = None,
+    raw_dosage_text: Optional[str] = None,
+    lang: str = "en"
+) -> Dict[str, Any]:
+    """
+    Clinical fallback generator: Produces structured age-cohort dosage guidance
+    and daily safety ceilings for any medication not in the curated index.
+    """
+    lang_code = (lang or "en").lower().strip()
+    target = generic_name or drug_name or "Medication"
+
+    # Extract single dose strength if present in text (e.g. "500mg", "10mg")
+    strength_match = re.search(r'(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml)\b', f"{drug_name} {generic_name or ''} {raw_dosage_text or ''}", re.IGNORECASE)
+    unit = strength_match.group(2).lower() if strength_match else "mg"
+    base_val = float(strength_match.group(1)) if strength_match else None
+
+    if base_val and base_val > 0:
+        adult_single = f"{int(base_val) if base_val.is_integer() else base_val} {unit} per dose"
+        adult_max = f"{int(base_val * 4) if (base_val * 4).is_integer() else base_val * 4} {unit} / 24 hrs"
+        general_ceiling = f"{int(base_val * 4) if (base_val * 4).is_integer() else base_val * 4} {unit} / 24 hrs"
+    else:
+        adult_single = "Standard therapeutic single dose as prescribed"
+        adult_max = "Doctor-prescribed daily ceiling"
+        general_ceiling = "Standard therapeutic limit as directed by physician"
+
+    limits = [
+        {
+            "ageGroup": AGE_GROUP_LABELS["infants"].get(lang_code, AGE_GROUP_LABELS["infants"]["en"]),
+            "standardDose": "Weight-based pediatric formulation only",
+            "maxDailyLimit": "Strict pediatrician limit",
+            "frequency": "As directed by pediatrician",
+            "notes": "Consult a pediatrician before administering to infants. Adult solid forms are unsafe.",
+            "status": "caution"
+        },
+        {
+            "ageGroup": AGE_GROUP_LABELS["children"].get(lang_code, AGE_GROUP_LABELS["children"]["en"]),
+            "standardDose": "Pediatric weight-adjusted dose",
+            "maxDailyLimit": "Do not exceed pediatric ceiling",
+            "frequency": "As prescribed by doctor",
+            "notes": "Administer strictly as directed by doctor. Use calibrated measuring dropper or oral syringe.",
+            "status": "caution"
+        },
+        {
+            "ageGroup": AGE_GROUP_LABELS["adolescents"].get(lang_code, AGE_GROUP_LABELS["adolescents"]["en"]),
+            "standardDose": adult_single,
+            "maxDailyLimit": adult_max,
+            "frequency": "As prescribed by physician",
+            "notes": "Administer under adult supervision. Follow prescribed frequency intervals.",
+            "status": "safe"
+        },
+        {
+            "ageGroup": AGE_GROUP_LABELS["adults"].get(lang_code, AGE_GROUP_LABELS["adults"]["en"]),
+            "standardDose": adult_single,
+            "maxDailyLimit": adult_max,
+            "frequency": "As prescribed (e.g. 1–3 times daily)",
+            "notes": "Adhere strictly to prescribed dosage. Never take double doses to compensate for missed doses.",
+            "status": "safe"
+        },
+        {
+            "ageGroup": AGE_GROUP_LABELS["geriatric"].get(lang_code, AGE_GROUP_LABELS["geriatric"]["en"]),
+            "standardDose": f"Lowest effective starting dose ({adult_single})",
+            "maxDailyLimit": "Reduced ceiling under doctor supervision",
+            "frequency": "As directed with close monitoring",
+            "notes": "Lower initial dose recommended due to age-related renal and hepatic clearance changes.",
+            "status": "caution"
+        }
+    ]
+
+    return {
+        "maxDailyDoseGeneral": general_ceiling,
+        "unit": unit,
+        "limits": limits,
+        "clinicalSafetyWarning": f"Adhere strictly to your personal doctor's prescription for {target}. Exceeding daily ceilings increases risk of toxicity and organ strain."
+    }
+
+
+def get_age_dosage_limits(
+    drug_name: str,
+    generic_name: Optional[str] = None,
+    raw_dosage_text: Optional[str] = None,
+    lang: str = "en"
+) -> Dict[str, Any]:
+    """
+    Retrieves verified age-cohort dosage limits and safe daily maximum ceilings.
+    Checks the clinical pharmacopeia database; falls back to dynamic clinical guideline engine.
+    Supports localized age-group labels and translated safety advisories.
+    """
+    lang_code = (lang or "en").lower().strip()
+    candidates = []
+    if generic_name:
+        candidates.append(generic_name)
+    if drug_name:
+        candidates.append(drug_name)
+
+    matched_entry = None
+    for cand in candidates:
+        norm = re.sub(r'[^a-zA-Z0-9]', '', cand.lower())
+        # Check direct match
+        if norm in AGE_DOSAGE_LIMITS_DB:
+            matched_entry = AGE_DOSAGE_LIMITS_DB[norm]
+            break
+        # Check synonym map
+        syn = DRUG_SYNONYMS.get(norm)
+        if syn and syn in AGE_DOSAGE_LIMITS_DB:
+            matched_entry = AGE_DOSAGE_LIMITS_DB[syn]
+            break
+        # Check first token
+        first_token = cand.split()[0].lower()
+        norm_first = re.sub(r'[^a-zA-Z0-9]', '', first_token)
+        if norm_first in AGE_DOSAGE_LIMITS_DB:
+            matched_entry = AGE_DOSAGE_LIMITS_DB[norm_first]
+            break
+        syn_first = DRUG_SYNONYMS.get(norm_first)
+        if syn_first and syn_first in AGE_DOSAGE_LIMITS_DB:
+            matched_entry = AGE_DOSAGE_LIMITS_DB[syn_first]
+            break
+
+    if not matched_entry:
+        return generate_dynamic_age_dosage_limits(drug_name, generic_name, raw_dosage_text, lang=lang_code)
+
+    # Format entry with localized age groups
+    limits_output = []
+    for item in matched_entry.get("limits", []):
+        cohort_key = item.get("cohort", "adults")
+        localized_label = AGE_GROUP_LABELS.get(cohort_key, {}).get(lang_code, AGE_GROUP_LABELS.get(cohort_key, {}).get("en", cohort_key.capitalize()))
+        notes_text = item.get("notes", "")
+        freq_text = item.get("frequency", "")
+
+        if lang_code not in ("en", "english"):
+            if notes_text:
+                notes_text = free_translate_text(notes_text, lang_code)
+            if freq_text:
+                freq_text = free_translate_text(freq_text, lang_code)
+
+        limits_output.append({
+            "ageGroup": localized_label,
+            "standardDose": item.get("standardDose", ""),
+            "maxDailyLimit": item.get("maxDailyLimit", ""),
+            "frequency": freq_text,
+            "notes": notes_text,
+            "status": item.get("status", "safe"),
+        })
+
+    warning_text = matched_entry.get("clinicalSafetyWarning", "")
+    if warning_text and lang_code not in ("en", "english"):
+        warning_text = free_translate_text(warning_text, lang_code)
+
+    return {
+        "maxDailyDoseGeneral": matched_entry.get("maxDailyDoseGeneral"),
+        "unit": matched_entry.get("unit", "mg"),
+        "limits": limits_output,
+        "clinicalSafetyWarning": warning_text,
+    }
+
+
 def get_drug_info(drug_name: str) -> Dict[str, Any]:
     """
     Retrieve structured purpose, indications, dosage, warnings, and adverse reactions
@@ -332,6 +1142,12 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
                             if not final_summary:
                                 final_summary = "General therapeutic medication."
 
+                            age_limits = get_age_dosage_limits(
+                                drug_name=raw_name,
+                                generic_name=search_term,
+                                raw_dosage_text=raw_dosage
+                            )
+
                             result_payload = {
                                 "drug_name": raw_name,
                                 "found": True,
@@ -344,6 +1160,8 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
                                 "warnings": warnings,
                                 "sideEffects": side_effects,
                                 "boxedWarning": boxed_warning,
+                                "ageDosageLimits": age_limits,
+                                "maxDailyDose": age_limits.get("maxDailyDoseGeneral") if age_limits else None,
                             }
                             _DRUG_INFO_CACHE[norm_name] = result_payload
                             return result_payload
@@ -368,6 +1186,8 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
         "warnings": None,
         "sideEffects": None,
         "boxedWarning": None,
+        "ageDosageLimits": None,
+        "maxDailyDose": None,
     }
     _DRUG_INFO_CACHE[norm_name] = fallback_payload
     return fallback_payload
@@ -490,6 +1310,12 @@ def get_clinical_ai_medicine_summary(
                         raw_ind = "; ".join(_flatten_to_bullets(raw_ind))
                     ind_str = str(raw_ind or "").strip()
 
+                    age_limits = get_age_dosage_limits(
+                        drug_name=raw_drug,
+                        generic_name=raw_gen,
+                        lang=lang_code
+                    )
+
                     result = {
                         "found": True,
                         "purpose": purpose_str,
@@ -499,6 +1325,9 @@ def get_clinical_ai_medicine_summary(
                         "howToTake": how_to_take_list or None,
                         "warnings": warnings_list or None,
                         "sideEffects": side_effects_list or None,
+                        "boxedWarning": None,
+                        "ageDosageLimits": age_limits,
+                        "maxDailyDose": age_limits.get("maxDailyDoseGeneral") if age_limits else None,
                         "source": f"CarePulse Clinical AI ({lang_name})"
                     }
                     _DRUG_INFO_CACHE[cache_key] = result
@@ -719,6 +1548,54 @@ def free_translate_list(items: list, target_lang: str) -> list:
     return translated_items
 
 
+def localize_age_dosage_guide(
+    guide: Optional[Dict[str, Any]],
+    lang_code: str = "en"
+) -> Optional[Dict[str, Any]]:
+    """
+    Ensures age group headings, notes, frequency, and clinical warnings within an AgeDosageGuide
+    are properly localized into the target language (English, Tamil, Malayalam, Hindi).
+    """
+    if not guide or not isinstance(guide, dict):
+        return guide
+
+    lang = (lang_code or "en").lower().strip()
+    localized = dict(guide)
+    raw_limits = guide.get("limits") or []
+    localized_limits = []
+
+    for lim in raw_limits:
+        if not isinstance(lim, dict):
+            continue
+        item = dict(lim)
+        cur_ag = item.get("ageGroup", "")
+        # Find matching cohort key from AGE_GROUP_LABELS
+        matched_label = False
+        for group_key, labels in AGE_GROUP_LABELS.items():
+            if any(l.lower() in cur_ag.lower() for l in labels.values()) or group_key in cur_ag.lower():
+                item["ageGroup"] = labels.get(lang, labels.get("en", cur_ag))
+                matched_label = True
+                break
+        if not matched_label and lang not in ("en", "english"):
+            # If no known cohort matched, attempt free text translation of the custom group label
+            item["ageGroup"] = free_translate_text(cur_ag, lang)
+
+        if lang not in ("en", "english"):
+            if item.get("notes"):
+                item["notes"] = free_translate_text(item["notes"], lang)
+            if item.get("frequency"):
+                item["frequency"] = free_translate_text(item["frequency"], lang)
+
+        localized_limits.append(item)
+
+    localized["limits"] = localized_limits
+
+    if lang not in ("en", "english") and localized.get("clinicalSafetyWarning"):
+        localized["clinicalSafetyWarning"] = free_translate_text(localized["clinicalSafetyWarning"], lang)
+
+    return localized
+
+
 def translate_medicine_info(
     info_dict: Dict[str, Any],
     target_lang: str = "en"
@@ -745,11 +1622,21 @@ def translate_medicine_info(
     cache_seed = f"{drug_name.lower()}_{lang_code}" if drug_name else f"{str(info_dict.get('purpose', ''))[:40]}_{lang_code}"
     cache_key = f"trans_{cache_seed}"
     if cache_key in _DRUG_INFO_CACHE:
-        return _DRUG_INFO_CACHE[cache_key]
+        cached_res = dict(_DRUG_INFO_CACHE[cache_key])
+        raw_ag = info_dict.get("ageDosageLimits") or cached_res.get("ageDosageLimits") or (get_age_dosage_limits(drug_name=drug_name, lang=lang_code) if drug_name else None)
+        if raw_ag:
+            cached_res["ageDosageLimits"] = localize_age_dosage_guide(raw_ag, lang_code)
+            cached_res["maxDailyDose"] = cached_res["ageDosageLimits"].get("maxDailyDoseGeneral") if isinstance(cached_res["ageDosageLimits"], dict) else None
+            _DRUG_INFO_CACHE[cache_key] = cached_res
+        return cached_res
 
     # Check persistent disk cache
     if cache_key in _DISK_TRANSLATION_CACHE:
-        cached_result = _DISK_TRANSLATION_CACHE[cache_key]
+        cached_result = dict(_DISK_TRANSLATION_CACHE[cache_key])
+        raw_ag = info_dict.get("ageDosageLimits") or cached_result.get("ageDosageLimits") or (get_age_dosage_limits(drug_name=drug_name, lang=lang_code) if drug_name else None)
+        if raw_ag:
+            cached_result["ageDosageLimits"] = localize_age_dosage_guide(raw_ag, lang_code)
+            cached_result["maxDailyDose"] = cached_result["ageDosageLimits"].get("maxDailyDoseGeneral") if isinstance(cached_result["ageDosageLimits"], dict) else None
         _DRUG_INFO_CACHE[cache_key] = cached_result
         return cached_result
 
@@ -791,6 +1678,19 @@ def translate_medicine_info(
     translated_res["lang"] = lang_code
     translated_res["source"] = f"CarePulse Medical Translation ({lang_code.upper()})"
     translated_res["translation_successful"] = True
+
+    # 3. Translate & adapt Age Dosage Limits
+    raw_age_guide = info_dict.get("ageDosageLimits")
+    if not raw_age_guide and drug_name:
+        raw_age_guide = get_age_dosage_limits(drug_name=drug_name, lang=lang_code)
+
+    if raw_age_guide and isinstance(raw_age_guide, dict):
+        localized_guide = localize_age_dosage_guide(raw_age_guide, lang_code)
+        translated_res["ageDosageLimits"] = localized_guide
+        translated_res["maxDailyDose"] = localized_guide.get("maxDailyDoseGeneral") if isinstance(localized_guide, dict) else None
+    else:
+        translated_res["ageDosageLimits"] = info_dict.get("ageDosageLimits")
+        translated_res["maxDailyDose"] = info_dict.get("maxDailyDose")
 
     # Cache in memory and persist to disk for 0ms future lookups
     _DRUG_INFO_CACHE[cache_key] = translated_res

@@ -19,6 +19,21 @@
       "blood_group": "O+",
       "address": "qwertyuio",
       "auth_provider": "walk-in"
+    },
+    {
+      "id": "3d0b2585-35da-4321-bb9c-8721d575541b",
+      "patient_code": "P000001",
+      "patientCode": "P000001",
+      "full_name": "Isolated Patient f6ca78d9",
+      "email": "patient_f6ca78d9@example.com",
+      "phone": "",
+      "address": "",
+      "dob": "",
+      "gender": "Not specified",
+      "blood_group": "O+",
+      "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
+      "password_hash": "$2b$12$TL0TzC4qqQJNqkNIPdOmY.DmG4EtpPw07Z0q78b4fFEmR9walqDfa",
+      "auth_provider": "local"
     }
   ],
   "consultations": [],
@@ -313,6 +328,36 @@
       "iconType": "pill",
       "status": "Active",
       "created_at": "2026-10-09T21:14:20.084302"
+    },
+    {
+      "id": "rx-amox-001",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Amoxicillin",
+      "dosage": "500mg",
+      "frequency": "Three times daily",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Olivia Wilson",
+      "icon_type": "capsule"
+    },
+    {
+      "id": "rx-pcm-002",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Paracetamol",
+      "dosage": "650mg",
+      "frequency": "As needed for fever",
+      "meal_timing": "After Food",
+      "prescriber": "Dr. Marilyn Stanton",
+      "icon_type": "pill"
+    },
+    {
+      "id": "rx-met-003",
+      "patient_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "drug_name": "Metformin",
+      "dosage": "500mg",
+      "frequency": "Twice daily",
+      "meal_timing": "With Food",
+      "prescriber": "Dr. Johan Janson",
+      "icon_type": "pill"
     }
   ],
   "doctors": [

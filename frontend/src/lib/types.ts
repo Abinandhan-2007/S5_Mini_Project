@@ -116,6 +116,22 @@ export interface Prescription {
   createdAt?: string;
 }
 
+export interface AgeDosageLimitItem {
+  ageGroup: string;
+  standardDose: string;
+  maxDailyLimit: string;
+  frequency?: string | null;
+  notes?: string | null;
+  status?: 'safe' | 'caution' | 'not_recommended' | string;
+}
+
+export interface AgeDosageGuide {
+  maxDailyDoseGeneral?: string | null;
+  unit?: string | null;
+  limits: AgeDosageLimitItem[];
+  clinicalSafetyWarning?: string | null;
+}
+
 export interface DrugInfoData {
   drug_name: string;
   found: boolean;
@@ -128,6 +144,8 @@ export interface DrugInfoData {
   warnings?: string[] | null;
   sideEffects?: string[] | null;
   boxedWarning?: string[] | null;
+  ageDosageLimits?: AgeDosageGuide | null;
+  maxDailyDose?: string | null;
 }
 
 export interface ScanMatchResult {
@@ -168,6 +186,8 @@ export interface MedicineInfoLookupResponse {
   sideEffects?: string[] | null;
   boxedWarning?: string[] | null;
   disclaimer?: string;
+  ageDosageLimits?: AgeDosageGuide | null;
+  maxDailyDose?: string | null;
   lang?: string;
 }
 
