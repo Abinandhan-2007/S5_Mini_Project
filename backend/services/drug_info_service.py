@@ -47,6 +47,39 @@ DRUG_SYNONYMS: Dict[str, str] = {
     "advil": "ibuprofen",
     "brufen": "ibuprofen",
     "combiflam": "ibuprofen",
+    "abilify": "aripiprazole",
+    "seroquel": "quetiapine",
+    "zyprexa": "olanzapine",
+    "gleevec": "imatinib",
+    "keppra": "levetiracetam",
+    "prograf": "tacrolimus",
+    "cellcept": "mycophenolate",
+    "fosamax": "alendronate",
+    "zometa": "zoledronic acid",
+    "reclast": "zoledronic acid",
+    "sandostatin": "octreotide",
+    "ofev": "nintedanib",
+    "tracleer": "bosentan",
+    "rilutek": "riluzole",
+    "arava": "leflunomide",
+    "urso": "ursodiol",
+    "actigall": "ursodiol",
+    "ursodeoxycholate": "ursodiol",
+    "bentyl": "dicyclomine",
+    "coly-mycin": "colistin",
+    "colymycin": "colistin",
+    "colistimethate": "colistin",
+    "rifadin": "rifampin",
+    "florinef": "fludrocortisone",
+    "eskalith": "lithium",
+    "lithobid": "lithium",
+    "lithium carbonate": "lithium",
+    "lithiumcarbonate": "lithium",
+    "olumiant": "baricitinib",
+    "tapazole": "methimazole",
+    "dostinex": "cabergoline",
+    "pulmicort": "budesonide",
+    "entocort": "budesonide",
 }
 
 
@@ -93,8 +126,9 @@ def clean_single_bullet(item_text: str) -> str:
     t = html.unescape(item_text)
     # 2. Strip HTML tags
     t = re.sub(r'<[^>]+>', ' ', t)
-    # 3. Replace problematic mathematical unicode chars with safe equivalents
+    # 3. Replace problematic mathematical unicode chars and curly quotes with safe equivalents
     t = t.replace('\u2265', '>=').replace('\u2264', '<=').replace('\ufffd', '').replace('', '')
+    t = t.replace('\u2019', "'").replace('\u2018', "'").replace('\u201c', '"').replace('\u201d', '"')
     # 4. Strip section numbers and standard FDA headings at start of bullet
     t = re.sub(
         r'^(?:\d+[\.\s]+)?(?:INDICATIONS\s+AND\s+USAGE|DOSAGE\s+AND\s+ADMINISTRATION|WARNINGS\s+AND\s+PRECAUTIONS|WARNINGS|ADVERSE\s+REACTIONS|BOXED\s+WARNING|Uses|Purpose|PURPOSE|Directions)[\s\:\-]+',
@@ -901,6 +935,326 @@ AGE_DOSAGE_LIMITS_DB: Dict[str, Dict[str, Any]] = {
                 "status": "caution"
             }
         ]
+    },
+    "riluzole": {
+        "maxDailyDoseGeneral": "100 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Prescription-only ALS treatment. Monitor serum aminotransferases monthly. Take at least 1 hour before or 2 hours after meals.",
+        "purpose": "Neuroprotective glutamate antagonist indicated for amyotrophic lateral sclerosis (ALS) to extend survival and time to tracheostomy in motor neuron disease.",
+        "indications": ["Amyotrophic lateral sclerosis (ALS)", "Motor neuron disease survival extension"],
+        "sideEffects": ["Nausea", "Asthenia", "Hepatic transaminases elevation", "Dizziness", "Diarrhea", "Anorexia"],
+        "warnings": ["Hepatotoxicity: baseline liver function tests required; discontinue if transaminases exceed 5x ULN."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Not evaluated in pediatrics.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Not indicated in children.", "status": "not_recommended"},
+            {"cohort": "adolescents", "standardDose": "Specialist evaluation only", "maxDailyLimit": "50 mg / 24 hrs", "frequency": "N/A", "notes": "Pediatric neurology specialist only.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "50 mg twice daily", "maxDailyLimit": "100 mg / 24 hrs", "frequency": "Every 12 hrs on empty stomach", "notes": "Take 1 hour before or 2 hours after meals.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "50 mg twice daily", "maxDailyLimit": "100 mg / 24 hrs", "frequency": "Every 12 hrs", "notes": "Close monitoring of hepatic function.", "status": "caution"}
+        ]
+    },
+    "bosentan": {
+        "maxDailyDoseGeneral": "250 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Severe hepatotoxicity and major teratogenic risk. Available only through REMS. Monthly LFT and pregnancy tests required.",
+        "purpose": "Dual endothelin receptor antagonist indicated for pulmonary arterial hypertension (PAH) to improve exercise ability and reduce clinical worsening.",
+        "indications": ["Pulmonary arterial hypertension (PAH)", "Improve exercise ability and prevent clinical progression"],
+        "sideEffects": ["Hepatotoxicity", "Teratogenicity", "Headache", "Peripheral edema", "Anemia", "Nasopharyngitis"],
+        "warnings": ["Boxed Warning: Hepatotoxicity and Embryofetal Toxicity. Strictly contraindicated in pregnancy."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Not indicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Weight-based dosing", "maxDailyLimit": "Specialist only", "frequency": "Twice daily", "notes": "Pediatric cardiology/pulmonology supervision.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "62.5–125 mg twice daily", "maxDailyLimit": "250 mg / 24 hrs", "frequency": "Twice daily with or without food", "notes": "REMS enrollment mandatory.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "62.5 mg twice daily initial, titrating to 125 mg twice daily", "maxDailyLimit": "250 mg / 24 hrs", "frequency": "Twice daily", "notes": "Check monthly aminotransferases.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "62.5–125 mg twice daily", "maxDailyLimit": "250 mg / 24 hrs", "frequency": "Twice daily", "notes": "Monitor hepatic function and hemoglobin.", "status": "caution"}
+        ]
+    },
+    "colistin": {
+        "maxDailyDoseGeneral": "5 mg/kg / 24 hrs (Adults)",
+        "unit": "mg/kg",
+        "clinicalSafetyWarning": "Black Box Warning: Nephrotoxicity and neurotoxicity. Avoid concurrent nephrotoxic agents. Strict dose reduction in renal impairment.",
+        "purpose": "Polymyxin antibiotic indicated for acute or chronic multidrug-resistant gram-negative bacterial infections, including Pseudomonas aeruginosa, Acinetobacter baumannii, and Klebsiella pneumoniae.",
+        "indications": ["Multidrug-resistant gram-negative bacterial infections", "Pseudomonas aeruginosa and Acinetobacter infections", "Resistant hospital-acquired infections"],
+        "sideEffects": ["Nephrotoxicity", "Neurotoxicity", "Respiratory arrest and neuromuscular blockade", "Dizziness", "Paresthesia"],
+        "warnings": ["Boxed Warning: Nephrotoxicity and neurotoxicity. Dose adjust strictly in renal impairment."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "2.5–5 mg/kg/day", "maxDailyLimit": "5 mg/kg / 24 hrs", "frequency": "Divided every 8–12 hrs", "notes": "Neonatal intensive care only.", "status": "caution"},
+            {"cohort": "children", "standardDose": "2.5–5 mg/kg/day", "maxDailyLimit": "5 mg/kg / 24 hrs", "frequency": "Divided every 8–12 hrs", "notes": "Based on ideal body weight.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "2.5–5 mg/kg/day", "maxDailyLimit": "5 mg/kg / 24 hrs", "frequency": "Divided into 2–4 doses", "notes": "Monitor serum creatinine daily.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "2.5–5 mg/kg/day", "maxDailyLimit": "5 mg/kg / 24 hrs (max 300 mg)", "frequency": "Divided into 2–4 doses", "notes": "Strict adherence to renal dosing formulas.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "2.5–3.5 mg/kg/day", "maxDailyLimit": "3.5 mg/kg / 24 hrs", "frequency": "Extended intervals based on CrCl", "notes": "High nephrotoxicity vulnerability.", "status": "caution"}
+        ]
+    },
+    "lithium": {
+        "maxDailyDoseGeneral": "1,800 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Lithium toxicity can occur close to therapeutic levels. Serum lithium levels must be monitored regularly (target 0.6–1.2 mEq/L). Maintain constant fluid and salt intake.",
+        "purpose": "Mood-stabilizing agent indicated for bipolar disorder, acute manic episodes (mania), and long-term maintenance therapy in bipolar I disorder.",
+        "indications": ["Bipolar disorder", "Acute manic episodes and mania", "Maintenance therapy in bipolar disorder"],
+        "sideEffects": ["Renal toxicity", "Nephrogenic diabetes insipidus", "Thyroid dysfunction (hypothyroidism)", "Fine hand tremor", "Nausea", "Lithium toxicity", "Lethargy"],
+        "warnings": ["Boxed Warning: Lithium toxicity. Toxicity threshold is narrow. Dehydration, low sodium, or NSAIDs increase lithium levels drastically."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "300 mg 2–3 times daily (>=7 yrs)", "maxDailyLimit": "1,200 mg / 24 hrs", "frequency": "Every 8–12 hrs with meals", "notes": "Pediatric psychiatry supervision only.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "600–900 mg / day in divided doses", "maxDailyLimit": "1,500 mg / 24 hrs", "frequency": "2–3 times daily", "notes": "Regular serum levels and thyroid screening.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "900–1,800 mg / day in divided doses", "maxDailyLimit": "1,800 mg / 24 hrs", "frequency": "2–3 times daily with meals", "notes": "Target therapeutic level 0.8–1.2 mEq/L in acute mania.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "300–600 mg / day in divided doses", "maxDailyLimit": "1,200 mg / 24 hrs", "frequency": "2–3 times daily", "notes": "Target lower serum level (0.4–0.8 mEq/L) due to reduced GFR.", "status": "caution"}
+        ]
+    },
+    "ursodiol": {
+        "maxDailyDoseGeneral": "15 mg/kg / 24 hrs (Adults)",
+        "unit": "mg/kg",
+        "clinicalSafetyWarning": "Naturally occurring hydrophilic bile acid. Periodic liver function tests (AST, ALT) recommended at 1-month and 3-month intervals during therapy.",
+        "purpose": "Naturally occurring bile acid indicated for the dissolution of radiolucent gallstones, prevention of gallstones during rapid weight loss, and treatment of primary biliary cholangitis (cholelithiasis, cirrhosis, and cholestasis).",
+        "indications": ["Primary biliary cholangitis (PBC)", "Dissolution of gallstones and cholelithiasis", "Prevention of gallstones during rapid weight loss", "Cirrhosis and cholestasis management"],
+        "sideEffects": ["Diarrhea", "Nausea", "Vomiting", "Dizziness", "Constipation", "Pruritus"],
+        "warnings": ["Contraindicated in complete biliary obstruction and calcified radiopaque gallstones. Administer with meals."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "10–15 mg/kg/day", "maxDailyLimit": "15 mg/kg / 24 hrs", "frequency": "Divided in 2–3 doses", "notes": "Pediatric hepatology for neonatal cholestasis.", "status": "caution"},
+            {"cohort": "children", "standardDose": "10–15 mg/kg/day", "maxDailyLimit": "15 mg/kg / 24 hrs", "frequency": "Divided in 2–3 doses with food", "notes": "Administer with food or milk.", "status": "safe"},
+            {"cohort": "adolescents", "standardDose": "8–10 mg/kg/day (gallstones) or 13–15 mg/kg/day (PBC)", "maxDailyLimit": "15 mg/kg / 24 hrs", "frequency": "2–4 divided doses", "notes": "Take with meals.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "8–10 mg/kg/day (gallstones) or 13–15 mg/kg/day (PBC)", "maxDailyLimit": "15 mg/kg / 24 hrs", "frequency": "2–4 divided doses with food", "notes": "Ultrasound every 6 months to assess stone dissolution.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "Standard adult weight-adjusted dose", "maxDailyLimit": "15 mg/kg / 24 hrs", "frequency": "Divided with meals", "notes": "Monitor liver function tests periodically.", "status": "safe"}
+        ]
+    },
+    "leflunomide": {
+        "maxDailyDoseGeneral": "20 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Severe hepatotoxicity and major teratogenic risk. Strict contraception required. Cholestyramine washout required if pregnancy is planned.",
+        "purpose": "Disease-modifying antirheumatic drug (DMARD) and pyrimidine synthesis inhibitor indicated for active rheumatoid arthritis to reduce joint swelling and retard structural damage.",
+        "indications": ["Rheumatoid arthritis (DMARD)", "Active arthritis joint swelling reduction"],
+        "sideEffects": ["Hepatotoxicity", "Teratogenicity", "Diarrhea", "Hypertension", "Alopecia", "Rash"],
+        "warnings": ["Boxed Warning: Hepatotoxicity and Embryofetal Toxicity. Screen for latent TB and monitor ALT/AST monthly."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Safety not established in pediatric arthritis.", "status": "not_recommended"},
+            {"cohort": "adolescents", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated < 18 yrs.", "status": "not_recommended"},
+            {"cohort": "adults", "standardDose": "10–20 mg once daily (after optional 100 mg/day x 3 days loading)", "maxDailyLimit": "20 mg / 24 hrs", "frequency": "Once daily with or without food", "notes": "Monitor ALT/AST monthly.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "10 mg once daily", "maxDailyLimit": "20 mg / 24 hrs", "frequency": "Once daily", "notes": "Monitor liver enzymes and blood pressure closely.", "status": "caution"}
+        ]
+    },
+    "octreotide": {
+        "maxDailyDoseGeneral": "1,500 mcg / 24 hrs (Adults)",
+        "unit": "mcg",
+        "clinicalSafetyWarning": "Somatostatin analogue. Long-term treatment is associated with gallstone formation (cholelithiasis); periodic ultrasound monitoring of gallbladder recommended.",
+        "purpose": "Long-acting somatostatin analogue indicated for acromegaly, severe diarrhea associated with metastatic carcinoid tumors and vasoactive intestinal peptide (VIPoma), and acute variceal bleeding.",
+        "indications": ["Acromegaly", "Carcinoid tumors severe diarrhea", "Vasoactive intestinal peptide tumors", "Variceal bleeding"],
+        "sideEffects": ["Gallstones and cholelithiasis", "Nausea", "Diarrhea", "Abdominal discomfort", "Sinus bradycardia", "Hypoglycemia"],
+        "warnings": ["Monitor gallbladder ultrasound, blood glucose, and thyroid hormone levels during therapy."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "1–10 mcg/kg/day", "maxDailyLimit": "Specialist only", "frequency": "Divided every 8–12 hrs", "notes": "Specialist endocrine supervision.", "status": "caution"},
+            {"cohort": "children", "standardDose": "10–10 mcg/kg/day", "maxDailyLimit": "Specialist only", "frequency": "Divided every 8–12 hrs", "notes": "Under pediatric endocrinologist guidance.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "50–100 mcg every 8 hrs", "maxDailyLimit": "1,500 mcg / 24 hrs", "frequency": "Subcutaneous 2–3 times daily", "notes": "Titrate based on IGF-1 and symptoms.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "50–500 mcg every 8 hrs", "maxDailyLimit": "1,500 mcg / 24 hrs", "frequency": "Subcutaneous or IV divided every 8 hrs", "notes": "Titrate to IGF-1 and growth hormone normalization.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "50–100 mcg every 8 hrs", "maxDailyLimit": "1,500 mcg / 24 hrs", "frequency": "Subcutaneous divided every 8 hrs", "notes": "Cardiac and gallbladder monitoring recommended.", "status": "caution"}
+        ]
+    },
+    "fludrocortisone": {
+        "maxDailyDoseGeneral": "0.2 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Potent synthetic mineralocorticoid. High risk of sodium retention, hypokalemia, and severe hypertension. Monitor blood pressure and electrolytes regularly.",
+        "purpose": "Potent synthetic mineralocorticoid indicated for partial replacement therapy in primary adrenocortical insufficiency (Addison's disease), salt-losing adrenogenital syndrome, and orthostatic hypotension.",
+        "indications": ["Primary adrenocortical insufficiency (Addison's disease)", "Salt-losing adrenogenital syndrome", "Orthostatic hypotension"],
+        "sideEffects": ["Hypertension", "Peripheral edema", "Hypokalemia", "Congestive heart failure", "Sodium retention"],
+        "warnings": ["Monitor blood pressure, serum potassium, and signs of fluid overload; supplemental potassium may be required."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "0.05–0.1 mg once daily", "maxDailyLimit": "0.1 mg / 24 hrs", "frequency": "Once daily with food", "notes": "Pediatric endocrinology supervision.", "status": "caution"},
+            {"cohort": "children", "standardDose": "0.05–0.1 mg once daily", "maxDailyLimit": "0.1 mg / 24 hrs", "frequency": "Once daily", "notes": "Monitor growth, blood pressure, and electrolytes.", "status": "safe"},
+            {"cohort": "adolescents", "standardDose": "0.05–0.2 mg once daily", "maxDailyLimit": "0.2 mg / 24 hrs", "frequency": "Once daily in morning", "notes": "Adjust based on plasma renin activity.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "0.05–0.2 mg once daily", "maxDailyLimit": "0.2 mg / 24 hrs", "frequency": "Once daily in the morning", "notes": "Maintain adequate dietary sodium.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "0.05–0.1 mg once daily", "maxDailyLimit": "0.2 mg / 24 hrs", "frequency": "Once daily", "notes": "High vulnerability to hypertension and hypokalemia.", "status": "caution"}
+        ]
+    },
+    "alendronate": {
+        "maxDailyDoseGeneral": "70 mg once weekly (or 10 mg / 24 hrs daily)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Bisphosphonate. Must be swallowed with a full glass of plain water upon awakening. Patient must remain upright (sitting or standing) for at least 30 minutes to prevent severe esophagitis.",
+        "purpose": "Bisphosphonate indicated for the treatment and prevention of osteoporosis in postmenopausal women, Paget's disease of bone, and glucocorticoid-induced bone loss to prevent fractures.",
+        "indications": ["Postmenopausal osteoporosis", "Paget's disease of bone", "Bone loss and fracture prevention"],
+        "sideEffects": ["Esophagitis and esophageal ulcer", "Osteonecrosis of the jaw", "Atypical femur fracture", "Abdominal pain", "Dyspepsia"],
+        "warnings": ["Do not lie down for at least 30 minutes after taking. Contraindicated in esophageal abnormalities and hypocalcemia."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Safety not established in pediatric population.", "status": "not_recommended"},
+            {"cohort": "adolescents", "standardDose": "Specialist only", "maxDailyLimit": "Specialist only", "frequency": "Weekly under specialist", "notes": "Specialist pediatric bone clinic only.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "10 mg daily or 70 mg once weekly", "maxDailyLimit": "70 mg / week (40 mg / day for Paget's)", "frequency": "Once weekly on awakening with full glass of water", "notes": "Remain strictly upright for at least 30 minutes.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "70 mg once weekly", "maxDailyLimit": "70 mg / week", "frequency": "Once weekly with full glass of water", "notes": "Ensure adequate calcium and vitamin D supplementation.", "status": "safe"}
+        ]
+    },
+    "zoledronicacid": {
+        "maxDailyDoseGeneral": "5 mg IV once yearly (Osteoporosis) or 4 mg IV every 3–4 weeks (Malignancy)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Intravenous bisphosphonate. Ensure adequate pre-hydration before infusion. Monitor renal function (creatinine clearance) and serum calcium; avoid if CrCl < 35 mL/min.",
+        "purpose": "Third-generation intravenous bisphosphonate indicated for hypercalcemia of malignancy, multiple myeloma, bone metastases from solid tumors, and postmenopausal osteoporosis.",
+        "indications": ["Hypercalcemia of malignancy", "Multiple myeloma", "Bone metastases", "Severe osteoporosis"],
+        "sideEffects": ["Renal toxicity", "Osteonecrosis of the jaw", "Hypocalcemia", "Acute phase reaction", "Myalgia"],
+        "warnings": ["Ensure adequate hydration before infusion. Infuse over no less than 15 minutes to minimize renal toxicity risk."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Specialist oncology only", "maxDailyLimit": "Specialist only", "frequency": "IV infusion", "notes": "Specialist pediatric oncology/metabolic bone only.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "Specialist oncology only", "maxDailyLimit": "Specialist only", "frequency": "IV infusion", "notes": "Pediatric oncology specialist supervision.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "5 mg IV once yearly (osteoporosis) or 4 mg IV every 3–4 weeks (malignancy)", "maxDailyLimit": "5 mg per infusion", "frequency": "IV infusion over >=15 mins", "notes": "Ensure pre-infusion hydration and normal calcium levels.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "5 mg IV once yearly (CrCl >= 35 mL/min)", "maxDailyLimit": "5 mg per infusion", "frequency": "Annual IV infusion", "notes": "Contraindicated if CrCl < 35 mL/min.", "status": "caution"}
+        ]
+    },
+    "aripiprazole": {
+        "maxDailyDoseGeneral": "30 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Increased mortality in elderly patients with dementia-related psychosis, and suicidal thoughts/behaviors in children and young adults.",
+        "purpose": "Atypical antipsychotic indicated for schizophrenia, bipolar I disorder manic episodes, adjunctive major depressive disorder, autistic disorder irritability, and Tourette's disorder.",
+        "indications": ["Schizophrenia", "Bipolar I disorder manic episodes", "Major depressive disorder (adjunct)", "Autistic disorder irritability", "Tourette's disorder"],
+        "sideEffects": ["Akathisia", "Extrapyramidal symptoms", "Somnolence", "Tremor", "Nausea", "Weight gain", "Insomnia"],
+        "warnings": ["Boxed Warning: Dementia psychosis mortality and suicidal tendencies. Monitor for akathisia and metabolic changes."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "2–15 mg/day (autism irritability >=6 yrs; Tourette >=6 yrs)", "maxDailyLimit": "15 mg / 24 hrs", "frequency": "Once daily with or without food", "notes": "Pediatric psychiatry supervision.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "10–30 mg/day (schizophrenia/bipolar >=13 yrs)", "maxDailyLimit": "30 mg / 24 hrs", "frequency": "Once daily", "notes": "Start at 2 mg and titrate gradually.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "10–30 mg once daily", "maxDailyLimit": "30 mg / 24 hrs", "frequency": "Once daily morning or evening", "notes": "Assess metabolic profile periodically.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "2–5 mg once daily initial", "maxDailyLimit": "15 mg / 24 hrs", "frequency": "Once daily", "notes": "Contraindicated for dementia-related psychosis.", "status": "caution"}
+        ]
+    },
+    "quetiapine": {
+        "maxDailyDoseGeneral": "800 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Increased mortality in elderly patients with dementia-related psychosis. High risk of sedation and orthostatic hypotension during titration.",
+        "purpose": "Atypical dibenzothiazepine antipsychotic indicated for schizophrenia, bipolar disorder (mania and depressive episodes), and major depressive disorder.",
+        "indications": ["Schizophrenia", "Bipolar disorder (mania and bipolar depression)", "Major depressive disorder adjunctive therapy"],
+        "sideEffects": ["Somnolence", "Sedation", "Dry mouth", "Weight gain", "Metabolic changes", "Dizziness"],
+        "warnings": ["Boxed Warning: Dementia-related psychosis mortality. Monitor fasting glucose and lipid profiles periodically."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "50–400 mg/day (bipolar mania >=10 yrs)", "maxDailyLimit": "600 mg / 24 hrs", "frequency": "Divided twice daily", "notes": "Under child psychiatry supervision.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "400–800 mg/day (schizophrenia >=13 yrs)", "maxDailyLimit": "800 mg / 24 hrs", "frequency": "Divided twice daily or XR once daily", "notes": "Titrate over 5 days.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "150–800 mg/day in 1–2 divided doses", "maxDailyLimit": "800 mg / 24 hrs", "frequency": "Twice daily (IR) or once daily at bedtime (XR)", "notes": "Monitor blood glucose and lipid panel.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "25–50 mg starting dose", "maxDailyLimit": "400 mg / 24 hrs", "frequency": "Once daily at bedtime", "notes": "Slower titration due to hypotension risk.", "status": "caution"}
+        ]
+    },
+    "olanzapine": {
+        "maxDailyDoseGeneral": "20 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Increased mortality in elderly dementia patients. High propensity for marked weight gain, severe hyperlipidemia, and new-onset diabetes mellitus.",
+        "purpose": "Atypical thienobenzodiazepine antipsychotic indicated for schizophrenia, bipolar disorder manic episodes, and psychiatric agitation.",
+        "indications": ["Schizophrenia", "Bipolar disorder manic episodes", "Agitation in psychiatric emergency"],
+        "sideEffects": ["Weight gain", "Somnolence", "Metabolic syndrome", "Hyperglycemia", "Dry mouth", "Dizziness"],
+        "warnings": ["Boxed Warning: Dementia-related psychosis mortality. Routine metabolic monitoring required."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Not recommended in children.", "status": "not_recommended"},
+            {"cohort": "adolescents", "standardDose": "2.5–20 mg once daily (>=13 yrs)", "maxDailyLimit": "20 mg / 24 hrs", "frequency": "Once daily at bedtime", "notes": "High rate of adolescent weight gain.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "5–20 mg once daily at bedtime", "maxDailyLimit": "20 mg / 24 hrs", "frequency": "Once daily at bedtime", "notes": "Monitor weight, fasting glucose, and lipids.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "2.5–5 mg starting dose", "maxDailyLimit": "10 mg / 24 hrs", "frequency": "Once daily at bedtime", "notes": "Contraindicated for dementia psychosis.", "status": "caution"}
+        ]
+    },
+    "rifampin": {
+        "maxDailyDoseGeneral": "600 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Rifamycin antibiotic. Harmless reddish-orange discoloration of urine, sweat, saliva, and tears will occur. Soft contact lenses may be permanently stained. Major CYP3A4 inducer.",
+        "purpose": "Rifamycin bactericidal antibiotic indicated for tuberculosis (pulmonary and extrapulmonary) and meningococcal carriers elimination, and staphylococcal infections.",
+        "indications": ["Tuberculosis", "Mycobacterium infections", "Meningococcal carriers elimination", "Staphylococcal infections"],
+        "sideEffects": ["Hepatotoxicity", "Orange discoloration of body fluids", "Hypersensitivity", "Nausea", "Thrombocytopenia"],
+        "warnings": ["Potent CYP3A4 inducer: drastically decreases efficacy of oral contraceptives, warfarin, and protease inhibitors."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "10–20 mg/kg/day", "maxDailyLimit": "20 mg/kg / 24 hrs", "frequency": "Once daily with food", "notes": "Pediatric infectious disease supervision.", "status": "caution"},
+            {"cohort": "children", "standardDose": "10–20 mg/kg/day", "maxDailyLimit": "600 mg / 24 hrs", "frequency": "Once daily on empty stomach", "notes": "Administer 1 hour before or 2 hours after meals.", "status": "safe"},
+            {"cohort": "adolescents", "standardDose": "10–20 mg/kg/day", "maxDailyLimit": "600 mg / 24 hrs", "frequency": "Once daily on empty stomach", "notes": "Warn regarding orange fluid discoloration.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "600 mg once daily (or 10 mg/kg)", "maxDailyLimit": "600 mg / 24 hrs", "frequency": "Once daily on empty stomach with full glass of water", "notes": "Monitor hepatic enzymes periodically.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "600 mg once daily", "maxDailyLimit": "600 mg / 24 hrs", "frequency": "Once daily", "notes": "Monitor liver function tests and drug interactions.", "status": "caution"}
+        ]
+    },
+    "nintedanib": {
+        "maxDailyDoseGeneral": "300 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Intracellular tyrosine kinase inhibitor. Must be swallowed whole with food. Monitor liver enzymes (ALT, AST, bilirubin) prior to initiation and monthly for first 3 months.",
+        "purpose": "Small-molecule intracellular tyrosine kinase inhibitor indicated for idiopathic pulmonary fibrosis (IPF), chronic fibrosing interstitial lung disease (ILD), and systemic sclerosis.",
+        "indications": ["Idiopathic pulmonary fibrosis", "Interstitial lung disease", "Systemic sclerosis"],
+        "sideEffects": ["Diarrhea", "Nausea", "Elevated liver enzymes", "Vomiting", "Abdominal pain", "Decreased appetite"],
+        "warnings": ["High incidence of diarrhea; manage with loperamide at first onset. Reduce dose to 100 mg twice daily for adverse reactions."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Pediatric fibrosing ILD safety not established.", "status": "not_recommended"},
+            {"cohort": "adolescents", "standardDose": "Specialist only", "maxDailyLimit": "Specialist only", "frequency": "Twice daily with food", "notes": "Specialist pediatric pulmonology only.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "150 mg twice daily with food", "maxDailyLimit": "300 mg / 24 hrs", "frequency": "Twice daily approx 12 hrs apart with food", "notes": "Reduce to 100 mg twice daily if liver enzymes elevate.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "150 mg twice daily with food", "maxDailyLimit": "300 mg / 24 hrs", "frequency": "Twice daily with meals", "notes": "Close liver function and diarrhea monitoring.", "status": "caution"}
+        ]
+    },
+    "dicyclomine": {
+        "maxDailyDoseGeneral": "160 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Antispasmodic anticholinergic. Contraindicated in infants < 6 months (severe respiratory collapse / seizures reported). Avoid in glaucoma and obstructive uropathy.",
+        "purpose": "Anticholinergic antispasmodic indicated for functional bowel disorders and irritable bowel syndrome (IBS) to relieve intestinal spasm and abdominal cramping.",
+        "indications": ["Functional bowel disorders", "Irritable bowel syndrome (IBS)", "Intestinal spasm and cramping"],
+        "sideEffects": ["Dry mouth", "Dizziness", "Blurred vision", "Nausea", "Somnolence", "Constipation"],
+        "warnings": ["Contraindicated in infants < 6 months, severe ulcerative colitis, and reflux esophagitis. May cause heat prostration in warm environments."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "STRICTLY CONTRAINDICATED (< 6 months)", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Fatal respiratory collapse reported in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Not recommended in young children.", "status": "not_recommended"},
+            {"cohort": "adolescents", "standardDose": "10–20 mg 3–4 times daily", "maxDailyLimit": "80 mg / 24 hrs", "frequency": "3–4 times daily before meals", "notes": "Supervised by physician.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "20 mg 4 times daily, titrating to 40 mg 4 times daily", "maxDailyLimit": "160 mg / 24 hrs", "frequency": "4 times daily before meals and at bedtime", "notes": "Discontinue if no efficacy observed after 2 weeks.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "10 mg 3–4 times daily initial", "maxDailyLimit": "80 mg / 24 hrs", "frequency": "3–4 times daily before meals", "notes": "Beers criteria: high risk of confusion and urinary retention.", "status": "caution"}
+        ]
+    },
+    "baricitinib": {
+        "maxDailyDoseGeneral": "4 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Black Box Warning: Serious infections, mortality, malignancy, major adverse cardiovascular events (MACE), and thrombosis (DVT/PE).",
+        "purpose": "Janus kinase (JAK) inhibitor indicated for rheumatoid arthritis, severe alopecia areata, and hospitalized COVID-19 patients requiring supplemental oxygen.",
+        "indications": ["Rheumatoid arthritis", "Alopecia areata", "COVID-19 hospitalized patients", "Janus kinase inhibitor therapy"],
+        "sideEffects": ["Infections", "Thrombosis and deep vein thrombosis", "Upper respiratory tract infections", "Hyperlipidemia", "Headache"],
+        "warnings": ["Boxed Warning: Serious infections, thrombosis, and malignancy. Monitor absolute neutrophil count and lipids."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Specialist only (>=2 yrs for COVID-19/juvenile arthritis)", "maxDailyLimit": "4 mg / 24 hrs", "frequency": "Once daily", "notes": "Pediatric rheumatology/infectious disease only.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "2–4 mg once daily", "maxDailyLimit": "4 mg / 24 hrs", "frequency": "Once daily with or without food", "notes": "Monitor CBC and liver enzymes.", "status": "caution"},
+            {"cohort": "adults", "standardDose": "2 mg once daily, titrating to 4 mg once daily", "maxDailyLimit": "4 mg / 24 hrs", "frequency": "Once daily with or without food", "notes": "Do not initiate if absolute lymphocyte count < 500.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "2 mg once daily", "maxDailyLimit": "4 mg / 24 hrs", "frequency": "Once daily", "notes": "Elevated risk of thrombosis and MACE; close monitoring.", "status": "caution"}
+        ]
+    },
+    "methimazole": {
+        "maxDailyDoseGeneral": "60 mg / 24 hrs (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Thionamide antithyroid drug. Major risk of agranulocytosis and hepatotoxicity. Instruct patient to report fever, sore throat, or jaundice immediately.",
+        "purpose": "Thionamide antithyroid agent indicated for hyperthyroidism, Graves disease, toxic multinodular goiter, and thyrotoxicosis crisis.",
+        "indications": ["Hyperthyroidism", "Graves disease", "Toxic goiter", "Thyrotoxicosis"],
+        "sideEffects": ["Agranulocytosis", "Rash", "Arthralgia", "Hepatotoxicity", "Fever", "Nausea"],
+        "warnings": ["Monitor complete blood count and liver function. Discontinue immediately if agranulocytosis or severe hepatic dysfunction occurs."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "0.4–0.7 mg/kg/day", "maxDailyLimit": "Specialist only", "frequency": "Divided every 8 hrs", "notes": "Neonatal Graves disease under pediatric endocrinologist.", "status": "caution"},
+            {"cohort": "children", "standardDose": "0.4–0.7 mg/kg/day", "maxDailyLimit": "30 mg / 24 hrs", "frequency": "Divided every 8 hrs with meals", "notes": "Monitor growth and thyroid function tests.", "status": "safe"},
+            {"cohort": "adolescents", "standardDose": "10–20 mg/day initial", "maxDailyLimit": "60 mg / 24 hrs", "frequency": "Once daily or divided", "notes": "Warn regarding sore throat/fever reporting.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "15–60 mg/day initial, maintenance 5–15 mg/day", "maxDailyLimit": "60 mg / 24 hrs", "frequency": "Once daily or divided every 8 hrs", "notes": "Titrate to euthyroid state; monitor free T4 and TSH.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "5–15 mg/day initial", "maxDailyLimit": "30 mg / 24 hrs", "frequency": "Once daily", "notes": "Lower starting dose due to increased sensitivity.", "status": "caution"}
+        ]
+    },
+    "cabergoline": {
+        "maxDailyDoseGeneral": "3 mg / week (Adults)",
+        "unit": "mg",
+        "clinicalSafetyWarning": "Dopamine D2 receptor agonist. Long-term high-dose therapy carries risk of cardiac valvulopathy and fibrotic complications. Echocardiogram recommended.",
+        "purpose": "Potent dopamine receptor agonist indicated for hyperprolactinemia, prolactinoma, galactorrhea, and inhibition of physiological lactation.",
+        "indications": ["Hyperprolactinemia", "Prolactinoma", "Galactorrhea", "Dopamine agonist therapy"],
+        "sideEffects": ["Nausea", "Headache", "Dizziness", "Cardiac valvulopathy", "Hypotension", "Fatigue"],
+        "warnings": ["Baseline echocardiogram recommended. Avoid in uncontrolled hypertension or known cardiac valvular disorders."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "Contraindicated", "maxDailyLimit": "0 mg", "frequency": "N/A", "notes": "Contraindicated in infants.", "status": "not_recommended"},
+            {"cohort": "children", "standardDose": "Specialist only (<16 yrs safety not established)", "maxDailyLimit": "Specialist only", "frequency": "Twice weekly", "notes": "Pediatric endocrinologist supervision.", "status": "caution"},
+            {"cohort": "adolescents", "standardDose": "0.25 mg twice weekly", "maxDailyLimit": "1 mg / week", "frequency": "Twice weekly with food", "notes": "Titrate by 0.25 mg increments.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "0.25 mg twice weekly, titrating up to 1 mg twice weekly", "maxDailyLimit": "3 mg / week", "frequency": "Twice weekly with food", "notes": "Monitor serum prolactin monthly during dose titration.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "0.25 mg twice weekly", "maxDailyLimit": "2 mg / week", "frequency": "Twice weekly with food", "notes": "Monitor blood pressure for orthostatic hypotension.", "status": "caution"}
+        ]
+    },
+    "budesonide": {
+        "maxDailyDoseGeneral": "1,600 mcg / 24 hrs (Inhalation) or 9 mg / 24 hrs (Oral for Crohn's/Ulcerative Colitis)",
+        "unit": "mcg",
+        "clinicalSafetyWarning": "Corticosteroid. Rinse mouth thoroughly with water without swallowing after oral inhalation to prevent oral candidiasis (thrush) and dysphonia.",
+        "purpose": "Corticosteroid indicated for maintenance treatment of asthma, chronic obstructive pulmonary disease (COPD), active Crohn's disease, and ulcerative colitis.",
+        "indications": ["Asthma maintenance", "Chronic obstructive pulmonary disease (COPD)", "Active Crohn's disease", "Ulcerative colitis", "Allergic rhinitis"],
+        "sideEffects": ["Oral candidiasis and thrush", "Dysphonia", "Cough", "Adrenal suppression", "Headache"],
+        "warnings": ["Rinse mouth after inhalation. Not a rescue inhaler for acute bronchospasm. Monitor for systemic corticosteroid effects."],
+        "limits": [
+            {"cohort": "infants", "standardDose": "0.25–0.5 mg/day via nebulizer", "maxDailyLimit": "1 mg / 24 hrs", "frequency": "Once daily or divided twice daily", "notes": "Pediatric pulmonology for infant asthma.", "status": "caution"},
+            {"cohort": "children", "standardDose": "180–360 mcg twice daily (inhalation) or 6 mg/day (Crohn's >=8 yrs)", "maxDailyLimit": "720 mcg / 24 hrs (inhalation)", "frequency": "Twice daily with spacer", "notes": "Monitor growth velocity periodically.", "status": "safe"},
+            {"cohort": "adolescents", "standardDose": "360–720 mcg twice daily", "maxDailyLimit": "1,440 mcg / 24 hrs", "frequency": "Twice daily", "notes": "Rinse mouth after each use.", "status": "safe"},
+            {"cohort": "adults", "standardDose": "360–720 mcg twice daily (inhalation) or 9 mg once daily in morning (oral Crohn's)", "maxDailyLimit": "1,600 mcg / 24 hrs (inhalation)", "frequency": "Twice daily (inhalation) / Once daily morning (oral)", "notes": "Swallow oral capsules whole; do not chew or crush.", "status": "safe"},
+            {"cohort": "geriatric", "standardDose": "Standard adult dose", "maxDailyLimit": "1,600 mcg / 24 hrs", "frequency": "Twice daily with mouth rinse", "notes": "Monitor bone mineral density with prolonged oral courses.", "status": "safe"}
+        ]
     }
 }
 
@@ -1104,7 +1458,7 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
             search_term
         ]
 
-        with httpx.Client(timeout=2.5) as client:
+        with httpx.Client(timeout=4.5) as client:
             for query in search_candidates:
                 try:
                     res = client.get(url, params={"search": query, "limit": 1})
@@ -1121,6 +1475,19 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
                             raw_warnings = _extract_first(first_item, "warnings_and_cautions") or _extract_first(first_item, "warnings")
                             raw_adverse = _extract_first(first_item, "adverse_reactions")
                             raw_boxed = _extract_first(first_item, "boxed_warning")
+
+                            # Require meaningful clinical content before accepting label
+                            has_clinical_content = bool(
+                                (raw_indications and len(raw_indications.strip()) > 20) or
+                                (raw_purpose and len(raw_purpose.strip()) > 10) or
+                                (raw_adverse and len(raw_adverse.strip()) > 20)
+                            )
+                            if not has_clinical_content:
+                                continue
+
+                            # Skip topical ear/eye drops when searching systemic antibiotics like colistin
+                            if search_term.lower() == "colistin" and "Cortisporin" in (raw_indications or ""):
+                                continue
 
                             # Tokenize into clean, sectioned bullet points without truncation
                             main_uses = split_into_bullets(raw_indications, max_bullets=5, section_type="mainUses")
@@ -1141,6 +1508,19 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
                             final_summary = " ".join(summary_parts).strip()
                             if not final_summary:
                                 final_summary = "General therapeutic medication."
+
+                            # Check curated pharmacopeia to enrich therapeutic coverage
+                            norm_lookup = re.sub(r'[^a-zA-Z0-9]', '', search_term.lower())
+                            curated = AGE_DOSAGE_LIMITS_DB.get(norm_name) or AGE_DOSAGE_LIMITS_DB.get(norm_lookup) or AGE_DOSAGE_LIMITS_DB.get(DRUG_SYNONYMS.get(norm_name, ""))
+                            if curated and curated.get("purpose"):
+                                if curated["purpose"] not in final_summary:
+                                    clean_p = f"{curated['purpose']} {clean_p}".strip()
+                                    final_summary = f"{curated['purpose']} {final_summary}".strip()
+                                    clean_ind = f"{curated['purpose']} {clean_ind}".strip()
+                                if curated.get("sideEffects"):
+                                    side_effects = list(dict.fromkeys((curated.get("sideEffects") or []) + (side_effects or [])))
+                                if curated.get("indications"):
+                                    main_uses = list(dict.fromkeys((curated.get("indications") or []) + (main_uses or [])))
 
                             age_limits = get_age_dosage_limits(
                                 drug_name=raw_name,
@@ -1165,7 +1545,7 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
                             }
                             _DRUG_INFO_CACHE[norm_name] = result_payload
                             return result_payload
-                except (httpx.ConnectTimeout, httpx.ConnectError):
+                except (httpx.ConnectTimeout, httpx.ConnectError, httpx.TimeoutException):
                     logger.info(f"OpenFDA host unreachable or timed out for '{search_term}'. Proceeding to next provider.")
                     break
 
@@ -1173,7 +1553,30 @@ def get_drug_info(drug_name: str) -> Dict[str, Any]:
     except Exception as e:
         logger.warning(f"OpenFDA query failed gracefully for '{search_term}': {e}. Using fallback.")
 
-    # 3. Graceful fallback on missing / unreachable
+    # 3. Check Clinical Pharmacopeia if OpenFDA yielded no result
+    norm_lookup = re.sub(r'[^a-zA-Z0-9]', '', search_term.lower())
+    curated = AGE_DOSAGE_LIMITS_DB.get(norm_name) or AGE_DOSAGE_LIMITS_DB.get(norm_lookup) or AGE_DOSAGE_LIMITS_DB.get(DRUG_SYNONYMS.get(norm_name, ""))
+    if curated and curated.get("purpose"):
+        age_limits = get_age_dosage_limits(drug_name=raw_name, generic_name=search_term)
+        curated_payload = {
+            "drug_name": raw_name,
+            "found": True,
+            "purpose": curated.get("purpose"),
+            "indications_and_usage": curated.get("purpose"),
+            "summary": curated.get("purpose"),
+            "source": "CarePulse Clinical Pharmacopeia",
+            "mainUses": curated.get("indications") or [curated.get("purpose")],
+            "howToTake": curated.get("howToTake") or ["Take as prescribed by your doctor."],
+            "warnings": curated.get("warnings") or ["Adhere strictly to prescribed dosage."],
+            "sideEffects": curated.get("sideEffects") or None,
+            "boxedWarning": curated.get("boxedWarning"),
+            "ageDosageLimits": age_limits,
+            "maxDailyDose": curated.get("maxDailyDoseGeneral"),
+        }
+        _DRUG_INFO_CACHE[norm_name] = curated_payload
+        return curated_payload
+
+    # 4. Graceful fallback on missing / unreachable
     fallback_payload = {
         "drug_name": raw_name,
         "found": False,

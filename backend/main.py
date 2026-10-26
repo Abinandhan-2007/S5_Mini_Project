@@ -3011,7 +3011,9 @@ def lookup_medicine_info(req: MedicineInfoLookupRequest):
         search_res = search_medicines(candidate_name, limit=1)
         if search_res.get("matches"):
             top_match = search_res["matches"][0]
-            if top_match.get("generic_name") and top_match.get("similarity_score", 0) >= 0.40:
+            match_type = top_match.get("match_type", "")
+            sim_score = top_match.get("similarity_score", 0)
+            if top_match.get("generic_name") and (match_type in ("exact", "prefix") or sim_score >= 0.72):
                 generic_name = top_match["generic_name"]
 
     # 4. Query OpenFDA using the generic name (e.g. Paracetamol) for maximum accuracy

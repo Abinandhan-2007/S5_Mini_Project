@@ -67,11 +67,23 @@ def _score_candidate(query: str, name: str, generic: str, brands: List[str]) -> 
     sim_n = difflib.SequenceMatcher(None, q, n).ratio()
     sim_g = difflib.SequenceMatcher(None, q, g).ratio()
     sim_b = max([difflib.SequenceMatcher(None, q, b).ratio() for b in brand_list], default=0.0)
+
+    # Prefix Guard: Prevent false cognates from common pharmaceutical suffixes
+    # (-prazole, -olol, -sartan, -statin, -cillin, -floxacin) when initial syllables diverge completely.
+    # (e.g. 'aripiprazole' vs 'pantoprazole' share 7-letter suffix but are completely different drug classes)
+    if len(q) >= 5 and len(n) >= 5:
+        p_len = min(3, len(q), len(n))
+        if q[:p_len] != n[:p_len]:
+            sim_n = sim_n * 0.55
+        if g and len(g) >= 5 and q[:p_len] != g[:p_len]:
+            sim_g = sim_g * 0.55
     
     # Also check first word similarity for multi-word queries like 'dolo 650'
     first_q = q.split()[0] if q else ""
     first_n = n.split()[0] if n else ""
     sim_first = difflib.SequenceMatcher(None, first_q, first_n).ratio() if first_q and first_n else 0.0
+    if len(first_q) >= 5 and len(first_n) >= 5 and first_q[:3] != first_n[:3]:
+        sim_first = sim_first * 0.55
 
     # Direct name matches take priority over generic/brand fallback
     max_sim = max(sim_n, sim_first * 0.95, sim_g * 0.85, sim_b * 0.80)

@@ -3,15 +3,15 @@
 > **Project Name:** CarePulse — Smart Multi-Hospital Management, Intelligent Clinical Triage & Patient Health Assistant Platform  
 > **Document Version:** 1.0.0 (Release Candidate)  
 > **Report Scope:** Exhaustive Technical Reference for Final Review / Project Submission  
-> **Total Chapters:** 11 Detailed Technical Chapters  
+> **Total Chapters:** 13 Detailed Technical Chapters  
 > **Repository Root:** `e:\S5_Mini_Project`  
-> **Generated:** 2026-09-10  
+> **Generated:** 2026-10-15  
 
 ---
 
 ## 📑 Master Table of Contents & Chapter Index
 
-This technical documentation suite has been compiled directly from the live CarePulse codebase. To ensure maximum readability, modularity, and depth, the documentation is divided into 11 dedicated reference chapters located in the `docs/` folder:
+This technical documentation suite has been compiled directly from the live CarePulse codebase. To ensure maximum readability, modularity, and depth, the documentation is divided into 13 dedicated reference chapters located in the `s5_report/` folder:
 
 | Chapter | Title | Primary Focus & System Layers Covered | Target File Link |
 | :---: | :--- | :--- | :---: |
@@ -25,7 +25,9 @@ This technical documentation suite has been compiled directly from the live Care
 | **08** | **Security, Data Integrity & Fault Tolerance** | Cryptographic design: bcrypt hashing, JWT authentication, RBAC matrix, multi-hospital tenant isolation, fail-fast database error handling, terminal state protection, and one-admin-per-hospital integrity rule. | [08_security_and_data_integrity.md](file:///e:/S5_Mini_Project/docs/08_security_and_data_integrity.md) |
 | **09** | **Testing Suite & Quality Assurance** | Complete catalogue of all 28 automated test files across Pytest backend integration tests, clinical AI accuracy benchmarks, and Playwright multi-role browser E2E suites. | [09_testing_suite.md](file:///e:/S5_Mini_Project/docs/09_testing_suite.md) |
 | **10** | **Deployment, Infrastructure & DevOps Manual** | Operational manual for local execution (`start-carepulse-dev.bat`), production Android network services (`start-carepulse.bat`), database provisioning, Vercel/Netlify hosting, and automated in-app APK updates (`deploy_update.py`). | [10_deployment_and_infrastructure.md](file:///e:/S5_Mini_Project/docs/10_deployment_and_infrastructure.md) |
-| **11** | **Known Limitations & Future Roadmap** | Transparent audit of engineering trade-offs, shelved Ambient Voice Scribe, multi-agent AI status, rule-based fallbacks, TTS proxy limitations, OpenFDA Indian brand handling, and future ABDM/FHIR roadmap. | [11_known_limitations_and_future_scope.md](file:///e:/S5_Mini_Project/docs/11_known_limitations_and_future_scope.md) |
+| **11** | **Known Limitations & Future Roadmap** | Transparent audit of engineering trade-offs, shelved Ambient Voice Scribe, multi-agent AI status, rule-based fallbacks, TTS proxy limitations, OpenFDA Indian brand handling, and future ABDM/FHIR roadmap. | [11_known_limitations_and_future_scope.md](file:///e:/S5_Mini_Project/s5_report/11_known_limitations_and_future_scope.md) |
+| **12** | **Medicine Scan & Pharmacopeia Accuracy Benchmark** | Complete clinical stress-test benchmark of 100 non-common, specialized prescription medications across 12 medical disciplines achieving 100.0% composite accuracy across therapeutic uses, adverse boxed warnings, and 5-cohort age dosage ceilings. | [12_medicine_scan_accuracy_benchmark.md](file:///e:/S5_Mini_Project/s5_report/12_medicine_scan_accuracy_benchmark.md) |
+| **13** | **Health AI Clinical Triage & Safety Benchmark** | Comprehensive evaluation of the Health AI engine across 50 multi-urgency symptom triage scenarios (100% emergency recall) and 15 polypharmacy drug collision cases. | [13_health_ai_clinical_triage_benchmark.md](file:///e:/S5_Mini_Project/s5_report/13_health_ai_clinical_triage_benchmark.md) |
 
 ---
 
