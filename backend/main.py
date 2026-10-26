@@ -3948,14 +3948,14 @@ def get_doctor_slots_by_date(doctor_id: str, date: Optional[str] = None):
                 with get_pg_connection() as conn:
                     with conn.cursor() as cur:
                         cur.execute(
-                            "SELECT time_slot, COUNT(*) as cnt FROM appointments WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' GROUP BY time_slot",
+                            "SELECT time_slot, COUNT(*) as cnt FROM appointments WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' AND (type IS NULL OR type != 'Walk-In') GROUP BY time_slot",
                             (doctor_id, date)
                         )
                         for r in cur.fetchall():
                             online_booked_counts[r["time_slot"]] = int(r["cnt"])
 
                         cur.execute(
-                            "SELECT time_slot, COUNT(*) as cnt FROM tokens WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' GROUP BY time_slot",
+                            "SELECT time_slot, COUNT(*) as cnt FROM appointments WHERE doctor_id = %s AND date = %s AND status != 'Cancelled' AND type = 'Walk-In' GROUP BY time_slot",
                             (doctor_id, date)
                         )
                         for r in cur.fetchall():
