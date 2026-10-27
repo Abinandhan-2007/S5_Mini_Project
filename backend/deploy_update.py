@@ -218,11 +218,12 @@ def main():
     if not args.no_broadcast:
         print("\n📢 Dispatching FCM Push Notification Broadcast...")
         from notifications.fcm_service import broadcast_app_update_notification
+        public_url = "https://straggler-boss-unselect.ngrok-free.dev/downloads/CarePulse_App.apk"
         b_res = broadcast_app_update_notification(
             version=new_name,
             release_notes=release_notes,
             custom_message=args.message,
-            download_url="http://localhost:5000/downloads/CarePulse_App.apk"
+            download_url=public_url
         )
         print(f"✅ Push Notification Broadcast Complete:")
         print(f"   Title:          {b_res.get('title')}")

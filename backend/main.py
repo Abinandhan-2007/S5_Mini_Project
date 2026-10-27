@@ -1976,42 +1976,7 @@ def get_patient_appointments(patient_id: str):
                             status=r.get("status") or "Upcoming"
                         ))
         except Exception as e:
-            logger.warning(f"Error fetching patient appointments from PostgreSQL: {e}. Falling back to local store.")
-            database.use_pg = False
-
-    # Also load from JSON DB if not already retrieved (offline or newly added)
-    try:
-        db = read_json_db()
-        apps = db.get("appointments", [])
-        for a in apps:
-            if database.use_pg and a.get("synced_to_pg"):
-                continue
-            a_pid = str(a.get("patient_id") or a.get("patientId") or a.get("patient_uuid") or "").strip()
-            a_id = str(a.get("id"))
-            a_ticket = a.get("ticket_number") or a.get("ticketNumber", "")
-            if (a_pid == str(patient_id).strip() or (effective_patient_uuid and a_pid == str(effective_patient_uuid).strip())) and a_id not in seen_ids and (not a_ticket or a_ticket not in seen_tickets):
-                seen_ids.add(a_id)
-                if a_ticket:
-                    seen_tickets.add(a_ticket)
-                result.append(AppointmentResponse(
-                    id=a_id,
-                    ticketNumber=a_ticket or "#CP-1001",
-                    patientId=a_pid,
-                    patientName=a.get("patient_name") or a.get("patientName", ""),
-                    doctorId=a.get("doctor_id") or a.get("doctorId", "doc-1"),
-                    doctorName=a.get("doctor_name") or a.get("doctorName", "Specialist Doctor"),
-                    doctorSpecialty=a.get("doctor_specialty") or a.get("doctorSpecialty", "General Medicine"),
-                    doctorPhoto=a.get("doctor_photo") or a.get("doctorPhoto", ""),
-                    hospitalId=a.get("hospital_id") or a.get("hospitalId"),
-                    hospital_id=a.get("hospital_id") or a.get("hospitalId"),
-                    hospitalName=a.get("hospital_name") or a.get("hospitalName", "CarePulse Central Hospital"),
-                    date=str(a.get("date", "")),
-                    timeSlot=a.get("time_slot") or a.get("timeSlot", ""),
-                    type=a.get("type", "In-Person"),
-                    status=a.get("status", "Upcoming")
-                ))
-    except Exception as e:
-        logger.warning(f"Error reading appointments from JSON DB: {e}")
+            logger.error(f"Error fetching patient appointments from PostgreSQL: {e}")
 
     return result
 
@@ -2681,45 +2646,7 @@ def get_patient_prescriptions(patient_id: str):
                                 "createdAt": _created
                             })
         except Exception as e:
-            logger.warning(f"Error fetching PG prescriptions: {e}")
-            database.use_pg = False
-
-    # 2. Resilient JSON DB sync (deduplicated by seen_drugs so all prescribed medications appear)
-    try:
-        db = read_json_db()
-        for r in db.get("prescriptions", []):
-            r_pid = str(r.get("patient_id") or r.get("patientId") or "")
-            if r_pid == target_pid:
-                st = (r.get("status") or "Active").lower().strip()
-                if st in ["discontinued", "cancelled", "deleted"]:
-                    continue
-                d_name = r.get("drug_name") or r.get("drugName") or ""
-                if not d_name:
-                    continue
-                k = d_name.lower().strip()
-                if k not in seen_drugs:
-                    seen_drugs.add(k)
-                    _dur_str = r.get("duration") or "3 Days"
-                    _total = parse_duration_days(_dur_str)
-                    _created = str(r.get("created_at") or "")
-                    result.append({
-                        "id": str(r.get("id")),
-                        "patientId": target_pid,
-                        "drugName": d_name,
-                        "dosage": r.get("dosage") or "1 Tab",
-                        "frequency": r.get("frequency") or "Twice daily",
-                        "mealTiming": r.get("meal_timing") or r.get("mealTiming") or "As directed",
-                        "instructions": r.get("instructions") or (r.get("meal_timing") or "Follow doctor advice"),
-                        "duration": _dur_str,
-                        "totalDays": _total,
-                        "daysCompleted": get_days_completed(r),
-                        "prescriber": r.get("prescriber") or "Treating Physician",
-                        "iconType": r.get("icon_type") or r.get("iconType") or "pill",
-                        "status": r.get("status") or "Active",
-                        "createdAt": _created
-                    })
-    except Exception as e:
-        logger.warning(f"Error reading JSON prescriptions: {e}")
+            logger.error(f"Error fetching PG prescriptions: {e}")
 
     return result
 
@@ -3673,6 +3600,7 @@ def format_doctor(d: dict) -> DoctorResponse:
 @app.get("/api/hospitals", response_model=List[HospitalResponse])
 def get_all_hospitals(search: Optional[str] = None):
     """Retrieve all hospitals from database with optional search filtering."""
+    database.check_pg_health_and_sync()
     if database.use_pg:
         try:
             with get_pg_connection() as conn:
@@ -3689,24 +3617,14 @@ def get_all_hospitals(search: Optional[str] = None):
                     return [format_hospital(dict(r)) for r in rows]
         except Exception as e:
             logger.error(f"Error fetching hospitals from pg: {e}")
-            if not database.ALLOW_JSON_FALLBACK:
-                return []
+            return []
 
-    db = read_json_db()
-    hospitals = db.get("hospitals", [])
-    if search:
-        term = search.strip().lower()
-        hospitals = [
-            h for h in hospitals
-            if term in h.get("name", "").lower()
-            or term in h.get("address", "").lower()
-            or any(term in s.lower() for s in h.get("specialties", []))
-        ]
-    return [format_hospital(h) for h in hospitals]
+    return []
 
 @app.get("/api/hospitals/{hospital_id}")
 def get_hospital_by_id(hospital_id: str):
     """Retrieve hospital details and associated doctors."""
+    database.check_pg_health_and_sync()
     found_hosp = None
     doctors_list = []
 
@@ -3729,34 +3647,14 @@ def get_hospital_by_id(hospital_id: str):
                     "hospital": found_hosp,
                     "doctors": doctors_list
                 }
-            elif not database.ALLOW_JSON_FALLBACK:
-                raise HTTPException(status_code=404, detail="Hospital not found")
+            raise HTTPException(status_code=404, detail="Hospital not found")
         except HTTPException:
             raise
         except Exception as e:
             logger.error(f"Error fetching hospital {hospital_id} from pg: {e}")
-            if not database.ALLOW_JSON_FALLBACK:
-                raise HTTPException(status_code=404, detail="Hospital not found")
+            raise HTTPException(status_code=500, detail=f"Database error fetching hospital: {e}")
 
-    if not found_hosp:
-        db = read_json_db()
-        hospitals = db.get("hospitals", [])
-        for h in hospitals:
-            if h.get("id") == hospital_id:
-                found_hosp = format_hospital(h)
-                break
-        if not doctors_list:
-            doctors = db.get("doctors", [])
-            doctors_list = [format_doctor(d) for d in doctors if d.get("hospital_id") == hospital_id or d.get("hospitalId") == hospital_id]
-
-    if not found_hosp:
-        raise HTTPException(status_code=404, detail="Hospital not found")
-
-    return {
-        "success": True,
-        "hospital": found_hosp,
-        "doctors": doctors_list
-    }
+    raise HTTPException(status_code=503, detail="PostgreSQL database offline")
 
 @app.get("/api/doctors", response_model=List[DoctorResponse])
 def get_all_doctors(

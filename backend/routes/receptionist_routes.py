@@ -220,29 +220,10 @@ def get_doctors(
                     if rows is not None:
                         return {"success": True, "doctors": [format_receptionist_doctor(dict(r)) for r in rows]}
         except Exception as e:
-            logger.warning(f"DB get doctors note: {e}")
+            logger.error(f"DB get doctors error: {e}")
+            raise HTTPException(status_code=500, detail=f"Database error fetching doctors: {e}")
 
-    db = database.read_json_db()
-    doctors = db.get("doctors", [])
-    staff_list = db.get("staff", [])
-    if effective_hosp_id:
-        doctors = [d for d in doctors if d.get("hospital_id") == effective_hosp_id or d.get("hospitalId") == effective_hosp_id]
-
-    formatted_docs = []
-    for d in doctors:
-        doc_dict = dict(d)
-        if not doc_dict.get("staff_code") and not doc_dict.get("staffCode"):
-            doc_id = str(doc_dict.get("id", "")).lower()
-            doc_email = str(doc_dict.get("email", "")).lower()
-            matching_stf = next((s for s in staff_list if str(s.get("doctor_id", "")).lower() == doc_id or (doc_email and str(s.get("email", "")).lower() == doc_email)), None)
-            if matching_stf:
-                sc = matching_stf.get("staff_code") or matching_stf.get("staffCode")
-                if sc:
-                    doc_dict["staff_code"] = sc
-                    doc_dict["staffCode"] = sc
-        formatted_docs.append(format_receptionist_doctor(doc_dict))
-
-    return {"success": True, "doctors": formatted_docs}
+    return {"success": True, "doctors": []}
 
 @router.post("/doctors")
 def create_doctor(payload: DoctorCreateRequest, authorization: Optional[str] = Header(None)):

@@ -76,32 +76,8 @@ def register_device_token(patient_id: Optional[str], fcm_token: str, platform: s
         except Exception as e:
             logger.error(f"❌ Error registering device token in PostgreSQL: {e}")
             return {"success": False, "error": str(e)}
-    else:
-        # Fallback to local database.json
-        db = read_json_db()
-        tokens = db.get("device_tokens", [])
-        found = False
-        for t in tokens:
-            if t.get("patient_id") == p_id and t.get("fcm_token") == token:
-                t["is_active"] = True
-                t["platform"] = platform
-                found = True
-                break
 
-        if not found:
-            import uuid
-            tokens.append({
-                "id": str(uuid.uuid4()),
-                "patient_id": p_id,
-                "fcm_token": token,
-                "platform": platform,
-                "is_active": True
-            })
-
-        db["device_tokens"] = tokens
-        write_json_db(db)
-        logger.info(f"✅ Registered FCM token in JSON DB for patient {p_id}")
-        return {"success": True}
+    return {"success": False, "error": "PostgreSQL offline"}
 
 
 def get_active_device_tokens(patient_id: str) -> List[Dict[str, Any]]:
@@ -127,13 +103,8 @@ def get_active_device_tokens(patient_id: str) -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error(f"❌ Error fetching device tokens for patient {p_id}: {e}")
             return []
-    else:
-        db = read_json_db()
-        tokens = db.get("device_tokens", [])
-        return [
-            t for t in tokens 
-            if str(t.get("patient_id")).strip() == p_id and t.get("is_active", True)
-        ]
+
+    return []
 
 
 def deactivate_device_token(token_id: str, fcm_token: Optional[str] = None):

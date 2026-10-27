@@ -40,37 +40,42 @@ def sync_offline_json_to_pg(existing_conn=None) -> int:
 
 
 def init_json_db() -> Dict[str, Any]:
-    """Ensure database.json exists with initial data if needed."""
-    if not JSON_DB_PATH.exists():
-        JSON_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        initial_data = {
-            "patients": [],
-            "consultations": [],
-            "appointments": [],
-            "prescriptions": [],
-            "doctors": [],
-            "hospitals": [],
-            "staff": [],
-            "doctor_leaves": []
-        }
-        with open(JSON_DB_PATH, "w", encoding="utf-8") as f:
-            json.dump(initial_data, f, indent=2)
-        return initial_data
-
-    try:
-        with open(JSON_DB_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"patients": [], "consultations": [], "appointments": []}
+    """
+    database.json has been completely decommissioned and stripped of power.
+    PostgreSQL (carepulse_db) is the single authoritative source of truth.
+    Always returns empty collections to guarantee no data is taken from database.json.
+    """
+    return {
+        "patients": [],
+        "consultations": [],
+        "appointments": [],
+        "prescriptions": [],
+        "doctors": [],
+        "hospitals": [],
+        "staff": [],
+        "doctor_leaves": [],
+        "audit_logs": [],
+        "patient_devices": [],
+        "staff_password_resets": [],
+        "staff_messages": [],
+        "notification_log": [],
+        "nurse_requests": [],
+        "medicines": []
+    }
 
 
 def read_json_db() -> Dict[str, Any]:
+    """
+    database.json has been completely decommissioned and stripped of power.
+    PostgreSQL (carepulse_db) is the single authoritative source of truth.
+    Always returns empty collections so database.json has zero power or influence.
+    """
     return init_json_db()
 
 
 def write_json_db(data: Dict[str, Any]) -> None:
-    with open(JSON_DB_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    """database.json is decommissioned. Writes are disabled so it has no power."""
+    pass
 
 
 def to_valid_uuid(val: Any) -> str:
@@ -300,3 +305,11 @@ def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot_product / (math.sqrt(norm_a) * math.sqrt(norm_b))
+
+
+# Auto-initialize PostgreSQL connection upon module load
+try:
+    init_db()
+except Exception as _e:
+    logger.warning(f"Initial DB connect note: {_e}")
+

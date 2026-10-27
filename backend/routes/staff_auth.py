@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, Union
 from fastapi import APIRouter, HTTPException, Header, status
 from pydantic import BaseModel, EmailStr
 import database
-from database import read_json_db, write_json_db, get_pg_connection
+from database import get_pg_connection
 from core.security import verify_password, hash_password, needs_rehash, create_jwt, verify_jwt
 
 logger = logging.getLogger("carepulse.staff_auth")
@@ -136,17 +136,6 @@ def resolve_authoritative_hospital_id(role: str, staff_hospital_id: Optional[str
                                 return row["hospital_id"]
                 except Exception as e:
                     logger.warning(f"Note on PostgreSQL doctor hospital query: {e}")
-
-            # 2. Query JSON DB
-            try:
-                db = read_json_db()
-                for doc in db.get("doctors", []):
-                    if doc.get("id") == doctor_id:
-                        h_id = doc.get("hospital_id") or doc.get("hospitalId")
-                        if h_id:
-                            return h_id
-            except Exception as e:
-                logger.warning(f"Note on JSON doctor hospital query: {e}")
 
         # Fallback to staff hospital_id if doctor lookup yielded nothing
         return staff_hospital_id
@@ -311,9 +300,8 @@ def staff_login(request: StaffLoginRequest):
             )
 
     # 2. Mock JSON fallback is ONLY allowed if ALLOW_STAFF_MOCK_LOGIN is explicitly enabled for offline testing
-    # ALLOW_JSON_FALLBACK (scoped to patient booking resilience) NEVER bypasses staff security.
-    if not found_staff and allow_staff_mock:
-        db = read_json_db()
+    if False:
+        db = {}
         staff_list = db.get("staff", [])
         if not database.use_pg:
             staff_table_is_empty = (len(staff_list) == 0 and len(db.get("doctors", [])) == 0)
@@ -489,13 +477,6 @@ def staff_login(request: StaffLoginRequest):
                     with conn.cursor() as cur:
                         cur.execute("UPDATE staff SET password = %s, password_hash = %s WHERE id::text = %s", (raw_password, new_hash, str(found_staff.get("id"))))
                     conn.commit()
-            db = read_json_db()
-            staff_list = db.get("staff", [])
-            for s in staff_list:
-                if s.get("id") == found_staff.get("id") or s.get("email", "").lower() in [raw_identifier, carepulse_email]:
-                    s["password"] = raw_password
-                    s["password_hash"] = new_hash
-            write_json_db(db)
         except Exception as e:
             logger.warning(f"Could not auto-upgrade staff password hash: {e}")
 
@@ -529,13 +510,6 @@ def staff_login(request: StaffLoginRequest):
                             hosp_name = h_row["name"]
             except Exception as e:
                 logger.warning(f"Error fetching hospital name from PG: {e}")
-        
-        if not hosp_name:
-            db = read_json_db()
-            for h in db.get("hospitals", []):
-                if str(h.get("id")) == str(resolved_hospital_id) or str(h.get("hospital_code", "")).lower() == str(resolved_hospital_id).lower():
-                    hosp_name = h.get("name")
-                    break
 
     if not hosp_name:
         hosp_name = "CarePulse Medical Center"
@@ -646,25 +620,6 @@ def request_staff_password_reset(payload: StaffForgotPasswordRequest):
         except Exception as e:
             logger.warning(f"Error checking staff in PostgreSQL for password reset: {e}")
 
-    # 2. Fallback check in database.json
-    if not found_staff:
-        db = read_json_db()
-        for s in db.get("staff", []) + db.get("receptionists", []) + db.get("doctors", []) + db.get("nurses", []):
-            s_email = (s.get("email") or "").strip().lower()
-            s_user = (s.get("username") or "").strip().lower()
-            s_code = (s.get("staff_code") or s.get("staffCode") or "").strip().lower()
-            s_id = str(s.get("id") or "").strip().lower()
-            if raw_identifier in [s_email, s_user, s_code, s_id] or raw_prefix in [s_user, s_code, s_id]:
-                found_staff = {
-                    "id": s.get("id"),
-                    "full_name": s.get("name") or s.get("full_name") or "Staff Member",
-                    "email": s.get("email") or carepulse_email,
-                    "role": s.get("role") or "staff",
-                    "hospital_id": s.get("hospital_id") or s.get("hospitalId") or "hosp-1",
-                    "phone": s.get("phone") or "+91 98765 00000",
-                }
-                break
-
     if not found_staff:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -715,23 +670,6 @@ def request_staff_password_reset(payload: StaffForgotPasswordRequest):
                         logger.warning(f"Note on staff_messages log: {e_msg}")
         except Exception as e:
             logger.warning(f"Error persisting staff password reset in PostgreSQL: {e}")
-
-    # 4. Record in database.json for offline resilience
-    try:
-        db = read_json_db()
-        db.setdefault("staff_password_resets", []).insert(0, {
-            "id": req_id,
-            "staffId": staff_id,
-            "staffName": staff_name,
-            "staffRole": staff_role,
-            "staffEmail": staff_email,
-            "hospitalId": hosp_id,
-            "status": "Pending",
-            "createdAt": now_iso
-        })
-        write_json_db(db)
-    except Exception as e:
-        logger.warning(f"Error persisting staff password reset in JSON DB: {e}")
 
     return {
         "success": True,
@@ -794,32 +732,6 @@ def get_staff_password_reset_status(identifier: str):
                         }
         except Exception as e:
             logger.warning(f"Error checking reset status in PostgreSQL: {e}")
-
-    # 2. Check in database.json
-    db = read_json_db()
-    for req in db.get("staff_password_resets", []):
-        r_email = (req.get("staffEmail") or "").strip().lower()
-        r_user = r_email.split("@")[0]
-        r_id = str(req.get("staffId") or "").strip().lower()
-        if raw_identifier in [r_email, r_user, r_id] or raw_prefix in [r_email, r_user]:
-            if req.get("status") == "Resolved":
-                return {
-                    "success": True,
-                    "status": "Resolved",
-                    "staffName": req.get("staffName"),
-                    "staffRole": req.get("staffRole"),
-                    "temporaryPassword": req.get("temporaryPassword") or "CarePulse#2026",
-                    "resolvedAt": req.get("resolvedAt"),
-                    "message": "Your password has been reset by the Hospital Administrator! You can now log in using your temporary password."
-                }
-            return {
-                "success": True,
-                "status": "Pending",
-                "staffName": req.get("staffName"),
-                "staffRole": req.get("staffRole"),
-                "createdAt": req.get("createdAt"),
-                "message": "Your password reset request is awaiting Admin review."
-            }
 
     return {
         "success": False,

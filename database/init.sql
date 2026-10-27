@@ -88,9 +88,15 @@ ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 6);
 -- Trigger Function for Auto-Generating Hospital Display Codes (H001, H002, H003...)
 CREATE OR REPLACE FUNCTION generate_hospital_code()
 RETURNS TRIGGER AS $$
+DECLARE
+    seq_val BIGINT;
 BEGIN
     IF NEW.hospital_code IS NULL OR NEW.hospital_code = '' THEN
-        NEW.hospital_code := 'H' || LPAD(nextval('hospital_code_seq')::text, 3, '0');
+        LOOP
+            seq_val := nextval('hospital_code_seq');
+            NEW.hospital_code := 'H' || LPAD(seq_val::text, GREATEST(3, LENGTH(seq_val::text)), '0');
+            EXIT WHEN NOT EXISTS (SELECT 1 FROM hospitals WHERE hospital_code = NEW.hospital_code);
+        END LOOP;
     END IF;
     RETURN NEW;
 END;
